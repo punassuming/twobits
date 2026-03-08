@@ -23,7 +23,7 @@ class AppPreferencesDataStore @Inject constructor(
         val DEFAULT_PROVIDER = stringPreferencesKey("default_provider")
         val DEFAULT_TRANSFORM_PROFILE_ID = stringPreferencesKey("default_transform_profile_id")
         val AUTO_TRANSCRIBE = booleanPreferencesKey("auto_transcribe")
-        val MAX_RECORDING_DURATION_SECONDS = stringPreferencesKey("max_recording_duration_seconds")
+        val MAX_RECORDING_DURATION_MS = stringPreferencesKey("max_recording_duration_ms")
         val AUDIO_FORMAT = stringPreferencesKey("audio_format")
     }
 

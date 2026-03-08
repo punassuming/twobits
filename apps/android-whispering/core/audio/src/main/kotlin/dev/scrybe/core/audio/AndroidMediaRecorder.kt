@@ -21,6 +21,7 @@ class AndroidMediaRecorder @Inject constructor(
     private var mediaRecorder: MediaRecorder? = null
     private var currentFile: File? = null
     private var startTimeMs: Long = 0L
+    private var currentAudioFormat: AudioFormat = AudioFormat.AAC
 
     override suspend fun startRecording(config: RecordingConfig): Result<Unit> = runCatching {
         val outputDir = File(config.outputDir).apply { mkdirs() }
@@ -47,6 +48,7 @@ class AndroidMediaRecorder @Inject constructor(
         mediaRecorder = recorder
         currentFile = outputFile
         startTimeMs = System.currentTimeMillis()
+        currentAudioFormat = config.audioFormat
         _isRecording.value = true
     }
 
@@ -64,7 +66,7 @@ class AndroidMediaRecorder @Inject constructor(
             filePath = file.absolutePath,
             durationMs = durationMs,
             fileSizeBytes = file.length(),
-            audioFormat = AudioFormat.AAC,
+            audioFormat = currentAudioFormat,
         )
     }
 

@@ -30,14 +30,12 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Grant execute permission for gradlew
         run: chmod +x apps/android-whispering/gradlew
 
       - name: Build debug APK
-        run: cd apps/android-whispering && ./gradlew assembleDebug --no-daemon
+        working-directory: apps/android-whispering
+        run: ./gradlew assembleDebug --no-daemon
 
   lint:
     name: Lint
@@ -56,14 +54,12 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Grant execute permission for gradlew
         run: chmod +x apps/android-whispering/gradlew
 
       - name: Run Android Lint
-        run: cd apps/android-whispering && ./gradlew lint --no-daemon
+        working-directory: apps/android-whispering
+        run: ./gradlew lint --no-daemon
 
   test:
     name: Unit Tests
@@ -82,11 +78,9 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Grant execute permission for gradlew
         run: chmod +x apps/android-whispering/gradlew
 
       - name: Run Unit Tests
-        run: cd apps/android-whispering && ./gradlew testDebugUnitTest --no-daemon
+        working-directory: apps/android-whispering
+        run: ./gradlew testDebugUnitTest --no-daemon
