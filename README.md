@@ -154,7 +154,11 @@ docker compose run --rm android-dev ./gradlew assembleDebug
 docker compose run --rm android-dev ./gradlew testDebugUnitTest
 ```
 
-The container includes Gradle 8.9 on JDK 17 plus the Android SDK platform tools, API 35, and build-tools 35.0.0. If your network blocks Gradle wrapper downloads, you can substitute `gradle` for `./gradlew` inside the container because the matching Gradle version is already installed. Device and emulator workflows still require host-side ADB / emulator access.
+Container notes:
+
+* Includes Gradle 8.9 on JDK 17 plus the Android SDK platform tools, API 35, and build-tools 35.0.0.
+* If your network blocks Gradle wrapper downloads, you can substitute `gradle` for `./gradlew` inside the container because the matching Gradle version is already installed.
+* Device and emulator workflows still require host-side ADB / emulator access.
 
 ---
 

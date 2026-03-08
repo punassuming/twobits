@@ -13,7 +13,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     GRADLE_USER_HOME=/home/gradle/.gradle \
     PATH=/opt/android-sdk-linux/cmdline-tools/latest/bin:/opt/android-sdk-linux/platform-tools:${PATH}
 
-WORKDIR /workspace/apps/android-whispering
+WORKDIR /workspace
 
 USER gradle
 
