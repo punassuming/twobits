@@ -30,6 +30,7 @@ Thank you for your interest in contributing! This guide covers everything you ne
 | Android SDK | API 26–35 | Install via Android Studio SDK Manager |
 | Python | 3.x | Required for the manifest-validation script |
 | Git | Any recent | – |
+| Docker | Recent Engine/Desktop (optional) | Use instead of a local Android SDK/JDK install |
 
 You do **not** need an OpenAI API key to build or run unit tests, but you will need one to exercise the transcription feature on a device or emulator.
 
@@ -93,6 +94,30 @@ cd scrybe
 cd apps/android-whispering
 ./gradlew installDebug
 ```
+
+### Docker development environment (optional)
+
+If you prefer not to install the Android SDK and JDK locally, you can use the repository's Docker environment from the repository root:
+
+```bash
+# Build the image
+docker compose build android-dev
+
+# Open a shell inside the Android project
+docker compose run --rm android-dev
+
+# Or run project commands directly
+docker compose run --rm android-dev ./gradlew assembleDebug
+docker compose run --rm android-dev ./gradlew lint
+docker compose run --rm android-dev ./gradlew testDebugUnitTest
+docker compose run --rm android-dev python3 scripts/validate-manifests.py
+```
+
+The `android-dev` service mounts the repository into `/workspace`, uses `apps/android-whispering/` as its working directory, and persists the Gradle cache in a named Docker volume. The image provides Gradle 8.9 on JDK 17 together with the Android SDK platform tools, API 35, and build-tools 35.0.0.
+
+If your environment blocks Gradle wrapper downloads, you can replace `./gradlew` with `gradle` inside the container because the matching Gradle version is preinstalled.
+
+> **Note:** The container is intended for builds, linting, unit tests, and CLI-based development. Commands that require a connected device or emulator (for example `installDebug` or `connectedDebugAndroidTest`) still require host-side Android Studio / emulator setup and ADB access.
 
 ### JAVA_HOME
 
