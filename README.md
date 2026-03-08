@@ -144,6 +144,22 @@ cd scrybe/apps/android-whispering
 
 After first launch, go to **Settings → API Key** and enter your OpenAI API key.
 
+### Containerized development
+
+If you do not want to install the Android toolchain locally, a Docker-based development environment is available at the repository root:
+
+```bash
+docker compose build android-dev
+docker compose run --rm android-dev ./gradlew assembleDebug
+docker compose run --rm android-dev ./gradlew testDebugUnitTest
+```
+
+Container notes:
+
+* Includes Gradle 8.9 on JDK 17 plus the Android SDK platform tools, API 35, and build-tools 35.0.0.
+* If your network blocks Gradle wrapper downloads, you can substitute `gradle` for `./gradlew` inside the container because the matching Gradle version is already installed.
+* Device and emulator workflows still require host-side ADB / emulator access.
+
 ---
 
 ## CI / CD

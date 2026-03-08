@@ -1,0 +1,20 @@
+FROM ghcr.io/cirruslabs/android-sdk:35 AS android-sdk
+
+FROM gradle:8.9-jdk17
+
+USER root
+
+COPY --from=android-sdk /opt/android-sdk-linux /opt/android-sdk-linux
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    ANDROID_HOME=/opt/android-sdk-linux \
+    ANDROID_SDK_ROOT=/opt/android-sdk-linux \
+    JAVA_HOME=/opt/java/openjdk \
+    GRADLE_USER_HOME=/home/gradle/.gradle \
+    PATH=/opt/android-sdk-linux/cmdline-tools/latest/bin:/opt/android-sdk-linux/platform-tools:${PATH}
+
+WORKDIR /workspace
+
+USER gradle
+
+CMD ["bash"]
