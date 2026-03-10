@@ -164,6 +164,8 @@ Container notes:
 
 ## CI / CD
 
+### Continuous integration
+
 GitHub Actions runs four jobs on every push to `main` or any `copilot/**` branch, and on every pull request targeting `main`:
 
 | Job | Command |
@@ -172,6 +174,16 @@ GitHub Actions runs four jobs on every push to `main` or any `copilot/**` branch
 | Build | `./gradlew assembleDebug` |
 | Lint | `./gradlew lint` |
 | Unit Tests | `./gradlew testDebugUnitTest` |
+
+### Release automation
+
+Every push to `main` triggers the release workflow:
+
+1. The next semantic version is computed automatically from [conventional commits](https://www.conventionalcommits.org/) since the last tag (`feat:` → minor, `fix:` / `chore:` / etc. → patch, `BREAKING CHANGE` → major).
+2. A git tag and a GitHub Release are created directly — **no separate release PR is opened**.
+3. A release APK is built and attached to the GitHub Release.
+
+The built-in `GITHUB_TOKEN` is used; no additional secrets are required.
 
 ---
 

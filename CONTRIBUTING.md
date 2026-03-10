@@ -392,6 +392,8 @@ class CaptureViewModelTest {
 
 ## 11. CI/CD pipeline
 
+### Continuous integration
+
 GitHub Actions runs on every push to `main` or `copilot/**` branches, and on pull requests targeting `main`.
 
 ```
@@ -408,6 +410,19 @@ validate ──► build
 | **Unit Tests** | Runs all JVM unit tests |
 
 All jobs use `ubuntu-latest` and Gradle caching to keep build times short. The `validate` job must pass before any other job starts.
+
+### Release automation
+
+Every push to `main` triggers `.github/workflows/release.yml`:
+
+1. The next semantic version is computed from [conventional commits](https://www.conventionalcommits.org/) since the last tag:
+   - `feat:` commits → **minor** bump
+   - `fix:`, `chore:`, and other prefixes → **patch** bump (default)
+   - `BREAKING CHANGE` footer → **major** bump
+2. A git tag and a GitHub Release are created directly — no separate release PR is opened.
+3. The release APK is built with `./gradlew assembleRelease` and attached to the GitHub Release.
+
+The workflow uses only the built-in `GITHUB_TOKEN`; no additional repository secrets are required for releasing.
 
 ---
 
