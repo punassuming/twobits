@@ -57,6 +57,10 @@ jobs:
         working-directory: apps/android-whispering
         run: ./gradlew assembleDebug --no-daemon
 
+      - name: Build release APK
+        working-directory: apps/android-whispering
+        run: ./gradlew assembleRelease --no-daemon
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
