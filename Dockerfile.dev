@@ -6,6 +6,13 @@ USER root
 
 COPY --from=android-sdk /opt/android-sdk-linux /opt/android-sdk-linux
 
+RUN yes | /opt/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null \
+    && /opt/android-sdk-linux/cmdline-tools/latest/bin/sdkmanager \
+        "platforms;android-35" \
+        "build-tools;35.0.0" \
+        "build-tools;34.0.0" \
+    && chown -R gradle:gradle /opt/android-sdk-linux
+
 ENV DEBIAN_FRONTEND=noninteractive \
     ANDROID_HOME=/opt/android-sdk-linux \
     ANDROID_SDK_ROOT=/opt/android-sdk-linux \
