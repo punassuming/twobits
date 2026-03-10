@@ -19,16 +19,19 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
 
     steps:
-      # The built-in GITHUB_TOKEN is used here (no custom `token` input),
-      # which avoids the "Resource not accessible by personal access token"
-      # error that PATs (especially fine-grained ones) trigger on the
-      # Git Trees API.  For this to work, the repository must have the
-      # "Allow GitHub Actions to create and approve pull requests" setting
-      # enabled under Settings → Actions → General.
+      # A classic PAT with `repo` scope is required here.
+      # Fine-grained PATs lack access to the Git Trees API used by
+      # release-please, and the built-in GITHUB_TOKEN cannot create pull
+      # requests unless the "Allow GitHub Actions to create and approve pull
+      # requests" repository setting is enabled.
+      # Create a classic PAT at https://github.com/settings/tokens (select
+      # the `repo` scope), then store it as a repository secret named
+      # RELEASE_TOKEN under Settings → Secrets and variables → Actions.
       - name: Run Release Please
         id: release
         uses: googleapis/release-please-action@v4
         with:
+          token: ${{ secrets.RELEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
