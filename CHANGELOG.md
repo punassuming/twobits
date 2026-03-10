@@ -1,0 +1,28 @@
+# Changelog
+
+## [1.1.0](https://github.com/punassuming/scrybe/compare/scrybe-v1.0.0...scrybe-v1.1.0) (2026-03-10)
+
+
+### Features
+
+* add Android project skeleton for scrybe-android ([d7cd14f](https://github.com/punassuming/scrybe/commit/d7cd14febfa40258df2c8881baa199f826d82396))
+* add automated semantic release workflow using Release Please ([a72bbdc](https://github.com/punassuming/scrybe/commit/a72bbdc3980c3cdc3cf4791e867e3b6723dca584))
+* add dockerized android dev environment ([b1adef6](https://github.com/punassuming/scrybe/commit/b1adef6cc7e3911ca285677fe453cba6dd271442))
+* automated semantic versioning and GitHub releases via Release Please ([901d932](https://github.com/punassuming/scrybe/commit/901d932ef7a13ac9af6c53196b60280b76134d2f))
+
+
+### Bug Fixes
+
+* add explicit permissions: contents: read to all CI jobs ([6a23faa](https://github.com/punassuming/scrybe/commit/6a23faa30a869412a974c088b17444fcae9b5346))
+* add missing xmlns:android namespace to recording service AndroidManifest.xml ([a3af022](https://github.com/punassuming/scrybe/commit/a3af022d61c01b0ebb6626f094ff6fe655ef35dd))
+* add missing xmlns:android namespace to recording service manifest and add CI validation ([6ca8fb1](https://github.com/punassuming/scrybe/commit/6ca8fb128cfa32d606fac6ca2d9a9e01cd3945fd))
+* fall back to github.token when RELEASE_TOKEN secret is absent ([d322ff5](https://github.com/punassuming/scrybe/commit/d322ff5ec97bb1f4fc5753a7f50d04f1e32cf4da))
+* fall back to github.token when RELEASE_TOKEN secret is absent ([1e3a617](https://github.com/punassuming/scrybe/commit/1e3a6175f62b86de365efc2f5194fda9fef072db))
+* provision Android SDK dependencies in Docker and CI ([b818043](https://github.com/punassuming/scrybe/commit/b818043b072fbfcf8a3abf1d1542f835a400cd69))
+* use classic PAT for release-please to allow PR creation ([26da0ef](https://github.com/punassuming/scrybe/commit/26da0efa5140b361bf61b90ad757ce304baec871))
+* use classic PAT for release-please to unblock PR creation ([d6190a6](https://github.com/punassuming/scrybe/commit/d6190a6a94a88a5613ce77b8329829d038c33d02))
+* use coroutines-core in JVM module and disable Room exportSchema ([277eeb5](https://github.com/punassuming/scrybe/commit/277eeb5f54c2ec40196941408bb7cf87379b0934))
+* use GITHUB_TOKEN for release-please to resolve PAT git-trees permission error ([d01372e](https://github.com/punassuming/scrybe/commit/d01372e8dcec9455ce2dc04f32016e95f4a34c7f))
+* use GITHUB_TOKEN instead of PAT for release-please to resolve git trees permission error ([0eed47a](https://github.com/punassuming/scrybe/commit/0eed47a14c7ab26463fd0bc4f2f95afc77d46060))
+* use PAT to unblock release-please PR creation ([e97c63a](https://github.com/punassuming/scrybe/commit/e97c63a234cc879090a5f6dfc215c16332460a09))
+* use PAT token for release-please to allow PR creation ([55d6910](https://github.com/punassuming/scrybe/commit/55d6910fa3eda7335abbcaf7e28d99aa81e9840e))
