@@ -5,6 +5,21 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val releaseKeystorePath: String? = System.getenv("KEYSTORE_PATH")
+
+// Validate that all required signing variables are present together when a
+// keystore path is provided, so misconfiguration surfaces early with a clear
+// error instead of an opaque Gradle failure during APK signing.
+if (releaseKeystorePath != null) {
+    listOf("STORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD").forEach { varName ->
+        requireNotNull(System.getenv(varName)) {
+            "KEYSTORE_PATH is set but $varName is missing. " +
+                "All four signing variables (KEYSTORE_PATH, STORE_PASSWORD, " +
+                "KEY_ALIAS, KEY_PASSWORD) must be provided together."
+        }
+    }
+}
+
 android {
     namespace = "dev.scrybe.android"
     compileSdk = 35
@@ -22,6 +37,15 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = releaseKeystorePath?.let { file(it) }
+            storePassword = System.getenv("STORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -29,6 +53,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = if (releaseKeystorePath != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
     compileOptions {
