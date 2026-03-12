@@ -68,15 +68,16 @@ jobs:
           git push
 
       # Sets up APK signing. If KEYSTORE_BASE64, STORE_PASSWORD, KEY_ALIAS, and
-      # KEY_PASSWORD secrets are configured in the repository, the release APK
-      # is signed with that keystore. Otherwise a one-off keystore is generated
-      # so the APK is still signed and installable (users must uninstall before
-      # upgrading when no persistent keystore secret is used).
+      # KEY_PASSWORD secrets are all configured in the repository, the release
+      # APK is signed with that keystore. If any of the four secrets is absent,
+      # a one-off keystore is generated so the APK is still signed and
+      # installable (users must uninstall before upgrading when no persistent
+      # keystore secret is used).
       - name: Set up release signing
         if: steps.tag.outputs.new_tag != ''
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 --decode > "${{ runner.temp }}/scrybe-release.jks"
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS_VAL" ] && [ -n "$KEY_PASS" ]; then
+            printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "${{ runner.temp }}/scrybe-release.jks"
           else
             keytool -genkeypair -v -storetype PKCS12 \
               -keystore "${{ runner.temp }}/scrybe-release.jks" \
@@ -90,6 +91,9 @@ jobs:
           echo "KEYSTORE_PATH=${{ runner.temp }}/scrybe-release.jks" >> "$GITHUB_ENV"
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS_VAL: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build release APK
         if: steps.tag.outputs.new_tag != ''
