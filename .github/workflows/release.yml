@@ -73,11 +73,19 @@ jobs:
       # a one-off keystore is generated so the APK is still signed and
       # installable (users must uninstall before upgrading when no persistent
       # keystore secret is used).
+      #
+      # All four signing variables (KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS,
+      # KEY_PASSWORD) are written to GITHUB_ENV so the subsequent build step
+      # uses the exact same credentials that were used to set up the keystore —
+      # preventing a password mismatch when only a subset of secrets is set.
       - name: Set up release signing
         if: steps.tag.outputs.new_tag != ''
         run: |
           if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS_VAL" ] && [ -n "$KEY_PASS" ]; then
             printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "${{ runner.temp }}/scrybe-release.jks"
+            echo "STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
           else
             keytool -genkeypair -v -storetype PKCS12 \
               -keystore "${{ runner.temp }}/scrybe-release.jks" \
@@ -87,6 +95,9 @@ jobs:
               -storepass scrybe_ks_pass \
               -keypass scrybe_key_pass \
               -dname "CN=Scrybe, O=Scrybe, C=US" -noprompt
+            echo "STORE_PASSWORD=scrybe_ks_pass" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=scrybe" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=scrybe_key_pass" >> "$GITHUB_ENV"
           fi
           echo "KEYSTORE_PATH=${{ runner.temp }}/scrybe-release.jks" >> "$GITHUB_ENV"
         env:
@@ -99,10 +110,10 @@ jobs:
         if: steps.tag.outputs.new_tag != ''
         working-directory: apps/android-whispering
         run: ./gradlew assembleRelease --no-daemon
-        env:
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD != '' && secrets.STORE_PASSWORD || 'scrybe_ks_pass' }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS != '' && secrets.KEY_ALIAS || 'scrybe' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD != '' && secrets.KEY_PASSWORD || 'scrybe_key_pass' }}
+        # KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD are set in
+        # GITHUB_ENV by the "Set up release signing" step above, ensuring the
+        # build always uses the same credentials that were used to configure the
+        # keystore (real secrets or fallback defaults).
 
       - name: Create GitHub Release and upload APK
         if: steps.tag.outputs.new_tag != ''
