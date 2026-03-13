@@ -29,7 +29,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1 // Increment manually for each Play Store release
-        versionName = "0.0.3"
+        versionName = "0.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
