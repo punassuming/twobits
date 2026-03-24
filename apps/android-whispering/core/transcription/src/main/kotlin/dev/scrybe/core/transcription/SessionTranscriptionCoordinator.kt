@@ -55,6 +55,10 @@ class SessionTranscriptionCoordinator @Inject constructor(
 
         return result.fold(
             onSuccess = { transcript ->
+                transcriptDao.deleteTranscriptsForSessionAndType(
+                    sessionId = sessionId,
+                    type = TranscriptType.RAW.name,
+                )
                 val transcriptEntity = TranscriptEntity(
                     id = UUID.randomUUID().toString(),
                     sessionId = sessionId,

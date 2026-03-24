@@ -5,11 +5,17 @@ on:
     branches: [ "main", "copilot/**" ]
     paths:
       - 'apps/android-whispering/**'
+      - 'Dockerfile.dev'
+      - 'docker-compose.yml'
+      - '.dockerignore'
       - '.github/workflows/android-ci.yml'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'apps/android-whispering/**'
+      - 'Dockerfile.dev'
+      - 'docker-compose.yml'
+      - '.dockerignore'
       - '.github/workflows/android-ci.yml'
 
 jobs:

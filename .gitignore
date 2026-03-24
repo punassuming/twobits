@@ -1,0 +1,13 @@
+.idea/
+*.iml
+
+apps/android-whispering/.gradle-user-home/
+apps/android-whispering/.gradle-user-home-*/
+apps/android-whispering/.gradle-user-home-ci/
+
+**/build/
+**/.gradle/
+.gci/
+.gci2/
+.gd89/
+local.properties

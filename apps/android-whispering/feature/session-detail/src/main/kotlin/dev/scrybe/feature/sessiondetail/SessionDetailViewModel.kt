@@ -9,17 +9,22 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.scrybe.core.audio.AudioPlayer
+import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TranscriptDao
+import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.export.ExportCoordinator
 import dev.scrybe.core.export.ExportFormat
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
+import dev.scrybe.core.transforms.SessionTransformCoordinator
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -30,6 +35,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.Duration
 import javax.inject.Inject
 
 @HiltViewModel
@@ -37,7 +43,10 @@ class SessionDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val sessionDao: RecordingSessionDao,
     private val transcriptDao: TranscriptDao,
+    private val transformProfileDao: TransformProfileDao,
+    private val preferencesDataStore: AppPreferencesDataStore,
     private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
+    private val sessionTransformCoordinator: SessionTransformCoordinator,
     private val exportCoordinator: ExportCoordinator,
     private val audioPlayer: AudioPlayer,
     @ApplicationContext private val context: Context,
@@ -47,16 +56,34 @@ class SessionDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<SessionDetailUiState>(SessionDetailUiState.Loading)
     val uiState: StateFlow<SessionDetailUiState> = _uiState.asStateFlow()
+    private val isTransforming = MutableStateFlow(false)
+    private val renamePromptDismissed = MutableStateFlow(false)
     private val _events = MutableSharedFlow<SessionDetailEvent>()
     val events = _events.asSharedFlow()
 
     init {
         viewModelScope.launch {
+            val playbackBundle = combine(
+                audioPlayer.playbackState,
+                preferencesDataStore.showRenameAfterRecording,
+                renamePromptDismissed,
+            ) { playbackState, showRenameAfterRecording, renamePromptDismissed ->
+                Triple(playbackState, showRenameAfterRecording, renamePromptDismissed)
+            }
             combine(
-                sessionDao.getSessionById(sessionId),
-                transcriptDao.getTranscriptsForSession(sessionId),
-                audioPlayer.isPlaying,
-            ) { sessionEntity, transcriptEntities, isPlaying ->
+                combine(
+                    sessionDao.getSessionById(sessionId),
+                    transcriptDao.getTranscriptsForSession(sessionId),
+                    transformProfileDao.getAllProfiles(),
+                ) { sessionEntity, transcriptEntities, profileEntities ->
+                    Triple(sessionEntity, transcriptEntities, profileEntities)
+                },
+                preferencesDataStore.defaultTransformProfileId,
+                isTransforming,
+                playbackBundle,
+            ) { sessionBundle, defaultProfileId, isTransforming, playbackBundle ->
+                val (sessionEntity, transcriptEntities, profileEntities) = sessionBundle
+                val (playbackState, showRenameAfterRecording, renamePromptDismissed) = playbackBundle
                 if (sessionEntity == null) {
                     SessionDetailUiState.Error("Session not found")
                 } else {
@@ -67,6 +94,10 @@ class SessionDetailViewModel @Inject constructor(
                         durationMs = sessionEntity.durationMs,
                         fileSizeBytes = sessionEntity.fileSizeBytes,
                         audioFormat = AudioFormat.valueOf(sessionEntity.audioFormat),
+                        sampleRateHz = sessionEntity.sampleRateHz,
+                        encodingBitRate = sessionEntity.encodingBitRate,
+                        channelCount = sessionEntity.channelCount,
+                        waveformSamples = WaveformCodec.decode(sessionEntity.waveformSamples),
                         status = SessionStatus.valueOf(sessionEntity.status),
                         createdAt = Instant.ofEpochMilli(sessionEntity.createdAt),
                         updatedAt = Instant.ofEpochMilli(sessionEntity.updatedAt),
@@ -83,17 +114,73 @@ class SessionDetailViewModel @Inject constructor(
                             createdAt = Instant.ofEpochMilli(entity.createdAt),
                         )
                     }
+                    val profiles = profileEntities.map { entity ->
+                        TransformProfile(
+                            id = entity.id,
+                            name = entity.name,
+                            description = entity.description,
+                            systemPrompt = entity.systemPrompt,
+                            providerType = ProviderType.valueOf(entity.providerType),
+                            isDefault = entity.isDefault,
+                        )
+                    }
                     SessionDetailUiState.Success(
                         session = session,
                         transcripts = transcripts,
+                        profiles = profiles,
+                        defaultProfileId = defaultProfileId,
                         isTranscribing = session.status == SessionStatus.TRANSCRIBING,
-                        isPlaying = isPlaying,
+                        isTransforming = isTransforming,
+                        isPlaying = playbackState.filePath == session.audioFilePath && playbackState.isPlaying,
+                        playbackPositionMs = if (playbackState.filePath == session.audioFilePath) {
+                            playbackState.currentPositionMs
+                        } else {
+                            0L
+                        },
+                        playbackDurationMs = if (playbackState.filePath == session.audioFilePath) {
+                            playbackState.durationMs
+                        } else {
+                            session.durationMs
+                        },
+                        shouldPromptForRename = shouldPromptForRename(
+                            session = session,
+                            showRenameAfterRecording = showRenameAfterRecording,
+                            renamePromptDismissed = renamePromptDismissed,
+                        ),
                     )
                 }
             }
             .catch { emit(SessionDetailUiState.Error(it.message ?: "Unknown error")) }
             .collect { _uiState.value = it }
         }
+    }
+
+    fun transform(profileId: String) {
+        viewModelScope.launch {
+            isTransforming.value = true
+            sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
+                .onSuccess {
+                    _events.emit(SessionDetailEvent.Message("Transform completed."))
+                }
+                .onFailure {
+                    Log.e(TAG, "Transform failed for session $sessionId", it)
+                    _events.emit(SessionDetailEvent.Message(it.message ?: "Transform failed"))
+                }
+            isTransforming.value = false
+        }
+    }
+
+    fun transformDefaultProfile() {
+        val state = _uiState.value as? SessionDetailUiState.Success ?: return
+        val defaultProfileId = state.defaultProfileId
+            ?: state.profiles.firstOrNull()?.id
+        if (defaultProfileId == null) {
+            viewModelScope.launch {
+                _events.emit(SessionDetailEvent.Message("Create a profile before transforming"))
+            }
+            return
+        }
+        transform(defaultProfileId)
     }
 
     fun transcribe() {
@@ -149,11 +236,30 @@ class SessionDetailViewModel @Inject constructor(
         }
     }
 
+    fun shareAudioFile() {
+        val state = _uiState.value as? SessionDetailUiState.Success ?: return
+        viewModelScope.launch {
+            val audioPath = state.session.audioFilePath
+            val audioFile = File(audioPath)
+            if (!audioFile.exists()) {
+                _events.emit(SessionDetailEvent.Message("Audio file is no longer available"))
+            } else {
+                _events.emit(
+                    SessionDetailEvent.ShareFile(
+                        title = state.session.title,
+                        path = audioPath,
+                        mimeType = audioMimeTypeFor(audioFile.extension),
+                    )
+                )
+            }
+        }
+    }
+
     fun togglePlayback() {
         val state = _uiState.value as? SessionDetailUiState.Success ?: return
         viewModelScope.launch {
             if (state.isPlaying) {
-                audioPlayer.stop()
+                audioPlayer.pause()
             } else {
                 audioPlayer.play(state.session.audioFilePath)
                     .onFailure {
@@ -163,6 +269,30 @@ class SessionDetailViewModel @Inject constructor(
         }
     }
 
+    fun seekPlayback(positionMs: Long) {
+        audioPlayer.seekTo(positionMs)
+    }
+
+    fun renameSession(newTitle: String) {
+        val trimmed = newTitle.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+            sessionDao.updateSession(
+                session.copy(
+                    title = trimmed,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            renamePromptDismissed.value = true
+            _events.emit(SessionDetailEvent.Message("Recording renamed"))
+        }
+    }
+
+    fun dismissRenamePrompt() {
+        renamePromptDismissed.value = true
+    }
+
     override fun onCleared() {
         audioPlayer.stop()
         super.onCleared()
@@ -170,5 +300,24 @@ class SessionDetailViewModel @Inject constructor(
 
     private companion object {
         const val TAG = "SessionDetailViewModel"
+        val DEFAULT_TITLE_PREFIX = "Recording "
+        val RENAME_PROMPT_WINDOW: Duration = Duration.ofMinutes(10)
+
+        fun audioMimeTypeFor(extension: String): String = when (extension.lowercase()) {
+            "m4a", "mp4" -> "audio/mp4"
+            "ogg" -> "audio/ogg"
+            "webm" -> "audio/webm"
+            else -> "audio/*"
+        }
+
+        fun shouldPromptForRename(
+            session: RecordingSession,
+            showRenameAfterRecording: Boolean,
+            renamePromptDismissed: Boolean,
+        ): Boolean {
+            if (!showRenameAfterRecording || renamePromptDismissed) return false
+            if (!session.title.startsWith(DEFAULT_TITLE_PREFIX)) return false
+            return Duration.between(session.createdAt, Instant.now()) <= RENAME_PROMPT_WINDOW
+        }
     }
 }

@@ -11,12 +11,13 @@ import androidx.room.RoomDatabase
         TransformRunEntity::class,
         ProviderConfigEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun recordingSessionDao(): RecordingSessionDao
     abstract fun transcriptDao(): TranscriptDao
     abstract fun transformProfileDao(): TransformProfileDao
+    abstract fun transformRunDao(): TransformRunDao
     abstract fun providerConfigDao(): ProviderConfigDao
 }

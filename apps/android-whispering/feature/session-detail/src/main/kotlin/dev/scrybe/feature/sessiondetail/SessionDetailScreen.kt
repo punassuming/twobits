@@ -1,25 +1,41 @@
 package dev.scrybe.feature.sessiondetail
 
 import android.content.Intent
+import androidx.core.content.FileProvider
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -29,12 +45,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.scrybe.core.model.TransformProfile
+import dev.scrybe.core.model.Transcript
+import dev.scrybe.core.model.TranscriptType
+import java.io.File
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +71,7 @@ fun SessionDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    var actionMenuExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -59,6 +85,21 @@ fun SessionDetailScreen(
                     }
                     context.startActivity(Intent.createChooser(intent, "Share transcript"))
                 }
+                is SessionDetailEvent.ShareFile -> {
+                    val file = File(event.path)
+                    val contentUri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file,
+                    )
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = event.mimeType
+                        putExtra(Intent.EXTRA_SUBJECT, event.title)
+                        putExtra(Intent.EXTRA_STREAM, contentUri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Share audio"))
+                }
             }
         }
     }
@@ -66,83 +107,386 @@ fun SessionDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
+            val successState = uiState as? SessionDetailUiState.Success
             TopAppBar(
-                title = { Text("Session Detail") },
+                title = {
+                    Text(
+                        text = successState?.session?.title ?: "Session Review",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                actions = {
+                    if (successState != null) {
+                        IconButton(
+                            onClick = viewModel::transcribe,
+                            enabled = !successState.isTranscribing,
+                        ) {
+                            Icon(
+                                Icons.Filled.GraphicEq,
+                                contentDescription = if (successState.isTranscribing) "Transcribing" else "Transcribe recording",
+                            )
+                        }
+                        IconButton(onClick = viewModel::togglePlayback) {
+                            Icon(
+                                imageVector = if (successState.isPlaying) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                                contentDescription = if (successState.isPlaying) "Pause playback" else "Play recording",
+                            )
+                        }
+                        Box {
+                            IconButton(onClick = { actionMenuExpanded = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More actions")
+                            }
+                            DropdownMenu(
+                                expanded = actionMenuExpanded,
+                                onDismissRequest = { actionMenuExpanded = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Share audio file") },
+                                    leadingIcon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
+                                    onClick = {
+                                        actionMenuExpanded = false
+                                        viewModel.shareAudioFile()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Share transcript") },
+                                    enabled = successState.transcripts.isNotEmpty(),
+                                    leadingIcon = { Icon(Icons.Filled.IosShare, contentDescription = null) },
+                                    onClick = {
+                                        actionMenuExpanded = false
+                                        viewModel.shareLatestTranscript()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Export files") },
+                                    leadingIcon = { Icon(Icons.Filled.Description, contentDescription = null) },
+                                    onClick = {
+                                        actionMenuExpanded = false
+                                        viewModel.exportAll()
+                                    },
+                                )
+                            }
+                        }
+                    }
+                },
             )
-        }
+        },
     ) { paddingValues ->
         when (val state = uiState) {
             is SessionDetailUiState.Loading -> Box(
-                Modifier.fillMaxSize().padding(paddingValues),
-                contentAlignment = Alignment.Center
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
             }
+
             is SessionDetailUiState.Error -> Box(
-                Modifier.fillMaxSize().padding(paddingValues),
-                contentAlignment = Alignment.Center
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(text = state.message, color = MaterialTheme.colorScheme.error)
             }
+
             is SessionDetailUiState.Success -> {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
                         .padding(16.dp)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(state.session.title, style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "Duration: ${state.session.durationMs / 1000}s \u00b7 Status: ${state.session.status}",
-                        style = MaterialTheme.typography.bodySmall,
+                    SessionOverviewCard(state)
+                    PlaybackCard(
+                        state = state,
+                        onSeek = viewModel::seekPlayback,
                     )
-                    Spacer(Modifier.height(16.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = viewModel::transcribe,
-                            enabled = !state.isTranscribing,
-                        ) {
-                            Text(if (state.isTranscribing) "Transcribing..." else "Transcribe")
-                        }
-                        Button(onClick = viewModel::togglePlayback) {
-                            Text(if (state.isPlaying) "Stop Playback" else "Play Recording")
-                        }
-                        Button(
-                            onClick = viewModel::shareLatestTranscript,
-                            enabled = state.transcripts.isNotEmpty(),
-                        ) {
-                            Text("Share")
-                        }
-                        Button(onClick = viewModel::exportAll) {
-                            Text("Export")
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    if (state.transcripts.isEmpty()) {
-                        Text("No transcripts yet.", style = MaterialTheme.typography.bodyMedium)
-                    } else {
-                        state.transcripts.forEach { transcript ->
-                            Text(
-                                text = transcript.type.name,
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = transcript.content,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            Spacer(Modifier.height(12.dp))
-                        }
-                    }
+                    TransformSection(
+                        state = state,
+                        onTransformDefault = viewModel::transformDefaultProfile,
+                        onTransformProfile = viewModel::transform,
+                    )
+                    TranscriptSection(transcripts = state.transcripts)
                 }
             }
         }
     }
+
+    val successState = uiState as? SessionDetailUiState.Success
+    if (successState?.shouldPromptForRename == true) {
+        RenamePromptDialog(
+            initialTitle = successState.session.title,
+            onDismiss = viewModel::dismissRenamePrompt,
+            onConfirm = viewModel::renameSession,
+        )
+    }
 }
+
+@Composable
+private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
+    val audioFile = File(state.session.audioFilePath)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Recorded ${state.session.createdAt.atZone(ZoneId.systemDefault()).format(SUMMARY_TIME_FORMATTER)}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CompactMetaItem("Duration", formatDuration(state.session.durationMs))
+                CompactMetaItem("Status", state.session.status.name)
+                CompactMetaItem("Audio", state.session.audioFormat.name)
+            }
+            Text(
+                text = "${audioFile.name.ifBlank { state.session.audioFilePath }} · ${formatFileSize(state.session.fileSizeBytes)} · ${state.session.sampleRateHz / 1000} kHz · ${state.session.encodingBitRate / 1000} kbps · ${if (state.session.channelCount == 1) "Mono" else "Stereo"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RowScope.CompactMetaItem(
+    label: String,
+    value: String,
+) {
+    Column(
+        modifier = Modifier.weight(1f),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun TransformSection(
+    state: SessionDetailUiState.Success,
+    onTransformDefault: () -> Unit,
+    onTransformProfile: (String) -> Unit,
+) {
+    if (state.profiles.isEmpty()) {
+        return
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("Post-process", style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = "Run a saved prompt against the latest transcription.",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onTransformDefault,
+                enabled = state.transcripts.any { it.type.name == "RAW" } && !state.isTransforming,
+            ) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(if (state.isTransforming) "Running default..." else "Run Default Profile")
+            }
+            state.profiles.forEach { profile ->
+                TransformProfileRow(
+                    profile = profile,
+                    isDefault = profile.id == state.defaultProfileId || profile.isDefault,
+                    onRun = { onTransformProfile(profile.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransformProfileRow(
+    profile: TransformProfile,
+    isDefault: Boolean,
+    onRun: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = profile.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (isDefault) {
+                        Text(
+                            text = "Default",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                Text(
+                    text = profile.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(onClick = onRun) {
+                Icon(Icons.Filled.ChevronRight, contentDescription = "Run profile")
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranscriptSection(transcripts: List<Transcript>) {
+    if (transcripts.isEmpty()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            Text(
+                text = "No transcripts yet. You can transcribe this recording from here.",
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        return
+    }
+
+    val rawTranscripts = transcripts
+        .filter { it.type == TranscriptType.RAW }
+        .sortedByDescending { it.createdAt }
+        .take(1)
+    val transformedTranscripts = transcripts
+        .filter { it.type != TranscriptType.RAW }
+        .sortedByDescending { it.createdAt }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (rawTranscripts.isNotEmpty()) {
+            Text("Transcription", style = MaterialTheme.typography.labelLarge)
+            rawTranscripts.forEach { transcript ->
+                TranscriptCard(transcript = transcript)
+            }
+        }
+        if (transformedTranscripts.isNotEmpty()) {
+            Text("Transformations", style = MaterialTheme.typography.labelLarge)
+            transformedTranscripts.forEach { transcript ->
+                TranscriptCard(transcript = transcript)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranscriptCard(transcript: Transcript) {
+    var expanded by remember(transcript.id) { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = transcript.type.name,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                transcript.transformProfileId?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Text(
+                text = transcript.content,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = if (expanded) "Tap to collapse" else "Tap to expand",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun formatDuration(durationMs: Long): String {
+    val totalSeconds = durationMs / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
+}
+
+private fun formatFileSize(bytes: Long): String {
+    if (bytes <= 0) return "0 B"
+    val kib = 1024.0
+    val mib = kib * 1024.0
+    return when {
+        bytes >= mib -> String.format("%.1f MB", bytes / mib)
+        bytes >= kib -> String.format("%.1f KB", bytes / kib)
+        else -> "$bytes B"
+    }
+}
+
+private val SUMMARY_TIME_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")

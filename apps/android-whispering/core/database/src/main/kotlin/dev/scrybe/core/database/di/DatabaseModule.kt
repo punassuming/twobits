@@ -34,5 +34,8 @@ object DatabaseModule {
     fun providesTransformProfileDao(database: AppDatabase) = database.transformProfileDao()
 
     @Provides
+    fun providesTransformRunDao(database: AppDatabase) = database.transformRunDao()
+
+    @Provides
     fun providesProviderConfigDao(database: AppDatabase) = database.providerConfigDao()
 }

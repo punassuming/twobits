@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import dev.scrybe.service.recording.R
 import javax.inject.Inject
 
 class RecordingNotificationFactory @Inject constructor() {
@@ -37,9 +38,9 @@ class RecordingNotificationFactory @Inject constructor() {
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle("Recording\u2026")
-            .setContentText("Tap to stop")
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+            .setContentText("Scrybe is capturing audio in the background")
+            .setSmallIcon(R.drawable.ic_recording_notification)
+            .addAction(R.drawable.ic_recording_notification, "Stop", stopPendingIntent)
             .setOngoing(true)
             .build()
     }

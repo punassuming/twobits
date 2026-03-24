@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.0.6 (2026-03-23)
+
+### Features
+
+* validate OpenAI API keys before saving and show live connection status in Settings
+* expose the recorded audio asset in session review and allow sharing the original file
+* upgrade the recording notification and launcher icon with a more deliberate AI-plus-audio visual treatment
+
+### Improvements
+
+* increase recorder quality with a higher sample rate and bitrate for cleaner captures
+* organize transcripts into transcription and transformation sections with expandable cards
+* add more ambient motion and richer product copy to the capture screen
+
+### Fixes
+
+* keep only one canonical raw transcript per session instead of stacking duplicate retranscriptions
+* make release notes surface the latest update as a concise in-app summary for version 0.0.6
+
+## 0.0.5 (2026-03-23)
+
+### Features
+
+* add a custom Scrybe launcher icon that combines recording, AI, and signal motifs
+* overhaul the home screen recording control with layered circular states and centered quick actions
+* add concise release notes with automatic update popup behavior when the app version changes
+
+### Improvements
+
+* switch session review actions and transform choices to organized list-style controls instead of pill-heavy layouts
+* tighten profile list density with truncated descriptions and prompt previews
+* keep default profiles visually highlighted with a badge instead of tinting the whole card
+
+### Fixes
+
+* keep auto-transcription alive after the recording service shuts down
+* send valid typed content payloads to the OpenAI responses API for transforms
+
 ## [1.1.0](https://github.com/punassuming/scrybe/compare/scrybe-v1.0.0...scrybe-v1.1.0) (2026-03-10)
 
 

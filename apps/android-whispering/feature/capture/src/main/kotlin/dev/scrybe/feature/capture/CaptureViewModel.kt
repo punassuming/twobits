@@ -7,10 +7,15 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
+import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.service.recording.RecordingForegroundService
+import dev.scrybe.service.recording.RecordingSessionEvents
 import dev.scrybe.service.recording.RecordingServiceActions
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -20,10 +25,14 @@ import javax.inject.Inject
 class CaptureViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val audioRecorder: AudioRecorder,
+    private val preferencesDataStore: AppPreferencesDataStore,
+    recordingSessionEvents: RecordingSessionEvents,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
+    private val _events = MutableSharedFlow<CaptureEvent>()
+    val events: SharedFlow<CaptureEvent> = _events.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -44,6 +53,17 @@ class CaptureViewModel @Inject constructor(
                     elapsedMs = telemetry.elapsedMs,
                     amplitudeHistory = nextHistory,
                 )
+            }
+        }
+        viewModelScope.launch {
+            preferencesDataStore.keepScreenOn.collectLatest { enabled ->
+                _uiState.value = _uiState.value.copy(keepScreenOn = enabled)
+            }
+        }
+        viewModelScope.launch {
+            recordingSessionEvents.completedSessions.collectLatest { sessionId ->
+                _uiState.value = CaptureUiState()
+                _events.emit(CaptureEvent.OpenSessionDetail(sessionId))
             }
         }
     }

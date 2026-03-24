@@ -8,7 +8,7 @@ object DefaultProfiles {
         id = "default-cleanup",
         name = "Cleanup Dictation",
         description = "Cleans up filler words, punctuation, and formatting from dictated text.",
-        systemPrompt = "You are a helpful editor. Clean up the following dictated text by fixing punctuation, removing filler words, and improving readability. Return only the cleaned text.",
+        systemPrompt = "You are a helpful editor. Clean up the dictated text below by fixing punctuation, removing filler words, and improving readability. Return only the cleaned text.\n\nDictation:\n{{transcript}}",
         providerType = ProviderType.OPENAI,
         isDefault = true,
     )
@@ -17,7 +17,7 @@ object DefaultProfiles {
         id = "default-summarize",
         name = "Summarize",
         description = "Produces a concise summary of the transcript.",
-        systemPrompt = "You are a helpful assistant. Summarize the following text concisely. Return only the summary.",
+        systemPrompt = "You are a helpful assistant. Summarize the transcript below concisely. Return only the summary.\n\nTranscript:\n{{transcript}}",
         providerType = ProviderType.OPENAI,
         isDefault = false,
     )
@@ -26,7 +26,7 @@ object DefaultProfiles {
         id = "default-action-items",
         name = "Action Items",
         description = "Extracts action items from the transcript.",
-        systemPrompt = "You are a helpful assistant. Extract all action items from the following text as a bulleted list. Return only the action items.",
+        systemPrompt = "You are a helpful assistant. Extract all action items from the transcript below as a bulleted list. Return only the action items.\n\nTranscript:\n{{transcript}}",
         providerType = ProviderType.OPENAI,
         isDefault = false,
     )

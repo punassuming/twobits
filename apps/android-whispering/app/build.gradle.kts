@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.Copy
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,13 @@ plugins {
 }
 
 val releaseKeystorePath: String? = System.getenv("KEYSTORE_PATH")
+val repositoryChangelog = projectDir.resolve("../../../CHANGELOG.md")
+val generatedChangelogAssetsDir = layout.buildDirectory.dir("generated/assets/changelog")
+val bundleChangelogAsset = tasks.register<Copy>("bundleChangelogAsset") {
+    from(repositoryChangelog)
+    into(generatedChangelogAssetsDir)
+    rename { "CHANGELOG.md" }
+}
 
 // Validate that all required signing variables are present together when a
 // keystore path is provided, so misconfiguration surfaces early with a clear
@@ -28,8 +37,8 @@ android {
         applicationId = "dev.scrybe.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1 // Increment manually for each Play Store release
-        versionName = "0.0.4"
+        versionCode = 3 // Increment manually for each Play Store release
+        versionName = "0.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -78,11 +87,17 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    sourceSets.getByName("main").assets.srcDir(generatedChangelogAssetsDir)
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(bundleChangelogAsset)
 }
 
 dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:database"))
+    implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:transforms"))
     implementation(project(":feature:capture"))
@@ -92,6 +107,7 @@ dependencies {
     implementation(project(":feature:settings"))
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -99,6 +115,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)

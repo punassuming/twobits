@@ -31,6 +31,9 @@ fun ScrybeNavHost(navController: NavHostController) {
                 onNavigateToHistory = { navController.navigate(Screen.History.route) },
                 onNavigateToProfiles = { navController.navigate(Screen.Profiles.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToSessionDetail = { sessionId ->
+                    navController.navigate(Screen.SessionDetail.createRoute(sessionId))
+                },
             )
         }
         composable(Screen.History.route) {

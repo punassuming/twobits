@@ -7,14 +7,18 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.audio.RecordedAudio
 import dev.scrybe.core.audio.RecordingConfig
+import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
+import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -30,8 +34,11 @@ class RecordingForegroundService : Service() {
     @Inject lateinit var recordingSessionDao: RecordingSessionDao
     @Inject lateinit var notificationFactory: RecordingNotificationFactory
     @Inject lateinit var sessionTranscriptionCoordinator: SessionTranscriptionCoordinator
+    @Inject lateinit var recordingSessionEvents: RecordingSessionEvents
+    @Inject lateinit var preferencesDataStore: AppPreferencesDataStore
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -54,7 +61,11 @@ class RecordingForegroundService : Service() {
         )
         serviceScope.launch {
             val config = RecordingConfig(
-                outputDir = filesDir.resolve("recordings").absolutePath
+                outputDir = filesDir.resolve("recordings").absolutePath,
+                audioFormat = preferencesDataStore.audioFormat.first(),
+                sampleRateHz = preferencesDataStore.sampleRateHz.first(),
+                encodingBitRate = preferencesDataStore.encodingBitRate.first(),
+                channelCount = preferencesDataStore.channelCount.first(),
             )
             audioRecorder.startRecording(config)
         }
@@ -65,8 +76,12 @@ class RecordingForegroundService : Service() {
             audioRecorder.stopRecording()
                 .onSuccess { recordedAudio ->
                     val sessionId = withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
-                    withContext(Dispatchers.IO) {
+                    recordingSessionEvents.onSessionCompleted(sessionId)
+                    transcriptionScope.launch {
                         sessionTranscriptionCoordinator.autoTranscribeIfEnabled(sessionId)
+                            .onFailure {
+                                android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
+                            }
                     }
                 }
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -101,6 +116,10 @@ class RecordingForegroundService : Service() {
                 durationMs = recordedAudio.durationMs,
                 fileSizeBytes = recordedAudio.fileSizeBytes,
                 audioFormat = recordedAudio.audioFormat.name,
+                sampleRateHz = recordedAudio.sampleRateHz,
+                encodingBitRate = recordedAudio.encodingBitRate,
+                channelCount = recordedAudio.channelCount,
+                waveformSamples = WaveformCodec.encode(recordedAudio.waveformSamples),
                 status = SessionStatus.RECORDED.name,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
@@ -110,6 +129,7 @@ class RecordingForegroundService : Service() {
     }
 
     private companion object {
+        const val TAG = "RecordingService"
         val TITLE_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
     }
 }

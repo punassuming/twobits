@@ -47,26 +47,28 @@ class OpenAiTranscriptionProvider @Inject constructor(
                 val request = Request.Builder()
                     .url("https://api.openai.com/v1/audio/transcriptions")
                     .header("Authorization", "Bearer $apiKey")
+                    .header("Accept", "application/json")
                     .post(requestBody)
                     .build()
 
-                val response = okHttpClient.newCall(request).execute()
-                if (!response.isSuccessful) {
-                    val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
-                    Log.e(TAG, "OpenAI transcription failed: ${response.code} ${response.message} $errorBody")
-                    throw IllegalStateException(
-                        "OpenAI API error: ${response.code} ${response.message}" +
-                            if (errorBody.isNotBlank()) " - $errorBody" else ""
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                        Log.e(TAG, "OpenAI transcription failed: ${response.code} ${response.message} $errorBody")
+                        throw IllegalStateException(
+                            "OpenAI API error: ${response.code} ${response.message}" +
+                                if (errorBody.isNotBlank()) " - $errorBody" else ""
+                        )
+                    }
+
+                    val body = response.body?.string() ?: throw Exception("Empty response body")
+                    val openAiResponse = json.decodeFromString<OpenAiTranscriptionResponse>(body)
+                    TranscriptResult(
+                        text = openAiResponse.text,
+                        language = null,
+                        durationSeconds = null,
                     )
                 }
-
-                val body = response.body?.string() ?: throw Exception("Empty response body")
-                val openAiResponse = json.decodeFromString<OpenAiTranscriptionResponse>(body)
-                TranscriptResult(
-                    text = openAiResponse.text,
-                    language = null,
-                    durationSeconds = null,
-                )
             }
         }
 

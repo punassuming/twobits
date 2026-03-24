@@ -33,3 +33,9 @@ enum class AudioFormat {
     OGG,
     WEBM,
 }
+
+enum class ThemeMode {
+    SYSTEM,
+    LIGHT,
+    DARK,
+}

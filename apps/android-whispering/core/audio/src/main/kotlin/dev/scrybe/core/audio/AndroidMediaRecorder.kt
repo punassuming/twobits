@@ -17,6 +17,7 @@ import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.roundToInt
 
 @Singleton
 class AndroidMediaRecorder @Inject constructor(
@@ -33,7 +34,11 @@ class AndroidMediaRecorder @Inject constructor(
     private var currentFile: File? = null
     private var startTimeMs: Long = 0L
     private var currentAudioFormat: AudioFormat = AudioFormat.AAC
+    private var currentSampleRateHz: Int = 48_000
+    private var currentEncodingBitRate: Int = 128_000
+    private var currentChannelCount: Int = 1
     private var telemetryJob: Job? = null
+    private var waveformSamples: MutableList<Float> = mutableListOf()
 
     override suspend fun startRecording(config: RecordingConfig): Result<Unit> = runCatching {
         val outputDir = File(config.outputDir).apply { mkdirs() }
@@ -51,6 +56,9 @@ class AndroidMediaRecorder @Inject constructor(
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(config.audioFormat.outputFormat)
             setAudioEncoder(config.audioFormat.audioEncoder)
+            setAudioSamplingRate(config.sampleRateHz)
+            setAudioEncodingBitRate(config.encodingBitRate)
+            setAudioChannels(config.channelCount)
             setOutputFile(outputFile.absolutePath)
             setMaxDuration(config.maxDurationMs.toInt())
             prepare()
@@ -61,6 +69,10 @@ class AndroidMediaRecorder @Inject constructor(
         currentFile = outputFile
         startTimeMs = System.currentTimeMillis()
         currentAudioFormat = config.audioFormat
+        currentSampleRateHz = config.sampleRateHz
+        currentEncodingBitRate = config.encodingBitRate
+        currentChannelCount = config.channelCount
+        waveformSamples = mutableListOf()
         _isRecording.value = true
         _telemetry.value = RecordingTelemetry()
         startTelemetryUpdates(recorder)
@@ -83,6 +95,10 @@ class AndroidMediaRecorder @Inject constructor(
             durationMs = durationMs,
             fileSizeBytes = file.length(),
             audioFormat = currentAudioFormat,
+            sampleRateHz = currentSampleRateHz,
+            encodingBitRate = currentEncodingBitRate,
+            channelCount = currentChannelCount,
+            waveformSamples = downsampleWaveform(waveformSamples, MAX_WAVEFORM_SAMPLES),
         )
     }
 
@@ -95,6 +111,7 @@ class AndroidMediaRecorder @Inject constructor(
         mediaRecorder = null
         currentFile?.delete()
         currentFile = null
+        waveformSamples = mutableListOf()
         _isRecording.value = false
         _telemetry.value = RecordingTelemetry()
     }
@@ -106,6 +123,7 @@ class AndroidMediaRecorder @Inject constructor(
                 val elapsedMs = System.currentTimeMillis() - startTimeMs
                 val amplitudeRatio = (recorder.maxAmplitude / MAX_AMPLITUDE.toFloat())
                     .coerceIn(0f, 1f)
+                waveformSamples.add(amplitudeRatio)
                 _telemetry.value = RecordingTelemetry(
                     elapsedMs = elapsedMs,
                     amplitudeRatio = amplitudeRatio,
@@ -138,5 +156,18 @@ class AndroidMediaRecorder @Inject constructor(
 
     private companion object {
         const val MAX_AMPLITUDE = 32767
+        const val MAX_WAVEFORM_SAMPLES = 72
+    }
+
+    private fun downsampleWaveform(samples: List<Float>, targetSize: Int): List<Float> {
+        if (samples.isEmpty() || targetSize <= 0) return emptyList()
+        if (samples.size <= targetSize) return samples
+
+        val bucketSize = samples.size / targetSize.toFloat()
+        return List(targetSize) { index ->
+            val start = (index * bucketSize).roundToInt().coerceAtMost(samples.lastIndex)
+            val endExclusive = (((index + 1) * bucketSize).roundToInt()).coerceIn(start + 1, samples.size)
+            samples.subList(start, endExclusive).maxOrNull() ?: 0f
+        }
     }
 }

@@ -21,8 +21,12 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:database"))
     implementation(project(":core:model"))
     implementation(project(":core:common"))
+    implementation(project(":core:network"))
+    implementation(project(":core:transcription"))
+    implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)

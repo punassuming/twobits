@@ -21,8 +21,9 @@ class ScrybeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         applicationScope.launch {
-            if (transformProfileDao.getDefaultProfile() == null) {
-                DefaultProfiles.ALL.forEach { profile ->
+            DefaultProfiles.ALL.forEach { profile ->
+                val existingProfile = transformProfileDao.getProfileById(profile.id)
+                if (existingProfile == null) {
                     transformProfileDao.insertProfile(
                         TransformProfileEntity(
                             id = profile.id,
@@ -33,8 +34,28 @@ class ScrybeApplication : Application() {
                             isDefault = profile.isDefault,
                         )
                     )
+                } else if (existingProfile.systemPrompt == LEGACY_PROFILE_PROMPTS[profile.id]) {
+                    transformProfileDao.insertProfile(
+                        existingProfile.copy(
+                            name = profile.name,
+                            description = profile.description,
+                            systemPrompt = profile.systemPrompt,
+                            providerType = profile.providerType.name,
+                        )
+                    )
                 }
             }
         }
+    }
+
+    private companion object {
+        val LEGACY_PROFILE_PROMPTS = mapOf(
+            "default-cleanup" to
+                "You are a helpful editor. Clean up the following dictated text by fixing punctuation, removing filler words, and improving readability. Return only the cleaned text.",
+            "default-summarize" to
+                "You are a helpful assistant. Summarize the following text concisely. Return only the summary.",
+            "default-action-items" to
+                "You are a helpful assistant. Extract all action items from the following text as a bulleted list. Return only the action items.",
+        )
     }
 }

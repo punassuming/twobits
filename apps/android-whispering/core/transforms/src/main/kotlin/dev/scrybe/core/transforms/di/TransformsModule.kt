@@ -1,10 +1,13 @@
 package dev.scrybe.core.transforms.di
 
 import dagger.Module
+import dagger.Binds
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoMap
 import dagger.multibindings.Multibinds
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.transforms.OpenAiTransformationProvider
 import dev.scrybe.core.transforms.TransformationProvider
 
 @Module
@@ -17,4 +20,9 @@ abstract class TransformsModule {
      */
     @Multibinds
     abstract fun bindsTransformationProviders(): Map<ProviderType, TransformationProvider>
+
+    @Binds
+    @IntoMap
+    @ProviderTypeKey(ProviderType.OPENAI)
+    abstract fun bindsOpenAiProvider(impl: OpenAiTransformationProvider): TransformationProvider
 }

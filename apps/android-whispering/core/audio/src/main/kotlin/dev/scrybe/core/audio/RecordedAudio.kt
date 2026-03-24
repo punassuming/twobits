@@ -7,4 +7,8 @@ data class RecordedAudio(
     val durationMs: Long,
     val fileSizeBytes: Long,
     val audioFormat: AudioFormat,
+    val sampleRateHz: Int,
+    val encodingBitRate: Int,
+    val channelCount: Int,
+    val waveformSamples: List<Float>,
 )
