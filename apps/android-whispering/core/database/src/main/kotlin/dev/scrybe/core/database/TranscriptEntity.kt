@@ -2,10 +2,14 @@ package dev.scrybe.core.database
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "transcripts",
+    indices = [
+        Index("sessionId"),
+    ],
     foreignKeys = [
         ForeignKey(
             entity = RecordingSessionEntity::class,

@@ -149,6 +149,48 @@ All commands are run from `apps/android-whispering/`.
 
 > **Tip:** Append `--no-daemon` to any Gradle command when running in CI or constrained environments to avoid background daemon overhead.
 
+### Windows emulator workflow
+
+If you installed the toolchain with Scoop, this is the repeatable PowerShell flow to boot the emulator and run the app.
+
+```powershell
+$env:JAVA_HOME="$HOME\scoop\apps\openjdk17\current"
+$env:ANDROID_HOME="$HOME\scoop\apps\android-clt\current"
+$env:PATH="$env:JAVA_HOME\bin;$env:ANDROID_HOME\emulator;$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\cmdline-tools\latest\bin;$env:PATH"
+```
+
+Create the AVD once:
+
+```powershell
+sdkmanager "emulator" "platforms;android-35" "build-tools;35.0.0" "system-images;android-35;google_apis;x86_64"
+avdmanager create avd -n scrybe-api35 -k "system-images;android-35;google_apis;x86_64" -d "pixel_8"
+```
+
+Start the emulator and wait for Android to finish booting:
+
+```powershell
+emulator -avd scrybe-api35 -no-snapshot -no-boot-anim
+adb wait-for-device
+while ((adb shell getprop sys.boot_completed).Trim() -ne "1") { Start-Sleep -Seconds 2 }
+```
+
+Build, install, and launch the app:
+
+```powershell
+cd apps\android-whispering
+.\gradlew.bat assembleDebug
+.\gradlew.bat installDebug
+adb shell am start -n dev.scrybe.android/.MainActivity
+```
+
+Useful checks while iterating:
+
+```powershell
+adb devices
+adb logcat -d AndroidRuntime:E ActivityManager:I ActivityTaskManager:I *:S
+adb shell dumpsys window | Select-String "mCurrentFocus|mFocusedApp"
+```
+
 ---
 
 ## 5. Project architecture

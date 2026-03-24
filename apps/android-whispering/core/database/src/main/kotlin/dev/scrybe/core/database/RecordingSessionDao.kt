@@ -15,6 +15,9 @@ interface RecordingSessionDao {
     @Query("SELECT * FROM recording_sessions WHERE id = :id")
     fun getSessionById(id: String): Flow<RecordingSessionEntity?>
 
+    @Query("SELECT * FROM recording_sessions WHERE id = :id")
+    suspend fun getSessionByIdOnce(id: String): RecordingSessionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: RecordingSessionEntity)
 

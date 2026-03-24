@@ -9,6 +9,7 @@ sealed interface SessionDetailUiState {
         val session: RecordingSession,
         val transcripts: List<Transcript>,
         val isTranscribing: Boolean = false,
+        val isPlaying: Boolean = false,
     ) : SessionDetailUiState
     data class Error(val message: String) : SessionDetailUiState
 }

@@ -27,22 +27,29 @@ fun ScrybeNavHost(navController: NavHostController) {
         startDestination = Screen.Capture.route
     ) {
         composable(Screen.Capture.route) {
-            CaptureScreen(onNavigateToHistory = { navController.navigate(Screen.History.route) })
+            CaptureScreen(
+                onNavigateToHistory = { navController.navigate(Screen.History.route) },
+                onNavigateToProfiles = { navController.navigate(Screen.Profiles.route) },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+            )
         }
         composable(Screen.History.route) {
-            HistoryScreen(onSessionClick = { sessionId ->
-                navController.navigate(Screen.SessionDetail.createRoute(sessionId))
-            })
+            HistoryScreen(
+                onSessionClick = { sessionId ->
+                    navController.navigate(Screen.SessionDetail.createRoute(sessionId))
+                },
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
         composable(Screen.SessionDetail.route) { backStackEntry ->
             val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
             SessionDetailScreen(sessionId = sessionId, onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.Profiles.route) {
-            ProfilesScreen()
+            ProfilesScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

@@ -5,19 +5,31 @@ import android.content.Intent
 import android.os.IBinder
 import dagger.hilt.android.AndroidEntryPoint
 import dev.scrybe.core.audio.AudioRecorder
+import dev.scrybe.core.audio.RecordedAudio
 import dev.scrybe.core.audio.RecordingConfig
+import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.RecordingSessionEntity
+import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class RecordingForegroundService : Service() {
 
     @Inject lateinit var audioRecorder: AudioRecorder
+    @Inject lateinit var recordingSessionDao: RecordingSessionDao
     @Inject lateinit var notificationFactory: RecordingNotificationFactory
+    @Inject lateinit var sessionTranscriptionCoordinator: SessionTranscriptionCoordinator
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -51,6 +63,12 @@ class RecordingForegroundService : Service() {
     private fun handleStop() {
         serviceScope.launch {
             audioRecorder.stopRecording()
+                .onSuccess { recordedAudio ->
+                    val sessionId = withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
+                    withContext(Dispatchers.IO) {
+                        sessionTranscriptionCoordinator.autoTranscribeIfEnabled(sessionId)
+                    }
+                }
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -67,5 +85,31 @@ class RecordingForegroundService : Service() {
     override fun onDestroy() {
         serviceScope.cancel()
         super.onDestroy()
+    }
+
+    private suspend fun persistRecording(recordedAudio: RecordedAudio): String {
+        val finishedAt = System.currentTimeMillis()
+        val createdAt = finishedAt - recordedAudio.durationMs
+        val title = "Recording ${TITLE_FORMAT.format(Date(createdAt))}"
+        val sessionId = UUID.randomUUID().toString()
+
+        recordingSessionDao.insertSession(
+            RecordingSessionEntity(
+                id = sessionId,
+                title = title,
+                audioFilePath = recordedAudio.filePath,
+                durationMs = recordedAudio.durationMs,
+                fileSizeBytes = recordedAudio.fileSizeBytes,
+                audioFormat = recordedAudio.audioFormat.name,
+                status = SessionStatus.RECORDED.name,
+                createdAt = createdAt,
+                updatedAt = finishedAt,
+            )
+        )
+        return sessionId
+    }
+
+    private companion object {
+        val TITLE_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
     }
 }

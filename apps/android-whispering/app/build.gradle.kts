@@ -82,7 +82,9 @@ android {
 
 dependencies {
     implementation(project(":core:common"))
+    implementation(project(":core:database"))
     implementation(project(":core:model"))
+    implementation(project(":core:transforms"))
     implementation(project(":feature:capture"))
     implementation(project(":feature:history"))
     implementation(project(":feature:session-detail"))

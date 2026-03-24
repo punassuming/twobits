@@ -20,7 +20,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "scrybe-db",
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun providesRecordingSessionDao(database: AppDatabase) = database.recordingSessionDao()

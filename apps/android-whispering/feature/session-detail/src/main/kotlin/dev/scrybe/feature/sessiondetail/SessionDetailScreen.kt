@@ -1,5 +1,6 @@
 package dev.scrybe.feature.sessiondetail
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,13 +21,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
@@ -38,8 +44,27 @@ fun SessionDetailScreen(
     viewModel: SessionDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is SessionDetailEvent.Message -> snackbarHostState.showSnackbar(event.text)
+                is SessionDetailEvent.ShareText -> {
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, event.title)
+                        putExtra(Intent.EXTRA_TEXT, event.text)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Share transcript"))
+                }
+            }
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Session Detail") },
@@ -80,9 +105,24 @@ fun SessionDetailScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { /* TODO: transcribe */ }) { Text("Transcribe") }
-                        Button(onClick = { /* TODO: share */ }) { Text("Share") }
-                        Button(onClick = { /* TODO: export */ }) { Text("Export") }
+                        Button(
+                            onClick = viewModel::transcribe,
+                            enabled = !state.isTranscribing,
+                        ) {
+                            Text(if (state.isTranscribing) "Transcribing..." else "Transcribe")
+                        }
+                        Button(onClick = viewModel::togglePlayback) {
+                            Text(if (state.isPlaying) "Stop Playback" else "Play Recording")
+                        }
+                        Button(
+                            onClick = viewModel::shareLatestTranscript,
+                            enabled = state.transcripts.isNotEmpty(),
+                        ) {
+                            Text("Share")
+                        }
+                        Button(onClick = viewModel::exportAll) {
+                            Text("Export")
+                        }
                     }
                     Spacer(Modifier.height(16.dp))
                     if (state.transcripts.isEmpty()) {

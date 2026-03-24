@@ -20,9 +20,11 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:audio"))
     implementation(project(":core:model"))
     implementation(project(":core:common"))
     implementation(project(":core:database"))
+    implementation(project(":core:export"))
     implementation(project(":core:transcription"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
