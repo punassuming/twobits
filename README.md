@@ -10,13 +10,18 @@ Scrybe is an Android application for recording audio, transcribing it with AI, a
 
 | Feature | Description |
 |---------|-------------|
-| 🎙️ **Recording** | One-tap foreground recording with a persistent notification |
-| 📝 **Transcription** | AI-powered speech-to-text via the OpenAI Whisper API |
-| ✨ **Transformation** | Post-process transcripts with LLM prompts (clean-up, summarise, extract action items) |
-| 📂 **History** | Browse, search, and revisit every past session |
-| 🔀 **Profiles** | Create reusable transformation profiles with custom system prompts |
-| 📤 **Export** | Export sessions as Markdown, plain text, or JSON |
-| ⚙️ **Settings** | Configure your OpenAI API key, default provider, and auto-transcribe behaviour |
+| 🎙️ **Recording** | One-tap foreground recording with a persistent notification; configurable format, sample rate (up to 48 kHz), bitrate, and channel count |
+| 📝 **Transcription** | AI-powered speech-to-text via the OpenAI Whisper API; optional auto-transcribe on save; deduplication prevents redundant re-transcriptions |
+| ✨ **Transformation** | Post-process transcripts with LLM prompts (clean-up, summarise, extract action items); three built-in profiles, unlimited custom ones |
+| 🔊 **Playback** | In-session audio playback with real-time waveform visualizer and draggable seek control |
+| 📂 **History** | Browse, search, rename, and delete every past session |
+| 🔀 **Profiles** | Create and manage reusable transformation profiles with custom system prompts and a `{{transcript}}` template variable |
+| 📤 **Export** | Export sessions as Markdown, plain text, or JSON; files saved to on-device storage |
+| 🔗 **Sharing** | Share the original audio file or the latest transcript with any app via the standard Android share sheet |
+| 🔑 **API validation** | Live OpenAI API key validation with a real-time connection status indicator (valid / validating / invalid) |
+| 🎨 **Themes** | System-default, light, and dark mode |
+| 📣 **Release notes** | Automatic "What's New" popup on first launch after an update, with a categorised history available in Settings |
+| ⚙️ **Settings** | Configure OpenAI API key (with live validation), default provider, recording quality, auto-transcribe, theme, and view usage statistics |
 
 ---
 
@@ -42,6 +47,8 @@ Scrybe follows the [Now in Android](https://github.com/android/nowinandroid) mul
 
 ### Data flow
 
+#### Capture (write path)
+
 ```
 Microphone
   │
@@ -50,7 +57,8 @@ AudioRecorder  ──────────────────►  Record
   │                                         │
   │                                         ▼
   │                              TranscriptionOrchestrator
-  │                                (routes by ProviderType)
+  │                                (routes by ProviderType;
+  │                                 deduplicates concurrent requests)
   │                                         │
   │                                         ▼
   │                              TranscriptionProvider
@@ -60,14 +68,27 @@ AudioRecorder  ──────────────────►  Record
   │                              TransformationPipeline
   │                               (LLM with system prompt)
   │                                         │
-  │                                         ▼
-  │                              ExportCoordinator
-  │                           (Markdown / Text / JSON)
+  │                           ┌─────────────┴─────────────┐
+  │                           ▼                           ▼
+  │                  ExportCoordinator            Android share sheet
+  │               (Markdown / Text / JSON)     (audio file or transcript)
   │
   ▼
 Room Database  ◄───── DAO ◄──── RecordingSessionEntity
 DataStore            ◄──── TranscriptEntity
                      ◄──── TransformProfileEntity
+```
+
+#### Playback (read path)
+
+```
+Room Database  ──────────────────►  RecordingSessionEntity
+                                    TranscriptEntity
+                                         │
+                                         ▼
+                                   AudioPlayer
+                              (waveform visualizer,
+                               seek control, position flow)
 ```
 
 ---
@@ -76,23 +97,23 @@ DataStore            ◄──── TranscriptEntity
 
 | Module | Layer | Responsibility |
 |--------|-------|---------------|
-| `:app` | Application | Single activity, navigation graph, Hilt bootstrap |
-| `:feature:capture` | Feature | Recording UI – start / stop, live status |
-| `:feature:history` | Feature | Paginated list of past sessions |
-| `:feature:session-detail` | Feature | Full session view – transcripts, transforms, export |
-| `:feature:profiles` | Feature | Create/edit transformation profiles |
-| `:feature:settings` | Feature | API key, provider, auto-transcribe preferences |
-| `:service:recording` | Service | `RecordingForegroundService` + notification |
-| `:workers` | Workers | WorkManager-based deferred tasks |
-| `:core:audio` | Core | `AudioRecorder` interface + `AndroidMediaRecorder` |
-| `:core:transcription` | Core | `TranscriptionProvider`, `TranscriptionOrchestrator`, OpenAI implementation |
-| `:core:transforms` | Core | `TransformationProvider`, `TransformationPipeline`, default profiles |
+| `:app` | Application | Single activity, navigation graph, Hilt bootstrap, "What's New" popup |
+| `:feature:capture` | Feature | Recording UI – start / stop, animated waveform visualizer, live elapsed time |
+| `:feature:history` | Feature | Searchable, filterable list of past sessions; rename and delete |
+| `:feature:session-detail` | Feature | Full session view – audio playback, waveform seek, transcripts, transforms, sharing, and export |
+| `:feature:profiles` | Feature | Create / edit / delete transformation profiles; mark a default |
+| `:feature:settings` | Feature | API key with live validation, theme, recording quality defaults, auto-transcribe, usage statistics, release notes |
+| `:service:recording` | Service | `RecordingForegroundService` + persistent notification |
+| `:workers` | Workers | WorkManager-based deferred tasks (background transcription) |
+| `:core:audio` | Core | `AudioRecorder` / `AndroidMediaRecorder`; `AudioPlayer` with waveform and position flow |
+| `:core:transcription` | Core | `TranscriptionProvider`, `TranscriptionOrchestrator` (dedup), OpenAI Whisper implementation |
+| `:core:transforms` | Core | `TransformationProvider`, `TransformationPipeline`, three built-in `DefaultProfiles` |
 | `:core:export` | Core | `ExportCoordinator`, Markdown / Text / JSON exporters |
 | `:core:database` | Core | Room database, entities, DAOs |
-| `:core:datastore` | Core | DataStore preferences (API keys, settings) |
-| `:core:network` | Core | `OkHttpClient`, `Retrofit`, JSON serialisation config |
+| `:core:datastore` | Core | DataStore preferences (API keys, theme, recording defaults) |
+| `:core:network` | Core | `OkHttpClient`, `Retrofit`, JSON serialisation config, `OpenAiApiKeyValidator` |
 | `:core:model` | Core | Shared domain models and enums |
-| `:core:common` | Core | Coroutine dispatcher qualifiers, `Result` extensions |
+| `:core:common` | Core | Coroutine dispatcher qualifiers, `Result` extensions, release-notes parser |
 
 ---
 
@@ -142,7 +163,7 @@ cd scrybe/apps/android-whispering
 ./gradlew installDebug
 ```
 
-After first launch, go to **Settings → API Key** and enter your OpenAI API key.
+After first launch, open **Settings**, enter your OpenAI API key, and tap **Save** — the app validates the key against the OpenAI API and shows a live connection status before storing it.
 
 ### Containerized development
 

@@ -87,17 +87,20 @@ jobs:
             echo "KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
           else
+            # PKCS12 keystores (Java 9+) normalise the key password to the store
+            # password, so both values must be identical to avoid a decryption
+            # error when the AGP reads back the key entry.
             keytool -genkeypair -v -storetype PKCS12 \
               -keystore "${{ runner.temp }}/scrybe-release.jks" \
               -alias scrybe \
               -keyalg RSA -keysize 2048 \
               -validity 36500 \
               -storepass scrybe_ks_pass \
-              -keypass scrybe_key_pass \
+              -keypass scrybe_ks_pass \
               -dname "CN=Scrybe, O=Scrybe, C=US" -noprompt
             echo "STORE_PASSWORD=scrybe_ks_pass" >> "$GITHUB_ENV"
             echo "KEY_ALIAS=scrybe" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=scrybe_key_pass" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=scrybe_ks_pass" >> "$GITHUB_ENV"
           fi
           echo "KEYSTORE_PATH=${{ runner.temp }}/scrybe-release.jks" >> "$GITHUB_ENV"
         env:
