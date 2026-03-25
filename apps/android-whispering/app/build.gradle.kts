@@ -95,6 +95,7 @@ tasks.named("preBuild").configure {
 }
 
 dependencies {
+    implementation(project(":core:audio"))
     implementation(project(":core:common"))
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
@@ -105,6 +106,7 @@ dependencies {
     implementation(project(":feature:session-detail"))
     implementation(project(":feature:profiles"))
     implementation(project(":feature:settings"))
+    implementation(project(":service:recording"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

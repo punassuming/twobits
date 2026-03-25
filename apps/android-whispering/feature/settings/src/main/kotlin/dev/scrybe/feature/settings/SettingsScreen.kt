@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ThemeMode
 import dev.scrybe.core.common.ReleaseNotes
 
@@ -64,6 +65,7 @@ fun SettingsScreen(
     var showChangelog by remember { mutableStateOf(false) }
     var showSavedFiles by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
+    var showPostStopPicker by remember { mutableStateOf(false) }
     var showFormatPicker by remember { mutableStateOf(false) }
     var showSampleRatePicker by remember { mutableStateOf(false) }
     var showBitRatePicker by remember { mutableStateOf(false) }
@@ -278,6 +280,15 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setShowRenameAfterRecording(it) },
                         )
                     }
+                    SettingOptionRow(
+                        title = "After recording stops",
+                        value = when (uiState.postStopDestination) {
+                            PostStopDestination.HOME -> "Return to home"
+                            PostStopDestination.SESSION_REVIEW -> "Open session review"
+                        },
+                        supportingText = "Choose where Scrybe should land after a recording is saved from the app or notification.",
+                        onClick = { showPostStopPicker = true },
+                    )
                     Text(
                         text = "You can change the default prompt profile from the Profiles screen.",
                         style = MaterialTheme.typography.bodySmall,
@@ -325,6 +336,10 @@ fun SettingsScreen(
                     Text("Transforms: ${uiState.usageStats.transformCount}", style = MaterialTheme.typography.bodyMedium)
                     Text("Total recording time: ${formatTotalDuration(uiState.usageStats.totalDurationMs)}", style = MaterialTheme.typography.bodyMedium)
                     Text("Storage used: ${formatFileSize(uiState.usageStats.totalStorageBytes)}", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Estimated transcription spend: ${formatUsd(uiState.usageStats.totalEstimatedCostUsd)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
 
@@ -430,6 +445,25 @@ fun SettingsScreen(
             onSelect = {
                 viewModel.setAudioFormat(it)
                 showFormatPicker = false
+            },
+        )
+    }
+
+    if (showPostStopPicker) {
+        OptionPickerDialog(
+            title = "After Recording Stops",
+            options = PostStopDestination.entries.toList(),
+            selected = uiState.postStopDestination,
+            label = {
+                when (it) {
+                    PostStopDestination.HOME -> "Return to home"
+                    PostStopDestination.SESSION_REVIEW -> "Open session review"
+                }
+            },
+            onDismiss = { showPostStopPicker = false },
+            onSelect = {
+                viewModel.setPostStopDestination(it)
+                showPostStopPicker = false
             },
         )
     }

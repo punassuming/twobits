@@ -16,6 +16,8 @@ data class RecordingSessionEntity(
     val channelCount: Int,
     val waveformSamples: String,
     val status: String,
+    val isArchived: Boolean,
+    val estimatedTranscriptionCostUsd: Double?,
     val createdAt: Long,
     val updatedAt: Long,
 )

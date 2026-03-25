@@ -132,8 +132,8 @@ fun ProfilesScreen(
                 editorProfile = null
                 isCreating = false
             },
-            onSave = { id, name, description, systemPrompt, isDefault ->
-                viewModel.saveProfile(id, name, description, systemPrompt, isDefault)
+            onSave = { id, name, description, steps, isDefault ->
+                viewModel.saveProfile(id, name, description, steps, isDefault)
                 editorProfile = null
                 isCreating = false
             },
@@ -240,6 +240,11 @@ private fun ProfileRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            Text(
+                text = "${profile.steps.size} step${if (profile.steps.size == 1) "" else "s"}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
@@ -248,11 +253,13 @@ private fun ProfileRow(
 private fun ProfileEditorDialog(
     profile: TransformProfile?,
     onDismiss: () -> Unit,
-    onSave: (String?, String, String, String, Boolean) -> Unit,
+    onSave: (String?, String, String, List<String>, Boolean) -> Unit,
 ) {
     var name by remember(profile) { mutableStateOf(profile?.name.orEmpty()) }
     var description by remember(profile) { mutableStateOf(profile?.description.orEmpty()) }
-    var systemPrompt by remember(profile) { mutableStateOf(profile?.systemPrompt.orEmpty()) }
+    var steps by remember(profile) {
+        mutableStateOf(profile?.steps?.ifEmpty { listOf("") } ?: listOf(""))
+    }
     var isDefault by remember(profile) { mutableStateOf(profile?.isDefault == true) }
 
     AlertDialog(
@@ -276,20 +283,39 @@ private fun ProfileEditorDialog(
                     label = { Text("Description") },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
-                    value = systemPrompt,
-                    onValueChange = { systemPrompt = it },
-                    label = { Text("Prompt") },
+                steps.forEachIndexed { index, step ->
+                    OutlinedTextField(
+                        value = step,
+                        onValueChange = { next ->
+                            steps = steps.toMutableList().also { it[index] = next }
+                        },
+                        label = { Text("Step ${index + 1}") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 4,
+                        supportingText = {
+                            Text(
+                                "Use {{transcript}} for the original transcription and {{prior_output}} or {{current_text}} for the previous step output."
+                            )
+                        },
+                    )
+                }
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 5,
-                    supportingText = {
-                        Text(
-                            "Use {{transcript}} to place the recording text exactly where it belongs. " +
-                                "Also available: {{session_id}}, {{transcript_id}}, {{profile_id}}. " +
-                                "If {{transcript}} is omitted, the transcript is appended automatically."
-                        )
-                    },
-                )
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(
+                        onClick = { steps = steps + "" },
+                    ) {
+                        Text("Add Step")
+                    }
+                    if (steps.size > 1) {
+                        TextButton(
+                            onClick = { steps = steps.dropLast(1) },
+                        ) {
+                            Text("Remove Last")
+                        }
+                    }
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -306,9 +332,9 @@ private fun ProfileEditorDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    onSave(profile?.id, name, description, systemPrompt, isDefault)
+                    onSave(profile?.id, name, description, steps, isDefault)
                 },
-                enabled = name.isNotBlank() && systemPrompt.isNotBlank(),
+                enabled = name.isNotBlank() && steps.any { it.isNotBlank() },
             ) {
                 Icon(Icons.Filled.CheckCircle, contentDescription = null)
                 Spacer(Modifier.size(8.dp))

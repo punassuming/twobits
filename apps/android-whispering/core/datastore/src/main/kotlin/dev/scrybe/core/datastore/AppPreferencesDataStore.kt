@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -34,6 +35,7 @@ class AppPreferencesDataStore @Inject constructor(
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val SHOW_RENAME_AFTER_RECORDING = booleanPreferencesKey("show_rename_after_recording")
+        val POST_STOP_DESTINATION = stringPreferencesKey("post_stop_destination")
         val LAST_SEEN_WHATS_NEW_VERSION_CODE = stringPreferencesKey("last_seen_whats_new_version_code")
     }
 
@@ -79,6 +81,12 @@ class AppPreferencesDataStore @Inject constructor(
 
     val showRenameAfterRecording: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[Keys.SHOW_RENAME_AFTER_RECORDING] ?: true
+    }
+
+    val postStopDestination: Flow<PostStopDestination> = context.dataStore.data.map { prefs ->
+        prefs[Keys.POST_STOP_DESTINATION]
+            ?.let { value -> runCatching { PostStopDestination.valueOf(value) }.getOrNull() }
+            ?: PostStopDestination.HOME
     }
 
     val lastSeenWhatsNewVersionCode: Flow<Long> = context.dataStore.data.map { prefs ->
@@ -129,6 +137,10 @@ class AppPreferencesDataStore @Inject constructor(
 
     suspend fun setShowRenameAfterRecording(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.SHOW_RENAME_AFTER_RECORDING] = enabled }
+    }
+
+    suspend fun setPostStopDestination(destination: PostStopDestination) {
+        context.dataStore.edit { prefs -> prefs[Keys.POST_STOP_DESTINATION] = destination.name }
     }
 
     suspend fun setLastSeenWhatsNewVersionCode(versionCode: Long) {

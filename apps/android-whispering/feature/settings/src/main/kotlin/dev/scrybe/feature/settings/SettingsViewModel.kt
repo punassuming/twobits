@@ -14,6 +14,7 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
 import dev.scrybe.core.transcription.ApiKeyProvider
@@ -35,6 +36,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val keepScreenOn: Boolean = true,
     val showRenameAfterRecording: Boolean = true,
+    val postStopDestination: PostStopDestination = PostStopDestination.HOME,
     val audioFormat: AudioFormat = AudioFormat.AAC,
     val sampleRateHz: Int = 48_000,
     val encodingBitRate: Int = 128_000,
@@ -64,6 +66,7 @@ data class UsageStats(
     val transformCount: Int = 0,
     val totalDurationMs: Long = 0L,
     val totalStorageBytes: Long = 0L,
+    val totalEstimatedCostUsd: Double = 0.0,
 )
 
 enum class ApiKeyValidationStatus {
@@ -122,11 +125,13 @@ class SettingsViewModel @Inject constructor(
         preferencesDataStore.themeMode,
         preferencesDataStore.keepScreenOn,
         preferencesDataStore.showRenameAfterRecording,
-    ) { themeMode, keepScreenOn, showRenameAfterRecording ->
+        preferencesDataStore.postStopDestination,
+    ) { themeMode, keepScreenOn, showRenameAfterRecording, postStopDestination ->
         DisplayPreferences(
             themeMode = themeMode,
             keepScreenOn = keepScreenOn,
             showRenameAfterRecording = showRenameAfterRecording,
+            postStopDestination = postStopDestination,
         )
     }
     private val audioPreferences = combine(
@@ -150,6 +155,7 @@ class SettingsViewModel @Inject constructor(
             themeMode = displayPreferences.themeMode,
             keepScreenOn = displayPreferences.keepScreenOn,
             showRenameAfterRecording = displayPreferences.showRenameAfterRecording,
+            postStopDestination = displayPreferences.postStopDestination,
             audioFormat = audioPreferences.audioFormat,
             sampleRateHz = audioPreferences.sampleRateHz,
             encodingBitRate = audioPreferences.encodingBitRate,
@@ -166,10 +172,11 @@ class SettingsViewModel @Inject constructor(
             savedFiles = savedFiles,
             usageStats = UsageStats(
                 recordCount = sessions.size,
-                transcriptionCount = transcripts.size,
+                transcriptionCount = transcripts.count { it.type == "RAW" || it.type == "EDITED" },
                 transformCount = runs.size,
                 totalDurationMs = sessions.sumOf { it.durationMs },
                 totalStorageBytes = sessions.sumOf { it.fileSizeBytes },
+                totalEstimatedCostUsd = sessions.sumOf { it.estimatedTranscriptionCostUsd ?: 0.0 },
             ),
         )
     }
@@ -187,6 +194,7 @@ class SettingsViewModel @Inject constructor(
             themeMode = recordingPreferences.themeMode,
             keepScreenOn = recordingPreferences.keepScreenOn,
             showRenameAfterRecording = recordingPreferences.showRenameAfterRecording,
+            postStopDestination = recordingPreferences.postStopDestination,
             audioFormat = recordingPreferences.audioFormat,
             sampleRateHz = recordingPreferences.sampleRateHz,
             encodingBitRate = recordingPreferences.encodingBitRate,
@@ -214,6 +222,7 @@ class SettingsViewModel @Inject constructor(
             themeMode = settingsData.themeMode,
             keepScreenOn = settingsData.keepScreenOn,
             showRenameAfterRecording = settingsData.showRenameAfterRecording,
+            postStopDestination = settingsData.postStopDestination,
             audioFormat = settingsData.audioFormat,
             sampleRateHz = settingsData.sampleRateHz,
             encodingBitRate = settingsData.encodingBitRate,
@@ -264,6 +273,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowRenameAfterRecording(enabled: Boolean) {
         viewModelScope.launch { preferencesDataStore.setShowRenameAfterRecording(enabled) }
+    }
+
+    fun setPostStopDestination(destination: PostStopDestination) {
+        viewModelScope.launch { preferencesDataStore.setPostStopDestination(destination) }
     }
 
     fun setAudioFormat(audioFormat: AudioFormat) {
@@ -384,6 +397,7 @@ class SettingsViewModel @Inject constructor(
         val themeMode: ThemeMode = ThemeMode.SYSTEM,
         val keepScreenOn: Boolean = true,
         val showRenameAfterRecording: Boolean = true,
+        val postStopDestination: PostStopDestination = PostStopDestination.HOME,
         val audioFormat: AudioFormat = AudioFormat.AAC,
         val sampleRateHz: Int = 48_000,
         val encodingBitRate: Int = 128_000,
@@ -409,6 +423,7 @@ class SettingsViewModel @Inject constructor(
         val themeMode: ThemeMode = ThemeMode.SYSTEM,
         val keepScreenOn: Boolean = true,
         val showRenameAfterRecording: Boolean = true,
+        val postStopDestination: PostStopDestination = PostStopDestination.HOME,
         val audioFormat: AudioFormat = AudioFormat.AAC,
         val sampleRateHz: Int = 48_000,
         val encodingBitRate: Int = 128_000,
@@ -419,6 +434,7 @@ class SettingsViewModel @Inject constructor(
         val themeMode: ThemeMode = ThemeMode.SYSTEM,
         val keepScreenOn: Boolean = true,
         val showRenameAfterRecording: Boolean = true,
+        val postStopDestination: PostStopDestination = PostStopDestination.HOME,
     )
 
     private data class AudioPreferences(

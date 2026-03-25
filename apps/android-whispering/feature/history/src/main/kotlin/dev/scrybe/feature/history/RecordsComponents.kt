@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -20,8 +22,9 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -34,6 +37,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,8 +61,14 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun RecordRow(
     item: HistorySessionItem,
+    selectionEnabled: Boolean,
+    selected: Boolean,
     onOpen: () -> Unit,
     onLongPress: () -> Unit,
+    onToggleSelection: () -> Unit,
+    onArchive: () -> Unit,
+    onRestore: () -> Unit,
+    onTransform: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onInfo: () -> Unit,
@@ -64,130 +76,258 @@ internal fun RecordRow(
     onSaveCopy: () -> Unit,
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
+    val dismissState = rememberSwipeToDismissBoxState(
+        positionalThreshold = { it * 0.25f },
+        confirmValueChange = { value ->
+            if (selectionEnabled) return@rememberSwipeToDismissBoxState false
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onTransform()
+                    false
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    if (item.session.isArchived) onRestore() else onArchive()
+                    false
+                }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        },
+    )
 
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onOpen,
-                onLongClick = onLongPress,
-            ),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(20.dp),
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            WaveformBackdrop(
-                samples = item.session.waveformSamples,
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(
-                    Icons.Filled.History,
-                    contentDescription = null,
-                    modifier = Modifier.padding(top = 2.dp),
-                    tint = MaterialTheme.colorScheme.primary,
+    val rowContent: @Composable () -> Unit = {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = {
+                        if (selectionEnabled) onToggleSelection() else onOpen()
+                    },
+                    onLongClick = {
+                        if (selectionEnabled) onToggleSelection() else onLongPress()
+                    },
+                ),
+            color = if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+            shape = RoundedCornerShape(20.dp),
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                WaveformBackdrop(
+                    samples = item.session.waveformSamples,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                 )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text(
-                        text = item.session.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    if (selectionEnabled) {
+                        Checkbox(
+                            checked = selected,
+                            onCheckedChange = { onToggleSelection() },
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    Icon(
+                        Icons.Filled.History,
+                        contentDescription = null,
+                        modifier = Modifier.padding(top = 2.dp),
+                        tint = statusColor(item.session.status, item.session.isArchived),
                     )
-                    Text(
-                        text = item.session.createdAt.atZone(ZoneId.systemDefault()).format(HISTORY_TIME_FORMATTER),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = buildMetaLine(item.session),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         Text(
-                            text = preview,
+                            text = item.session.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = item.session.createdAt.atZone(ZoneId.systemDefault()).format(HISTORY_TIME_FORMATTER),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = buildMetaLine(item.session),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        Text(
+                            text = statusLabel(item.session.status, item.session.isArchived),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = statusColor(item.session.status, item.session.isArchived),
+                        )
+                        item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                            Text(
+                                text = preview,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
-                }
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "Record actions")
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Open") },
-                            leadingIcon = { Icon(Icons.Filled.History, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onOpen()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Open With") },
-                            leadingIcon = { Icon(Icons.Filled.OpenInNew, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onOpenWith()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Save Copy") },
-                            leadingIcon = { Icon(Icons.Filled.SaveAlt, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onSaveCopy()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Rename") },
-                            leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onRename()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Information") },
-                            leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onInfo()
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Delete") },
-                            leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                            onClick = {
-                                menuExpanded = false
-                                onDelete()
-                            },
-                        )
+                    if (!selectionEnabled) {
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "Record actions")
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Open") },
+                                    leadingIcon = { Icon(Icons.Filled.History, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onOpen()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Open With") },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onOpenWith()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Save Copy") },
+                                    leadingIcon = { Icon(Icons.Filled.SaveAlt, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onSaveCopy()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Run Default Transform") },
+                                    leadingIcon = { Icon(Icons.Filled.Archive, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onTransform()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(if (item.session.isArchived) "Restore" else "Archive") },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (item.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        if (item.session.isArchived) onRestore() else onArchive()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Rename") },
+                                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onRename()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Information") },
+                                    leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onInfo()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Delete") },
+                                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onDelete()
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
+
+    if (selectionEnabled) {
+        rowContent()
+    } else {
+        SwipeToDismissBox(
+            state = dismissState,
+            backgroundContent = {
+                SwipeBackground(
+                    isArchived = item.session.isArchived,
+                    dismissDirection = dismissState.dismissDirection,
+                )
+            },
+        ) {
+            rowContent()
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SwipeBackground(
+    isArchived: Boolean,
+    dismissDirection: SwipeToDismissBoxValue?,
+) {
+    val color = when (dismissDirection) {
+        SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
+        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.tertiaryContainer
+        null, SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.surfaceContainerLow
+    }
+    val label = when (dismissDirection) {
+        SwipeToDismissBoxValue.StartToEnd -> "Run transform"
+        SwipeToDismissBoxValue.EndToStart -> if (isArchived) "Restore" else "Archive"
+        null, SwipeToDismissBoxValue.Settled -> ""
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = color,
+        shape = RoundedCornerShape(20.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+}
+
+private fun statusLabel(status: SessionStatus, isArchived: Boolean): String = when {
+    isArchived -> "Archived"
+    status == SessionStatus.TRANSCRIBING -> "Transcribing"
+    status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> "Transcribed"
+    status == SessionStatus.FAILED -> "Failed"
+    else -> "Recorded"
+}
+
+@Composable
+private fun statusColor(status: SessionStatus, isArchived: Boolean) = when {
+    isArchived -> MaterialTheme.colorScheme.tertiary
+    status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.secondary
+    status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> MaterialTheme.colorScheme.primary
+    status == SessionStatus.FAILED -> MaterialTheme.colorScheme.error
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Composable
@@ -195,25 +335,39 @@ internal fun WaveformBackdrop(
     samples: List<Float>,
     modifier: Modifier = Modifier,
 ) {
-    val bars = if (samples.isEmpty()) List(32) { 0.12f } else samples.takeLast(56)
+    val bars = if (samples.isEmpty()) List(32) { 0f } else samples.takeLast(56)
     val color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
     Canvas(modifier = modifier) {
+        val baselineY = size.height * 0.76f
+        drawLine(
+            color = baselineColor,
+            start = androidx.compose.ui.geometry.Offset(0f, baselineY),
+            end = androidx.compose.ui.geometry.Offset(size.width, baselineY),
+            strokeWidth = 1.5.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
         val barWidth = size.width / (bars.size * 1.5f)
         val spacing = barWidth / 2f
         bars.forEachIndexed { index, sample ->
-            val heightFactor = 0.18f + (sample * 0.72f)
-            val lineHeight = size.height * heightFactor
+            val shapedAmplitude = subtleWaveformAmplitude(sample)
+            val lineHeight = (size.height * 0.48f) * shapedAmplitude
             val x = (index * (barWidth + spacing)) + (barWidth / 2f)
-            val startY = (size.height - lineHeight) / 2f
+            val startY = baselineY - lineHeight
             drawLine(
                 color = color,
                 start = androidx.compose.ui.geometry.Offset(x, startY),
-                end = androidx.compose.ui.geometry.Offset(x, startY + lineHeight),
+                end = androidx.compose.ui.geometry.Offset(x, baselineY),
                 strokeWidth = barWidth,
                 cap = StrokeCap.Round,
             )
         }
     }
+}
+
+private fun subtleWaveformAmplitude(sample: Float): Float {
+    val gated = if (sample < 0.025f) 0f else sample
+    return (0.01f + (gated * 0.82f)).coerceIn(0.01f, 0.83f)
 }
 
 @Composable
@@ -254,7 +408,7 @@ internal fun RecordsFilterDialog(
                 HorizontalDivider()
                 Text("Status", style = MaterialTheme.typography.labelLarge)
                 SessionStatus.entries
-                    .filter { it in setOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBING, SessionStatus.TRANSCRIBED, SessionStatus.FAILED) }
+                    .filter { it in setOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBING, SessionStatus.TRANSCRIBED, SessionStatus.EDITED, SessionStatus.FAILED) }
                     .forEach { status ->
                         StatusToggleRow(
                             status = status,
@@ -268,6 +422,12 @@ internal fun RecordsFilterDialog(
                             },
                         )
                     }
+                HorizontalDivider()
+                FilterOptionRow(
+                    title = if (draft.showArchived) "Archived records" else "Active records",
+                    selected = draft.showArchived,
+                    onClick = { draft = draft.copy(showArchived = !draft.showArchived) },
+                )
             }
         },
         confirmButton = {
@@ -430,6 +590,7 @@ internal fun buildFilterSummary(filters: RecordsFilterState): String {
     } else {
         filters.includedStatuses.joinToString { it.name.lowercase().replace('_', ' ') }
     }
+    val archiveSummary = if (filters.showArchived) "Archived only" else "Active only"
     val dateSummary = when (filters.dateRange) {
         RecordsDateRange.ALL -> "All time"
         RecordsDateRange.TODAY -> "Today"
@@ -442,7 +603,7 @@ internal fun buildFilterSummary(filters: RecordsFilterState): String {
         RecordsSortOption.LONGEST -> "Longest first"
         RecordsSortOption.LARGEST -> "Largest first"
     }
-    return "$dateSummary · $sortSummary · $statusSummary"
+    return "$dateSummary · $sortSummary · $statusSummary · $archiveSummary"
 }
 
 internal fun openAudioWith(context: Context, session: RecordingSession) {

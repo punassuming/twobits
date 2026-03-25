@@ -5,13 +5,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.database.TranscriptDao
+import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.TranscriptType
+import dev.scrybe.core.transforms.SessionTransformCoordinator
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -24,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -34,22 +39,28 @@ sealed interface HistoryEvent {
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    audioRecorder: AudioRecorder,
     private val recordingSessionDao: RecordingSessionDao,
     private val transcriptDao: TranscriptDao,
     private val transformRunDao: TransformRunDao,
+    private val preferencesDataStore: AppPreferencesDataStore,
+    private val sessionTransformCoordinator: SessionTransformCoordinator,
 ) : ViewModel() {
 
     private val query = MutableStateFlow("")
     private val filters = MutableStateFlow(RecordsFilterState())
+    private val selection = MutableStateFlow(RecordsSelectionState())
     private val _events = MutableSharedFlow<HistoryEvent>()
     val events = _events.asSharedFlow()
+    val isRecording = audioRecorder.isRecording
 
     val uiState: StateFlow<HistoryUiState> = combine(
         recordingSessionDao.getAllSessions(),
         transcriptDao.getAllTranscripts(),
         query,
         filters,
-    ) { entities, transcripts, query, filters ->
+        selection,
+    ) { entities, transcripts, query, filters, selection ->
         val sessions = entities.map { entity ->
             RecordingSession(
                 id = entity.id,
@@ -63,15 +74,24 @@ class HistoryViewModel @Inject constructor(
                 channelCount = entity.channelCount,
                 waveformSamples = WaveformCodec.decode(entity.waveformSamples),
                 status = SessionStatus.valueOf(entity.status),
+                isArchived = entity.isArchived,
+                estimatedTranscriptionCostUsd = entity.estimatedTranscriptionCostUsd,
                 createdAt = Instant.ofEpochMilli(entity.createdAt),
                 updatedAt = Instant.ofEpochMilli(entity.updatedAt),
             )
         }
         val latestTranscriptBySession = transcripts
             .groupBy { it.sessionId }
-            .mapValues { (_, items) -> items.maxByOrNull { it.createdAt }?.content.orEmpty() }
+            .mapValues { (_, items) ->
+                items
+                    .sortedByDescending { it.createdAt }
+                    .firstOrNull { it.type == TranscriptType.EDITED.name }
+                    ?.content
+                    ?: items.maxByOrNull { it.createdAt }?.content.orEmpty()
+            }
 
         val filteredSessions = sessions
+            .filter { session -> session.isArchived == filters.showArchived }
             .filter { session -> matchesDateFilter(session, filters.dateRange) }
             .filter { session ->
                 filters.includedStatuses.isEmpty() || session.status in filters.includedStatuses
@@ -97,6 +117,9 @@ class HistoryViewModel @Inject constructor(
         HistoryUiState.Success(
             sessions = filteredSessions,
             filters = filters,
+            selection = selection.copy(
+                selectedSessionIds = selection.selectedSessionIds.intersect(filteredSessions.map { it.session.id }.toSet()),
+            ),
         ) as HistoryUiState
     }
         .catch { emit(HistoryUiState.Error(it.message ?: "Unknown error")) }
@@ -112,6 +135,7 @@ class HistoryViewModel @Inject constructor(
 
     fun updateFilters(next: RecordsFilterState) {
         filters.value = next
+        selection.value = RecordsSelectionState()
     }
 
     fun renameSession(sessionId: String, newTitle: String) {
@@ -138,6 +162,9 @@ class HistoryViewModel @Inject constructor(
                 transformRunDao.deleteRunsForSession(sessionId)
                 recordingSessionDao.deleteSession(sessionId)
             }.onSuccess {
+                selection.value = selection.value.copy(
+                    selectedSessionIds = selection.value.selectedSessionIds - sessionId,
+                )
                 _events.emit(HistoryEvent.Message("Record deleted"))
             }.onFailure {
                 _events.emit(HistoryEvent.Message(it.message ?: "Unable to delete record"))
@@ -167,6 +194,126 @@ class HistoryViewModel @Inject constructor(
                 .onFailure {
                     _events.emit(HistoryEvent.Message(it.message ?: "Unable to save copy"))
                 }
+        }
+    }
+
+    fun setArchived(sessionId: String, archived: Boolean) {
+        viewModelScope.launch {
+            val session = recordingSessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+            recordingSessionDao.updateSession(
+                session.copy(
+                    isArchived = archived,
+                    status = if (archived) SessionStatus.ARCHIVED.name else restoreStatus(session.status),
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            _events.emit(HistoryEvent.Message(if (archived) "Record archived" else "Record restored"))
+        }
+    }
+
+    fun transformWithDefaultProfile(sessionId: String) {
+        viewModelScope.launch {
+            val profileId = preferencesDataStore.defaultTransformProfileId.first()
+            if (profileId == null) {
+                _events.emit(HistoryEvent.Message("Choose a default profile before transforming"))
+                return@launch
+            }
+            sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
+                .onSuccess { _events.emit(HistoryEvent.Message("Transform completed")) }
+                .onFailure { _events.emit(HistoryEvent.Message(it.message ?: "Transform failed")) }
+        }
+    }
+
+    fun enterSelectionMode(sessionId: String) {
+        selection.value = RecordsSelectionState(selectedSessionIds = setOf(sessionId))
+    }
+
+    fun toggleSelection(sessionId: String) {
+        val selectedIds = selection.value.selectedSessionIds.toMutableSet()
+        if (!selectedIds.add(sessionId)) {
+            selectedIds.remove(sessionId)
+        }
+        selection.value = RecordsSelectionState(selectedSessionIds = selectedIds)
+    }
+
+    fun clearSelection() {
+        selection.value = RecordsSelectionState()
+    }
+
+    fun selectAllVisible() {
+        val visibleIds = (uiState.value as? HistoryUiState.Success)
+            ?.sessions
+            ?.map { it.session.id }
+            .orEmpty()
+            .toSet()
+        selection.value = RecordsSelectionState(selectedSessionIds = visibleIds)
+    }
+
+    fun setArchivedForSelected(archived: Boolean) {
+        viewModelScope.launch {
+            val selectedIds = selection.value.selectedSessionIds
+            if (selectedIds.isEmpty()) return@launch
+
+            selectedIds.forEach { sessionId ->
+                recordingSessionDao.getSessionByIdOnce(sessionId)?.let { session ->
+                    recordingSessionDao.updateSession(
+                        session.copy(
+                            isArchived = archived,
+                            status = if (archived) SessionStatus.ARCHIVED.name else restoreStatus(session.status),
+                            updatedAt = System.currentTimeMillis(),
+                        )
+                    )
+                }
+            }
+            selection.value = RecordsSelectionState()
+            _events.emit(
+                HistoryEvent.Message(
+                    if (archived) "Archived ${selectedIds.size} records" else "Restored ${selectedIds.size} records",
+                )
+            )
+        }
+    }
+
+    fun deleteSelectedSessions() {
+        viewModelScope.launch {
+            val selectedIds = selection.value.selectedSessionIds.toList()
+            if (selectedIds.isEmpty()) return@launch
+
+            var deletedCount = 0
+            selectedIds.forEach { sessionId ->
+                val session = recordingSessionDao.getSessionByIdOnce(sessionId) ?: return@forEach
+                runCatching {
+                    File(session.audioFilePath).takeIf { it.exists() }?.delete()
+                    transcriptDao.deleteTranscriptsForSession(sessionId)
+                    transformRunDao.deleteRunsForSession(sessionId)
+                    recordingSessionDao.deleteSession(sessionId)
+                }.onSuccess {
+                    deletedCount += 1
+                }
+            }
+            selection.value = RecordsSelectionState()
+            _events.emit(HistoryEvent.Message("Deleted $deletedCount records"))
+        }
+    }
+
+    fun transformSelectedSessions() {
+        viewModelScope.launch {
+            val selectedIds = selection.value.selectedSessionIds.toList()
+            if (selectedIds.isEmpty()) return@launch
+
+            val profileId = preferencesDataStore.defaultTransformProfileId.first()
+            if (profileId == null) {
+                _events.emit(HistoryEvent.Message("Choose a default profile before transforming"))
+                return@launch
+            }
+
+            var completed = 0
+            selectedIds.forEach { sessionId ->
+                sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
+                    .onSuccess { completed += 1 }
+            }
+            selection.value = RecordsSelectionState()
+            _events.emit(HistoryEvent.Message("Transformed $completed of ${selectedIds.size} records"))
         }
     }
 
@@ -203,5 +350,10 @@ class HistoryViewModel @Inject constructor(
             index += 1
         }
         return candidate
+    }
+
+    private fun restoreStatus(status: String): String {
+        val current = runCatching { SessionStatus.valueOf(status) }.getOrDefault(SessionStatus.RECORDED)
+        return if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
     }
 }

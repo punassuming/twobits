@@ -17,6 +17,9 @@ interface TranscriptDao {
     @Query("SELECT * FROM transcripts WHERE id = :id")
     suspend fun getTranscriptById(id: String): TranscriptEntity?
 
+    @Query("SELECT * FROM transcripts WHERE sessionId = :sessionId AND type = :type ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestTranscriptByType(sessionId: String, type: String): TranscriptEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTranscript(transcript: TranscriptEntity)
 

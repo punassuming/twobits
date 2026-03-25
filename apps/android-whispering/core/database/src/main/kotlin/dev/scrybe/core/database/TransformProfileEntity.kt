@@ -9,6 +9,7 @@ data class TransformProfileEntity(
     val name: String,
     val description: String,
     val systemPrompt: String,
+    val steps: String,
     val providerType: String,
     val isDefault: Boolean,
 )

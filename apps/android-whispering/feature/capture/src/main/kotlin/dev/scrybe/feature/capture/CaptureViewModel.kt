@@ -7,32 +7,32 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
+import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.service.recording.RecordingForegroundService
-import dev.scrybe.service.recording.RecordingSessionEvents
 import dev.scrybe.service.recording.RecordingServiceActions
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
 class CaptureViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val audioRecorder: AudioRecorder,
+    private val recordingSessionDao: RecordingSessionDao,
+    private val transcriptDao: TranscriptDao,
     private val preferencesDataStore: AppPreferencesDataStore,
-    recordingSessionEvents: RecordingSessionEvents,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CaptureUiState())
     val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
-    private val _events = MutableSharedFlow<CaptureEvent>()
-    val events: SharedFlow<CaptureEvent> = _events.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -51,8 +51,21 @@ class CaptureViewModel @Inject constructor(
                 _uiState.value = currentState.copy(
                     phase = nextPhase,
                     elapsedMs = telemetry.elapsedMs,
+                    currentAmplitudeRatio = telemetry.amplitudeRatio,
                     amplitudeHistory = nextHistory,
                 )
+            }
+        }
+        viewModelScope.launch {
+            audioRecorder.isRecording.collectLatest { isRecording ->
+                if (!isRecording && _uiState.value.phase == CapturePhase.RECORDING) {
+                    _uiState.value = _uiState.value.copy(
+                        phase = CapturePhase.IDLE,
+                        elapsedMs = 0L,
+                        currentAmplitudeRatio = 0f,
+                        amplitudeHistory = emptyList(),
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -61,9 +74,32 @@ class CaptureViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            recordingSessionEvents.completedSessions.collectLatest { sessionId ->
-                _uiState.value = CaptureUiState()
-                _events.emit(CaptureEvent.OpenSessionDetail(sessionId))
+            combine(
+                recordingSessionDao.getActiveSessions(),
+                transcriptDao.getAllTranscripts(),
+            ) { sessions, transcripts ->
+                val transcriptLookup = transcripts
+                    .groupBy { it.sessionId }
+                    .mapValues { (_, values) ->
+                        values
+                            .sortedByDescending { it.createdAt }
+                            .firstOrNull { it.type == "EDITED" }
+                            ?.content
+                            ?: values.maxByOrNull { it.createdAt }?.content
+                    }
+                sessions.take(3).map { session ->
+                    RecentCaptureSession(
+                        id = session.id,
+                        title = session.title,
+                        createdAtLabel = java.time.Instant.ofEpochMilli(session.createdAt)
+                            .atZone(ZoneId.systemDefault())
+                            .format(RECENT_TIME_FORMATTER),
+                        status = dev.scrybe.core.model.SessionStatus.valueOf(session.status),
+                        transcriptPreview = transcriptLookup[session.id],
+                    )
+                }
+            }.collectLatest { recentSessions ->
+                _uiState.value = _uiState.value.copy(recentSessions = recentSessions)
             }
         }
     }
@@ -100,5 +136,6 @@ class CaptureViewModel @Inject constructor(
 
     private companion object {
         const val MAX_HISTORY = 32
+        val RECENT_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, h:mm a")
     }
 }

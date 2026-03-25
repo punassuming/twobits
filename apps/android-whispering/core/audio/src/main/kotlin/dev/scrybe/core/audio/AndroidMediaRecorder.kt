@@ -39,6 +39,7 @@ class AndroidMediaRecorder @Inject constructor(
     private var currentChannelCount: Int = 1
     private var telemetryJob: Job? = null
     private var waveformSamples: MutableList<Float> = mutableListOf()
+    private var smoothedAmplitudeRatio: Float = 0f
 
     override suspend fun startRecording(config: RecordingConfig): Result<Unit> = runCatching {
         val outputDir = File(config.outputDir).apply { mkdirs() }
@@ -73,6 +74,7 @@ class AndroidMediaRecorder @Inject constructor(
         currentEncodingBitRate = config.encodingBitRate
         currentChannelCount = config.channelCount
         waveformSamples = mutableListOf()
+        smoothedAmplitudeRatio = 0f
         _isRecording.value = true
         _telemetry.value = RecordingTelemetry()
         startTelemetryUpdates(recorder)
@@ -112,6 +114,7 @@ class AndroidMediaRecorder @Inject constructor(
         currentFile?.delete()
         currentFile = null
         waveformSamples = mutableListOf()
+        smoothedAmplitudeRatio = 0f
         _isRecording.value = false
         _telemetry.value = RecordingTelemetry()
     }
@@ -121,12 +124,16 @@ class AndroidMediaRecorder @Inject constructor(
         telemetryJob = recorderScope.launch {
             while (isActive && mediaRecorder === recorder) {
                 val elapsedMs = System.currentTimeMillis() - startTimeMs
-                val amplitudeRatio = (recorder.maxAmplitude / MAX_AMPLITUDE.toFloat())
+                val rawAmplitudeRatio = (recorder.maxAmplitude / MAX_AMPLITUDE.toFloat())
                     .coerceIn(0f, 1f)
-                waveformSamples.add(amplitudeRatio)
+                val gatedAmplitudeRatio = if (rawAmplitudeRatio < SILENCE_GATE_RATIO) 0f else rawAmplitudeRatio
+                smoothedAmplitudeRatio = (smoothedAmplitudeRatio * SMOOTHING_DECAY) +
+                    (gatedAmplitudeRatio * (1f - SMOOTHING_DECAY))
+
+                waveformSamples.add(smoothedAmplitudeRatio)
                 _telemetry.value = RecordingTelemetry(
                     elapsedMs = elapsedMs,
-                    amplitudeRatio = amplitudeRatio,
+                    amplitudeRatio = smoothedAmplitudeRatio,
                 )
                 delay(100)
             }
@@ -157,6 +164,8 @@ class AndroidMediaRecorder @Inject constructor(
     private companion object {
         const val MAX_AMPLITUDE = 32767
         const val MAX_WAVEFORM_SAMPLES = 72
+        const val SILENCE_GATE_RATIO = 0.015f
+        const val SMOOTHING_DECAY = 0.62f
     }
 
     private fun downsampleWaveform(samples: List<Float>, targetSize: Int): List<Float> {

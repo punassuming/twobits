@@ -27,6 +27,7 @@ data class RecordsFilterState(
     val sortOption: RecordsSortOption = RecordsSortOption.NEWEST,
     val dateRange: RecordsDateRange = RecordsDateRange.ALL,
     val includedStatuses: Set<SessionStatus> = emptySet(),
+    val showArchived: Boolean = false,
 )
 
 data class RecordInfo(
@@ -42,11 +43,18 @@ data class RecordInfo(
     val transcriptPreview: String?,
 )
 
+data class RecordsSelectionState(
+    val selectedSessionIds: Set<String> = emptySet(),
+) {
+    val isSelecting: Boolean = selectedSessionIds.isNotEmpty()
+}
+
 sealed interface HistoryUiState {
     data object Loading : HistoryUiState
     data class Success(
         val sessions: List<HistorySessionItem>,
         val filters: RecordsFilterState,
+        val selection: RecordsSelectionState = RecordsSelectionState(),
     ) : HistoryUiState
     data class Error(val message: String) : HistoryUiState
 }

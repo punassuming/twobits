@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 
@@ -87,27 +88,50 @@ private fun WaveformTimeline(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
-    val bars = if (samples.isEmpty()) List(48) { 0.12f } else samples
+    val bars = if (samples.isEmpty()) List(48) { 0f } else samples
     val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
+    val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val playheadColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f)
     Canvas(modifier = modifier) {
+        val baselineY = size.height * 0.82f
+        drawLine(
+            color = baselineColor,
+            start = Offset(0f, baselineY),
+            end = Offset(size.width, baselineY),
+            strokeWidth = 2.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
         val barWidth = size.width / (bars.size * 1.5f)
         val spacing = barWidth / 2f
         val progressIndex = (bars.size * progress.coerceIn(0f, 1f)).toInt()
         bars.forEachIndexed { index, sample ->
-            val heightFactor = 0.18f + (sample * 0.72f)
-            val lineHeight = size.height * heightFactor
+            val shapedAmplitude = playbackAmplitude(sample)
+            val lineHeight = (baselineY - (size.height * 0.14f)) * shapedAmplitude
             val x = (index * (barWidth + spacing)) + (barWidth / 2f)
-            val startY = (size.height - lineHeight) / 2f
+            val startY = baselineY - lineHeight
             drawLine(
                 color = if (index <= progressIndex) activeColor else inactiveColor,
-                start = androidx.compose.ui.geometry.Offset(x, startY),
-                end = androidx.compose.ui.geometry.Offset(x, startY + lineHeight),
+                start = Offset(x, startY),
+                end = Offset(x, baselineY),
                 strokeWidth = barWidth,
                 cap = StrokeCap.Round,
             )
         }
+        val playheadX = size.width * progress.coerceIn(0f, 1f)
+        drawLine(
+            color = playheadColor,
+            start = Offset(playheadX, size.height * 0.1f),
+            end = Offset(playheadX, baselineY + 6.dp.toPx()),
+            strokeWidth = 2.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
     }
+}
+
+private fun playbackAmplitude(sample: Float): Float {
+    val gated = if (sample < 0.02f) 0f else sample
+    return (0.012f + (gated * 0.88f)).coerceIn(0.012f, 0.9f)
 }
 
 @Composable

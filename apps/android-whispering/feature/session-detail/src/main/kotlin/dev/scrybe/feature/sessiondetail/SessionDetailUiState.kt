@@ -9,6 +9,8 @@ sealed interface SessionDetailUiState {
     data class Success(
         val session: RecordingSession,
         val transcripts: List<Transcript>,
+        val originalTranscript: Transcript?,
+        val currentTranscript: Transcript?,
         val profiles: List<TransformProfile>,
         val defaultProfileId: String?,
         val isTranscribing: Boolean = false,

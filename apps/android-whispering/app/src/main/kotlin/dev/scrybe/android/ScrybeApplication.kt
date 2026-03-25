@@ -2,6 +2,7 @@ package dev.scrybe.android
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
+import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.transforms.DefaultProfiles
@@ -30,6 +31,7 @@ class ScrybeApplication : Application() {
                             name = profile.name,
                             description = profile.description,
                             systemPrompt = profile.systemPrompt,
+                            steps = TransformStepsCodec.encode(profile.steps),
                             providerType = profile.providerType.name,
                             isDefault = profile.isDefault,
                         )
@@ -40,6 +42,7 @@ class ScrybeApplication : Application() {
                             name = profile.name,
                             description = profile.description,
                             systemPrompt = profile.systemPrompt,
+                            steps = TransformStepsCodec.encode(profile.steps),
                             providerType = profile.providerType.name,
                         )
                     )

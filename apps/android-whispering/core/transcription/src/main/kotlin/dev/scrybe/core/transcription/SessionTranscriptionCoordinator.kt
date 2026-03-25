@@ -64,13 +64,18 @@ class SessionTranscriptionCoordinator @Inject constructor(
                     sessionId = sessionId,
                     content = transcript.text,
                     type = TranscriptType.RAW.name,
+                    sourceTranscriptId = null,
                     providerType = providerType.name,
                     transformProfileId = null,
                     transformRunId = null,
                     createdAt = System.currentTimeMillis(),
                 )
                 transcriptDao.insertTranscript(transcriptEntity)
-                updateSessionStatus(sessionId, SessionStatus.TRANSCRIBED)
+                updateSessionStatus(
+                    sessionId = sessionId,
+                    status = SessionStatus.TRANSCRIBED,
+                    estimatedCostUsd = TranscriptionPricing.estimateUsd(session.durationMs),
+                )
                 Result.success(transcriptEntity)
             },
             onFailure = { error ->
@@ -81,11 +86,16 @@ class SessionTranscriptionCoordinator @Inject constructor(
         )
     }
 
-    private suspend fun updateSessionStatus(sessionId: String, status: SessionStatus) {
+    private suspend fun updateSessionStatus(
+        sessionId: String,
+        status: SessionStatus,
+        estimatedCostUsd: Double? = null,
+    ) {
         val session = sessionDao.getSessionByIdOnce(sessionId) ?: return
         sessionDao.updateSession(
             session.copy(
                 status = status.name,
+                estimatedTranscriptionCostUsd = estimatedCostUsd ?: session.estimatedTranscriptionCostUsd,
                 updatedAt = System.currentTimeMillis(),
             )
         )

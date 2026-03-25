@@ -24,6 +24,7 @@ data class TranscriptEntity(
     val sessionId: String,
     val content: String,
     val type: String,
+    val sourceTranscriptId: String?,
     val providerType: String?,
     val transformProfileId: String?,
     val transformRunId: String?,

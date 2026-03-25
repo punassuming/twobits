@@ -9,10 +9,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.scrybe.core.audio.AudioPlayer
+import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TranscriptDao
+import dev.scrybe.core.database.TranscriptEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.export.ExportCoordinator
 import dev.scrybe.core.export.ExportFormat
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.Duration
@@ -99,6 +102,8 @@ class SessionDetailViewModel @Inject constructor(
                         channelCount = sessionEntity.channelCount,
                         waveformSamples = WaveformCodec.decode(sessionEntity.waveformSamples),
                         status = SessionStatus.valueOf(sessionEntity.status),
+                        isArchived = sessionEntity.isArchived,
+                        estimatedTranscriptionCostUsd = sessionEntity.estimatedTranscriptionCostUsd,
                         createdAt = Instant.ofEpochMilli(sessionEntity.createdAt),
                         updatedAt = Instant.ofEpochMilli(sessionEntity.updatedAt),
                     )
@@ -108,6 +113,7 @@ class SessionDetailViewModel @Inject constructor(
                             sessionId = entity.sessionId,
                             content = entity.content,
                             type = TranscriptType.valueOf(entity.type),
+                            sourceTranscriptId = entity.sourceTranscriptId,
                             providerType = entity.providerType?.let { ProviderType.valueOf(it) },
                             transformProfileId = entity.transformProfileId,
                             transformRunId = entity.transformRunId,
@@ -120,13 +126,23 @@ class SessionDetailViewModel @Inject constructor(
                             name = entity.name,
                             description = entity.description,
                             systemPrompt = entity.systemPrompt,
+                            steps = TransformStepsCodec.decode(entity.steps, fallback = entity.systemPrompt),
                             providerType = ProviderType.valueOf(entity.providerType),
                             isDefault = entity.isDefault,
                         )
                     }
+                    val originalTranscript = transcripts
+                        .filter { it.type == TranscriptType.RAW }
+                        .maxByOrNull { it.createdAt }
+                    val currentTranscript = transcripts
+                        .filter { it.type == TranscriptType.EDITED }
+                        .maxByOrNull { it.createdAt }
+                        ?: originalTranscript
                     SessionDetailUiState.Success(
                         session = session,
                         transcripts = transcripts,
+                        originalTranscript = originalTranscript,
+                        currentTranscript = currentTranscript,
                         profiles = profiles,
                         defaultProfileId = defaultProfileId,
                         isTranscribing = session.status == SessionStatus.TRANSCRIBING,
@@ -222,7 +238,7 @@ class SessionDetailViewModel @Inject constructor(
     fun shareLatestTranscript() {
         val state = _uiState.value as? SessionDetailUiState.Success ?: return
         viewModelScope.launch {
-            val transcript = state.transcripts.maxByOrNull { it.createdAt }
+            val transcript = state.currentTranscript
             if (transcript == null) {
                 _events.emit(SessionDetailEvent.Message("No transcript available to share"))
             } else {
@@ -286,6 +302,42 @@ class SessionDetailViewModel @Inject constructor(
             )
             renamePromptDismissed.value = true
             _events.emit(SessionDetailEvent.Message("Recording renamed"))
+        }
+    }
+
+    fun saveTranscriptEdit(content: String) {
+        val trimmed = content.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            val existingEdited = transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.EDITED.name)
+            val rawTranscript = transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.RAW.name)
+            if (rawTranscript == null) {
+                _events.emit(SessionDetailEvent.Message("Transcribe this record before editing"))
+                return@launch
+            }
+
+            transcriptDao.insertTranscript(
+                TranscriptEntity(
+                    id = existingEdited?.id ?: java.util.UUID.randomUUID().toString(),
+                    sessionId = sessionId,
+                    content = trimmed,
+                    type = TranscriptType.EDITED.name,
+                    sourceTranscriptId = rawTranscript.id,
+                    providerType = rawTranscript.providerType,
+                    transformProfileId = null,
+                    transformRunId = null,
+                    createdAt = System.currentTimeMillis(),
+                )
+            )
+
+            val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+            sessionDao.updateSession(
+                session.copy(
+                    status = SessionStatus.EDITED.name,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            _events.emit(SessionDetailEvent.Message("Transcript saved"))
         }
     }
 

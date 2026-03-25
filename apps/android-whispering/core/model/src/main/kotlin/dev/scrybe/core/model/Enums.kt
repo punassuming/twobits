@@ -5,13 +5,17 @@ enum class SessionStatus {
     RECORDING,
     STOPPING,
     RECORDED,
+    QUEUED,
     TRANSCRIBING,
     TRANSCRIBED,
+    EDITED,
+    ARCHIVED,
     FAILED,
 }
 
 enum class TranscriptType {
     RAW,
+    EDITED,
     TRANSFORMED,
 }
 
@@ -38,4 +42,9 @@ enum class ThemeMode {
     SYSTEM,
     LIGHT,
     DARK,
+}
+
+enum class PostStopDestination {
+    HOME,
+    SESSION_REVIEW,
 }

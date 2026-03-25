@@ -3,6 +3,7 @@ package dev.scrybe.service.recording
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import androidx.core.app.NotificationManagerCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.audio.RecordedAudio
@@ -19,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -39,6 +41,7 @@ class RecordingForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var lastNotifiedSecond: Long = -1L
 
     override fun onCreate() {
         super.onCreate()
@@ -59,6 +62,22 @@ class RecordingForegroundService : Service() {
             RecordingNotificationFactory.NOTIFICATION_ID,
             notificationFactory.buildNotification(this)
         )
+        serviceScope.launch {
+            audioRecorder.telemetry.collectLatest { telemetry ->
+                val elapsedSecond = telemetry.elapsedMs / 1000
+                if (elapsedSecond == lastNotifiedSecond) return@collectLatest
+                lastNotifiedSecond = elapsedSecond
+                NotificationManagerCompat.from(this@RecordingForegroundService)
+                    .notify(
+                        RecordingNotificationFactory.NOTIFICATION_ID,
+                        notificationFactory.buildNotification(
+                            context = this@RecordingForegroundService,
+                            elapsedMs = telemetry.elapsedMs,
+                            amplitudeRatio = telemetry.amplitudeRatio,
+                        ),
+                    )
+            }
+        }
         serviceScope.launch {
             val config = RecordingConfig(
                 outputDir = filesDir.resolve("recordings").absolutePath,
@@ -91,6 +110,7 @@ class RecordingForegroundService : Service() {
 
     private fun handleCancel() {
         audioRecorder.cancelRecording()
+        lastNotifiedSecond = -1L
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -99,6 +119,7 @@ class RecordingForegroundService : Service() {
 
     override fun onDestroy() {
         serviceScope.cancel()
+        lastNotifiedSecond = -1L
         super.onDestroy()
     }
 
@@ -121,6 +142,8 @@ class RecordingForegroundService : Service() {
                 channelCount = recordedAudio.channelCount,
                 waveformSamples = WaveformCodec.encode(recordedAudio.waveformSamples),
                 status = SessionStatus.RECORDED.name,
+                isArchived = false,
+                estimatedTranscriptionCostUsd = null,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
             )

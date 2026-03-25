@@ -91,16 +91,18 @@ class OpenAiTransformationProvider @Inject constructor(
                 appendLine("Use the instructions above to transform this recording.")
                 appendLine("Return only the transformed text.")
                 appendLine()
-                appendLine("Transcript:")
-                append(input.rawText)
+                appendLine("Current text:")
+                append(input.currentText)
             }
         }
     }
 
     private fun buildTemplate(input: TransformInput): String {
         val replacements = mapOf(
-            TRANSCRIPT_PLACEHOLDER to input.rawText,
-            TEXT_PLACEHOLDER to input.rawText,
+            TRANSCRIPT_PLACEHOLDER to input.transcriptText,
+            TEXT_PLACEHOLDER to input.currentText,
+            CURRENT_TEXT_PLACEHOLDER to input.currentText,
+            PRIOR_OUTPUT_PLACEHOLDER to input.currentText,
             SESSION_ID_PLACEHOLDER to input.sessionId,
             TRANSCRIPT_ID_PLACEHOLDER to input.transcriptId,
             PROFILE_ID_PLACEHOLDER to input.profileId,
@@ -111,7 +113,10 @@ class OpenAiTransformationProvider @Inject constructor(
     }
 
     private fun containsTranscriptPlaceholder(systemPrompt: String): Boolean =
-        systemPrompt.contains(TRANSCRIPT_PLACEHOLDER) || systemPrompt.contains(TEXT_PLACEHOLDER)
+        systemPrompt.contains(TRANSCRIPT_PLACEHOLDER) ||
+            systemPrompt.contains(TEXT_PLACEHOLDER) ||
+            systemPrompt.contains(CURRENT_TEXT_PLACEHOLDER) ||
+            systemPrompt.contains(PRIOR_OUTPUT_PLACEHOLDER)
 
     @Serializable
     private data class OpenAiResponseRequest(
@@ -155,6 +160,8 @@ class OpenAiTransformationProvider @Inject constructor(
         const val MODEL_NAME = "gpt-4.1-mini"
         const val TRANSCRIPT_PLACEHOLDER = "{{transcript}}"
         const val TEXT_PLACEHOLDER = "{{text}}"
+        const val CURRENT_TEXT_PLACEHOLDER = "{{current_text}}"
+        const val PRIOR_OUTPUT_PLACEHOLDER = "{{prior_output}}"
         const val SESSION_ID_PLACEHOLDER = "{{session_id}}"
         const val TRANSCRIPT_ID_PLACEHOLDER = "{{transcript_id}}"
         const val PROFILE_ID_PLACEHOLDER = "{{profile_id}}"

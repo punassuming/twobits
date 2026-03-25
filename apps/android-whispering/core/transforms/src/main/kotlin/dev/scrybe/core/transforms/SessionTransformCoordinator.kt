@@ -5,6 +5,7 @@ import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.database.TransformRunEntity
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TranscriptEntity
+import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.TransformStatus
 import dev.scrybe.core.model.TranscriptType
@@ -25,13 +26,22 @@ class SessionTransformCoordinator @Inject constructor(
         sessionId: String,
         profileId: String,
     ): Result<TranscriptEntity> {
-        val inputTranscript = transcriptDao.getTranscriptsForSession(sessionId)
+        val transcripts = transcriptDao.getTranscriptsForSession(sessionId)
             .first()
-            .lastOrNull { it.type == TranscriptType.RAW.name }
+        val inputTranscript = transcripts
+            .sortedByDescending { it.createdAt }
+            .firstOrNull { it.type == TranscriptType.EDITED.name }
+            ?: transcripts.lastOrNull { it.type == TranscriptType.RAW.name }
+            ?: return Result.failure(IllegalStateException("No transcript available"))
+        val originalTranscript = transcripts.lastOrNull { it.type == TranscriptType.RAW.name }
             ?: return Result.failure(IllegalStateException("No raw transcript available"))
 
         val profile = transformProfileDao.getProfileById(profileId)
             ?: return Result.failure(IllegalStateException("Profile not found"))
+        val steps = TransformStepsCodec.decode(profile.steps, fallback = profile.systemPrompt)
+        if (steps.isEmpty()) {
+            return Result.failure(IllegalStateException("Profile has no transform steps"))
+        }
 
         val runId = UUID.randomUUID().toString()
         val startedAt = System.currentTimeMillis()
@@ -49,24 +59,34 @@ class SessionTransformCoordinator @Inject constructor(
             )
         )
 
-        val result = transformationPipeline.execute(
-            input = TransformInput(
-                sessionId = sessionId,
-                transcriptId = inputTranscript.id,
-                rawText = inputTranscript.content,
-                profileId = profile.id,
-                systemPrompt = profile.systemPrompt,
-            ),
-            providerType = ProviderType.valueOf(profile.providerType),
-        )
+        val providerType = ProviderType.valueOf(profile.providerType)
+        val result = runCatching {
+            var currentText = inputTranscript.content
+            steps.forEach { stepPrompt ->
+                val stepResult = transformationPipeline.execute(
+                    input = TransformInput(
+                        sessionId = sessionId,
+                        transcriptId = inputTranscript.id,
+                        transcriptText = originalTranscript.content,
+                        currentText = currentText,
+                        profileId = profile.id,
+                        systemPrompt = stepPrompt,
+                    ),
+                    providerType = providerType,
+                ).getOrThrow()
+                currentText = stepResult.transformedText
+            }
+            currentText
+        }
 
         return result.fold(
-            onSuccess = { transformResult ->
+            onSuccess = { transformedText ->
                 val transcript = TranscriptEntity(
                     id = UUID.randomUUID().toString(),
                     sessionId = sessionId,
-                    content = transformResult.transformedText,
+                    content = transformedText,
                     type = TranscriptType.TRANSFORMED.name,
+                    sourceTranscriptId = inputTranscript.id,
                     providerType = profile.providerType,
                     transformProfileId = profile.id,
                     transformRunId = runId,

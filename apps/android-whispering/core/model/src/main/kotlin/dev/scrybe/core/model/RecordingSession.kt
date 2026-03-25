@@ -14,6 +14,8 @@ data class RecordingSession(
     val channelCount: Int,
     val waveformSamples: List<Float>,
     val status: SessionStatus,
+    val isArchived: Boolean,
+    val estimatedTranscriptionCostUsd: Double?,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

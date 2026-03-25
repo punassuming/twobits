@@ -3,6 +3,7 @@ package dev.scrybe.feature.profiles
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
@@ -45,11 +46,13 @@ class ProfilesViewModel @Inject constructor(
         existingId: String?,
         name: String,
         description: String,
-        systemPrompt: String,
+        steps: List<String>,
         setAsDefault: Boolean,
     ) {
         viewModelScope.launch {
             val id = existingId ?: UUID.randomUUID().toString()
+            val normalizedSteps = steps.map { it.trim() }.filter { it.isNotBlank() }
+            if (normalizedSteps.isEmpty()) return@launch
             if (setAsDefault) {
                 transformProfileDao.clearDefaultProfile()
             }
@@ -58,7 +61,8 @@ class ProfilesViewModel @Inject constructor(
                     id = id,
                     name = name.trim(),
                     description = description.trim(),
-                    systemPrompt = systemPrompt.trim(),
+                    systemPrompt = normalizedSteps.first(),
+                    steps = TransformStepsCodec.encode(normalizedSteps),
                     providerType = ProviderType.OPENAI.name,
                     isDefault = setAsDefault,
                 )
@@ -93,6 +97,7 @@ class ProfilesViewModel @Inject constructor(
         name = entity.name,
         description = entity.description,
         systemPrompt = entity.systemPrompt,
+        steps = TransformStepsCodec.decode(entity.steps, fallback = entity.systemPrompt),
         providerType = ProviderType.valueOf(entity.providerType),
         isDefault = entity.isDefault,
     )

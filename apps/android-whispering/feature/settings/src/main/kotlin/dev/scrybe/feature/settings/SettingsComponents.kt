@@ -171,3 +171,5 @@ internal fun formatTotalDuration(durationMs: Long): String {
     val minutes = totalMinutes % 60
     return if (hours > 0) "$hours h $minutes m" else "$minutes m"
 }
+
+internal fun formatUsd(amount: Double): String = "$" + String.format("%.2f", amount)

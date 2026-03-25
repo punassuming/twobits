@@ -5,6 +5,7 @@ data class TransformProfile(
     val name: String,
     val description: String,
     val systemPrompt: String,
+    val steps: List<String>,
     val providerType: ProviderType,
     val isDefault: Boolean,
 )

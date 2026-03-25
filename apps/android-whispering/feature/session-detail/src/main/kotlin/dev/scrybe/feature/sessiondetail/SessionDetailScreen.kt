@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileOpen
@@ -72,6 +73,7 @@ fun SessionDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var actionMenuExpanded by remember { mutableStateOf(false) }
+    var isEditingTranscript by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -216,7 +218,10 @@ fun SessionDetailScreen(
                         onTransformDefault = viewModel::transformDefaultProfile,
                         onTransformProfile = viewModel::transform,
                     )
-                    TranscriptSection(transcripts = state.transcripts)
+                    TranscriptSection(
+                        state = state,
+                        onEditTranscript = { isEditingTranscript = true },
+                    )
                 }
             }
         }
@@ -228,6 +233,17 @@ fun SessionDetailScreen(
             initialTitle = successState.session.title,
             onDismiss = viewModel::dismissRenamePrompt,
             onConfirm = viewModel::renameSession,
+        )
+    }
+
+    if (isEditingTranscript && successState != null) {
+        EditTranscriptDialog(
+            initialValue = successState.currentTranscript?.content.orEmpty(),
+            onDismiss = { isEditingTranscript = false },
+            onSave = {
+                viewModel.saveTranscriptEdit(it)
+                isEditingTranscript = false
+            },
         )
     }
 }
@@ -262,6 +278,13 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
+            state.session.estimatedTranscriptionCostUsd?.let { cost ->
+                Text(
+                    text = "Estimated transcription cost ${formatUsd(cost)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
     }
 }
@@ -386,8 +409,12 @@ private fun TransformProfileRow(
 }
 
 @Composable
-private fun TranscriptSection(transcripts: List<Transcript>) {
-    if (transcripts.isEmpty()) {
+private fun TranscriptSection(
+    state: SessionDetailUiState.Success,
+    onEditTranscript: () -> Unit,
+) {
+    val transcripts = state.transcripts
+    if (state.currentTranscript == null && transcripts.isEmpty()) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -401,20 +428,40 @@ private fun TranscriptSection(transcripts: List<Transcript>) {
         return
     }
 
-    val rawTranscripts = transcripts
-        .filter { it.type == TranscriptType.RAW }
-        .sortedByDescending { it.createdAt }
-        .take(1)
+    val rawTranscripts = listOfNotNull(state.currentTranscript)
     val transformedTranscripts = transcripts
         .filter { it.type != TranscriptType.RAW }
+        .filter { it.type != TranscriptType.EDITED }
         .sortedByDescending { it.createdAt }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (rawTranscripts.isNotEmpty()) {
-            Text("Transcription", style = MaterialTheme.typography.labelLarge)
-            rawTranscripts.forEach { transcript ->
-                TranscriptCard(transcript = transcript)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Transcription", style = MaterialTheme.typography.labelLarge)
+                OutlinedButton(onClick = onEditTranscript, enabled = state.currentTranscript != null) {
+                    Icon(Icons.Filled.Edit, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Edit")
+                }
             }
+            rawTranscripts.forEach { transcript ->
+                TranscriptCard(
+                    transcript = transcript,
+                    titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited transcript" else "Transcript",
+                )
+            }
+            state.originalTranscript
+                ?.takeIf { original -> state.currentTranscript?.id != original.id }
+                ?.let { original ->
+                    TranscriptCard(
+                        transcript = original,
+                        titleOverride = "Original machine transcript",
+                    )
+                }
         }
         if (transformedTranscripts.isNotEmpty()) {
             Text("Transformations", style = MaterialTheme.typography.labelLarge)
@@ -427,6 +474,14 @@ private fun TranscriptSection(transcripts: List<Transcript>) {
 
 @Composable
 private fun TranscriptCard(transcript: Transcript) {
+    TranscriptCard(transcript = transcript, titleOverride = transcript.type.name)
+}
+
+@Composable
+private fun TranscriptCard(
+    transcript: Transcript,
+    titleOverride: String,
+) {
     var expanded by remember(transcript.id) { mutableStateOf(false) }
 
     Card(
@@ -441,7 +496,7 @@ private fun TranscriptCard(transcript: Transcript) {
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = transcript.type.name,
+                    text = titleOverride,
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -470,6 +525,42 @@ private fun TranscriptCard(transcript: Transcript) {
     }
 }
 
+@Composable
+private fun EditTranscriptDialog(
+    initialValue: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var value by remember(initialValue) { mutableStateOf(initialValue) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Transcript") },
+        text = {
+            androidx.compose.material3.OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 8,
+                label = { Text("Transcript") },
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = { onSave(value) },
+                enabled = value.isNotBlank(),
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
 private fun formatDuration(durationMs: Long): String {
     val totalSeconds = durationMs / 1000
     val minutes = totalSeconds / 60
@@ -487,6 +578,8 @@ private fun formatFileSize(bytes: Long): String {
         else -> "$bytes B"
     }
 }
+
+private fun formatUsd(amount: Double): String = "$" + String.format("%.2f", amount)
 
 private val SUMMARY_TIME_FORMATTER: DateTimeFormatter =
     DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")

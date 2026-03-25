@@ -1,6 +1,8 @@
 package dev.scrybe.android.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -22,6 +24,26 @@ sealed class Screen(val route: String) {
 
 @Composable
 fun ScrybeNavHost(navController: NavHostController) {
+    val recordingCompletionViewModel: RecordingCompletionViewModel = hiltViewModel()
+
+    LaunchedEffect(recordingCompletionViewModel) {
+        recordingCompletionViewModel.events.collect { event ->
+            when (event) {
+                RecordingCompletionNavEvent.OpenHome -> {
+                    navController.navigate(Screen.Capture.route) {
+                        popUpTo(Screen.Capture.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                }
+                is RecordingCompletionNavEvent.OpenSessionReview -> {
+                    navController.navigate(Screen.SessionDetail.createRoute(event.sessionId)) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Capture.route
