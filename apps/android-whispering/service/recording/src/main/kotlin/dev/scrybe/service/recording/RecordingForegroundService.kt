@@ -1,10 +1,13 @@
 package dev.scrybe.service.recording
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
+import android.os.Build
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
@@ -159,6 +162,27 @@ class RecordingForegroundService : Service() {
             )
         )
         return sessionId
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun updateRecordingNotification(elapsedMs: Long, amplitudeRatio: Float) {
+        NotificationManagerCompat.from(this)
+            .notify(
+                RecordingNotificationFactory.NOTIFICATION_ID,
+                notificationFactory.buildNotification(
+                    context = this,
+                    elapsedMs = elapsedMs,
+                    amplitudeRatio = amplitudeRatio,
+                ),
+            )
     }
 
     private companion object {
