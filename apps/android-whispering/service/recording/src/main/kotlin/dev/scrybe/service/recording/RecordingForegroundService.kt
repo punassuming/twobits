@@ -2,8 +2,11 @@ package dev.scrybe.service.recording
 
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.audio.RecordedAudio
@@ -67,15 +70,22 @@ class RecordingForegroundService : Service() {
                 val elapsedSecond = telemetry.elapsedMs / 1000
                 if (elapsedSecond == lastNotifiedSecond) return@collectLatest
                 lastNotifiedSecond = elapsedSecond
-                NotificationManagerCompat.from(this@RecordingForegroundService)
-                    .notify(
-                        RecordingNotificationFactory.NOTIFICATION_ID,
-                        notificationFactory.buildNotification(
-                            context = this@RecordingForegroundService,
-                            elapsedMs = telemetry.elapsedMs,
-                            amplitudeRatio = telemetry.amplitudeRatio,
-                        ),
-                    )
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(
+                        this@RecordingForegroundService,
+                        android.Manifest.permission.POST_NOTIFICATIONS,
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    NotificationManagerCompat.from(this@RecordingForegroundService)
+                        .notify(
+                            RecordingNotificationFactory.NOTIFICATION_ID,
+                            notificationFactory.buildNotification(
+                                context = this@RecordingForegroundService,
+                                elapsedMs = telemetry.elapsedMs,
+                                amplitudeRatio = telemetry.amplitudeRatio,
+                            ),
+                        )
+                }
             }
         }
         serviceScope.launch {
