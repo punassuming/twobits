@@ -163,6 +163,16 @@ cd scrybe/apps/android-whispering
 ./gradlew installDebug
 ```
 
+If you are on Windows or hit Gradle wrapper lock issues locally, use the helper runner instead:
+
+```powershell
+cd apps\android-whispering
+.\scripts\gradle-local.ps1 -Command verify
+.\scripts\gradle-local.ps1 -Command recording-lint
+```
+
+The helper runner configures `JAVA_HOME`, `ANDROID_HOME`, and `GRADLE_USER_HOME`, and can retry with a fresh Gradle home when the default cache is locked.
+
 After first launch, open **Settings**, enter your OpenAI API key, and tap **Save** — the app validates the key against the OpenAI API and shows a live connection status before storing it.
 
 ### Containerized development

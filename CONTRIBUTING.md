@@ -149,6 +149,66 @@ All commands are run from `apps/android-whispering/`.
 
 > **Tip:** Append `--no-daemon` to any Gradle command when running in CI or constrained environments to avoid background daemon overhead.
 
+### PowerShell helper runner
+
+For Windows and constrained local environments, prefer the repo helper runner:
+
+```powershell
+cd apps\android-whispering
+.\scripts\gradle-local.ps1 -Command verify
+```
+
+Supported commands:
+
+| Command | What it runs |
+|---------|--------------|
+| `verify` | `assembleDebug assembleRelease lint testDebugUnitTest` |
+| `build-debug` | `assembleDebug` |
+| `build-release` | `assembleRelease` |
+| `lint` | `lint` |
+| `test` | `testDebugUnitTest` |
+| `recording-lint` | `:service:recording:lintDebug` |
+| `tasks` | Custom Gradle tasks passed through `-Task` |
+
+Useful options:
+
+| Option | Purpose |
+|--------|---------|
+| `-FreshGradleHome` | Retry with a clean `GRADLE_USER_HOME` when the normal Gradle cache is locked |
+| `-GradleHomeName some-dir` | Use a named Gradle user home under `%USERPROFILE%` |
+| `-KeepDaemon` | Leave the Gradle daemon on |
+| `-Stacktrace` | Include Gradle stacktraces |
+
+The helper runner:
+
+* resolves `JAVA_HOME` and `ANDROID_HOME`
+* sets `GRADLE_USER_HOME`
+* retries once with a fresh Gradle home when it detects wrapper lock-file failures
+
+This is the preferred entry point when `gradlew.bat` fails with messages involving `.zip.lck`, `Access is denied`, or other wrapper-lock issues.
+
+### Build troubleshooting
+
+If `gradlew.bat` fails before Gradle even starts, the usual cause is a lock or ACL issue under `GRADLE_USER_HOME`, often in:
+
+```text
+%USERPROFILE%\.gradle\wrapper\dists\gradle-8.9-bin\...\gradle-8.9-bin.zip.lck
+```
+
+Recommended order of operations:
+
+1. Re-run with:
+   ```powershell
+   .\scripts\gradle-local.ps1 -Command verify -FreshGradleHome
+   ```
+2. If only the recording service lint is failing, isolate it:
+   ```powershell
+   .\scripts\gradle-local.ps1 -Command recording-lint
+   ```
+3. If you still suspect a stuck lock, confirm no lingering `java` / `gradle` processes are using that Gradle home before deleting the lock file manually.
+
+One CI-sensitive case already handled in the codebase is Android 13+ notification permission enforcement. The foreground recording service now explicitly guards notification refreshes behind `POST_NOTIFICATIONS`, so `:service:recording:lintDebug` should stay green.
+
 ### Windows emulator workflow
 
 If you installed the toolchain with Scoop, this is the repeatable PowerShell flow to boot the emulator and run the app.

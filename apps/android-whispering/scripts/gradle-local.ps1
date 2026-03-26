@@ -86,6 +86,17 @@ function Set-AndroidEnvironment {
     $env:PATH = (($prepend + $existingPath) | Where-Object { $_ } | Select-Object -Unique) -join ';'
 }
 
+function Resolve-DirectGradleCommand {
+    $gradleBat = Get-ChildItem -Path (Join-Path $HOME ".gradle\wrapper\dists\gradle-8.9-bin") -Recurse -Filter "gradle.bat" -ErrorAction SilentlyContinue |
+        Select-Object -First 1 -ExpandProperty FullName
+
+    if ($gradleBat) {
+        return $gradleBat
+    }
+
+    return $null
+}
+
 function Invoke-Gradle {
     param(
         [string]$GradleUserHome,
@@ -94,11 +105,20 @@ function Invoke-Gradle {
         [switch]$IncludeStacktrace
     )
 
-    New-Item -ItemType Directory -Force $GradleUserHome | Out-Null
+    try {
+        New-Item -ItemType Directory -Force $GradleUserHome | Out-Null
+    } catch {
+        $fallbackGradleHome = Join-Path $projectRoot ".gradle-user-home-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+        Write-Warning "Unable to create GRADLE_USER_HOME '$GradleUserHome'. Falling back to '$fallbackGradleHome'."
+        New-Item -ItemType Directory -Force $fallbackGradleHome | Out-Null
+        $GradleUserHome = $fallbackGradleHome
+    }
+
     $env:GRADLE_USER_HOME = $GradleUserHome
 
     $arguments = @()
     $arguments += $GradleTasks
+    $arguments += "--console=plain"
 
     if ($DisableDaemon) {
         $arguments += "--no-daemon"
@@ -114,16 +134,45 @@ function Invoke-Gradle {
     Write-Host "GRADLE_USER_HOME: $GradleUserHome"
     Write-Host "Gradle tasks: $($GradleTasks -join ' ')"
 
-    Push-Location $projectRoot
-    try {
-        $output = & $gradlew @arguments 2>&1
-        $exitCode = $LASTEXITCODE
-    } finally {
-        Pop-Location
+    function Invoke-RunnerStreaming {
+        param(
+            [string]$RunnerPath,
+            [string[]]$RunnerArguments
+        )
+
+        $outputLines = New-Object System.Collections.Generic.List[string]
+        & $RunnerPath @RunnerArguments 2>&1 | ForEach-Object {
+            $line = "$_"
+            Write-Host $line
+            $outputLines.Add($line)
+        }
+
+        return [pscustomobject]@{
+            ExitCode = $LASTEXITCODE
+            Output   = ($outputLines -join [Environment]::NewLine)
+        }
     }
 
-    foreach ($line in $output) {
-        Write-Host $line
+    $runner = $gradlew
+    Push-Location $projectRoot
+    try {
+        $result = Invoke-RunnerStreaming -RunnerPath $runner -RunnerArguments $arguments
+        $exitCode = $result.ExitCode
+        $output = $result.Output
+
+        $bootstrapErrorPattern = "Access is denied|lock file|\.zip\.lck|Could not unzip|NoSuchFileException|gradle-8\.9-bin\.zip"
+        if ($exitCode -ne 0 -and $output -match $bootstrapErrorPattern) {
+            $directGradle = Resolve-DirectGradleCommand
+            if ($directGradle) {
+                Write-Warning "Gradle wrapper bootstrap failed. Retrying with direct Gradle: $directGradle"
+                $runner = $directGradle
+                $result = Invoke-RunnerStreaming -RunnerPath $runner -RunnerArguments $arguments
+                $exitCode = $result.ExitCode
+                $output = $result.Output
+            }
+        }
+    } finally {
+        Pop-Location
     }
 
     return [pscustomobject]@{

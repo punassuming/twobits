@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -507,6 +506,7 @@ private fun TranscriptSection(
             transformedTranscripts.forEach { transcript ->
                 TranscriptCard(
                     transcript = transcript,
+                    titleOverride = transcript.type.name,
                     onDelete = { onDeleteTranscript(transcript) },
                 )
             }
