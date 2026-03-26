@@ -47,7 +47,7 @@ jobs:
 
       - name: Install Android SDK packages
         if: steps.tag.outputs.new_tag != ''
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "build-tools;34.0.0"
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Grant execute permission for gradlew
         if: steps.tag.outputs.new_tag != ''
@@ -108,6 +108,34 @@ jobs:
           STORE_PASS: ${{ secrets.STORE_PASSWORD }}
           KEY_ALIAS_VAL: ${{ secrets.KEY_ALIAS }}
           KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+
+      # Fail fast on bad keystore secrets instead of spending several minutes
+      # compiling before APK packaging hits the signing error.
+      - name: Validate release signing inputs
+        if: steps.tag.outputs.new_tag != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          keytool -list \
+            -keystore "$KEYSTORE_PATH" \
+            -storepass "$STORE_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            >/dev/null
+
+          keytool -importkeystore \
+            -srckeystore "$KEYSTORE_PATH" \
+            -srcstorepass "$STORE_PASSWORD" \
+            -srcalias "$KEY_ALIAS" \
+            -srckeypass "$KEY_PASSWORD" \
+            -destkeystore "${{ runner.temp }}/keystore-validation.p12" \
+            -deststoretype PKCS12 \
+            -deststorepass validate_pass \
+            -destkeypass validate_pass \
+            -noprompt \
+            >/dev/null
+
+          rm -f "${{ runner.temp }}/keystore-validation.p12"
 
       - name: Build release APK
         if: steps.tag.outputs.new_tag != ''
