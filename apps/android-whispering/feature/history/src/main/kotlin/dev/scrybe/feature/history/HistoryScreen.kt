@@ -28,8 +28,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -114,28 +114,32 @@ fun HistoryScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             if (!isSelecting) {
-            FloatingActionButton(
-                onClick = {
-                    if (isRecording) {
-                        deleteTarget = null
-                    } else {
-                        val granted = requiredPermissions.all {
-                            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                        }
-                        if (granted) {
-                            context.startForegroundService(
-                                Intent(context, RecordingForegroundService::class.java).apply {
-                                    action = RecordingServiceActions.ACTION_START
-                                }
-                            )
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        if (isRecording) {
+                            deleteTarget = null
                         } else {
-                            permissionLauncher.launch(requiredPermissions.toTypedArray())
+                            val granted = requiredPermissions.all {
+                                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                            }
+                            if (granted) {
+                                context.startForegroundService(
+                                    Intent(context, RecordingForegroundService::class.java).apply {
+                                        action = RecordingServiceActions.ACTION_START
+                                    }
+                                )
+                            } else {
+                                permissionLauncher.launch(requiredPermissions.toTypedArray())
+                            }
                         }
-                    }
-                },
-            ) {
-                Icon(Icons.Filled.Mic, contentDescription = "Record again")
-            }
+                    },
+                    text = {
+                        Text(if (isRecording) "Recording…" else "Record Again")
+                    },
+                    icon = {
+                        Icon(Icons.Filled.Mic, contentDescription = "Record again")
+                    },
+                )
             }
         },
         topBar = {

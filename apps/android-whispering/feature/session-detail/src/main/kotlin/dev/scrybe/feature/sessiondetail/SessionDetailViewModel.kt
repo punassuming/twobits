@@ -13,6 +13,7 @@ import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TransformProfileDao
+import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TranscriptEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
@@ -47,6 +48,7 @@ class SessionDetailViewModel @Inject constructor(
     private val sessionDao: RecordingSessionDao,
     private val transcriptDao: TranscriptDao,
     private val transformProfileDao: TransformProfileDao,
+    private val transformRunDao: TransformRunDao,
     private val preferencesDataStore: AppPreferencesDataStore,
     private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
     private val sessionTransformCoordinator: SessionTransformCoordinator,
@@ -289,6 +291,10 @@ class SessionDetailViewModel @Inject constructor(
         audioPlayer.seekTo(positionMs)
     }
 
+    fun stopPlayback() {
+        audioPlayer.stop()
+    }
+
     fun renameSession(newTitle: String) {
         val trimmed = newTitle.trim()
         if (trimmed.isBlank()) return
@@ -338,6 +344,58 @@ class SessionDetailViewModel @Inject constructor(
                 )
             )
             _events.emit(SessionDetailEvent.Message("Transcript saved"))
+        }
+    }
+
+    fun deleteTranscript(transcriptId: String) {
+        viewModelScope.launch {
+            val transcript = transcriptDao.getTranscriptById(transcriptId) ?: return@launch
+            val allTranscripts = transcriptDao.getTranscriptsForSession(sessionId).first()
+            when (TranscriptType.valueOf(transcript.type)) {
+                TranscriptType.RAW -> {
+                    allTranscripts.forEach { item ->
+                        item.transformRunId?.let { transformRunDao.deleteRun(it) }
+                    }
+                    transformRunDao.deleteRunsForSession(sessionId)
+                    transcriptDao.deleteTranscriptsForSession(sessionId)
+                }
+                TranscriptType.EDITED -> {
+                    val dependentTransforms = allTranscripts.filter { item ->
+                        item.type == TranscriptType.TRANSFORMED.name && item.sourceTranscriptId == transcript.id
+                    }
+                    dependentTransforms.forEach { item ->
+                        transcriptDao.deleteTranscript(item.id)
+                        item.transformRunId?.let { transformRunDao.deleteRun(it) }
+                    }
+                    transcriptDao.deleteTranscript(transcriptId)
+                }
+                TranscriptType.TRANSFORMED -> {
+                    transcriptDao.deleteTranscript(transcriptId)
+                    transcript.transformRunId?.let { transformRunDao.deleteRun(it) }
+                }
+            }
+
+            val remaining = transcriptDao.getTranscriptsForSession(sessionId).first()
+            val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+            val nextStatus = when {
+                remaining.any { it.type == TranscriptType.EDITED.name } -> SessionStatus.EDITED
+                remaining.any { it.type == TranscriptType.RAW.name } -> SessionStatus.TRANSCRIBED
+                session.status == SessionStatus.FAILED.name -> SessionStatus.FAILED
+                else -> SessionStatus.RECORDED
+            }
+            sessionDao.updateSession(
+                session.copy(
+                    status = nextStatus.name,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+
+            val message = when (TranscriptType.valueOf(transcript.type)) {
+                TranscriptType.TRANSFORMED -> "Transformation deleted"
+                TranscriptType.EDITED -> "Edited transcript deleted"
+                TranscriptType.RAW -> "Transcript deleted"
+            }
+            _events.emit(SessionDetailEvent.Message(message))
         }
     }
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.9 (2026-03-25)
+
+### Fixes
+
+* centralize live recording notification refreshes behind a dedicated helper so Android 13+ permission checks stay lint-clean and safe at runtime
+* keep elapsed-time and input-level notification updates working when notification permission is available without tripping `MissingPermission` warnings
+
+## 0.0.8 (2026-03-25)
+
+### Fixes
+
+* add an Android 13+ `POST_NOTIFICATIONS` runtime permission check before refreshing the foreground recording notification
+* prevent recording notification updates from failing lint or unsafe notification calls on devices that have not granted notification permission
+
+## 0.0.7 (2026-03-24)
+
+### Features
+
+* expand the home recording flow with a reactive waveform, richer active-recording visuals, and a recent records section directly on the capture screen
+* add smarter post-recording navigation so Scrybe can return home or jump straight into session review after a recording is saved
+* upgrade the records screen with re-recording, multi-select actions, swipe shortcuts, archiving, restore, and one-tap default transforms
+* allow transcript editing from session review while preserving the original machine transcript for comparison
+
+### Improvements
+
+* enrich the foreground recording notification with live elapsed time and simple input-level feedback
+* surface session status, archive state, transcript previews, and clearer metadata across the records list and session detail screens
+* add estimated transcription cost visibility in session detail and aggregate transcription spend reporting in Settings
+
 ## 0.0.6 (2026-03-23)
 
 ### Features

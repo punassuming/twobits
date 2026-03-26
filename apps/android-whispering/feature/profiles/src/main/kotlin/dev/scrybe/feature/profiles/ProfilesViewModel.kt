@@ -9,8 +9,12 @@ import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.TransformProfile
+import dev.scrybe.core.transforms.OpenAiProfileSuggestionService
+import dev.scrybe.core.transforms.ProfileSuggestion
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -24,10 +28,18 @@ sealed interface ProfilesUiState {
     data class Error(val message: String) : ProfilesUiState
 }
 
+sealed interface ProfileSuggestionUiState {
+    data object Idle : ProfileSuggestionUiState
+    data object Loading : ProfileSuggestionUiState
+    data class Success(val suggestion: ProfileSuggestion) : ProfileSuggestionUiState
+    data class Error(val message: String) : ProfileSuggestionUiState
+}
+
 @HiltViewModel
 class ProfilesViewModel @Inject constructor(
     private val transformProfileDao: TransformProfileDao,
     private val preferencesDataStore: AppPreferencesDataStore,
+    private val profileSuggestionService: OpenAiProfileSuggestionService,
 ) : ViewModel() {
 
     val uiState: StateFlow<ProfilesUiState> = transformProfileDao.getAllProfiles()
@@ -41,6 +53,9 @@ class ProfilesViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = ProfilesUiState.Loading,
         )
+
+    private val _suggestionState = MutableStateFlow<ProfileSuggestionUiState>(ProfileSuggestionUiState.Idle)
+    val suggestionState: StateFlow<ProfileSuggestionUiState> = _suggestionState.asStateFlow()
 
     fun saveProfile(
         existingId: String?,
@@ -90,6 +105,36 @@ class ProfilesViewModel @Inject constructor(
             transformProfileDao.setDefaultProfile(profileId)
             preferencesDataStore.setDefaultTransformProfileId(profileId)
         }
+    }
+
+    fun suggestProfile(
+        userRequest: String,
+        currentName: String,
+        currentDescription: String,
+        currentSteps: List<String>,
+    ) {
+        viewModelScope.launch {
+            _suggestionState.value = ProfileSuggestionUiState.Loading
+            profileSuggestionService.suggestProfile(
+                userRequest = userRequest,
+                existingName = currentName,
+                existingDescription = currentDescription,
+                existingSteps = currentSteps,
+            ).fold(
+                onSuccess = {
+                    _suggestionState.value = ProfileSuggestionUiState.Success(it)
+                },
+                onFailure = {
+                    _suggestionState.value = ProfileSuggestionUiState.Error(
+                        it.message ?: "Failed to suggest a profile",
+                    )
+                },
+            )
+        }
+    }
+
+    fun clearSuggestionState() {
+        _suggestionState.value = ProfileSuggestionUiState.Idle
     }
 
     private fun toModel(entity: TransformProfileEntity): TransformProfile = TransformProfile(

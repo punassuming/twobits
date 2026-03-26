@@ -7,9 +7,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -30,6 +38,8 @@ import androidx.compose.ui.unit.dp
 internal fun PlaybackCard(
     state: SessionDetailUiState.Success,
     onSeek: (Long) -> Unit,
+    onTogglePlayback: () -> Unit,
+    onStopPlayback: () -> Unit,
 ) {
     var sliderPosition by remember(state.session.id, state.playbackPositionMs, state.playbackDurationMs) {
         mutableFloatStateOf(state.playbackPositionMs.toFloat())
@@ -41,7 +51,7 @@ internal fun PlaybackCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = "Playback",
@@ -56,16 +66,40 @@ internal fun PlaybackCard(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(84.dp),
+                    .height(72.dp),
             )
-            Slider(
-                value = sliderPosition,
-                onValueChange = { sliderPosition = it },
-                valueRange = 0f..state.playbackDurationMs.coerceAtLeast(1L).toFloat(),
-                onValueChangeFinished = {
-                    onSeek(sliderPosition.toLong())
-                },
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onTogglePlayback) {
+                    Icon(
+                        imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                IconButton(
+                    onClick = onStopPlayback,
+                    enabled = state.isPlaying || state.playbackPositionMs > 0L,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Stop,
+                        contentDescription = "Stop",
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Slider(
+                    modifier = Modifier.weight(1f),
+                    value = sliderPosition,
+                    onValueChange = { sliderPosition = it },
+                    valueRange = 0f..state.playbackDurationMs.coerceAtLeast(1L).toFloat(),
+                    onValueChangeFinished = {
+                        onSeek(sliderPosition.toLong())
+                    },
+                )
+            }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     text = formatPlaybackTime(state.playbackPositionMs),

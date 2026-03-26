@@ -17,6 +17,9 @@ interface TransformRunDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRun(run: TransformRunEntity)
 
+    @Query("DELETE FROM transform_runs WHERE id = :id")
+    suspend fun deleteRun(id: String)
+
     @Query("DELETE FROM transform_runs WHERE sessionId = :sessionId")
     suspend fun deleteRunsForSession(sessionId: String)
 }

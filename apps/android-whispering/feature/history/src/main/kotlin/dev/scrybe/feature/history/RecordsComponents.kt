@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -47,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,6 +59,7 @@ import dev.scrybe.core.model.SessionStatus
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -109,7 +113,7 @@ internal fun RecordRow(
             color = if (selected) {
                 MaterialTheme.colorScheme.secondaryContainer
             } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
+                recordContainerColor(item.session.status, item.session.isArchived)
             },
             shape = RoundedCornerShape(20.dp),
         ) {
@@ -296,6 +300,11 @@ private fun SwipeBackground(
         SwipeToDismissBoxValue.EndToStart -> if (isArchived) "Restore" else "Archive"
         null, SwipeToDismissBoxValue.Settled -> ""
     }
+    val icon = when (dismissDirection) {
+        SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.AutoFixHigh
+        SwipeToDismissBoxValue.EndToStart -> if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive
+        null, SwipeToDismissBoxValue.Settled -> null
+    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = color,
@@ -308,7 +317,25 @@ private fun SwipeBackground(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(label, style = MaterialTheme.typography.labelLarge)
+            if (dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    icon?.let { Icon(it, contentDescription = null) }
+                    Text(label, style = MaterialTheme.typography.labelLarge)
+                }
+                Spacer(Modifier.weight(1f))
+            } else {
+                Spacer(Modifier.weight(1f))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(label, style = MaterialTheme.typography.labelLarge)
+                    icon?.let { Icon(it, contentDescription = null) }
+                }
+            }
         }
     }
 }
@@ -331,11 +358,21 @@ private fun statusColor(status: SessionStatus, isArchived: Boolean) = when {
 }
 
 @Composable
+private fun recordContainerColor(status: SessionStatus, isArchived: Boolean): Color = when {
+    isArchived -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f)
+    status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+    status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED ->
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+    status == SessionStatus.FAILED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+    else -> MaterialTheme.colorScheme.surfaceContainerHigh
+}
+
+@Composable
 internal fun WaveformBackdrop(
     samples: List<Float>,
     modifier: Modifier = Modifier,
 ) {
-    val bars = if (samples.isEmpty()) List(32) { 0f } else samples.takeLast(56)
+    val bars = normalizeBackdropSamples(samples, targetCount = 84)
     val color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
     Canvas(modifier = modifier) {
@@ -347,11 +384,11 @@ internal fun WaveformBackdrop(
             strokeWidth = 1.5.dp.toPx(),
             cap = StrokeCap.Round,
         )
-        val barWidth = size.width / (bars.size * 1.5f)
-        val spacing = barWidth / 2f
+        val barWidth = (size.width / (bars.size * 2.8f)).coerceAtLeast(1.dp.toPx())
+        val spacing = (size.width - (barWidth * bars.size)) / bars.size.coerceAtLeast(1)
         bars.forEachIndexed { index, sample ->
             val shapedAmplitude = subtleWaveformAmplitude(sample)
-            val lineHeight = (size.height * 0.48f) * shapedAmplitude
+            val lineHeight = (size.height * 0.28f) * shapedAmplitude
             val x = (index * (barWidth + spacing)) + (barWidth / 2f)
             val startY = baselineY - lineHeight
             drawLine(
@@ -367,7 +404,22 @@ internal fun WaveformBackdrop(
 
 private fun subtleWaveformAmplitude(sample: Float): Float {
     val gated = if (sample < 0.025f) 0f else sample
-    return (0.01f + (gated * 0.82f)).coerceIn(0.01f, 0.83f)
+    return (0.002f + (gated * 0.55f)).coerceIn(0.002f, 0.6f)
+}
+
+private fun normalizeBackdropSamples(samples: List<Float>, targetCount: Int): List<Float> {
+    if (targetCount <= 0) return emptyList()
+    if (samples.isEmpty()) return List(targetCount) { 0f }
+    if (samples.size == 1) return List(targetCount) { samples.first() }
+
+    val normalized = MutableList(targetCount) { 0f }
+    samples.forEachIndexed { index, sample ->
+        val bucket = ((index.toFloat() / samples.lastIndex.coerceAtLeast(1)) * (targetCount - 1))
+            .roundToInt()
+            .coerceIn(0, targetCount - 1)
+        normalized[bucket] = maxOf(normalized[bucket], sample)
+    }
+    return normalized
 }
 
 @Composable

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -37,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +58,7 @@ fun ProfilesScreen(
     viewModel: ProfilesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val suggestionState by viewModel.suggestionState.collectAsState()
     var editorProfile by remember { mutableStateOf<TransformProfile?>(null) }
     var isCreating by remember { mutableStateOf(false) }
 
@@ -129,14 +132,19 @@ fun ProfilesScreen(
         ProfileEditorDialog(
             profile = editorProfile,
             onDismiss = {
+                viewModel.clearSuggestionState()
                 editorProfile = null
                 isCreating = false
             },
             onSave = { id, name, description, steps, isDefault ->
                 viewModel.saveProfile(id, name, description, steps, isDefault)
+                viewModel.clearSuggestionState()
                 editorProfile = null
                 isCreating = false
             },
+            suggestionState = suggestionState,
+            onSuggestionConsumed = viewModel::clearSuggestionState,
+            onSuggest = viewModel::suggestProfile,
         )
     }
 }
@@ -254,6 +262,9 @@ private fun ProfileEditorDialog(
     profile: TransformProfile?,
     onDismiss: () -> Unit,
     onSave: (String?, String, String, List<String>, Boolean) -> Unit,
+    suggestionState: ProfileSuggestionUiState,
+    onSuggestionConsumed: () -> Unit,
+    onSuggest: (String, String, String, List<String>) -> Unit,
 ) {
     var name by remember(profile) { mutableStateOf(profile?.name.orEmpty()) }
     var description by remember(profile) { mutableStateOf(profile?.description.orEmpty()) }
@@ -261,6 +272,15 @@ private fun ProfileEditorDialog(
         mutableStateOf(profile?.steps?.ifEmpty { listOf("") } ?: listOf(""))
     }
     var isDefault by remember(profile) { mutableStateOf(profile?.isDefault == true) }
+    var assistantRequest by remember(profile) { mutableStateOf(profile?.description.orEmpty()) }
+
+    LaunchedEffect(suggestionState) {
+        val success = suggestionState as? ProfileSuggestionUiState.Success ?: return@LaunchedEffect
+        name = success.suggestion.name
+        description = success.suggestion.description
+        steps = success.suggestion.steps
+        onSuggestionConsumed()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -283,6 +303,49 @@ private fun ProfileEditorDialog(
                     label = { Text("Description") },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedTextField(
+                    value = assistantRequest,
+                    onValueChange = { assistantRequest = it },
+                    label = { Text("Ask AI to suggest a profile") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    supportingText = {
+                        Text(
+                            "Describe the output you want. Scrybe can transcribe audio and run 1-3 prompt steps using {{transcript}} plus {{current_text}} or {{prior_output}}."
+                        )
+                    },
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = {
+                            onSuggest(
+                                assistantRequest,
+                                name,
+                                description,
+                                steps,
+                            )
+                        },
+                        enabled = suggestionState !is ProfileSuggestionUiState.Loading,
+                    ) {
+                        Text(
+                            if (suggestionState is ProfileSuggestionUiState.Loading) {
+                                "Suggesting..."
+                            } else {
+                                "Suggest With AI"
+                            }
+                        )
+                    }
+                }
+                if (suggestionState is ProfileSuggestionUiState.Error) {
+                    Text(
+                        text = suggestionState.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 steps.forEachIndexed { index, step ->
                     OutlinedTextField(
                         value = step,

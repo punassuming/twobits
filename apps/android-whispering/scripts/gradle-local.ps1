@@ -146,15 +146,19 @@ $androidHome = Resolve-FirstExistingDirectory -Candidates @(
 
 $gradleTasks = Get-GradleTasks -SelectedCommand $Command -CustomTasks $Task
 
-$defaultGradleHomeName = if ($FreshGradleHome) {
-    ".gradle-user-home-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$defaultGradleHomePath = if ($FreshGradleHome) {
+    Join-Path $HOME ".gradle-user-home-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 } elseif (-not [string]::IsNullOrWhiteSpace($GradleHomeName)) {
-    $GradleHomeName
+    if ([System.IO.Path]::IsPathRooted($GradleHomeName)) {
+        $GradleHomeName
+    } else {
+        Join-Path $HOME $GradleHomeName
+    }
 } else {
-    ".gradle-user-home"
+    Join-Path $HOME ".gradle"
 }
 
-$gradleUserHome = Join-Path $projectRoot $defaultGradleHomeName
+$gradleUserHome = $defaultGradleHomePath
 
 Set-AndroidEnvironment -JavaHome $javaHome -AndroidHome $androidHome -GradleUserHome $gradleUserHome
 
@@ -178,7 +182,7 @@ if ($result.ExitCode -ne 0 -and
     $result.Output -match $lockErrorPattern -and
     -not $FreshGradleHome -and
     [string]::IsNullOrWhiteSpace($GradleHomeName)) {
-    $retryHome = Join-Path $projectRoot ".gradle-user-home-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    $retryHome = Join-Path $HOME ".gradle-user-home-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
     Write-Warning "Gradle hit a lock-file issue under '$gradleUserHome'. Retrying once with '$retryHome'."
 
     Set-AndroidEnvironment -JavaHome $javaHome -AndroidHome $androidHome -GradleUserHome $retryHome

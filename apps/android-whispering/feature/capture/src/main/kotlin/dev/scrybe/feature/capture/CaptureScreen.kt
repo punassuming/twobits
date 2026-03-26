@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -48,6 +49,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -130,89 +132,109 @@ fun CaptureScreen(
             textAlign = TextAlign.Center,
         )
         HomeCard {
-            AnimatedContent(
-                targetState = uiState.phase,
-                transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
-                label = "capture-phase",
-            ) { phase ->
-                when (phase) {
-                    CapturePhase.IDLE -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            if (!hasRequiredPermissions) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 112.dp),
+                color = Color.Transparent,
+            ) {
+                AnimatedContent(
+                    targetState = uiState.phase,
+                    transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
+                    label = "capture-phase",
+                ) { phase ->
+                    when (phase) {
+                        CapturePhase.IDLE -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
                                 Text(
-                                    text = "Microphone permission is required before you can record.",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    text = "Ready to capture",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    textAlign = TextAlign.Center,
                                 )
-                                Spacer(Modifier.height(16.dp))
-                            }
-                            RecordActionButton(
-                                onClick = {
-                                    if (hasRequiredPermissions) {
-                                        viewModel.startRecording()
+                                Text(
+                                    text = if (hasRequiredPermissions) {
+                                        "Tap record to start a new capture with transcription and reusable AI transforms."
                                     } else {
-                                        permissionLauncher.launch(requiredPermissions.toTypedArray())
-                                    }
-                                },
-                                label = "Start Recording",
-                                ringColor = MaterialTheme.colorScheme.primary,
-                                centerColor = MaterialTheme.colorScheme.error,
-                                supportingText = "Fast capture with background recording, transcription, and reusable AI transforms.",
-                            )
+                                        "Microphone permission is required before you can record."
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
                         }
-                    }
-                    CapturePhase.RECORDING -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = "Recording\u2026 ${formatElapsedTime(uiState.elapsedMs)}",
-                                style = MaterialTheme.typography.headlineSmall,
-                            )
-                            Text(
-                                text = "The waveform below should react to your voice while audio is being captured.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                            )
-                            Spacer(Modifier.height(12.dp))
-                            AmplitudeVisualizer(
-                                amplitudes = uiState.amplitudeHistory,
-                                currentAmplitudeRatio = uiState.currentAmplitudeRatio,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(120.dp),
-                            )
-                            Spacer(Modifier.height(16.dp))
-                            RecordActionButton(
-                                onClick = { viewModel.stopRecording() },
-                                label = "Stop Recording",
-                                ringColor = MaterialTheme.colorScheme.tertiary,
-                                centerColor = MaterialTheme.colorScheme.primary,
-                                isActive = true,
-                                amplitudeRatio = uiState.currentAmplitudeRatio,
-                                supportingText = "Recording stays active if you leave this screen. You can stop from the notification or come back here.",
-                            )
+                        CapturePhase.RECORDING -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = "Recording\u2026 ${formatElapsedTime(uiState.elapsedMs)}",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Text(
+                                    text = "The timeline stays open while audio builds in. Stop here or from the notification when you’re done.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
                         }
-                    }
-                    CapturePhase.STOPPING -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(text = "Stopping\u2026", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                text = "We’re saving the recording and opening the review screen next.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center,
-                            )
+                        CapturePhase.STOPPING -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(text = "Stopping\u2026", style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    text = "We’re saving the recording and handing off to your selected post-stop destination.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
                         }
                     }
                 }
             }
+            RecordActionButton(
+                onClick = {
+                    when (uiState.phase) {
+                        CapturePhase.IDLE -> {
+                            if (hasRequiredPermissions) {
+                                viewModel.startRecording()
+                            } else {
+                                permissionLauncher.launch(requiredPermissions.toTypedArray())
+                            }
+                        }
+                        CapturePhase.RECORDING -> viewModel.stopRecording()
+                        CapturePhase.STOPPING -> Unit
+                    }
+                },
+                ringColor = if (uiState.phase == CapturePhase.RECORDING) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                centerColor = if (uiState.phase == CapturePhase.RECORDING) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+                isActive = uiState.phase == CapturePhase.RECORDING,
+                amplitudeRatio = uiState.currentAmplitudeRatio,
+                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+            )
+            AmplitudeVisualizer(
+                amplitudes = uiState.amplitudeHistory,
+                currentAmplitudeRatio = uiState.currentAmplitudeRatio,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+            )
         }
         QuickActionRow(
             onNavigateToHistory = onNavigateToHistory,
@@ -406,16 +428,15 @@ private fun QuickActionCard(
 @Composable
 private fun RecordActionButton(
     onClick: () -> Unit,
-    label: String,
     ringColor: Color,
     centerColor: Color,
     isActive: Boolean = false,
     amplitudeRatio: Float = 0f,
-    supportingText: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "record-action")
     val audioReactiveScale by animateFloatAsState(
-        targetValue = 1f + (amplitudeRatio.coerceIn(0f, 1f) * if (isActive) 0.18f else 0.04f),
+        targetValue = 1f + (amplitudeRatio.coerceIn(0f, 1f) * if (isActive) 0.12f else 0.03f),
         animationSpec = tween(durationMillis = 140),
         label = "record-audio-reactive-scale",
     )
@@ -432,26 +453,26 @@ private fun RecordActionButton(
         label = "record-action-scale",
     )
     val outerRingScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = if (isActive) 1.08f else 1.045f,
+        initialValue = 0.97f,
+        targetValue = if (isActive) 1.03f else 1.02f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (isActive) 1000 else 1720, easing = LinearEasing),
+            animation = tween(durationMillis = if (isActive) 920 else 1720, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "record-outer-ring",
     )
     val middleRingScale by infiniteTransition.animateFloat(
-        initialValue = 0.98f,
-        targetValue = if (isActive) 1.05f else 1.03f,
+        initialValue = 0.99f,
+        targetValue = if (isActive) 1.02f else 1.015f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (isActive) 1320 else 1460, easing = LinearEasing),
+            animation = tween(durationMillis = if (isActive) 1080 else 1460, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "record-middle-ring",
     )
     val innerRingScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isActive) 1.035f else 1.02f,
+        targetValue = if (isActive) 1.015f else 1.01f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = if (isActive) 820 else 1240, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
@@ -467,21 +488,20 @@ private fun RecordActionButton(
         label = "record-wave-phase",
     )
     val waveStrength = when {
-        amplitudeRatio > 0f -> 0.008f + (amplitudeRatio.coerceIn(0f, 1f) * 0.028f)
-        isActive -> 0.012f
+        amplitudeRatio > 0f -> 0.004f + (amplitudeRatio.coerceIn(0f, 1f) * 0.02f)
+        isActive -> 0.008f
         else -> 0f
     }
 
-    Column(
-        modifier = Modifier
+    Box(
+        modifier = modifier
             .fillMaxWidth()
             .widthIn(max = 760.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .size(220.dp)
+                .size(198.dp)
                 .graphicsLayer {
                     val combinedScale = pulseScale * audioReactiveScale
                     scaleX = combinedScale
@@ -490,29 +510,29 @@ private fun RecordActionButton(
             contentAlignment = Alignment.Center,
         ) {
             RingLayer(
-                diameter = 220.dp,
+                diameter = 192.dp,
                 color = ringColor.copy(alpha = 0.10f),
                 scale = outerRingScale,
                 wavePhase = wavePhase,
-                waveStrength = waveStrength * 0.8f,
+                waveStrength = waveStrength * 0.75f,
             )
             RingLayer(
-                diameter = 180.dp,
+                diameter = 164.dp,
                 color = ringColor.copy(alpha = 0.16f),
                 scale = middleRingScale,
                 wavePhase = wavePhase + 0.8f,
                 waveStrength = waveStrength,
             )
             RingLayer(
-                diameter = 144.dp,
-                color = ringColor.copy(alpha = 0.24f),
+                diameter = 138.dp,
+                color = ringColor.copy(alpha = 0.22f),
                 scale = innerRingScale,
                 wavePhase = wavePhase + 1.6f,
                 waveStrength = waveStrength * 1.15f,
             )
             Button(
                 onClick = onClick,
-                modifier = Modifier.size(116.dp),
+                modifier = Modifier.size(112.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = centerColor),
             ) {
@@ -522,21 +542,6 @@ private fun RecordActionButton(
                     modifier = Modifier.size(38.dp),
                 )
             }
-        }
-        Text(
-            text = label,
-            modifier = Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center,
-        )
-        supportingText?.let { text ->
-            Text(
-                text = text,
-                modifier = Modifier.widthIn(max = 420.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }
@@ -600,11 +605,7 @@ private fun AmplitudeVisualizer(
     currentAmplitudeRatio: Float,
     modifier: Modifier = Modifier,
 ) {
-    val displayValues = if (amplitudes.isEmpty()) {
-        List(28) { 0f }
-    } else {
-        amplitudes.takeLast(28)
-    }
+    val displayValues = paddedAmplitudeValues(amplitudes, targetCount = 52)
     val barColor = MaterialTheme.colorScheme.primary
     val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val accentColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.85f)
@@ -618,8 +619,8 @@ private fun AmplitudeVisualizer(
             cap = StrokeCap.Round,
         )
 
-        val barWidth = size.width / max(displayValues.size * 2, 1)
-        val spacing = barWidth * 0.92f
+        val barWidth = (size.width / max(displayValues.size * 3, 1)).coerceAtLeast(1.dp.toPx())
+        val spacing = (size.width - (barWidth * displayValues.size)) / displayValues.size.coerceAtLeast(1)
         val ceilingPadding = size.height * 0.12f
         val activeIndex = displayValues.lastIndex
         displayValues.forEachIndexed { index, amplitude ->
@@ -645,7 +646,16 @@ private fun AmplitudeVisualizer(
 
 private fun visualAmplitude(value: Float): Float {
     val gated = if (value < 0.02f) 0f else value
-    return (0.02f + (gated * 0.98f)).coerceIn(0.02f, 1f)
+    return (0.002f + (gated * 0.9f)).coerceIn(0.002f, 1f)
+}
+
+private fun paddedAmplitudeValues(values: List<Float>, targetCount: Int): List<Float> {
+    if (targetCount <= 0) return emptyList()
+    if (values.isEmpty()) return List(targetCount) { 0f }
+    return List(targetCount) { index ->
+        val sourceIndex = index - (targetCount - values.size)
+        if (sourceIndex in values.indices) values[sourceIndex] else 0f
+    }
 }
 
 private fun formatElapsedTime(elapsedMs: Long): String {

@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
@@ -25,8 +27,7 @@ import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,6 +75,7 @@ fun SessionDetailScreen(
     val context = LocalContext.current
     var actionMenuExpanded by remember { mutableStateOf(false) }
     var isEditingTranscript by remember { mutableStateOf(false) }
+    var deleteTranscriptTarget by remember { mutableStateOf<Transcript?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -132,12 +134,6 @@ fun SessionDetailScreen(
                             Icon(
                                 Icons.Filled.GraphicEq,
                                 contentDescription = if (successState.isTranscribing) "Transcribing" else "Transcribe recording",
-                            )
-                        }
-                        IconButton(onClick = viewModel::togglePlayback) {
-                            Icon(
-                                imageVector = if (successState.isPlaying) Icons.Filled.Stop else Icons.Filled.PlayArrow,
-                                contentDescription = if (successState.isPlaying) "Pause playback" else "Play recording",
                             )
                         }
                         Box {
@@ -212,15 +208,18 @@ fun SessionDetailScreen(
                     PlaybackCard(
                         state = state,
                         onSeek = viewModel::seekPlayback,
+                        onTogglePlayback = viewModel::togglePlayback,
+                        onStopPlayback = viewModel::stopPlayback,
+                    )
+                    TranscriptSection(
+                        state = state,
+                        onEditTranscript = { isEditingTranscript = true },
+                        onDeleteTranscript = { deleteTranscriptTarget = it },
                     )
                     TransformSection(
                         state = state,
                         onTransformDefault = viewModel::transformDefaultProfile,
                         onTransformProfile = viewModel::transform,
-                    )
-                    TranscriptSection(
-                        state = state,
-                        onEditTranscript = { isEditingTranscript = true },
                     )
                 }
             }
@@ -243,6 +242,45 @@ fun SessionDetailScreen(
             onSave = {
                 viewModel.saveTranscriptEdit(it)
                 isEditingTranscript = false
+            },
+        )
+    }
+
+    deleteTranscriptTarget?.let { transcript ->
+        AlertDialog(
+            onDismissRequest = { deleteTranscriptTarget = null },
+            title = {
+                Text(
+                    when (transcript.type) {
+                        TranscriptType.TRANSFORMED -> "Delete Transformation"
+                        TranscriptType.EDITED -> "Delete Edited Transcript"
+                        TranscriptType.RAW -> "Delete Transcript"
+                    }
+                )
+            },
+            text = {
+                Text(
+                    when (transcript.type) {
+                        TranscriptType.TRANSFORMED -> "Delete this generated transformation output?"
+                        TranscriptType.EDITED -> "Delete this edited transcript and fall back to the machine transcript?"
+                        TranscriptType.RAW -> "Delete the transcription for this recording?"
+                    }
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        viewModel.deleteTranscript(transcript.id)
+                        deleteTranscriptTarget = null
+                    },
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { deleteTranscriptTarget = null }) {
+                    Text("Cancel")
+                }
             },
         )
     }
@@ -323,17 +361,17 @@ private fun TransformSection(
     }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("Post-process", style = MaterialTheme.typography.titleSmall)
             Text(
                 text = "Run a saved prompt against the latest transcription.",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             OutlinedButton(
                 modifier = Modifier.fillMaxWidth(),
@@ -363,12 +401,12 @@ private fun TransformProfileRow(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -401,9 +439,7 @@ private fun TransformProfileRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(onClick = onRun) {
-                Icon(Icons.Filled.ChevronRight, contentDescription = "Run profile")
-            }
+            OutlinedButton(onClick = onRun) { Text("Run") }
         }
     }
 }
@@ -412,6 +448,7 @@ private fun TransformProfileRow(
 private fun TranscriptSection(
     state: SessionDetailUiState.Success,
     onEditTranscript: () -> Unit,
+    onDeleteTranscript: (Transcript) -> Unit,
 ) {
     val transcripts = state.transcripts
     if (state.currentTranscript == null && transcripts.isEmpty()) {
@@ -452,6 +489,7 @@ private fun TranscriptSection(
                 TranscriptCard(
                     transcript = transcript,
                     titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited transcript" else "Transcript",
+                    onDelete = { onDeleteTranscript(transcript) },
                 )
             }
             state.originalTranscript
@@ -460,13 +498,17 @@ private fun TranscriptSection(
                     TranscriptCard(
                         transcript = original,
                         titleOverride = "Original machine transcript",
+                        onDelete = { onDeleteTranscript(original) },
                     )
                 }
         }
         if (transformedTranscripts.isNotEmpty()) {
             Text("Transformations", style = MaterialTheme.typography.labelLarge)
             transformedTranscripts.forEach { transcript ->
-                TranscriptCard(transcript = transcript)
+                TranscriptCard(
+                    transcript = transcript,
+                    onDelete = { onDeleteTranscript(transcript) },
+                )
             }
         }
     }
@@ -474,13 +516,18 @@ private fun TranscriptSection(
 
 @Composable
 private fun TranscriptCard(transcript: Transcript) {
-    TranscriptCard(transcript = transcript, titleOverride = transcript.type.name)
+    TranscriptCard(
+        transcript = transcript,
+        titleOverride = transcript.type.name,
+        onDelete = null,
+    )
 }
 
 @Composable
 private fun TranscriptCard(
     transcript: Transcript,
     titleOverride: String,
+    onDelete: (() -> Unit)?,
 ) {
     var expanded by remember(transcript.id) { mutableStateOf(false) }
 
@@ -494,20 +541,39 @@ private fun TranscriptCard(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = titleOverride,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                transcript.transformProfileId?.let {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
-                        text = it,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        text = titleOverride,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
                     )
+                    transcript.transformProfileId?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                onDelete?.let {
+                    IconButton(onClick = it) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Delete transcript",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
             Text(
