@@ -1,5 +1,6 @@
 package dev.scrybe.feature.settings
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -20,10 +22,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun SettingOptionRow(
+internal fun <T> SettingOptionRow(
     title: String,
     value: String,
     supportingText: String? = null,
+    options: List<T>? = null,
+    selectedOption: T? = null,
+    optionLabel: ((T) -> String)? = null,
+    onSelectOption: ((T) -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     Surface(
@@ -42,6 +48,27 @@ internal fun SettingOptionRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )
+            if (options != null && optionLabel != null && onSelectOption != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    options.forEach { option ->
+                        FilterChip(
+                            selected = option == selectedOption,
+                            onClick = { onSelectOption(option) },
+                            label = {
+                                Text(
+                                    text = optionLabel(option),
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            },
+                        )
+                    }
+                }
+            }
             supportingText?.let {
                 Text(
                     text = it,

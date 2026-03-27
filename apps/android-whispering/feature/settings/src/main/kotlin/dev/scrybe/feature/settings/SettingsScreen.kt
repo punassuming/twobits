@@ -97,97 +97,6 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.Key, contentDescription = null)
-                        Text("OpenAI API Key", style = MaterialTheme.typography.titleMedium)
-                    }
-                    OutlinedTextField(
-                        value = uiState.apiKey,
-                        onValueChange = viewModel::updateApiKey,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        placeholder = { Text("sk-...") },
-                        trailingIcon = {
-                            when (uiState.apiKeyValidationStatus) {
-                                ApiKeyValidationStatus.Valid -> Icon(
-                                    Icons.Filled.CloudDone,
-                                    contentDescription = "OpenAI connected",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                                ApiKeyValidationStatus.Invalid -> Icon(
-                                    Icons.Filled.CloudOff,
-                                    contentDescription = "OpenAI connection failed",
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                                ApiKeyValidationStatus.Validating -> Icon(
-                                    Icons.Filled.Sync,
-                                    contentDescription = "Validating API key",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                                ApiKeyValidationStatus.Unknown -> Unit
-                            }
-                        },
-                        supportingText = {
-                            uiState.apiKeyValidationMessage?.let { message ->
-                                Text(
-                                    text = message,
-                                    color = when (uiState.apiKeyValidationStatus) {
-                                        ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
-                                        ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                            }
-                        },
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Button(
-                            onClick = viewModel::saveApiKey,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text("Save Key")
-                        }
-                        Button(
-                            onClick = viewModel::clearApiKey,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text("Clear Key")
-                        }
-                    }
-                }
-            }
-
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.Palette, contentDescription = null)
-                        Text("Appearance", style = MaterialTheme.typography.titleMedium)
-                    }
-                    SettingOptionRow(
-                        title = "Theme",
-                        value = when (uiState.themeMode) {
-                            ThemeMode.SYSTEM -> "Follow system"
-                            ThemeMode.LIGHT -> "Light"
-                            ThemeMode.DARK -> "Dark"
-                        },
-                        supportingText = "Use the system theme or force light or dark mode.",
-                        onClick = { showThemePicker = true },
-                    )
-                }
-            }
-
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Filled.SettingsSuggest, contentDescription = null)
                         Text("Provider", style = MaterialTheme.typography.titleMedium)
                     }
@@ -197,6 +106,73 @@ fun SettingsScreen(
                     )
                     Button(onClick = { viewModel.setDefaultProvider("OPENAI") }) {
                         Text(if (uiState.defaultProvider == "OPENAI") "OpenAI Active" else "Use OpenAI")
+                    }
+                    if (uiState.defaultProvider == "OPENAI") {
+                        HorizontalDivider()
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(Icons.Filled.Key, contentDescription = null)
+                            Text("OpenAI API Key", style = MaterialTheme.typography.titleSmall)
+                        }
+                        OutlinedTextField(
+                            value = uiState.apiKey,
+                            onValueChange = viewModel::updateApiKey,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            placeholder = { Text("sk-...") },
+                            trailingIcon = {
+                                when (uiState.apiKeyValidationStatus) {
+                                    ApiKeyValidationStatus.Valid -> Icon(
+                                        Icons.Filled.CloudDone,
+                                        contentDescription = "OpenAI connected",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                    ApiKeyValidationStatus.Invalid -> Icon(
+                                        Icons.Filled.CloudOff,
+                                        contentDescription = "OpenAI connection failed",
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                    ApiKeyValidationStatus.Validating -> Icon(
+                                        Icons.Filled.Sync,
+                                        contentDescription = "Validating API key",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                    ApiKeyValidationStatus.Unknown -> Unit
+                                }
+                            },
+                            supportingText = {
+                                uiState.apiKeyValidationMessage?.let { message ->
+                                    Text(
+                                        text = message,
+                                        color = when (uiState.apiKeyValidationStatus) {
+                                            ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
+                                            ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
+                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
+                                }
+                            },
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                onClick = viewModel::saveApiKey,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("Save Key")
+                            }
+                            Button(
+                                onClick = viewModel::clearApiKey,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("Clear Key")
+                            }
+                        }
                     }
                 }
             }
@@ -214,24 +190,40 @@ fun SettingsScreen(
                         title = "Format",
                         value = uiState.audioFormat.name,
                         supportingText = "Choose the default container/codec for new recordings.",
+                        options = AudioFormat.entries.toList(),
+                        selectedOption = uiState.audioFormat,
+                        optionLabel = { it.name },
+                        onSelectOption = { viewModel.setAudioFormat(it) },
                         onClick = { showFormatPicker = true },
                     )
                     SettingOptionRow(
                         title = "Sample Rate",
                         value = "${uiState.sampleRateHz / 1000} kHz",
                         supportingText = "Higher sample rates capture more detail and use more space.",
+                        options = listOf(16_000, 22_050, 44_100, 48_000),
+                        selectedOption = uiState.sampleRateHz,
+                        optionLabel = { "${it / 1000} kHz" },
+                        onSelectOption = { viewModel.setSampleRateHz(it) },
                         onClick = { showSampleRatePicker = true },
                     )
                     SettingOptionRow(
                         title = "Bit Rate",
                         value = "${uiState.encodingBitRate / 1000} kbps",
                         supportingText = "Higher bit rates improve quality and increase file size.",
+                        options = listOf(64_000, 96_000, 128_000, 192_000, 256_000),
+                        selectedOption = uiState.encodingBitRate,
+                        optionLabel = { "${it / 1000} kbps" },
+                        onSelectOption = { viewModel.setEncodingBitRate(it) },
                         onClick = { showBitRatePicker = true },
                     )
                     SettingOptionRow(
                         title = "Channels",
                         value = if (uiState.channelCount == 1) "Mono" else "Stereo",
                         supportingText = "Mono keeps files smaller. Stereo is wider but larger.",
+                        options = listOf(1, 2),
+                        selectedOption = uiState.channelCount,
+                        optionLabel = { if (it == 1) "Mono" else "Stereo" },
+                        onSelectOption = { viewModel.setChannelCount(it) },
                         onClick = { showChannelPicker = true },
                     )
                 }

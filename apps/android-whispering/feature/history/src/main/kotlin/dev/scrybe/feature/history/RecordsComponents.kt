@@ -87,7 +87,7 @@ internal fun RecordRow(
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { it * 0.25f },
+        positionalThreshold = { it * 0.50f },
         confirmValueChange = { value ->
             if (selectionEnabled) return@rememberSwipeToDismissBoxState false
             when (value) {
