@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ChevronRight
@@ -51,10 +52,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -65,6 +70,7 @@ import dev.scrybe.core.model.TranscriptType
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +82,8 @@ fun SessionDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     var actionMenuExpanded by remember { mutableStateOf(false) }
     var isEditingTranscript by remember { mutableStateOf(false) }
     var deleteTranscriptTarget by remember { mutableStateOf<Transcript?>(null) }
@@ -241,6 +249,12 @@ fun SessionDetailScreen(
                         state = state,
                         onEditTranscript = { isEditingTranscript = true },
                         onDeleteTranscript = { deleteTranscriptTarget = it },
+                        onCopyTranscript = { transcript ->
+                            clipboardManager.setText(AnnotatedString(transcript.content))
+                            scope.launch {
+                                snackbarHostState.showSnackbar(copyMessageForTranscript(transcript))
+                            }
+                        },
                     )
                     TransformSection(
                         state = state,
@@ -498,6 +512,7 @@ private fun TranscriptSection(
     state: SessionDetailUiState.Success,
     onEditTranscript: () -> Unit,
     onDeleteTranscript: (Transcript) -> Unit,
+    onCopyTranscript: (Transcript) -> Unit,
 ) {
     val transcripts = state.transcripts
     if (state.currentTranscript == null && transcripts.isEmpty()) {
@@ -539,6 +554,7 @@ private fun TranscriptSection(
                     transcript = transcript,
                     titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited transcript" else "Transcript",
                     onDelete = { onDeleteTranscript(transcript) },
+                    onCopy = { onCopyTranscript(transcript) },
                 )
             }
             state.originalTranscript
@@ -548,6 +564,7 @@ private fun TranscriptSection(
                         transcript = original,
                         titleOverride = "Original machine transcript",
                         onDelete = { onDeleteTranscript(original) },
+                        onCopy = { onCopyTranscript(original) },
                     )
                 }
         }
@@ -558,6 +575,7 @@ private fun TranscriptSection(
                     transcript = transcript,
                     titleOverride = transcript.type.name,
                     onDelete = { onDeleteTranscript(transcript) },
+                    onCopy = { onCopyTranscript(transcript) },
                 )
             }
         }
@@ -570,6 +588,7 @@ private fun TranscriptCard(transcript: Transcript) {
         transcript = transcript,
         titleOverride = transcript.type.name,
         onDelete = null,
+        onCopy = {},
     )
 }
 
@@ -578,13 +597,14 @@ private fun TranscriptCard(
     transcript: Transcript,
     titleOverride: String,
     onDelete: (() -> Unit)?,
+    onCopy: () -> Unit,
 ) {
     var expanded by remember(transcript.id) { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded },
+            .clickable { onCopy() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(
@@ -601,6 +621,11 @@ private fun TranscriptCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Icon(
+                        imageVector = Icons.Filled.ContentCopy,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Text(
                         text = titleOverride,
                         style = MaterialTheme.typography.labelLarge,
@@ -616,13 +641,25 @@ private fun TranscriptCard(
                         )
                     }
                 }
-                onDelete?.let {
-                    IconButton(onClick = it) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { expanded = !expanded }) {
                         Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Delete transcript",
-                            tint = MaterialTheme.colorScheme.error,
+                            imageVector = Icons.Filled.ChevronRight,
+                            contentDescription = if (expanded) "Collapse transcript" else "Expand transcript",
+                            modifier = Modifier.graphicsLayer {
+                                rotationZ = if (expanded) 90f else 0f
+                            },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                    onDelete?.let {
+                        IconButton(onClick = it) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Delete transcript",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
                     }
                 }
             }
@@ -633,12 +670,18 @@ private fun TranscriptCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = if (expanded) "Tap to collapse" else "Tap to expand",
+                text = if (expanded) "Tap card to copy · Use the arrow to collapse" else "Tap card to copy · Use the arrow to expand",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
+}
+
+private fun copyMessageForTranscript(transcript: Transcript): String = when (transcript.type) {
+    TranscriptType.TRANSFORMED -> "Transformation copied"
+    TranscriptType.EDITED -> "Transcript copied"
+    TranscriptType.RAW -> "Transcript copied"
 }
 
 @Composable
