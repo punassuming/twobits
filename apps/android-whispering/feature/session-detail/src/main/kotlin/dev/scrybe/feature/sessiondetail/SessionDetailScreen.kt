@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -180,6 +182,19 @@ fun SessionDetailScreen(
                                         },
                                     )
                                 }
+                                DropdownMenuItem(
+                                    text = { Text(if (successState.session.isArchived) "Restore" else "Archive") },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (successState.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    onClick = {
+                                        actionMenuExpanded = false
+                                        viewModel.setArchived(!successState.session.isArchived)
+                                    },
+                                )
                             }
                         }
                     }
@@ -302,12 +317,35 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
     val audioFile = File(state.session.audioFilePath)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors = CardDefaults.cardColors(
+            containerColor = if (state.session.isArchived) {
+                MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+        ),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            if (state.session.isArchived) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Filled.Archive,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                    )
+                    Text(
+                        text = "Archived",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            }
             Text(
                 text = "Recorded ${state.session.createdAt.atZone(ZoneId.systemDefault()).format(SUMMARY_TIME_FORMATTER)}",
                 style = MaterialTheme.typography.bodySmall,

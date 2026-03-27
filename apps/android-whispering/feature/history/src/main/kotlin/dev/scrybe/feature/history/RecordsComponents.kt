@@ -497,10 +497,16 @@ internal fun RecordsFilterDialog(
                         )
                     }
                 HorizontalDivider()
+                Text("Archive", style = MaterialTheme.typography.labelLarge)
                 FilterOptionRow(
-                    title = if (draft.showArchived) "Archived records" else "Active records",
+                    title = "Active records",
+                    selected = !draft.showArchived,
+                    onClick = { draft = draft.copy(showArchived = false) },
+                )
+                FilterOptionRow(
+                    title = "Archived records",
                     selected = draft.showArchived,
-                    onClick = { draft = draft.copy(showArchived = !draft.showArchived) },
+                    onClick = { draft = draft.copy(showArchived = true) },
                 )
             }
         },

@@ -236,6 +236,25 @@ class SessionDetailViewModel @Inject constructor(
         }
     }
 
+    fun setArchived(archived: Boolean) {
+        viewModelScope.launch {
+            val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+            sessionDao.updateSession(
+                session.copy(
+                    isArchived = archived,
+                    status = if (archived) SessionStatus.ARCHIVED.name else restoreStatus(session.status),
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            _events.emit(SessionDetailEvent.Message(if (archived) "Recording archived" else "Recording restored"))
+        }
+    }
+
+    private fun restoreStatus(status: String): String {
+        val current = runCatching { SessionStatus.valueOf(status) }.getOrDefault(SessionStatus.RECORDED)
+        return if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
+    }
+
     fun exportAll() {
         val state = _uiState.value as? SessionDetailUiState.Success ?: return
         viewModelScope.launch {
