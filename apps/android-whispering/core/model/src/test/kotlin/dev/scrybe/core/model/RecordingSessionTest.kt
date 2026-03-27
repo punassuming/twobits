@@ -191,4 +191,116 @@ class RecordingSessionTest {
         assertTrue(config.isEnabled)
         assertEquals("whisper-1", config.modelName)
     }
+
+    @Test
+    fun `archived session has isArchived true and ARCHIVED status`() {
+        val now = Instant.now()
+        val session = RecordingSession(
+            id = "archived-id",
+            title = "Archived Recording",
+            audioFilePath = "/data/recordings/archived.m4a",
+            durationMs = 60_000L,
+            fileSizeBytes = 1_024_000L,
+            audioFormat = AudioFormat.AAC,
+            sampleRateHz = 48_000,
+            encodingBitRate = 128_000,
+            channelCount = 1,
+            waveformSamples = emptyList(),
+            status = SessionStatus.ARCHIVED,
+            isArchived = true,
+            estimatedTranscriptionCostUsd = null,
+            createdAt = now,
+            updatedAt = now,
+        )
+
+        assertTrue(session.isArchived)
+        assertEquals(SessionStatus.ARCHIVED, session.status)
+        assertEquals("ARCHIVED", session.status.name)
+    }
+
+    @Test
+    fun `restoring archived session clears isArchived and resets status to RECORDED`() {
+        val now = Instant.now()
+        val archivedSession = RecordingSession(
+            id = "archived-id",
+            title = "Archived Recording",
+            audioFilePath = "/data/recordings/archived.m4a",
+            durationMs = 60_000L,
+            fileSizeBytes = 1_024_000L,
+            audioFormat = AudioFormat.AAC,
+            sampleRateHz = 48_000,
+            encodingBitRate = 128_000,
+            channelCount = 1,
+            waveformSamples = emptyList(),
+            status = SessionStatus.ARCHIVED,
+            isArchived = true,
+            estimatedTranscriptionCostUsd = null,
+            createdAt = now,
+            updatedAt = now,
+        )
+
+        val restoreStatus: (String) -> String = { status ->
+            val current = runCatching { SessionStatus.valueOf(status) }.getOrDefault(SessionStatus.RECORDED)
+            if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
+        }
+
+        val restoredSession = archivedSession.copy(
+            isArchived = false,
+            status = SessionStatus.valueOf(restoreStatus(archivedSession.status.name)),
+        )
+
+        assertFalse(restoredSession.isArchived)
+        assertEquals(SessionStatus.RECORDED, restoredSession.status)
+        assertEquals(archivedSession.id, restoredSession.id)
+    }
+
+    @Test
+    fun `archiving a transcribed session marks it archived with ARCHIVED status`() {
+        val now = Instant.now()
+        val transcribedSession = RecordingSession(
+            id = "transcribed-id",
+            title = "Transcribed Recording",
+            audioFilePath = "/data/recordings/transcribed.m4a",
+            durationMs = 60_000L,
+            fileSizeBytes = 1_024_000L,
+            audioFormat = AudioFormat.AAC,
+            sampleRateHz = 48_000,
+            encodingBitRate = 128_000,
+            channelCount = 1,
+            waveformSamples = emptyList(),
+            status = SessionStatus.TRANSCRIBED,
+            isArchived = false,
+            estimatedTranscriptionCostUsd = null,
+            createdAt = now,
+            updatedAt = now,
+        )
+
+        val archivedSession = transcribedSession.copy(
+            isArchived = true,
+            status = SessionStatus.ARCHIVED,
+        )
+
+        assertTrue(archivedSession.isArchived)
+        assertEquals(SessionStatus.ARCHIVED, archivedSession.status)
+        assertEquals(transcribedSession.id, archivedSession.id)
+    }
+
+    @Test
+    fun `restoreStatus maps ARCHIVED status to RECORDED and preserves other statuses`() {
+        // Mirrors the restoreStatus helper in both History and SessionDetail ViewModels:
+        // the status is stored as a String in the DB entity, so the function takes/returns String.
+        val restoreStatus: (String) -> String = { status ->
+            val current = runCatching { SessionStatus.valueOf(status) }.getOrDefault(SessionStatus.RECORDED)
+            if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
+        }
+
+        // ARCHIVED maps back to RECORDED (safe default, because original status is overwritten at archive time)
+        assertEquals(SessionStatus.RECORDED.name, restoreStatus(SessionStatus.ARCHIVED.name))
+
+        // All other statuses are preserved unchanged
+        listOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBED, SessionStatus.EDITED, SessionStatus.FAILED)
+            .forEach { status ->
+                assertEquals(status.name, restoreStatus(status.name))
+            }
+    }
 }

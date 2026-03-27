@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Mic
@@ -177,7 +178,7 @@ fun HistoryScreen(
                             },
                         ) {
                             Icon(
-                                Icons.Filled.Archive,
+                                if (successState.filters.showArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
                                 contentDescription = if (successState.filters.showArchived) "Restore selected records" else "Archive selected records",
                             )
                         }
@@ -239,7 +240,13 @@ fun HistoryScreen(
                                 .padding(top = 24.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("No records match that search or filter")
+                            Text(
+                                if (state.filters.showArchived) {
+                                    "No archived records"
+                                } else {
+                                    "No records match that search or filter"
+                                }
+                            )
                         }
                     } else {
                         LazyColumn(
