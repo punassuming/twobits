@@ -1,6 +1,7 @@
 package dev.scrybe.feature.sessiondetail
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,8 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.GraphicEq
@@ -54,7 +57,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -574,17 +579,47 @@ private fun TranscriptCard(transcript: Transcript) {
 }
 
 @Composable
+private fun TranscriptCardActions(
+    expanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onDelete: (() -> Unit)?,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onToggleExpand) {
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+            )
+        }
+        onDelete?.let {
+            IconButton(onClick = it) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Delete transcript",
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun TranscriptCard(
     transcript: Transcript,
     titleOverride: String,
     onDelete: (() -> Unit)?,
 ) {
     var expanded by remember(transcript.id) { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded },
+            .clickable {
+                clipboardManager.setText(AnnotatedString(transcript.content))
+                Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+            },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(
@@ -616,26 +651,17 @@ private fun TranscriptCard(
                         )
                     }
                 }
-                onDelete?.let {
-                    IconButton(onClick = it) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Delete transcript",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
+                TranscriptCardActions(
+                    expanded = expanded,
+                    onToggleExpand = { expanded = !expanded },
+                    onDelete = onDelete,
+                )
             }
             Text(
                 text = transcript.content,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = if (expanded) Int.MAX_VALUE else 4,
                 overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = if (expanded) "Tap to collapse" else "Tap to expand",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
