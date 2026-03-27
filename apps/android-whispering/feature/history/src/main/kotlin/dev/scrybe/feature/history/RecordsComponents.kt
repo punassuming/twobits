@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,6 +78,8 @@ internal fun RecordRow(
     onInfo: () -> Unit,
     onOpenWith: () -> Unit,
     onSaveCopy: () -> Unit,
+    onRetryTranscription: () -> Unit,
+    onResetTranscriptionState: () -> Unit,
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
@@ -250,6 +253,26 @@ internal fun RecordRow(
                                         onInfo()
                                     },
                                 )
+                                if (item.session.status == SessionStatus.FAILED) {
+                                    DropdownMenuItem(
+                                        text = { Text("Retry Transcription") },
+                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onRetryTranscription()
+                                        },
+                                    )
+                                }
+                                if (item.session.status == SessionStatus.TRANSCRIBING) {
+                                    DropdownMenuItem(
+                                        text = { Text("Clear Stuck State") },
+                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onResetTranscriptionState()
+                                        },
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text("Delete") },
                                     leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },

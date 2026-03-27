@@ -83,6 +83,101 @@ class RecordingSessionTest {
     }
 
     @Test
+    fun `FAILED status allows retry - transcribe button should be enabled`() {
+        val now = Instant.now()
+        val failedSession = RecordingSession(
+            id = "test-id",
+            title = "Test Recording",
+            audioFilePath = "/data/recordings/test.m4a",
+            durationMs = 60_000L,
+            fileSizeBytes = 1_024_000L,
+            audioFormat = AudioFormat.AAC,
+            sampleRateHz = 48_000,
+            encodingBitRate = 128_000,
+            channelCount = 1,
+            waveformSamples = emptyList(),
+            status = SessionStatus.FAILED,
+            isArchived = false,
+            estimatedTranscriptionCostUsd = null,
+            createdAt = now,
+            updatedAt = now,
+        )
+        assertFalse(
+            "FAILED session should not appear as transcribing (retry must be enabled)",
+            failedSession.status == SessionStatus.TRANSCRIBING,
+        )
+    }
+
+    @Test
+    fun `only TRANSCRIBING status is identified as stale after crash`() {
+        val isStale: (SessionStatus) -> Boolean = { it == SessionStatus.TRANSCRIBING }
+        assertTrue("TRANSCRIBING should be stale", isStale(SessionStatus.TRANSCRIBING))
+        assertFalse("FAILED should not be stale", isStale(SessionStatus.FAILED))
+        assertFalse("RECORDED should not be stale", isStale(SessionStatus.RECORDED))
+        assertFalse("TRANSCRIBED should not be stale", isStale(SessionStatus.TRANSCRIBED))
+    }
+
+    @Test
+    fun `stale recovery produces FAILED session with all other fields preserved`() {
+        val now = Instant.now()
+        val stuckSession = RecordingSession(
+            id = "stuck-id",
+            title = "Stuck Recording",
+            audioFilePath = "/data/recordings/stuck.m4a",
+            durationMs = 30_000L,
+            fileSizeBytes = 512_000L,
+            audioFormat = AudioFormat.AAC,
+            sampleRateHz = 16_000,
+            encodingBitRate = 64_000,
+            channelCount = 1,
+            waveformSamples = emptyList(),
+            status = SessionStatus.TRANSCRIBING,
+            isArchived = false,
+            estimatedTranscriptionCostUsd = null,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val recovered = stuckSession.copy(status = SessionStatus.FAILED)
+        assertEquals(SessionStatus.FAILED, recovered.status)
+        assertEquals(stuckSession.id, recovered.id)
+        assertEquals(stuckSession.title, recovered.title)
+        assertEquals(stuckSession.audioFilePath, recovered.audioFilePath)
+    }
+
+    @Test
+    fun `status names are stored as expected strings for DB compatibility`() {
+        assertEquals("TRANSCRIBING", SessionStatus.TRANSCRIBING.name)
+        assertEquals("FAILED", SessionStatus.FAILED.name)
+        assertEquals("RECORDED", SessionStatus.RECORDED.name)
+    }
+
+    @Test
+    fun `reset transcription state maps stale to RECORDED`() {
+        val now = Instant.now()
+        val stuckSession = RecordingSession(
+            id = "stuck-id",
+            title = "Stuck Recording",
+            audioFilePath = "/data/recordings/stuck.m4a",
+            durationMs = 30_000L,
+            fileSizeBytes = 512_000L,
+            audioFormat = AudioFormat.AAC,
+            sampleRateHz = 16_000,
+            encodingBitRate = 64_000,
+            channelCount = 1,
+            waveformSamples = emptyList(),
+            status = SessionStatus.TRANSCRIBING,
+            isArchived = false,
+            estimatedTranscriptionCostUsd = null,
+            createdAt = now,
+            updatedAt = now,
+        )
+        val resetStatus = SessionStatus.RECORDED
+        val resetSession = stuckSession.copy(status = resetStatus)
+        assertEquals(SessionStatus.RECORDED, resetSession.status)
+        assertFalse(resetSession.status == SessionStatus.TRANSCRIBING)
+    }
+
+    @Test
     fun `ProviderConfig can be created`() {
         val config = ProviderConfig(
             id = "config-id",

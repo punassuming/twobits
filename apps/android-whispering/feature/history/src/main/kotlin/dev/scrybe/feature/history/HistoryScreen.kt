@@ -262,6 +262,8 @@ fun HistoryScreen(
                                     onInfo = { infoTarget = item.toRecordInfo() },
                                     onOpenWith = { openAudioWith(context, item.session) },
                                     onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
+                                    onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
+                                    onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
                                 )
                             }
                         }
