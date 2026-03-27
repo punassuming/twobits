@@ -71,8 +71,9 @@ class HistoryViewModel @Inject constructor(
         transcriptDao.getAllTranscripts(),
         query,
         filters,
+        preferencesDataStore.confirmRecordSwipeActions,
         selection,
-    ) { entities, transcripts, query, filters, selection ->
+    ) { entities, transcripts, query, filters, confirmSwipeActions, selection ->
         val sessions = entities.map { entity ->
             RecordingSession(
                 id = entity.id,
@@ -129,6 +130,7 @@ class HistoryViewModel @Inject constructor(
         HistoryUiState.Success(
             sessions = filteredSessions,
             filters = filters,
+            interactionPreferences = RecordsInteractionPreferences(confirmSwipeActions = confirmSwipeActions),
             selection = selection.copy(
                 selectedSessionIds = selection.selectedSessionIds.intersect(filteredSessions.map { it.session.id }.toSet()),
             ),

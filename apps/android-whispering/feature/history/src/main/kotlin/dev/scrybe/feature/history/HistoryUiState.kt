@@ -30,6 +30,10 @@ data class RecordsFilterState(
     val showArchived: Boolean = false,
 )
 
+data class RecordsInteractionPreferences(
+    val confirmSwipeActions: Boolean = true,
+)
+
 data class RecordInfo(
     val title: String,
     val createdAt: Instant,
@@ -54,6 +58,7 @@ sealed interface HistoryUiState {
     data class Success(
         val sessions: List<HistorySessionItem>,
         val filters: RecordsFilterState,
+        val interactionPreferences: RecordsInteractionPreferences = RecordsInteractionPreferences(),
         val selection: RecordsSelectionState = RecordsSelectionState(),
     ) : HistoryUiState
     data class Error(val message: String) : HistoryUiState

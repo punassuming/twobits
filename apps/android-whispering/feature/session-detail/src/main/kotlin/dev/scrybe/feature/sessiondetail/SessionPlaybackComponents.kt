@@ -2,8 +2,10 @@ package dev.scrybe.feature.sessiondetail
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -56,17 +58,32 @@ internal fun PlaybackCard(
                 text = "Playback",
                 style = MaterialTheme.typography.titleSmall,
             )
-            WaveformTimeline(
-                samples = state.session.waveformSamples,
-                progress = if (state.playbackDurationMs > 0L) {
-                    state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
-                } else {
-                    0f
-                },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(72.dp),
-            )
+            ) {
+                WaveformTimeline(
+                    samples = state.session.waveformSamples,
+                    progress = if (state.playbackDurationMs > 0L) {
+                        state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
+                    } else {
+                        0f
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Slider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 2.dp),
+                    value = sliderPosition,
+                    onValueChange = { sliderPosition = it },
+                    valueRange = 0f..state.playbackDurationMs.coerceAtLeast(1L).toFloat(),
+                    onValueChangeFinished = {
+                        onSeek(sliderPosition.toLong())
+                    },
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -89,15 +106,6 @@ internal fun PlaybackCard(
                         modifier = Modifier.size(20.dp),
                     )
                 }
-                Slider(
-                    modifier = Modifier.weight(1f),
-                    value = sliderPosition,
-                    onValueChange = { sliderPosition = it },
-                    valueRange = 0f..state.playbackDurationMs.coerceAtLeast(1L).toFloat(),
-                    onValueChangeFinished = {
-                        onSeek(sliderPosition.toLong())
-                    },
-                )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
@@ -127,11 +135,11 @@ private fun WaveformTimeline(
     val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     val playheadColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f)
     Canvas(modifier = modifier) {
-        val baselineY = size.height * 0.82f
+        val centerY = size.height * 0.5f
         drawLine(
             color = baselineColor,
-            start = Offset(0f, baselineY),
-            end = Offset(size.width, baselineY),
+            start = Offset(0f, centerY),
+            end = Offset(size.width, centerY),
             strokeWidth = 2.dp.toPx(),
             cap = StrokeCap.Round,
         )
@@ -140,13 +148,12 @@ private fun WaveformTimeline(
         val progressIndex = (bars.size * progress.coerceIn(0f, 1f)).toInt()
         bars.forEachIndexed { index, sample ->
             val shapedAmplitude = playbackAmplitude(sample)
-            val lineHeight = (baselineY - (size.height * 0.14f)) * shapedAmplitude
+            val lineHeight = (size.height * 0.34f) * shapedAmplitude
             val x = (index * (barWidth + spacing)) + (barWidth / 2f)
-            val startY = baselineY - lineHeight
             drawLine(
                 color = if (index <= progressIndex) activeColor else inactiveColor,
-                start = Offset(x, startY),
-                end = Offset(x, baselineY),
+                start = Offset(x, centerY - lineHeight),
+                end = Offset(x, centerY + lineHeight),
                 strokeWidth = barWidth,
                 cap = StrokeCap.Round,
             )
@@ -155,7 +162,7 @@ private fun WaveformTimeline(
         drawLine(
             color = playheadColor,
             start = Offset(playheadX, size.height * 0.1f),
-            end = Offset(playheadX, baselineY + 6.dp.toPx()),
+            end = Offset(playheadX, size.height * 0.9f),
             strokeWidth = 2.dp.toPx(),
             cap = StrokeCap.Round,
         )

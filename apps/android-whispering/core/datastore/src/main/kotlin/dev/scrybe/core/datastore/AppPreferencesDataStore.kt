@@ -35,6 +35,7 @@ class AppPreferencesDataStore @Inject constructor(
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val SHOW_RENAME_AFTER_RECORDING = booleanPreferencesKey("show_rename_after_recording")
+        val CONFIRM_RECORD_SWIPE_ACTIONS = booleanPreferencesKey("confirm_record_swipe_actions")
         val POST_STOP_DESTINATION = stringPreferencesKey("post_stop_destination")
         val LAST_SEEN_WHATS_NEW_VERSION_CODE = stringPreferencesKey("last_seen_whats_new_version_code")
     }
@@ -81,6 +82,10 @@ class AppPreferencesDataStore @Inject constructor(
 
     val showRenameAfterRecording: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[Keys.SHOW_RENAME_AFTER_RECORDING] ?: true
+    }
+
+    val confirmRecordSwipeActions: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[Keys.CONFIRM_RECORD_SWIPE_ACTIONS] ?: true
     }
 
     val postStopDestination: Flow<PostStopDestination> = context.dataStore.data.map { prefs ->
@@ -137,6 +142,10 @@ class AppPreferencesDataStore @Inject constructor(
 
     suspend fun setShowRenameAfterRecording(enabled: Boolean) {
         context.dataStore.edit { prefs -> prefs[Keys.SHOW_RENAME_AFTER_RECORDING] = enabled }
+    }
+
+    suspend fun setConfirmRecordSwipeActions(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[Keys.CONFIRM_RECORD_SWIPE_ACTIONS] = enabled }
     }
 
     suspend fun setPostStopDestination(destination: PostStopDestination) {
