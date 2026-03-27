@@ -68,6 +68,15 @@ class SessionDetailViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            val session = sessionDao.getSessionByIdOnce(sessionId)
+            if (session?.status == SessionStatus.TRANSCRIBING.name) {
+                sessionDao.updateSession(
+                    session.copy(
+                        status = SessionStatus.FAILED.name,
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                )
+            }
             val playbackBundle = combine(
                 audioPlayer.playbackState,
                 preferencesDataStore.showRenameAfterRecording,
@@ -211,6 +220,19 @@ class SessionDetailViewModel @Inject constructor(
                     Log.e(TAG, "Transcription failed for session $sessionId", it)
                     _events.emit(SessionDetailEvent.Message(it.message ?: "Transcription failed"))
                 }
+        }
+    }
+
+    fun resetTranscriptionState() {
+        viewModelScope.launch {
+            val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+            sessionDao.updateSession(
+                session.copy(
+                    status = SessionStatus.RECORDED.name,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            _events.emit(SessionDetailEvent.Message("Transcription state cleared"))
         }
     }
 

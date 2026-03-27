@@ -16,6 +16,7 @@ import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.transforms.SessionTransformCoordinator
+import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -45,6 +46,7 @@ class HistoryViewModel @Inject constructor(
     private val transformRunDao: TransformRunDao,
     private val preferencesDataStore: AppPreferencesDataStore,
     private val sessionTransformCoordinator: SessionTransformCoordinator,
+    private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
 ) : ViewModel() {
 
     private val query = MutableStateFlow("")
@@ -53,6 +55,16 @@ class HistoryViewModel @Inject constructor(
     private val _events = MutableSharedFlow<HistoryEvent>()
     val events = _events.asSharedFlow()
     val isRecording = audioRecorder.isRecording
+
+    init {
+        viewModelScope.launch {
+            recordingSessionDao.updateSessionsByStatus(
+                oldStatus = SessionStatus.TRANSCRIBING.name,
+                newStatus = SessionStatus.FAILED.name,
+                updatedAt = System.currentTimeMillis(),
+            )
+        }
+    }
 
     val uiState: StateFlow<HistoryUiState> = combine(
         recordingSessionDao.getAllSessions(),
@@ -221,6 +233,27 @@ class HistoryViewModel @Inject constructor(
             sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
                 .onSuccess { _events.emit(HistoryEvent.Message("Transform completed")) }
                 .onFailure { _events.emit(HistoryEvent.Message(it.message ?: "Transform failed")) }
+        }
+    }
+
+    fun retryTranscription(sessionId: String) {
+        viewModelScope.launch {
+            sessionTranscriptionCoordinator.transcribeSession(sessionId)
+                .onSuccess { _events.emit(HistoryEvent.Message("Transcription completed")) }
+                .onFailure { _events.emit(HistoryEvent.Message(it.message ?: "Transcription failed")) }
+        }
+    }
+
+    fun resetTranscriptionState(sessionId: String) {
+        viewModelScope.launch {
+            val session = recordingSessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+            recordingSessionDao.updateSession(
+                session.copy(
+                    status = SessionStatus.RECORDED.name,
+                    updatedAt = System.currentTimeMillis(),
+                )
+            )
+            _events.emit(HistoryEvent.Message("Transcription state cleared"))
         }
     }
 
