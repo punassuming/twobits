@@ -50,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +64,28 @@ import dev.scrybe.core.model.SessionStatus
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+internal const val RECORD_ROW_SWIPE_THRESHOLD_FRACTION = 0.55f
+
+internal enum class RecordSwipeAction {
+    TRANSFORM,
+    ARCHIVE,
+    RESTORE,
+}
+
+internal fun recordSwipeConfirmationTitle(action: RecordSwipeAction): String = when (action) {
+    RecordSwipeAction.TRANSFORM -> "Run Default Transform"
+    RecordSwipeAction.ARCHIVE -> "Archive Record"
+    RecordSwipeAction.RESTORE -> "Restore Record"
+}
+
+internal fun recordSwipeConfirmationMessage(action: RecordSwipeAction, title: String): String = when (action) {
+    RecordSwipeAction.TRANSFORM -> "Run the default transform for $title?"
+    RecordSwipeAction.ARCHIVE -> "Archive $title? You can restore it later from archived records."
+    RecordSwipeAction.RESTORE -> "Restore $title to the active records list?"
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -86,17 +108,20 @@ internal fun RecordRow(
     onResetTranscriptionState: () -> Unit,
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
+    var pendingSwipeAction by remember(item.session.id) { mutableStateOf<RecordSwipeAction?>(null) }
+    val scope = rememberCoroutineScope()
     val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { it * 0.25f },
+        positionalThreshold = { it * RECORD_ROW_SWIPE_THRESHOLD_FRACTION },
         confirmValueChange = { value ->
             if (selectionEnabled) return@rememberSwipeToDismissBoxState false
             when (value) {
                 SwipeToDismissBoxValue.StartToEnd -> {
-                    onTransform()
+                    pendingSwipeAction = RecordSwipeAction.TRANSFORM
                     false
                 }
                 SwipeToDismissBoxValue.EndToStart -> {
-                    if (item.session.isArchived) onRestore() else onArchive()
+                    pendingSwipeAction =
+                        if (item.session.isArchived) RecordSwipeAction.RESTORE else RecordSwipeAction.ARCHIVE
                     false
                 }
                 SwipeToDismissBoxValue.Settled -> false
@@ -222,7 +247,7 @@ internal fun RecordRow(
                                 )
                                 DropdownMenuItem(
                                     text = { Text("Run Default Transform") },
-                                    leadingIcon = { Icon(Icons.Filled.Archive, contentDescription = null) },
+                                    leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
                                         onTransform()
@@ -307,6 +332,48 @@ internal fun RecordRow(
         ) {
             rowContent()
         }
+    }
+
+    pendingSwipeAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = {
+                pendingSwipeAction = null
+                scope.launch { dismissState.reset() }
+            },
+            title = { Text(recordSwipeConfirmationTitle(action)) },
+            text = { Text(recordSwipeConfirmationMessage(action, item.session.title)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when (action) {
+                            RecordSwipeAction.TRANSFORM -> onTransform()
+                            RecordSwipeAction.ARCHIVE -> onArchive()
+                            RecordSwipeAction.RESTORE -> onRestore()
+                        }
+                        pendingSwipeAction = null
+                        scope.launch { dismissState.reset() }
+                    },
+                ) {
+                    Text(
+                        when (action) {
+                            RecordSwipeAction.TRANSFORM -> "Run"
+                            RecordSwipeAction.ARCHIVE -> "Archive"
+                            RecordSwipeAction.RESTORE -> "Restore"
+                        },
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingSwipeAction = null
+                        scope.launch { dismissState.reset() }
+                    },
+                ) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 

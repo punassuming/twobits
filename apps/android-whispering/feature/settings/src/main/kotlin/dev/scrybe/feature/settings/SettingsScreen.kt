@@ -52,6 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.PostStopDestination
+import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
 import dev.scrybe.core.common.ReleaseNotes
 
@@ -97,75 +98,6 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.Key, contentDescription = null)
-                        Text("OpenAI API Key", style = MaterialTheme.typography.titleMedium)
-                    }
-                    OutlinedTextField(
-                        value = uiState.apiKey,
-                        onValueChange = viewModel::updateApiKey,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        placeholder = { Text("sk-...") },
-                        trailingIcon = {
-                            when (uiState.apiKeyValidationStatus) {
-                                ApiKeyValidationStatus.Valid -> Icon(
-                                    Icons.Filled.CloudDone,
-                                    contentDescription = "OpenAI connected",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                                ApiKeyValidationStatus.Invalid -> Icon(
-                                    Icons.Filled.CloudOff,
-                                    contentDescription = "OpenAI connection failed",
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                                ApiKeyValidationStatus.Validating -> Icon(
-                                    Icons.Filled.Sync,
-                                    contentDescription = "Validating API key",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                                ApiKeyValidationStatus.Unknown -> Unit
-                            }
-                        },
-                        supportingText = {
-                            uiState.apiKeyValidationMessage?.let { message ->
-                                Text(
-                                    text = message,
-                                    color = when (uiState.apiKeyValidationStatus) {
-                                        ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
-                                        ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                )
-                            }
-                        },
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Button(
-                            onClick = viewModel::saveApiKey,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text("Save Key")
-                        }
-                        Button(
-                            onClick = viewModel::clearApiKey,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text("Clear Key")
-                        }
-                    }
-                }
-            }
-
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Filled.Palette, contentDescription = null)
                         Text("Appearance", style = MaterialTheme.typography.titleMedium)
                     }
@@ -192,12 +124,93 @@ fun SettingsScreen(
                         Text("Provider", style = MaterialTheme.typography.titleMedium)
                     }
                     Text(
-                        text = "OpenAI is the active provider. Local transcription is not implemented yet, so it is no longer exposed as a selectable option.",
+                        text = "Choose where transcription runs. Provider-specific credentials live inside the active provider section.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    Button(onClick = { viewModel.setDefaultProvider("OPENAI") }) {
-                        Text(if (uiState.defaultProvider == "OPENAI") "OpenAI Active" else "Use OpenAI")
-                    }
+                    ProviderOptionCard(
+                        providerType = ProviderType.OPENAI,
+                        selected = uiState.defaultProvider == ProviderType.OPENAI.name,
+                        enabled = true,
+                        supportingText = "Cloud transcription, profile suggestions, and AI transforms.",
+                        onSelect = { viewModel.setDefaultProvider(ProviderType.OPENAI.name) },
+                        icon = {
+                            Icon(Icons.Filled.CloudDone, contentDescription = null)
+                        },
+                        content = {
+                            if (shouldShowOpenAiApiKey(uiState.defaultProvider)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    OutlinedTextField(
+                                        value = uiState.apiKey,
+                                        onValueChange = viewModel::updateApiKey,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        visualTransformation = PasswordVisualTransformation(),
+                                        placeholder = { Text("sk-...") },
+                                        label = { Text("OpenAI API key") },
+                                        trailingIcon = {
+                                            when (uiState.apiKeyValidationStatus) {
+                                                ApiKeyValidationStatus.Valid -> Icon(
+                                                    Icons.Filled.CloudDone,
+                                                    contentDescription = "OpenAI connected",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                )
+                                                ApiKeyValidationStatus.Invalid -> Icon(
+                                                    Icons.Filled.CloudOff,
+                                                    contentDescription = "OpenAI connection failed",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                )
+                                                ApiKeyValidationStatus.Validating -> Icon(
+                                                    Icons.Filled.Sync,
+                                                    contentDescription = "Validating API key",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                )
+                                                ApiKeyValidationStatus.Unknown -> Unit
+                                            }
+                                        },
+                                        supportingText = {
+                                            uiState.apiKeyValidationMessage?.let { message ->
+                                                Text(
+                                                    text = message,
+                                                    color = when (uiState.apiKeyValidationStatus) {
+                                                        ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
+                                                        ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
+                                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                                    },
+                                                )
+                                            }
+                                        },
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Button(
+                                            onClick = viewModel::saveApiKey,
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Text("Save Key")
+                                        }
+                                        Button(
+                                            onClick = viewModel::clearApiKey,
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Text("Clear Key")
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    )
+                    ProviderOptionCard(
+                        providerType = ProviderType.LOCAL,
+                        selected = uiState.defaultProvider == ProviderType.LOCAL.name,
+                        enabled = false,
+                        supportingText = "On-device transcription is planned, but it is not available in this build.",
+                        onSelect = {},
+                        icon = {
+                            Icon(Icons.Filled.Storage, contentDescription = null)
+                        },
+                    )
                 }
             }
 
@@ -214,24 +227,44 @@ fun SettingsScreen(
                         title = "Format",
                         value = uiState.audioFormat.name,
                         supportingText = "Choose the default container/codec for new recordings.",
+                        optionsSummary = buildOptionsSummary(
+                            selected = uiState.audioFormat,
+                            options = AudioFormat.entries.toList(),
+                            label = { it.name },
+                        ),
                         onClick = { showFormatPicker = true },
                     )
                     SettingOptionRow(
                         title = "Sample Rate",
                         value = "${uiState.sampleRateHz / 1000} kHz",
                         supportingText = "Higher sample rates capture more detail and use more space.",
+                        optionsSummary = buildOptionsSummary(
+                            selected = uiState.sampleRateHz,
+                            options = listOf(16_000, 22_050, 44_100, 48_000),
+                            label = { "${it / 1000} kHz" },
+                        ),
                         onClick = { showSampleRatePicker = true },
                     )
                     SettingOptionRow(
                         title = "Bit Rate",
                         value = "${uiState.encodingBitRate / 1000} kbps",
                         supportingText = "Higher bit rates improve quality and increase file size.",
+                        optionsSummary = buildOptionsSummary(
+                            selected = uiState.encodingBitRate,
+                            options = listOf(64_000, 96_000, 128_000, 192_000, 256_000),
+                            label = { "${it / 1000} kbps" },
+                        ),
                         onClick = { showBitRatePicker = true },
                     )
                     SettingOptionRow(
                         title = "Channels",
                         value = if (uiState.channelCount == 1) "Mono" else "Stereo",
                         supportingText = "Mono keeps files smaller. Stereo is wider but larger.",
+                        optionsSummary = buildOptionsSummary(
+                            selected = uiState.channelCount,
+                            options = listOf(1, 2),
+                            label = { if (it == 1) "Mono" else "Stereo" },
+                        ),
                         onClick = { showChannelPicker = true },
                     )
                 }
