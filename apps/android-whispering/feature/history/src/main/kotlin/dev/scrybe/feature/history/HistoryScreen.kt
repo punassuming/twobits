@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.AlertDialog
@@ -168,6 +169,9 @@ fun HistoryScreen(
                     if (isSelecting && successState != null) {
                         IconButton(onClick = { viewModel.selectAllVisible() }) {
                             Icon(Icons.Filled.SelectAll, contentDescription = "Select all visible records")
+                        }
+                        IconButton(onClick = { viewModel.transcribeSelectedSessions() }) {
+                            Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Transcribe selected records")
                         }
                         IconButton(onClick = { viewModel.transformSelectedSessions() }) {
                             Icon(Icons.Filled.AutoFixHigh, contentDescription = "Run default transform")

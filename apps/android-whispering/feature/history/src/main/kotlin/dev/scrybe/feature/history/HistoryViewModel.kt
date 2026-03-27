@@ -350,6 +350,36 @@ class HistoryViewModel @Inject constructor(
         }
     }
 
+    fun transcribeSelectedSessions() {
+        viewModelScope.launch {
+            val selectedIds = selection.value.selectedSessionIds.toList()
+            if (selectedIds.isEmpty()) return@launch
+
+            var started = 0
+            var skipped = 0
+            selectedIds.forEach { sessionId ->
+                val session = recordingSessionDao.getSessionByIdOnce(sessionId)
+                val status = session?.let {
+                    runCatching { SessionStatus.valueOf(it.status) }.getOrNull()
+                }
+                when {
+                    status == null -> skipped += 1
+                    isEligibleForTranscription(status) -> {
+                        sessionTranscriptionCoordinator.transcribeSession(sessionId)
+                        started += 1
+                    }
+                    else -> skipped += 1
+                }
+            }
+            selection.value = RecordsSelectionState()
+            val message = buildString {
+                append("Queued $started of ${selectedIds.size} records for transcription")
+                if (skipped > 0) append(" ($skipped skipped — already transcribed or in progress)")
+            }
+            _events.emit(HistoryEvent.Message(message))
+        }
+    }
+
     private fun comparatorFor(sortOption: RecordsSortOption): Comparator<RecordingSession> = when (sortOption) {
         RecordsSortOption.NEWEST -> compareByDescending<RecordingSession> { it.createdAt }
         RecordsSortOption.OLDEST -> compareBy<RecordingSession> { it.createdAt }
@@ -390,3 +420,6 @@ class HistoryViewModel @Inject constructor(
         return if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
     }
 }
+
+internal fun isEligibleForTranscription(status: SessionStatus): Boolean =
+    status == SessionStatus.RECORDED || status == SessionStatus.FAILED
