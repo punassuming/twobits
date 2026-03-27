@@ -16,12 +16,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Unarchive
@@ -141,8 +145,8 @@ internal fun RecordRow(
                         )
                     }
                     Icon(
-                        Icons.Filled.History,
-                        contentDescription = null,
+                        statusIcon(item.session.status, item.session.isArchived),
+                        contentDescription = statusLabel(item.session.status, item.session.isArchived),
                         modifier = Modifier.padding(top = 2.dp),
                         tint = statusColor(item.session.status, item.session.isArchived),
                     )
@@ -368,6 +372,15 @@ private fun statusLabel(status: SessionStatus, isArchived: Boolean): String = wh
     status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> "Transcribed"
     status == SessionStatus.FAILED -> "Failed"
     else -> "Recorded"
+}
+
+private fun statusIcon(status: SessionStatus, isArchived: Boolean) = when {
+    isArchived -> Icons.Filled.Archive
+    status == SessionStatus.TRANSCRIBING -> Icons.Filled.HourglassEmpty
+    status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> Icons.Filled.CheckCircle
+    status == SessionStatus.FAILED -> Icons.Filled.Error
+    // Covers RECORDED, IDLE, RECORDING, STOPPING, QUEUED and any future pre-transcription states
+    else -> Icons.Filled.Mic
 }
 
 @Composable
