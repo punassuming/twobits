@@ -37,7 +37,7 @@ android {
         applicationId = "dev.scrybe.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3 // Increment manually for each Play Store release
+        versionCode = 3001 // Managed by release workflow: major * 1_000_000 + minor * 1_000 + patch
         versionName = "0.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

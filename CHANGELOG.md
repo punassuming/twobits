@@ -1,5 +1,62 @@
 # Changelog
 
+## 0.3.1 (2026-03-26)
+
+### Features
+
+* reorganize provider settings so the active transcription provider owns its credentials and setup guidance directly in Settings
+* add clearer option summaries for recording format, sample rate, bitrate, and channel layout in Settings
+
+### Fixes
+
+* require confirmation before swipe-to-transform, archive, or restore actions so record gestures are harder to trigger accidentally
+
+## 0.3.0 (2026-03-26)
+
+### Features
+
+* add bulk transcription actions in History so multiple eligible recordings can be queued together
+* expose archived recordings more clearly and support restoring them from History and session detail
+
+### Improvements
+
+* show status-specific icons across the records list so pending, running, completed, and failed transcription states are easier to scan
+
+### Fixes
+
+* add retry and reset recovery actions for recordings stuck in a transcription state
+* restore the missing transcription module dependency that was breaking Android builds
+
+## 0.2.0 (2026-03-26)
+
+### Features
+
+* add OpenAI-powered profile suggestions to speed up transform profile creation
+* refresh the capture, history, profiles, and session detail flows with broader next-generation UI and workflow updates
+
+### Improvements
+
+* improve session playback and review interactions so recordings and derived outputs are easier to inspect
+* document the local Gradle runner workflow for Windows development
+
+### Fixes
+
+* resolve Android build regressions caused by small UI and project wiring issues
+* harden the release workflow so mainline releases are more reliable
+
+## 0.1.0 (2026-03-25)
+
+### Improvements
+
+* optimize Android CI and release automation so validation and release steps run more predictably
+* add a local PowerShell Gradle helper to make Windows builds easier to run outside CI
+
+## 0.0.10 (2026-03-25)
+
+### Fixes
+
+* clean up foreground recording notification refresh logic to resolve the build issues introduced after 0.0.9
+
 ## 0.0.9 (2026-03-25)
 
 ### Fixes

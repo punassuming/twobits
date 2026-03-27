@@ -80,18 +80,30 @@ jobs:
         if: steps.release_target.outputs.stale != 'true' && steps.tag.outputs.new_tag != ''
         run: chmod +x apps/android-whispering/gradlew
 
-      # Updates versionName in source so the repository always reflects the
-      # latest released version. The commit is tagged [skip ci] to prevent
-      # the push from re-triggering this workflow.
-      - name: Bump versionName in build.gradle.kts
+      # Updates app version metadata in source so the repository always reflects
+      # the latest released version. versionCode is derived from semantic
+      # versioning as major * 1,000,000 + minor * 1,000 + patch, which keeps it
+      # monotonic for Android installs and tied directly to the release tag.
+      # The commit is tagged [skip ci] to prevent the push from re-triggering
+      # this workflow.
+      - name: Bump app version in build.gradle.kts
         if: steps.release_target.outputs.stale != 'true' && steps.tag.outputs.new_tag != ''
+        shell: bash
         run: |
-          sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ steps.tag.outputs.new_version }}\"/" \
-            apps/android-whispering/app/build.gradle.kts
+          set -euo pipefail
+
+          version_name="${{ steps.tag.outputs.new_version }}"
+          IFS='.' read -r major minor patch <<< "$version_name"
+          version_code="$((major * 1000000 + minor * 1000 + patch))"
+          build_file="apps/android-whispering/app/build.gradle.kts"
+
+          sed -Ei "s/versionCode = [0-9]+/versionCode = ${version_code}/" "$build_file"
+          sed -Ei "s/versionName = \"[^\"]*\"/versionName = \"${version_name}\"/" "$build_file"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/android-whispering/app/build.gradle.kts
-          git diff --staged --quiet || git commit -m "chore: bump versionName to ${{ steps.tag.outputs.new_version }} [skip ci]"
+          git add "$build_file"
+          git diff --staged --quiet || git commit -m "chore: bump app version to ${version_name} (${version_code}) [skip ci]"
           git push origin HEAD:main
 
       # Sets up APK signing. If KEYSTORE_BASE64, STORE_PASSWORD, KEY_ALIAS, and
