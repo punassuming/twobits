@@ -313,6 +313,16 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setShowRenameAfterRecording(it) },
                         )
                     }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Confirm record swipe actions", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = uiState.confirmRecordSwipeActions,
+                            onCheckedChange = { viewModel.setConfirmRecordSwipeActions(it) },
+                        )
+                    }
                     SettingOptionRow(
                         title = "After recording stops",
                         value = when (uiState.postStopDestination) {

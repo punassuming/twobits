@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -214,14 +215,15 @@ private fun ProfileRow(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (!profile.isDefault) {
-                        IconButton(onClick = onSetDefault) {
-                            Icon(
-                                imageVector = Icons.Filled.Star,
-                                contentDescription = "Make default",
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
+                    IconButton(
+                        onClick = onSetDefault,
+                        enabled = !profile.isDefault,
+                    ) {
+                        Icon(
+                            imageVector = if (profile.isDefault) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                            contentDescription = if (profile.isDefault) "Default profile" else "Make default",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
                     }
                     IconButton(onClick = onEdit) {
                         Icon(Icons.Filled.Edit, contentDescription = "Edit profile")

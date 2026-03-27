@@ -39,6 +39,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -237,6 +238,39 @@ fun HistoryScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = MaterialTheme.shapes.medium,
+                    ) {
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    if (state.filters.showArchived) {
+                                        viewModel.updateFilters(state.filters.copy(showArchived = false))
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("Active")
+                            }
+                            TextButton(
+                                onClick = {
+                                    if (!state.filters.showArchived) {
+                                        viewModel.updateFilters(state.filters.copy(showArchived = true))
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("Archived")
+                            }
+                        }
+                    }
                     if (state.sessions.isEmpty()) {
                         Box(
                             modifier = Modifier
@@ -272,12 +306,13 @@ fun HistoryScreen(
                                     onDelete = { deleteTarget = item },
                                     onInfo = { infoTarget = item.toRecordInfo() },
                                     onOpenWith = { openAudioWith(context, item.session) },
-                                    onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
-                                    onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
-                                    onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
-                                )
-                            }
-                        }
+                                     onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
+                                     onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
+                                     onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
+                                     confirmSwipeActions = state.interactionPreferences.confirmSwipeActions,
+                                 )
+                             }
+                         }
                     }
                 }
             }

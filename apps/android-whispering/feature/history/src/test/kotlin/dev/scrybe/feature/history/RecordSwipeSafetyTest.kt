@@ -12,6 +12,11 @@ class RecordSwipeSafetyTest {
     }
 
     @Test
+    fun `record swipe edge zone keeps swipe initiation near row boundaries`() {
+        assertTrue(recordRowEdgeSwipeZoneFraction() < 0.25f)
+    }
+
+    @Test
     fun `transform swipe confirmation copy is explicit`() {
         assertEquals(
             "Run Default Transform",

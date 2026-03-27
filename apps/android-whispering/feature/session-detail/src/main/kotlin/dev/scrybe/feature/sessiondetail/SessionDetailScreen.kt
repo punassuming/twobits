@@ -20,9 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Description
@@ -63,7 +63,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
@@ -359,9 +358,9 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                CompactMetaItem("Duration", formatDuration(state.session.durationMs))
-                CompactMetaItem("Status", state.session.status.name)
-                CompactMetaItem("Audio", state.session.audioFormat.name)
+                CompactMetaItem(formatDuration(state.session.durationMs))
+                CompactMetaItem(state.session.status.name)
+                CompactMetaItem(state.session.audioFormat.name)
             }
             Text(
                 text = "${audioFile.name.ifBlank { state.session.audioFilePath }} · ${formatFileSize(state.session.fileSizeBytes)} · ${state.session.sampleRateHz / 1000} kHz · ${state.session.encodingBitRate / 1000} kbps · ${if (state.session.channelCount == 1) "Mono" else "Stereo"}",
@@ -383,18 +382,12 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
 
 @Composable
 private fun RowScope.CompactMetaItem(
-    label: String,
     value: String,
 ) {
-    Column(
+    Box(
         modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        contentAlignment = Alignment.CenterStart,
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
@@ -532,7 +525,7 @@ private fun TranscriptSection(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Transcription", style = MaterialTheme.typography.labelLarge)
+                Text("Transcript", style = MaterialTheme.typography.labelLarge)
                 OutlinedButton(onClick = onEditTranscript, enabled = state.currentTranscript != null) {
                     Icon(Icons.Filled.Edit, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -542,8 +535,9 @@ private fun TranscriptSection(
             rawTranscripts.forEach { transcript ->
                 TranscriptCard(
                     transcript = transcript,
-                    titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited transcript" else "Transcript",
+                    titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited" else "Transcript",
                     onDelete = { onDeleteTranscript(transcript) },
+                    onEdit = onEditTranscript,
                 )
             }
             state.originalTranscript
@@ -551,18 +545,20 @@ private fun TranscriptSection(
                 ?.let { original ->
                     TranscriptCard(
                         transcript = original,
-                        titleOverride = "Original machine transcript",
+                        titleOverride = "Original",
                         onDelete = { onDeleteTranscript(original) },
+                        onEdit = onEditTranscript,
                     )
                 }
         }
         if (transformedTranscripts.isNotEmpty()) {
-            Text("Transformations", style = MaterialTheme.typography.labelLarge)
+            Text("Transforms", style = MaterialTheme.typography.labelLarge)
             transformedTranscripts.forEach { transcript ->
                 TranscriptCard(
                     transcript = transcript,
                     titleOverride = transcript.type.name,
                     onDelete = { onDeleteTranscript(transcript) },
+                    onEdit = onEditTranscript,
                 )
             }
         }
@@ -575,21 +571,38 @@ private fun TranscriptCard(transcript: Transcript) {
         transcript = transcript,
         titleOverride = transcript.type.name,
         onDelete = null,
+        onEdit = null,
     )
 }
 
 @Composable
 private fun TranscriptCardActions(
     expanded: Boolean,
+    onCopy: () -> Unit,
     onToggleExpand: () -> Unit,
+    onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onCopy) {
+            Icon(
+                imageVector = Icons.Filled.ContentCopy,
+                contentDescription = "Copy transcript",
+            )
+        }
         IconButton(onClick = onToggleExpand) {
             Icon(
                 imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                 contentDescription = if (expanded) "Collapse" else "Expand",
             )
+        }
+        onEdit?.let {
+            IconButton(onClick = it) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit transcript",
+                )
+            }
         }
         onDelete?.let {
             IconButton(onClick = it) {
@@ -607,6 +620,7 @@ private fun TranscriptCardActions(
 private fun TranscriptCard(
     transcript: Transcript,
     titleOverride: String,
+    onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
 ) {
     var expanded by remember(transcript.id) { mutableStateOf(false) }
@@ -617,8 +631,7 @@ private fun TranscriptCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                clipboardManager.setText(AnnotatedString(transcript.content))
-                Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                expanded = !expanded
             },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
@@ -653,7 +666,12 @@ private fun TranscriptCard(
                 }
                 TranscriptCardActions(
                     expanded = expanded,
+                    onCopy = {
+                        clipboardManager.setText(AnnotatedString(transcript.content))
+                        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                    },
                     onToggleExpand = { expanded = !expanded },
+                    onEdit = onEdit,
                     onDelete = onDelete,
                 )
             }

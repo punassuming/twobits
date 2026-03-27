@@ -36,6 +36,7 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val keepScreenOn: Boolean = true,
     val showRenameAfterRecording: Boolean = true,
+    val confirmRecordSwipeActions: Boolean = true,
     val postStopDestination: PostStopDestination = PostStopDestination.HOME,
     val audioFormat: AudioFormat = AudioFormat.AAC,
     val sampleRateHz: Int = 48_000,
@@ -125,12 +126,14 @@ class SettingsViewModel @Inject constructor(
         preferencesDataStore.themeMode,
         preferencesDataStore.keepScreenOn,
         preferencesDataStore.showRenameAfterRecording,
+        preferencesDataStore.confirmRecordSwipeActions,
         preferencesDataStore.postStopDestination,
-    ) { themeMode, keepScreenOn, showRenameAfterRecording, postStopDestination ->
+    ) { themeMode, keepScreenOn, showRenameAfterRecording, confirmRecordSwipeActions, postStopDestination ->
         DisplayPreferences(
             themeMode = themeMode,
             keepScreenOn = keepScreenOn,
             showRenameAfterRecording = showRenameAfterRecording,
+            confirmRecordSwipeActions = confirmRecordSwipeActions,
             postStopDestination = postStopDestination,
         )
     }
@@ -155,6 +158,7 @@ class SettingsViewModel @Inject constructor(
             themeMode = displayPreferences.themeMode,
             keepScreenOn = displayPreferences.keepScreenOn,
             showRenameAfterRecording = displayPreferences.showRenameAfterRecording,
+            confirmRecordSwipeActions = displayPreferences.confirmRecordSwipeActions,
             postStopDestination = displayPreferences.postStopDestination,
             audioFormat = audioPreferences.audioFormat,
             sampleRateHz = audioPreferences.sampleRateHz,
@@ -222,6 +226,7 @@ class SettingsViewModel @Inject constructor(
             themeMode = settingsData.themeMode,
             keepScreenOn = settingsData.keepScreenOn,
             showRenameAfterRecording = settingsData.showRenameAfterRecording,
+            confirmRecordSwipeActions = settingsData.confirmRecordSwipeActions,
             postStopDestination = settingsData.postStopDestination,
             audioFormat = settingsData.audioFormat,
             sampleRateHz = settingsData.sampleRateHz,
@@ -273,6 +278,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowRenameAfterRecording(enabled: Boolean) {
         viewModelScope.launch { preferencesDataStore.setShowRenameAfterRecording(enabled) }
+    }
+
+    fun setConfirmRecordSwipeActions(enabled: Boolean) {
+        viewModelScope.launch { preferencesDataStore.setConfirmRecordSwipeActions(enabled) }
     }
 
     fun setPostStopDestination(destination: PostStopDestination) {
@@ -397,6 +406,7 @@ class SettingsViewModel @Inject constructor(
         val themeMode: ThemeMode = ThemeMode.SYSTEM,
         val keepScreenOn: Boolean = true,
         val showRenameAfterRecording: Boolean = true,
+        val confirmRecordSwipeActions: Boolean = true,
         val postStopDestination: PostStopDestination = PostStopDestination.HOME,
         val audioFormat: AudioFormat = AudioFormat.AAC,
         val sampleRateHz: Int = 48_000,
@@ -423,6 +433,7 @@ class SettingsViewModel @Inject constructor(
         val themeMode: ThemeMode = ThemeMode.SYSTEM,
         val keepScreenOn: Boolean = true,
         val showRenameAfterRecording: Boolean = true,
+        val confirmRecordSwipeActions: Boolean = true,
         val postStopDestination: PostStopDestination = PostStopDestination.HOME,
         val audioFormat: AudioFormat = AudioFormat.AAC,
         val sampleRateHz: Int = 48_000,
@@ -434,6 +445,7 @@ class SettingsViewModel @Inject constructor(
         val themeMode: ThemeMode = ThemeMode.SYSTEM,
         val keepScreenOn: Boolean = true,
         val showRenameAfterRecording: Boolean = true,
+        val confirmRecordSwipeActions: Boolean = true,
         val postStopDestination: PostStopDestination = PostStopDestination.HOME,
     )
 

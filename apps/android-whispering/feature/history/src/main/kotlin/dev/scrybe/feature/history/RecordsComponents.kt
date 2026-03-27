@@ -2,9 +2,13 @@ package dev.scrybe.feature.history
 
 import android.content.Context
 import android.content.Intent
+import android.view.MotionEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,8 +58,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -68,6 +74,9 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 internal const val RECORD_ROW_SWIPE_THRESHOLD_FRACTION = 0.55f
+private const val RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION = 0.18f
+
+internal fun recordRowEdgeSwipeZoneFraction(): Float = RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
 
 internal enum class RecordSwipeAction {
     TRANSFORM,
@@ -106,22 +115,33 @@ internal fun RecordRow(
     onSaveCopy: () -> Unit,
     onRetryTranscription: () -> Unit,
     onResetTranscriptionState: () -> Unit,
+    confirmSwipeActions: Boolean,
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
     var pendingSwipeAction by remember(item.session.id) { mutableStateOf<RecordSwipeAction?>(null) }
     val scope = rememberCoroutineScope()
+    var rowWidthPx by remember(item.session.id) { mutableStateOf(0) }
+    var swipeGesturesEnabled by remember(item.session.id) { mutableStateOf(true) }
     val dismissState = rememberSwipeToDismissBoxState(
         positionalThreshold = { it * RECORD_ROW_SWIPE_THRESHOLD_FRACTION },
         confirmValueChange = { value ->
             if (selectionEnabled) return@rememberSwipeToDismissBoxState false
             when (value) {
                 SwipeToDismissBoxValue.StartToEnd -> {
-                    pendingSwipeAction = RecordSwipeAction.TRANSFORM
+                    if (confirmSwipeActions) {
+                        pendingSwipeAction = RecordSwipeAction.TRANSFORM
+                    } else {
+                        onTransform()
+                    }
                     false
                 }
                 SwipeToDismissBoxValue.EndToStart -> {
-                    pendingSwipeAction =
-                        if (item.session.isArchived) RecordSwipeAction.RESTORE else RecordSwipeAction.ARCHIVE
+                    if (confirmSwipeActions) {
+                        pendingSwipeAction =
+                            if (item.session.isArchived) RecordSwipeAction.RESTORE else RecordSwipeAction.ARCHIVE
+                    } else {
+                        if (item.session.isArchived) onRestore() else onArchive()
+                    }
                     false
                 }
                 SwipeToDismissBoxValue.Settled -> false
@@ -194,13 +214,8 @@ internal fun RecordRow(
                             text = buildMetaLine(item.session),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = statusLabel(item.session.status, item.session.isArchived),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = statusColor(item.session.status, item.session.isArchived),
                         )
                         item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
                             Text(
@@ -323,6 +338,19 @@ internal fun RecordRow(
     } else {
         SwipeToDismissBox(
             state = dismissState,
+            gesturesEnabled = swipeGesturesEnabled,
+            modifier = Modifier
+                .onSizeChanged { size ->
+                    rowWidthPx = size.width
+                }
+                .pointerInteropFilter { event ->
+                    if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                        val edgeZone = rowWidthPx * RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
+                        val x = event.x
+                        swipeGesturesEnabled = rowWidthPx == 0 || x <= edgeZone || x >= (rowWidthPx - edgeZone)
+                    }
+                    false
+                },
             backgroundContent = {
                 SwipeBackground(
                     isArchived = item.session.isArchived,
@@ -536,7 +564,24 @@ internal fun RecordsFilterDialog(
         onDismissRequest = onDismiss,
         title = { Text("Filter Records") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Archive View", style = MaterialTheme.typography.labelLarge)
+                FilterOptionRow(
+                    title = "Active records",
+                    selected = !draft.showArchived,
+                    onClick = { draft = draft.copy(showArchived = false) },
+                )
+                FilterOptionRow(
+                    title = "Archived records",
+                    selected = draft.showArchived,
+                    onClick = { draft = draft.copy(showArchived = true) },
+                )
+                HorizontalDivider()
                 Text("Sort", style = MaterialTheme.typography.labelLarge)
                 RecordsSortOption.entries.forEach { option ->
                     FilterOptionRow(
@@ -562,7 +607,7 @@ internal fun RecordsFilterDialog(
                 HorizontalDivider()
                 Text("Status", style = MaterialTheme.typography.labelLarge)
                 SessionStatus.entries
-                    .filter { it in setOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBING, SessionStatus.TRANSCRIBED, SessionStatus.EDITED, SessionStatus.FAILED) }
+                    .filter { it in setOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBING, SessionStatus.FAILED, SessionStatus.TRANSCRIBED, SessionStatus.EDITED) }
                     .forEach { status ->
                         StatusToggleRow(
                             status = status,
@@ -576,18 +621,6 @@ internal fun RecordsFilterDialog(
                             },
                         )
                     }
-                HorizontalDivider()
-                Text("Archive", style = MaterialTheme.typography.labelLarge)
-                FilterOptionRow(
-                    title = "Active records",
-                    selected = !draft.showArchived,
-                    onClick = { draft = draft.copy(showArchived = false) },
-                )
-                FilterOptionRow(
-                    title = "Archived records",
-                    selected = draft.showArchived,
-                    onClick = { draft = draft.copy(showArchived = true) },
-                )
             }
         },
         confirmButton = {
