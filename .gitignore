@@ -11,4 +11,5 @@ apps/android-whispering/.gradle-user-home-ci/
 .gci2/
 .gd89/
 .guh/
+.gradle-project-cache/
 local.properties

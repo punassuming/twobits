@@ -10,11 +10,12 @@ plugins {
 val releaseKeystorePath: String? = System.getenv("KEYSTORE_PATH")
 val repositoryChangelog = projectDir.resolve("../../../CHANGELOG.md")
 val generatedChangelogAssetsDir = layout.buildDirectory.dir("generated/assets/changelog")
-val bundleChangelogAsset = tasks.register<Copy>("bundleChangelogAsset") {
-    from(repositoryChangelog)
-    into(generatedChangelogAssetsDir)
-    rename { "CHANGELOG.md" }
-}
+val bundleChangelogAsset =
+    tasks.register<Copy>("bundleChangelogAsset") {
+        from(repositoryChangelog)
+        into(generatedChangelogAssetsDir)
+        rename { "CHANGELOG.md" }
+    }
 
 // Validate that all required signing variables are present together when a
 // keystore path is provided, so misconfiguration surfaces early with a clear
@@ -60,13 +61,14 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
-            signingConfig = if (releaseKeystorePath != null) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig =
+                if (releaseKeystorePath != null) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
     compileOptions {

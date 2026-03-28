@@ -34,5 +34,9 @@ interface RecordingSessionDao {
     suspend fun deleteSession(id: String)
 
     @Query("UPDATE recording_sessions SET status = :newStatus, updatedAt = :updatedAt WHERE status = :oldStatus")
-    suspend fun updateSessionsByStatus(oldStatus: String, newStatus: String, updatedAt: Long)
+    suspend fun updateSessionsByStatus(
+        oldStatus: String,
+        newStatus: String,
+        updatedAt: Long,
+    )
 }

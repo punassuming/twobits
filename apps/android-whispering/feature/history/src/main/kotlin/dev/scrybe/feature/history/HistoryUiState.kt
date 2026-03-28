@@ -55,11 +55,13 @@ data class RecordsSelectionState(
 
 sealed interface HistoryUiState {
     data object Loading : HistoryUiState
+
     data class Success(
         val sessions: List<HistorySessionItem>,
         val filters: RecordsFilterState,
         val interactionPreferences: RecordsInteractionPreferences = RecordsInteractionPreferences(),
         val selection: RecordsSelectionState = RecordsSelectionState(),
     ) : HistoryUiState
+
     data class Error(val message: String) : HistoryUiState
 }

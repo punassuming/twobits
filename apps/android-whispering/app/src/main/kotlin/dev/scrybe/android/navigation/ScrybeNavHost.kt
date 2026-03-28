@@ -8,17 +8,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.history.HistoryScreen
-import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
+import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.SettingsScreen
 
 sealed class Screen(val route: String) {
     object Capture : Screen("capture")
+
     object History : Screen("history")
+
     object SessionDetail : Screen("session_detail/{sessionId}") {
         fun createRoute(sessionId: String) = "session_detail/$sessionId"
     }
+
     object Profiles : Screen("profiles")
+
     object Settings : Screen("settings")
 }
 
@@ -46,7 +50,7 @@ fun ScrybeNavHost(navController: NavHostController) {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Capture.route
+        startDestination = Screen.Capture.route,
     ) {
         composable(Screen.Capture.route) {
             CaptureScreen(

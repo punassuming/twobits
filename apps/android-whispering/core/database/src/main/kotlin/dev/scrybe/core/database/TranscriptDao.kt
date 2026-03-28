@@ -18,13 +18,19 @@ interface TranscriptDao {
     suspend fun getTranscriptById(id: String): TranscriptEntity?
 
     @Query("SELECT * FROM transcripts WHERE sessionId = :sessionId AND type = :type ORDER BY createdAt DESC LIMIT 1")
-    suspend fun getLatestTranscriptByType(sessionId: String, type: String): TranscriptEntity?
+    suspend fun getLatestTranscriptByType(
+        sessionId: String,
+        type: String,
+    ): TranscriptEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTranscript(transcript: TranscriptEntity)
 
     @Query("DELETE FROM transcripts WHERE sessionId = :sessionId AND type = :type")
-    suspend fun deleteTranscriptsForSessionAndType(sessionId: String, type: String)
+    suspend fun deleteTranscriptsForSessionAndType(
+        sessionId: String,
+        type: String,
+    )
 
     @Query("DELETE FROM transcripts WHERE id = :id")
     suspend fun deleteTranscript(id: String)

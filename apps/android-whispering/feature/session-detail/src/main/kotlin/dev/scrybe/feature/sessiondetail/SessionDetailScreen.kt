@@ -2,7 +2,6 @@ package dev.scrybe.feature.sessiondetail
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.core.content.FileProvider
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,19 +12,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.IosShare
@@ -62,10 +61,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
+import dev.scrybe.core.model.TransformProfile
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -89,26 +89,29 @@ fun SessionDetailScreen(
             when (event) {
                 is SessionDetailEvent.Message -> snackbarHostState.showSnackbar(event.text)
                 is SessionDetailEvent.ShareText -> {
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, event.title)
-                        putExtra(Intent.EXTRA_TEXT, event.text)
-                    }
+                    val intent =
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, event.title)
+                            putExtra(Intent.EXTRA_TEXT, event.text)
+                        }
                     context.startActivity(Intent.createChooser(intent, "Share transcript"))
                 }
                 is SessionDetailEvent.ShareFile -> {
                     val file = File(event.path)
-                    val contentUri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        file,
-                    )
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = event.mimeType
-                        putExtra(Intent.EXTRA_SUBJECT, event.title)
-                        putExtra(Intent.EXTRA_STREAM, contentUri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
+                    val contentUri =
+                        FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            file,
+                        )
+                    val intent =
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = event.mimeType
+                            putExtra(Intent.EXTRA_SUBJECT, event.title)
+                            putExtra(Intent.EXTRA_STREAM, contentUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
                     context.startActivity(Intent.createChooser(intent, "Share audio"))
                 }
             }
@@ -207,31 +210,36 @@ fun SessionDetailScreen(
         },
     ) { paddingValues ->
         when (val state = uiState) {
-            is SessionDetailUiState.Loading -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
+            is SessionDetailUiState.Loading ->
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
 
-            is SessionDetailUiState.Error -> Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(text = state.message, color = MaterialTheme.colorScheme.error)
-            }
+            is SessionDetailUiState.Error ->
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(text = state.message, color = MaterialTheme.colorScheme.error)
+                }
 
             is SessionDetailUiState.Success -> {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState()),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SessionOverviewCard(state)
@@ -285,7 +293,7 @@ fun SessionDetailScreen(
                         TranscriptType.TRANSFORMED -> "Delete Transformation"
                         TranscriptType.EDITED -> "Delete Edited Transcript"
                         TranscriptType.RAW -> "Delete Transcript"
-                    }
+                    },
                 )
             },
             text = {
@@ -294,7 +302,7 @@ fun SessionDetailScreen(
                         TranscriptType.TRANSFORMED -> "Delete this generated transformation output?"
                         TranscriptType.EDITED -> "Delete this edited transcript and fall back to the machine transcript?"
                         TranscriptType.RAW -> "Delete the transcription for this recording?"
-                    }
+                    },
                 )
             },
             confirmButton = {
@@ -321,13 +329,15 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
     val audioFile = File(state.session.audioFilePath)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (state.session.isArchived) {
-                MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            },
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (state.session.isArchived) {
+                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+            ),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -451,9 +461,10 @@ private fun TransformProfileRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -513,10 +524,11 @@ private fun TranscriptSection(
     }
 
     val rawTranscripts = listOfNotNull(state.currentTranscript)
-    val transformedTranscripts = transcripts
-        .filter { it.type != TranscriptType.RAW }
-        .filter { it.type != TranscriptType.EDITED }
-        .sortedByDescending { it.createdAt }
+    val transformedTranscripts =
+        transcripts
+            .filter { it.type != TranscriptType.RAW }
+            .filter { it.type != TranscriptType.EDITED }
+            .sortedByDescending { it.createdAt }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (rawTranscripts.isNotEmpty()) {
@@ -628,11 +640,12 @@ private fun TranscriptCard(
     val context = LocalContext.current
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                expanded = !expanded
-            },
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    expanded = !expanded
+                },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(

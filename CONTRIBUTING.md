@@ -65,6 +65,7 @@ scrybe/
         │   └── recording/            ← :service:recording
         ├── workers/                  ← :workers
         ├── scripts/
+        │   ├── manage-changelog.py   ← Changelog validation / promotion
         │   └── validate-manifests.py ← CI manifest validation
         ├── gradle/
         │   └── libs.versions.toml    ← Version catalog
@@ -145,47 +146,29 @@ All commands are run from `apps/android-whispering/`.
 | KtLint check | `./gradlew ktlintCheck` | Formatting check |
 | KtLint format | `./gradlew ktlintFormat` | Auto-fix formatting |
 | Full check | `./gradlew check` | Runs lint + tests + detekt + ktlint |
+| Changelog validation | `python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md` | Verifies the required `Unreleased` structure |
 | Manifest validation | `python3 scripts/validate-manifests.py` | Validates all `AndroidManifest.xml` files |
 
 > **Tip:** Append `--no-daemon` to any Gradle command when running in CI or constrained environments to avoid background daemon overhead.
 
-### PowerShell helper runner
+### PowerShell environment bootstrap
 
-For Windows and constrained local environments, prefer the repo helper runner:
+For Windows and other shells where you want the Android toolchain paths pinned explicitly, dot-source the repo bootstrap script and then run `gradlew.bat` directly:
 
 ```powershell
-cd apps\android-whispering
-.\scripts\gradle-local.ps1 -Command verify
+cd C:\drive\dev\android\scrybe
+. .\apps\android-whispering\scripts\android-env.ps1
 ```
 
-Supported commands:
+Recommended direct commands:
 
-| Command | What it runs |
-|---------|--------------|
-| `verify` | `assembleDebug assembleRelease lint testDebugUnitTest` |
-| `build-debug` | `assembleDebug` |
-| `build-release` | `assembleRelease` |
-| `lint` | `lint` |
-| `test` | `testDebugUnitTest` |
-| `recording-lint` | `:service:recording:lintDebug` |
-| `tasks` | Custom Gradle tasks passed through `-Task` |
-
-Useful options:
-
-| Option | Purpose |
-|--------|---------|
-| `-FreshGradleHome` | Retry with a clean `GRADLE_USER_HOME` when the normal Gradle cache is locked |
-| `-GradleHomeName some-dir` | Use a named Gradle user home under `%USERPROFILE%` |
-| `-KeepDaemon` | Leave the Gradle daemon on |
-| `-Stacktrace` | Include Gradle stacktraces |
-
-The helper runner:
-
-* resolves `JAVA_HOME` and `ANDROID_HOME`
-* sets `GRADLE_USER_HOME`
-* retries once with a fresh Gradle home when it detects wrapper lock-file failures
-
-This is the preferred entry point when `gradlew.bat` fails with messages involving `.zip.lck`, `Access is denied`, or other wrapper-lock issues.
+| Task | Direct command |
+|------|----------------|
+| Help / sync sanity check | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" help --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info` |
+| Build debug APK | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" assembleDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
+| Unit tests | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" testDebugUnitTest --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
+| Android Lint | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" lint --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
+| Recording service lint only | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" :service:recording:lintDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
 
 ### Build troubleshooting
 
@@ -197,13 +180,14 @@ If `gradlew.bat` fails before Gradle even starts, the usual cause is a lock or A
 
 Recommended order of operations:
 
-1. Re-run with:
+1. Reset the shell environment and run Gradle directly:
    ```powershell
-   .\scripts\gradle-local.ps1 -Command verify -FreshGradleHome
+   . .\apps\android-whispering\scripts\android-env.ps1
+   & "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" help --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
    ```
 2. If only the recording service lint is failing, isolate it:
    ```powershell
-   .\scripts\gradle-local.ps1 -Command recording-lint
+   & "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" :service:recording:lintDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info
    ```
 3. If you still suspect a stuck lock, confirm no lingering `java` / `gradle` processes are using that Gradle home before deleting the lock file manually.
 
@@ -499,19 +483,20 @@ class CaptureViewModelTest {
 GitHub Actions runs on every push to `main` or `copilot/**` branches, and on pull requests targeting `main`.
 
 ```
-validate ──► build
-         └─► lint
-         └─► test
+changelog ──► validate ──► build
+                        └─► lint
+                        └─► test
 ```
 
 | Job | What it does |
 |-----|-------------|
+| **Changelog** | Validates `CHANGELOG.md` structure and rejects `main`-bound diffs that do not update the changelog |
 | **Validate** | Runs `scripts/validate-manifests.py` – checks that all `AndroidManifest.xml` files are valid XML with correct namespace declarations |
 | **Build** | Assembles a debug APK with JDK 17 |
 | **Lint** | Runs Android Lint and reports issues |
 | **Unit Tests** | Runs all JVM unit tests |
 
-All jobs use `ubuntu-latest` and Gradle caching to keep build times short. The `validate` job must pass before any other job starts.
+All jobs use `ubuntu-latest` and Gradle caching to keep build times short. The `changelog` and `validate` jobs must pass before any other job starts.
 
 ### Release automation
 
@@ -521,8 +506,9 @@ Every push to `main` triggers `.github/workflows/release.yml`:
    - `feat:` commits → **minor** bump
    - `fix:`, `chore:`, and other prefixes → **patch** bump (default)
    - `BREAKING CHANGE` footer → **major** bump
-2. A git tag and a GitHub Release are created directly — no separate release PR is opened.
-3. The release APK is built with `./gradlew assembleRelease` and attached to the GitHub Release.
+2. The top `## Unreleased` section in `CHANGELOG.md` is promoted into the new versioned release section, and a fresh empty `## Unreleased` section is inserted for the next cycle.
+3. A git tag and a GitHub Release are created directly — no separate release PR is opened.
+4. The release APK is built with `./gradlew assembleRelease` and attached to the GitHub Release.
 
 The workflow uses only the built-in `GITHUB_TOKEN`; no additional repository secrets are required for releasing.
 
@@ -537,7 +523,9 @@ Before requesting a review, make sure:
 - [ ] `./gradlew lint` reports no new issues
 - [ ] `./gradlew ktlintCheck` passes (or run `./gradlew ktlintFormat` to auto-fix)
 - [ ] `./gradlew detekt` passes
+- [ ] `python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md` exits 0
 - [ ] `python3 scripts/validate-manifests.py` exits 0 (if you changed any manifest)
+- [ ] `CHANGELOG.md` `## Unreleased` reflects the user-facing impact of the change before requesting a merge to `main`
 - [ ] New public interfaces / classes have KDoc comments
 - [ ] Any new Hilt module is installed in the correct component (`SingletonComponent` for app-scoped dependencies)
 - [ ] New feature modules are declared in `settings.gradle.kts` and added as a dependency in `:app`

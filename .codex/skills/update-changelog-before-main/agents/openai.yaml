@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Changelog Before Main"
+  short_description: "Require release-note updates before main"
+  default_prompt: "Use $update-changelog-before-main to update the repo changelog before preparing a main-bound change."

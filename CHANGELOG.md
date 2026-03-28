@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+* require `CHANGELOG.md` updates before pull requests or pushes targeting `main`, and automatically promote those notes into the next tagged release
+
+### Improvements
+
+* replace the local Windows Gradle helper flow with a repo-root environment bootstrap that keeps direct `gradlew.bat` runs visible on stdout
+
+### Fixes
+
+* restore the Android verification suite on the latest head by wiring KtLint and Detekt into the Gradle build and resolving the compile regressions they exposed
+
 ## 0.3.1 (2026-03-26)
 
 ### Features

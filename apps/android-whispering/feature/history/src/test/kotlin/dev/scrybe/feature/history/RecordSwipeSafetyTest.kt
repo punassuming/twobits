@@ -5,7 +5,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RecordSwipeSafetyTest {
-
     @Test
     fun `record swipe threshold requires a deliberate majority gesture`() {
         assertTrue(RECORD_ROW_SWIPE_THRESHOLD_FRACTION > 0.5f)

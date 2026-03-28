@@ -17,15 +17,14 @@ import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
-import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -36,12 +35,16 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class RecordingForegroundService : Service() {
-
     @Inject lateinit var audioRecorder: AudioRecorder
+
     @Inject lateinit var recordingSessionDao: RecordingSessionDao
+
     @Inject lateinit var notificationFactory: RecordingNotificationFactory
+
     @Inject lateinit var sessionTranscriptionCoordinator: SessionTranscriptionCoordinator
+
     @Inject lateinit var recordingSessionEvents: RecordingSessionEvents
+
     @Inject lateinit var preferencesDataStore: AppPreferencesDataStore
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -53,7 +56,11 @@ class RecordingForegroundService : Service() {
         notificationFactory.createChannel(this)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int {
         when (intent?.action) {
             RecordingServiceActions.ACTION_START -> handleStart()
             RecordingServiceActions.ACTION_STOP -> handleStop()
@@ -65,7 +72,7 @@ class RecordingForegroundService : Service() {
     private fun handleStart() {
         startForeground(
             RecordingNotificationFactory.NOTIFICATION_ID,
-            notificationFactory.buildNotification(this)
+            notificationFactory.buildNotification(this),
         )
         serviceScope.launch {
             audioRecorder.telemetry.collectLatest { telemetry ->
@@ -81,13 +88,14 @@ class RecordingForegroundService : Service() {
             }
         }
         serviceScope.launch {
-            val config = RecordingConfig(
-                outputDir = filesDir.resolve("recordings").absolutePath,
-                audioFormat = preferencesDataStore.audioFormat.first(),
-                sampleRateHz = preferencesDataStore.sampleRateHz.first(),
-                encodingBitRate = preferencesDataStore.encodingBitRate.first(),
-                channelCount = preferencesDataStore.channelCount.first(),
-            )
+            val config =
+                RecordingConfig(
+                    outputDir = filesDir.resolve("recordings").absolutePath,
+                    audioFormat = preferencesDataStore.audioFormat.first(),
+                    sampleRateHz = preferencesDataStore.sampleRateHz.first(),
+                    encodingBitRate = preferencesDataStore.encodingBitRate.first(),
+                    channelCount = preferencesDataStore.channelCount.first(),
+                )
             audioRecorder.startRecording(config)
         }
     }
@@ -148,7 +156,7 @@ class RecordingForegroundService : Service() {
                 estimatedTranscriptionCostUsd = null,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
-            )
+            ),
         )
         return sessionId
     }
@@ -162,7 +170,10 @@ class RecordingForegroundService : Service() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun updateRecordingNotification(elapsedMs: Long, amplitudeRatio: Float) {
+    private fun updateRecordingNotification(
+        elapsedMs: Long,
+        amplitudeRatio: Float,
+    ) {
         NotificationManagerCompat.from(this)
             .notify(
                 RecordingNotificationFactory.NOTIFICATION_ID,

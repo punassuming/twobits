@@ -163,15 +163,16 @@ cd scrybe/apps/android-whispering
 ./gradlew installDebug
 ```
 
-If you are on Windows or hit Gradle wrapper lock issues locally, use the helper runner instead:
+If you are on Windows and want to pin the Android toolchain paths explicitly, dot-source the environment bootstrap once and then run Gradle directly:
 
 ```powershell
-cd apps\android-whispering
-.\scripts\gradle-local.ps1 -Command verify
-.\scripts\gradle-local.ps1 -Command recording-lint
+cd C:\drive\dev\android\scrybe
+. .\apps\android-whispering\scripts\android-env.ps1
+& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" assembleDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
+& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" :service:recording:lintDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
 ```
 
-The helper runner configures `JAVA_HOME`, `ANDROID_HOME`, and `GRADLE_USER_HOME`, and can retry with a fresh Gradle home when the default cache is locked.
+The bootstrap script keeps Gradle state under the repo root, exports the checked-in wrapper path as `SCRYBE_ANDROID_GRADLEW`, and keeps `--info` enabled so long-running builds stay chatty on stdout.
 
 After first launch, open **Settings**, enter your OpenAI API key, and tap **Save** — the app validates the key against the OpenAI API and shows a live connection status before storing it.
 
@@ -201,6 +202,7 @@ GitHub Actions runs four jobs on every push to `main` or any `copilot/**` branch
 
 | Job | Command |
 |-----|---------|
+| Changelog | `python3 apps/android-whispering/scripts/manage-changelog.py validate --changelog CHANGELOG.md` plus diff enforcement for `main`-bound changes |
 | Validate | `python3 scripts/validate-manifests.py` |
 | Build | `./gradlew assembleDebug` |
 | Lint | `./gradlew lint` |
@@ -210,9 +212,11 @@ GitHub Actions runs four jobs on every push to `main` or any `copilot/**` branch
 
 Every push to `main` triggers the release workflow:
 
-1. The next semantic version is computed automatically from [conventional commits](https://www.conventionalcommits.org/) since the last tag (`feat:` → minor, `fix:` / `chore:` / etc. → patch, `BREAKING CHANGE` → major).
-2. A git tag and a GitHub Release are created directly — **no separate release PR is opened**.
-3. A release APK is built and attached to the GitHub Release.
+1. Changes headed to `main` are expected to update the root `CHANGELOG.md` `## Unreleased` section before merge.
+2. The next semantic version is computed automatically from [conventional commits](https://www.conventionalcommits.org/) since the last tag (`feat:` → minor, `fix:` / `chore:` / etc. → patch, `BREAKING CHANGE` → major).
+3. The release workflow promotes `## Unreleased` into the new versioned release section and uses that promoted section as the GitHub Release body.
+4. A git tag and a GitHub Release are created directly — **no separate release PR is opened**.
+5. A release APK is built and attached to the GitHub Release.
 
 The built-in `GITHUB_TOKEN` is used; no additional secrets are required.
 

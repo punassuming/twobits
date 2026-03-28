@@ -1,16 +1,16 @@
 package dev.scrybe.android.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -54,10 +54,11 @@ fun ScrybeApp() {
 
         AnimatedVisibility(
             visible = activeRecordingState.isRecording,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { -it / 2 }) + fadeOut(),
         ) {
@@ -78,11 +79,12 @@ fun ScrybeApp() {
             onDismissRequest = whatsNewViewModel::dismiss,
             title = {
                 Text(
-                    text = if (whatsNewState.versionName.isBlank()) {
-                        "What's New"
-                    } else {
-                        "What's New in ${whatsNewState.versionName}"
-                    }
+                    text =
+                        if (whatsNewState.versionName.isBlank()) {
+                            "What's New"
+                        } else {
+                            "What's New in ${whatsNewState.versionName}"
+                        },
                 )
             },
             text = {
@@ -95,9 +97,10 @@ fun ScrybeApp() {
                     whatsNewState.notes.forEach { note ->
                         Text(
                             text = "\u2022 $note",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -124,17 +127,20 @@ private fun ActiveRecordingBanner(
     )
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onOpen),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpen),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
@@ -142,11 +148,12 @@ private fun ActiveRecordingBanner(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(14.dp)
-                        .scale(reactiveScale)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.error),
+                    modifier =
+                        Modifier
+                            .size(14.dp)
+                            .scale(reactiveScale)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error),
                 )
                 Icon(
                     imageVector = Icons.Filled.GraphicEq,

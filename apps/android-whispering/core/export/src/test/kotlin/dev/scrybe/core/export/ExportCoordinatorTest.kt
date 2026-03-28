@@ -13,7 +13,6 @@ import org.junit.rules.TemporaryFolder
 import java.time.Instant
 
 class ExportCoordinatorTest {
-
     @get:Rule
     val tempFolder = TemporaryFolder()
 
@@ -22,46 +21,49 @@ class ExportCoordinatorTest {
     private val jsonExporter = JsonExporter()
     private val coordinator = ExportCoordinator(markdownExporter, textExporter, jsonExporter)
 
-    private val testSession = RecordingSession(
-        id = "session-123",
-        title = "My Recording",
-        audioFilePath = "/data/test.m4a",
-        durationMs = 30_000L,
-        fileSizeBytes = 512_000L,
-        audioFormat = AudioFormat.AAC,
-        sampleRateHz = 48_000,
-        encodingBitRate = 128_000,
-        channelCount = 1,
-        waveformSamples = listOf(0.1f, 0.3f, 0.2f),
-        status = SessionStatus.TRANSCRIBED,
-        isArchived = false,
-        estimatedTranscriptionCostUsd = 0.01,
-        createdAt = Instant.ofEpochMilli(0),
-        updatedAt = Instant.ofEpochMilli(0),
-    )
-
-    private val testTranscripts = listOf(
-        Transcript(
-            id = "t1",
-            sessionId = "session-123",
-            content = "This is the raw transcript.",
-            type = TranscriptType.RAW,
-            sourceTranscriptId = null,
-            providerType = ProviderType.OPENAI,
-            transformProfileId = null,
-            transformRunId = null,
+    private val testSession =
+        RecordingSession(
+            id = "session-123",
+            title = "My Recording",
+            audioFilePath = "/data/test.m4a",
+            durationMs = 30_000L,
+            fileSizeBytes = 512_000L,
+            audioFormat = AudioFormat.AAC,
+            sampleRateHz = 48_000,
+            encodingBitRate = 128_000,
+            channelCount = 1,
+            waveformSamples = listOf(0.1f, 0.3f, 0.2f),
+            status = SessionStatus.TRANSCRIBED,
+            isArchived = false,
+            estimatedTranscriptionCostUsd = 0.01,
             createdAt = Instant.ofEpochMilli(0),
+            updatedAt = Instant.ofEpochMilli(0),
         )
-    )
+
+    private val testTranscripts =
+        listOf(
+            Transcript(
+                id = "t1",
+                sessionId = "session-123",
+                content = "This is the raw transcript.",
+                type = TranscriptType.RAW,
+                sourceTranscriptId = null,
+                providerType = ProviderType.OPENAI,
+                transformProfileId = null,
+                transformRunId = null,
+                createdAt = Instant.ofEpochMilli(0),
+            ),
+        )
 
     @Test
     fun `markdown export creates file with correct extension`() {
-        val result = coordinator.export(
-            session = testSession,
-            transcripts = testTranscripts,
-            format = ExportFormat.MARKDOWN,
-            outputDir = tempFolder.root,
-        )
+        val result =
+            coordinator.export(
+                session = testSession,
+                transcripts = testTranscripts,
+                format = ExportFormat.MARKDOWN,
+                outputDir = tempFolder.root,
+            )
 
         assertTrue(result.isSuccess)
         val file = result.getOrThrow()
@@ -73,12 +75,13 @@ class ExportCoordinatorTest {
 
     @Test
     fun `text export creates file with correct extension`() {
-        val result = coordinator.export(
-            session = testSession,
-            transcripts = testTranscripts,
-            format = ExportFormat.TXT,
-            outputDir = tempFolder.root,
-        )
+        val result =
+            coordinator.export(
+                session = testSession,
+                transcripts = testTranscripts,
+                format = ExportFormat.TXT,
+                outputDir = tempFolder.root,
+            )
 
         assertTrue(result.isSuccess)
         val file = result.getOrThrow()
@@ -89,12 +92,13 @@ class ExportCoordinatorTest {
 
     @Test
     fun `json export creates file with correct extension`() {
-        val result = coordinator.export(
-            session = testSession,
-            transcripts = testTranscripts,
-            format = ExportFormat.JSON,
-            outputDir = tempFolder.root,
-        )
+        val result =
+            coordinator.export(
+                session = testSession,
+                transcripts = testTranscripts,
+                format = ExportFormat.JSON,
+                outputDir = tempFolder.root,
+            )
 
         assertTrue(result.isSuccess)
         val file = result.getOrThrow()
@@ -107,17 +111,19 @@ class ExportCoordinatorTest {
 
     @Test
     fun `markdown export includes transformed transcripts`() {
-        val transformedTranscripts = testTranscripts + Transcript(
-            id = "t2",
-            sessionId = "session-123",
-            content = "Cleaned up text.",
-            type = TranscriptType.TRANSFORMED,
-            sourceTranscriptId = "t1",
-            providerType = ProviderType.OPENAI,
-            transformProfileId = "profile-1",
-            transformRunId = "run-1",
-            createdAt = Instant.ofEpochMilli(1000),
-        )
+        val transformedTranscripts =
+            testTranscripts +
+                Transcript(
+                    id = "t2",
+                    sessionId = "session-123",
+                    content = "Cleaned up text.",
+                    type = TranscriptType.TRANSFORMED,
+                    sourceTranscriptId = "t1",
+                    providerType = ProviderType.OPENAI,
+                    transformProfileId = "profile-1",
+                    transformRunId = "run-1",
+                    createdAt = Instant.ofEpochMilli(1000),
+                )
 
         val result = markdownExporter.export(testSession, transformedTranscripts, tempFolder.newFolder())
         assertTrue(result.isSuccess)

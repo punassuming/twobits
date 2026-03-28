@@ -7,27 +7,27 @@ import org.junit.Test
 import java.time.Instant
 
 class RecordingSessionTest {
-
     @Test
     fun `RecordingSession can be created with all fields`() {
         val now = Instant.now()
-        val session = RecordingSession(
-            id = "test-id",
-            title = "Test Recording",
-            audioFilePath = "/data/recordings/test.m4a",
-            durationMs = 60_000L,
-            fileSizeBytes = 1_024_000L,
-            audioFormat = AudioFormat.AAC,
-            sampleRateHz = 48_000,
-            encodingBitRate = 128_000,
-            channelCount = 1,
-            waveformSamples = emptyList(),
-            status = SessionStatus.RECORDED,
-            isArchived = false,
-            estimatedTranscriptionCostUsd = null,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val session =
+            RecordingSession(
+                id = "test-id",
+                title = "Test Recording",
+                audioFilePath = "/data/recordings/test.m4a",
+                durationMs = 60_000L,
+                fileSizeBytes = 1_024_000L,
+                audioFormat = AudioFormat.AAC,
+                sampleRateHz = 48_000,
+                encodingBitRate = 128_000,
+                channelCount = 1,
+                waveformSamples = emptyList(),
+                status = SessionStatus.RECORDED,
+                isArchived = false,
+                estimatedTranscriptionCostUsd = null,
+                createdAt = now,
+                updatedAt = now,
+            )
 
         assertEquals("test-id", session.id)
         assertEquals("Test Recording", session.title)
@@ -39,17 +39,18 @@ class RecordingSessionTest {
     @Test
     fun `Transcript can be created for a session`() {
         val now = Instant.now()
-        val transcript = Transcript(
-            id = "transcript-id",
-            sessionId = "session-id",
-            content = "Hello world",
-            type = TranscriptType.RAW,
-            sourceTranscriptId = null,
-            providerType = ProviderType.OPENAI,
-            transformProfileId = null,
-            transformRunId = null,
-            createdAt = now,
-        )
+        val transcript =
+            Transcript(
+                id = "transcript-id",
+                sessionId = "session-id",
+                content = "Hello world",
+                type = TranscriptType.RAW,
+                sourceTranscriptId = null,
+                providerType = ProviderType.OPENAI,
+                transformProfileId = null,
+                transformRunId = null,
+                createdAt = now,
+            )
 
         assertEquals("transcript-id", transcript.id)
         assertEquals(TranscriptType.RAW, transcript.type)
@@ -58,15 +59,16 @@ class RecordingSessionTest {
 
     @Test
     fun `TransformProfile can be created`() {
-        val profile = TransformProfile(
-            id = "profile-id",
-            name = "Cleanup",
-            description = "Cleans up text",
-            systemPrompt = "Clean the text.",
-            steps = listOf("Clean the text."),
-            providerType = ProviderType.OPENAI,
-            isDefault = true,
-        )
+        val profile =
+            TransformProfile(
+                id = "profile-id",
+                name = "Cleanup",
+                description = "Cleans up text",
+                systemPrompt = "Clean the text.",
+                steps = listOf("Clean the text."),
+                providerType = ProviderType.OPENAI,
+                isDefault = true,
+            )
 
         assertEquals("profile-id", profile.id)
         assertTrue(profile.isDefault)
@@ -85,23 +87,24 @@ class RecordingSessionTest {
     @Test
     fun `FAILED status allows retry - transcribe button should be enabled`() {
         val now = Instant.now()
-        val failedSession = RecordingSession(
-            id = "test-id",
-            title = "Test Recording",
-            audioFilePath = "/data/recordings/test.m4a",
-            durationMs = 60_000L,
-            fileSizeBytes = 1_024_000L,
-            audioFormat = AudioFormat.AAC,
-            sampleRateHz = 48_000,
-            encodingBitRate = 128_000,
-            channelCount = 1,
-            waveformSamples = emptyList(),
-            status = SessionStatus.FAILED,
-            isArchived = false,
-            estimatedTranscriptionCostUsd = null,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val failedSession =
+            RecordingSession(
+                id = "test-id",
+                title = "Test Recording",
+                audioFilePath = "/data/recordings/test.m4a",
+                durationMs = 60_000L,
+                fileSizeBytes = 1_024_000L,
+                audioFormat = AudioFormat.AAC,
+                sampleRateHz = 48_000,
+                encodingBitRate = 128_000,
+                channelCount = 1,
+                waveformSamples = emptyList(),
+                status = SessionStatus.FAILED,
+                isArchived = false,
+                estimatedTranscriptionCostUsd = null,
+                createdAt = now,
+                updatedAt = now,
+            )
         assertFalse(
             "FAILED session should not appear as transcribing (retry must be enabled)",
             failedSession.status == SessionStatus.TRANSCRIBING,
@@ -120,23 +123,24 @@ class RecordingSessionTest {
     @Test
     fun `stale recovery produces FAILED session with all other fields preserved`() {
         val now = Instant.now()
-        val stuckSession = RecordingSession(
-            id = "stuck-id",
-            title = "Stuck Recording",
-            audioFilePath = "/data/recordings/stuck.m4a",
-            durationMs = 30_000L,
-            fileSizeBytes = 512_000L,
-            audioFormat = AudioFormat.AAC,
-            sampleRateHz = 16_000,
-            encodingBitRate = 64_000,
-            channelCount = 1,
-            waveformSamples = emptyList(),
-            status = SessionStatus.TRANSCRIBING,
-            isArchived = false,
-            estimatedTranscriptionCostUsd = null,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val stuckSession =
+            RecordingSession(
+                id = "stuck-id",
+                title = "Stuck Recording",
+                audioFilePath = "/data/recordings/stuck.m4a",
+                durationMs = 30_000L,
+                fileSizeBytes = 512_000L,
+                audioFormat = AudioFormat.AAC,
+                sampleRateHz = 16_000,
+                encodingBitRate = 64_000,
+                channelCount = 1,
+                waveformSamples = emptyList(),
+                status = SessionStatus.TRANSCRIBING,
+                isArchived = false,
+                estimatedTranscriptionCostUsd = null,
+                createdAt = now,
+                updatedAt = now,
+            )
         val recovered = stuckSession.copy(status = SessionStatus.FAILED)
         assertEquals(SessionStatus.FAILED, recovered.status)
         assertEquals(stuckSession.id, recovered.id)
@@ -154,23 +158,24 @@ class RecordingSessionTest {
     @Test
     fun `reset transcription state maps stale to RECORDED`() {
         val now = Instant.now()
-        val stuckSession = RecordingSession(
-            id = "stuck-id",
-            title = "Stuck Recording",
-            audioFilePath = "/data/recordings/stuck.m4a",
-            durationMs = 30_000L,
-            fileSizeBytes = 512_000L,
-            audioFormat = AudioFormat.AAC,
-            sampleRateHz = 16_000,
-            encodingBitRate = 64_000,
-            channelCount = 1,
-            waveformSamples = emptyList(),
-            status = SessionStatus.TRANSCRIBING,
-            isArchived = false,
-            estimatedTranscriptionCostUsd = null,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val stuckSession =
+            RecordingSession(
+                id = "stuck-id",
+                title = "Stuck Recording",
+                audioFilePath = "/data/recordings/stuck.m4a",
+                durationMs = 30_000L,
+                fileSizeBytes = 512_000L,
+                audioFormat = AudioFormat.AAC,
+                sampleRateHz = 16_000,
+                encodingBitRate = 64_000,
+                channelCount = 1,
+                waveformSamples = emptyList(),
+                status = SessionStatus.TRANSCRIBING,
+                isArchived = false,
+                estimatedTranscriptionCostUsd = null,
+                createdAt = now,
+                updatedAt = now,
+            )
         val resetStatus = SessionStatus.RECORDED
         val resetSession = stuckSession.copy(status = resetStatus)
         assertEquals(SessionStatus.RECORDED, resetSession.status)
@@ -179,13 +184,14 @@ class RecordingSessionTest {
 
     @Test
     fun `ProviderConfig can be created`() {
-        val config = ProviderConfig(
-            id = "config-id",
-            providerType = ProviderType.OPENAI,
-            isEnabled = true,
-            modelName = "whisper-1",
-            apiKeyAlias = "OPENAI",
-        )
+        val config =
+            ProviderConfig(
+                id = "config-id",
+                providerType = ProviderType.OPENAI,
+                isEnabled = true,
+                modelName = "whisper-1",
+                apiKeyAlias = "OPENAI",
+            )
 
         assertEquals("config-id", config.id)
         assertTrue(config.isEnabled)
@@ -195,23 +201,24 @@ class RecordingSessionTest {
     @Test
     fun `archived session has isArchived true and ARCHIVED status`() {
         val now = Instant.now()
-        val session = RecordingSession(
-            id = "archived-id",
-            title = "Archived Recording",
-            audioFilePath = "/data/recordings/archived.m4a",
-            durationMs = 60_000L,
-            fileSizeBytes = 1_024_000L,
-            audioFormat = AudioFormat.AAC,
-            sampleRateHz = 48_000,
-            encodingBitRate = 128_000,
-            channelCount = 1,
-            waveformSamples = emptyList(),
-            status = SessionStatus.ARCHIVED,
-            isArchived = true,
-            estimatedTranscriptionCostUsd = null,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val session =
+            RecordingSession(
+                id = "archived-id",
+                title = "Archived Recording",
+                audioFilePath = "/data/recordings/archived.m4a",
+                durationMs = 60_000L,
+                fileSizeBytes = 1_024_000L,
+                audioFormat = AudioFormat.AAC,
+                sampleRateHz = 48_000,
+                encodingBitRate = 128_000,
+                channelCount = 1,
+                waveformSamples = emptyList(),
+                status = SessionStatus.ARCHIVED,
+                isArchived = true,
+                estimatedTranscriptionCostUsd = null,
+                createdAt = now,
+                updatedAt = now,
+            )
 
         assertTrue(session.isArchived)
         assertEquals(SessionStatus.ARCHIVED, session.status)
@@ -221,33 +228,35 @@ class RecordingSessionTest {
     @Test
     fun `restoring archived session clears isArchived and resets status to RECORDED`() {
         val now = Instant.now()
-        val archivedSession = RecordingSession(
-            id = "archived-id",
-            title = "Archived Recording",
-            audioFilePath = "/data/recordings/archived.m4a",
-            durationMs = 60_000L,
-            fileSizeBytes = 1_024_000L,
-            audioFormat = AudioFormat.AAC,
-            sampleRateHz = 48_000,
-            encodingBitRate = 128_000,
-            channelCount = 1,
-            waveformSamples = emptyList(),
-            status = SessionStatus.ARCHIVED,
-            isArchived = true,
-            estimatedTranscriptionCostUsd = null,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val archivedSession =
+            RecordingSession(
+                id = "archived-id",
+                title = "Archived Recording",
+                audioFilePath = "/data/recordings/archived.m4a",
+                durationMs = 60_000L,
+                fileSizeBytes = 1_024_000L,
+                audioFormat = AudioFormat.AAC,
+                sampleRateHz = 48_000,
+                encodingBitRate = 128_000,
+                channelCount = 1,
+                waveformSamples = emptyList(),
+                status = SessionStatus.ARCHIVED,
+                isArchived = true,
+                estimatedTranscriptionCostUsd = null,
+                createdAt = now,
+                updatedAt = now,
+            )
 
         val restoreStatus: (String) -> String = { status ->
             val current = runCatching { SessionStatus.valueOf(status) }.getOrDefault(SessionStatus.RECORDED)
             if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
         }
 
-        val restoredSession = archivedSession.copy(
-            isArchived = false,
-            status = SessionStatus.valueOf(restoreStatus(archivedSession.status.name)),
-        )
+        val restoredSession =
+            archivedSession.copy(
+                isArchived = false,
+                status = SessionStatus.valueOf(restoreStatus(archivedSession.status.name)),
+            )
 
         assertFalse(restoredSession.isArchived)
         assertEquals(SessionStatus.RECORDED, restoredSession.status)
@@ -257,28 +266,30 @@ class RecordingSessionTest {
     @Test
     fun `archiving a transcribed session marks it archived with ARCHIVED status`() {
         val now = Instant.now()
-        val transcribedSession = RecordingSession(
-            id = "transcribed-id",
-            title = "Transcribed Recording",
-            audioFilePath = "/data/recordings/transcribed.m4a",
-            durationMs = 60_000L,
-            fileSizeBytes = 1_024_000L,
-            audioFormat = AudioFormat.AAC,
-            sampleRateHz = 48_000,
-            encodingBitRate = 128_000,
-            channelCount = 1,
-            waveformSamples = emptyList(),
-            status = SessionStatus.TRANSCRIBED,
-            isArchived = false,
-            estimatedTranscriptionCostUsd = null,
-            createdAt = now,
-            updatedAt = now,
-        )
+        val transcribedSession =
+            RecordingSession(
+                id = "transcribed-id",
+                title = "Transcribed Recording",
+                audioFilePath = "/data/recordings/transcribed.m4a",
+                durationMs = 60_000L,
+                fileSizeBytes = 1_024_000L,
+                audioFormat = AudioFormat.AAC,
+                sampleRateHz = 48_000,
+                encodingBitRate = 128_000,
+                channelCount = 1,
+                waveformSamples = emptyList(),
+                status = SessionStatus.TRANSCRIBED,
+                isArchived = false,
+                estimatedTranscriptionCostUsd = null,
+                createdAt = now,
+                updatedAt = now,
+            )
 
-        val archivedSession = transcribedSession.copy(
-            isArchived = true,
-            status = SessionStatus.ARCHIVED,
-        )
+        val archivedSession =
+            transcribedSession.copy(
+                isArchived = true,
+                status = SessionStatus.ARCHIVED,
+            )
 
         assertTrue(archivedSession.isArchived)
         assertEquals(SessionStatus.ARCHIVED, archivedSession.status)

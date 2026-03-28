@@ -7,19 +7,19 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,9 +71,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import kotlin.math.max
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 
 @Composable
@@ -87,24 +87,30 @@ fun CaptureScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val view = LocalView.current
-    val requiredPermissions = remember {
-        buildList {
-            add(Manifest.permission.RECORD_AUDIO)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                add(Manifest.permission.POST_NOTIFICATIONS)
+    val requiredPermissions =
+        remember {
+            buildList {
+                add(Manifest.permission.RECORD_AUDIO)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    add(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
         }
-    }
-    val hasRequiredPermissions = requiredPermissions.all { permission ->
-        ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-    ) { results ->
-        if (requiredPermissions.all { results[it] == true || ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }) {
-            viewModel.startRecording()
+    val hasRequiredPermissions =
+        requiredPermissions.all { permission ->
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
         }
-    }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { results ->
+            if (requiredPermissions.all {
+                    results[it] == true || ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                }
+            ) {
+                viewModel.startRecording()
+            }
+        }
 
     DisposableEffect(view, uiState.phase, uiState.keepScreenOn) {
         val previous = view.keepScreenOn
@@ -115,11 +121,12 @@ fun CaptureScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .safeDrawingPadding()
-            .padding(20.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .safeDrawingPadding()
+                .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.Top),
     ) {
@@ -132,9 +139,10 @@ fun CaptureScreen(
         )
         HomeCard {
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 112.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 112.dp),
                 color = Color.Transparent,
             ) {
                 AnimatedContent(
@@ -154,11 +162,12 @@ fun CaptureScreen(
                                     textAlign = TextAlign.Center,
                                 )
                                 Text(
-                                    text = if (hasRequiredPermissions) {
-                                        "Tap record to start a new capture with transcription and reusable AI transforms."
-                                    } else {
-                                        "Microphone permission is required before you can record."
-                                    },
+                                    text =
+                                        if (hasRequiredPermissions) {
+                                            "Tap record to start a new capture with transcription and reusable AI transforms."
+                                        } else {
+                                            "Microphone permission is required before you can record."
+                                        },
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center,
@@ -213,16 +222,18 @@ fun CaptureScreen(
                         CapturePhase.STOPPING -> Unit
                     }
                 },
-                ringColor = if (uiState.phase == CapturePhase.RECORDING) {
-                    MaterialTheme.colorScheme.tertiary
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-                centerColor = if (uiState.phase == CapturePhase.RECORDING) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.error
-                },
+                ringColor =
+                    if (uiState.phase == CapturePhase.RECORDING) {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                centerColor =
+                    if (uiState.phase == CapturePhase.RECORDING) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
                 isActive = uiState.phase == CapturePhase.RECORDING,
                 amplitudeRatio = uiState.currentAmplitudeRatio,
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
@@ -230,9 +241,10 @@ fun CaptureScreen(
             AmplitudeVisualizer(
                 amplitudes = uiState.amplitudeHistory,
                 currentAmplitudeRatio = uiState.currentAmplitudeRatio,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
             )
         }
         QuickActionRow(
@@ -281,13 +293,15 @@ private fun RecentRecordingsSection(
         } else {
             sessions.forEach { session ->
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenSession(session.id) },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenSession(session.id) },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ),
                 ) {
                     Column(
                         modifier = Modifier.padding(14.dp),
@@ -332,17 +346,19 @@ private fun RecentRecordingsSection(
 @Composable
 private fun HomeCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .widthIn(max = 760.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .widthIn(max = 760.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize()
-                .padding(20.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .animateContentSize()
+                    .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
@@ -357,9 +373,10 @@ private fun QuickActionRow(
     onNavigateToSettings: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .widthIn(max = 760.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .widthIn(max = 760.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         QuickActionCard(
@@ -397,19 +414,22 @@ private fun QuickActionCard(
     label: String,
 ) {
     Card(
-        modifier = modifier
-            .heightIn(min = 92.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick),
+        modifier =
+            modifier
+                .heightIn(min = 92.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            ),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 14.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -442,70 +462,79 @@ private fun RecordActionButton(
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = if (isActive) 1.1f else 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = if (isActive) 1180 else 1680,
-                easing = LinearEasing,
+        animationSpec =
+            infiniteRepeatable(
+                animation =
+                    tween(
+                        durationMillis = if (isActive) 1180 else 1680,
+                        easing = LinearEasing,
+                    ),
+                repeatMode = RepeatMode.Reverse,
             ),
-            repeatMode = RepeatMode.Reverse,
-        ),
         label = "record-action-scale",
     )
     val outerRingScale by infiniteTransition.animateFloat(
         initialValue = 0.97f,
         targetValue = if (isActive) 1.03f else 1.02f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (isActive) 920 else 1720, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(durationMillis = if (isActive) 920 else 1720, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
         label = "record-outer-ring",
     )
     val middleRingScale by infiniteTransition.animateFloat(
         initialValue = 0.99f,
         targetValue = if (isActive) 1.02f else 1.015f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (isActive) 1080 else 1460, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(durationMillis = if (isActive) 1080 else 1460, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
         label = "record-middle-ring",
     )
     val innerRingScale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = if (isActive) 1.015f else 1.01f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (isActive) 820 else 1240, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(durationMillis = if (isActive) 820 else 1240, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
         label = "record-inner-ring",
     )
     val wavePhase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = (PI * 2f).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = if (isActive) 1500 else 2600, easing = LinearEasing),
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(durationMillis = if (isActive) 1500 else 2600, easing = LinearEasing),
+            ),
         label = "record-wave-phase",
     )
-    val waveStrength = when {
-        amplitudeRatio > 0f -> 0.004f + (amplitudeRatio.coerceIn(0f, 1f) * 0.02f)
-        isActive -> 0.008f
-        else -> 0f
-    }
+    val waveStrength =
+        when {
+            amplitudeRatio > 0f -> 0.004f + (amplitudeRatio.coerceIn(0f, 1f) * 0.02f)
+            isActive -> 0.008f
+            else -> 0f
+        }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .widthIn(max = 760.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .widthIn(max = 760.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(
-            modifier = Modifier
-                .size(198.dp)
-                .graphicsLayer {
-                    val combinedScale = pulseScale * audioReactiveScale
-                    scaleX = combinedScale
-                    scaleY = combinedScale
-                },
+            modifier =
+                Modifier
+                    .size(198.dp)
+                    .graphicsLayer {
+                        val combinedScale = pulseScale * audioReactiveScale
+                        scaleX = combinedScale
+                        scaleY = combinedScale
+                    },
             contentAlignment = Alignment.Center,
         ) {
             RingLayer(
@@ -554,12 +583,13 @@ private fun RingLayer(
     waveStrength: Float,
 ) {
     Canvas(
-        modifier = Modifier
-            .size(diameter)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            },
+        modifier =
+            Modifier
+                .size(diameter)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
     ) {
         val strokeWidth = 1.5.dp.toPx()
         val center = Offset(this.size.width / 2f, this.size.height / 2f)
@@ -573,16 +603,18 @@ private fun RingLayer(
         val steps = 120
         repeat(steps + 1) { index ->
             val angle = (index.toFloat() / steps.toFloat()) * ((PI * 2.0).toFloat())
-            val perturbation = if (waveStrength > 0f) {
-                sin((angle * 6f) + wavePhase).toFloat() * baseRadius * waveStrength
-            } else {
-                0f
-            }
+            val perturbation =
+                if (waveStrength > 0f) {
+                    sin((angle * 6f) + wavePhase).toFloat() * baseRadius * waveStrength
+                } else {
+                    0f
+                }
             val radius = baseRadius + perturbation
-            val point = Offset(
-                x = center.x + (cos(angle).toFloat() * radius),
-                y = center.y + (sin(angle).toFloat() * radius),
-            )
+            val point =
+                Offset(
+                    x = center.x + (cos(angle).toFloat() * radius),
+                    y = center.y + (sin(angle).toFloat() * radius),
+                )
             if (index == 0) {
                 path.moveTo(point.x, point.y)
             } else {
@@ -627,11 +659,12 @@ private fun AmplitudeVisualizer(
             val lineHeight = (baselineY - ceilingPadding) * shapedAmplitude
             val x = (index * (barWidth + spacing)) + barWidth / 2
             val startY = baselineY - lineHeight
-            val color = when {
-                index == activeIndex -> accentColor.copy(alpha = 0.65f + (currentAmplitudeRatio * 0.35f))
-                index >= displayValues.lastIndex - 4 -> barColor.copy(alpha = 0.78f)
-                else -> barColor.copy(alpha = 0.34f + (index.toFloat() / displayValues.size) * 0.32f)
-            }
+            val color =
+                when {
+                    index == activeIndex -> accentColor.copy(alpha = 0.65f + (currentAmplitudeRatio * 0.35f))
+                    index >= displayValues.lastIndex - 4 -> barColor.copy(alpha = 0.78f)
+                    else -> barColor.copy(alpha = 0.34f + (index.toFloat() / displayValues.size) * 0.32f)
+                }
             drawLine(
                 color = color,
                 start = Offset(x, startY),
@@ -648,7 +681,10 @@ private fun visualAmplitude(value: Float): Float {
     return (0.002f + (gated * 0.9f)).coerceIn(0.002f, 1f)
 }
 
-private fun paddedAmplitudeValues(values: List<Float>, targetCount: Int): List<Float> {
+private fun paddedAmplitudeValues(
+    values: List<Float>,
+    targetCount: Int,
+): List<Float> {
     if (targetCount <= 0) return emptyList()
     if (values.isEmpty()) return List(targetCount) { 0f }
     return List(targetCount) { index ->

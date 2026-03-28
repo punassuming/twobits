@@ -3,25 +3,25 @@ package dev.scrybe.feature.history
 import android.content.Context
 import android.content.Intent
 import android.view.MotionEvent
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
@@ -32,23 +32,23 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.SaveAlt
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -57,20 +57,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
+import kotlinx.coroutines.launch
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 internal const val RECORD_ROW_SWIPE_THRESHOLD_FRACTION = 0.55f
@@ -84,19 +85,24 @@ internal enum class RecordSwipeAction {
     RESTORE,
 }
 
-internal fun recordSwipeConfirmationTitle(action: RecordSwipeAction): String = when (action) {
-    RecordSwipeAction.TRANSFORM -> "Run Default Transform"
-    RecordSwipeAction.ARCHIVE -> "Archive Record"
-    RecordSwipeAction.RESTORE -> "Restore Record"
-}
+internal fun recordSwipeConfirmationTitle(action: RecordSwipeAction): String =
+    when (action) {
+        RecordSwipeAction.TRANSFORM -> "Run Default Transform"
+        RecordSwipeAction.ARCHIVE -> "Archive Record"
+        RecordSwipeAction.RESTORE -> "Restore Record"
+    }
 
-internal fun recordSwipeConfirmationMessage(action: RecordSwipeAction, title: String): String = when (action) {
-    RecordSwipeAction.TRANSFORM -> "Run the default transform for $title?"
-    RecordSwipeAction.ARCHIVE -> "Archive $title? You can restore it later from archived records."
-    RecordSwipeAction.RESTORE -> "Restore $title to the active records list?"
-}
+internal fun recordSwipeConfirmationMessage(
+    action: RecordSwipeAction,
+    title: String,
+): String =
+    when (action) {
+        RecordSwipeAction.TRANSFORM -> "Run the default transform for $title?"
+        RecordSwipeAction.ARCHIVE -> "Archive $title? You can restore it later from archived records."
+        RecordSwipeAction.RESTORE -> "Restore $title to the active records list?"
+    }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 internal fun RecordRow(
     item: HistorySessionItem,
@@ -122,63 +128,68 @@ internal fun RecordRow(
     val scope = rememberCoroutineScope()
     var rowWidthPx by remember(item.session.id) { mutableStateOf(0) }
     var swipeGesturesEnabled by remember(item.session.id) { mutableStateOf(true) }
-    val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { it * RECORD_ROW_SWIPE_THRESHOLD_FRACTION },
-        confirmValueChange = { value ->
-            if (selectionEnabled) return@rememberSwipeToDismissBoxState false
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    if (confirmSwipeActions) {
-                        pendingSwipeAction = RecordSwipeAction.TRANSFORM
-                    } else {
-                        onTransform()
+    val dismissState =
+        rememberSwipeToDismissBoxState(
+            positionalThreshold = { it * RECORD_ROW_SWIPE_THRESHOLD_FRACTION },
+            confirmValueChange = { value ->
+                if (selectionEnabled) return@rememberSwipeToDismissBoxState false
+                when (value) {
+                    SwipeToDismissBoxValue.StartToEnd -> {
+                        if (confirmSwipeActions) {
+                            pendingSwipeAction = RecordSwipeAction.TRANSFORM
+                        } else {
+                            onTransform()
+                        }
+                        false
                     }
-                    false
-                }
-                SwipeToDismissBoxValue.EndToStart -> {
-                    if (confirmSwipeActions) {
-                        pendingSwipeAction =
-                            if (item.session.isArchived) RecordSwipeAction.RESTORE else RecordSwipeAction.ARCHIVE
-                    } else {
-                        if (item.session.isArchived) onRestore() else onArchive()
+                    SwipeToDismissBoxValue.EndToStart -> {
+                        if (confirmSwipeActions) {
+                            pendingSwipeAction =
+                                if (item.session.isArchived) RecordSwipeAction.RESTORE else RecordSwipeAction.ARCHIVE
+                        } else {
+                            if (item.session.isArchived) onRestore() else onArchive()
+                        }
+                        false
                     }
-                    false
+                    SwipeToDismissBoxValue.Settled -> false
                 }
-                SwipeToDismissBoxValue.Settled -> false
-            }
-        },
-    )
+            },
+        )
 
     val rowContent: @Composable () -> Unit = {
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = {
-                        if (selectionEnabled) onToggleSelection() else onOpen()
-                    },
-                    onLongClick = {
-                        if (selectionEnabled) onToggleSelection() else onLongPress()
-                    },
-                ),
-            color = if (selected) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                recordContainerColor(item.session.status, item.session.isArchived)
-            },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = {
+                            if (selectionEnabled) onToggleSelection() else onOpen()
+                        },
+                        onLongClick = {
+                            if (selectionEnabled) onToggleSelection() else onLongPress()
+                        },
+                    ),
+            color =
+                if (selected) {
+                    MaterialTheme.colorScheme.secondaryContainer
+                } else {
+                    recordContainerColor(item.session.status, item.session.isArchived)
+                },
             shape = RoundedCornerShape(20.dp),
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 WaveformBackdrop(
                     samples = item.session.waveformSamples,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier =
+                        Modifier
+                            .matchParentSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                 )
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
@@ -339,18 +350,19 @@ internal fun RecordRow(
         SwipeToDismissBox(
             state = dismissState,
             gesturesEnabled = swipeGesturesEnabled,
-            modifier = Modifier
-                .onSizeChanged { size ->
-                    rowWidthPx = size.width
-                }
-                .pointerInteropFilter { event ->
-                    if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                        val edgeZone = rowWidthPx * RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
-                        val x = event.x
-                        swipeGesturesEnabled = rowWidthPx == 0 || x <= edgeZone || x >= (rowWidthPx - edgeZone)
+            modifier =
+                Modifier
+                    .onSizeChanged { size ->
+                        rowWidthPx = size.width
                     }
-                    false
-                },
+                    .pointerInteropFilter { event ->
+                        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                            val edgeZone = rowWidthPx * RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
+                            val x = event.x
+                            swipeGesturesEnabled = rowWidthPx == 0 || x <= edgeZone || x >= (rowWidthPx - edgeZone)
+                        }
+                        false
+                    },
             backgroundContent = {
                 SwipeBackground(
                     isArchived = item.session.isArchived,
@@ -411,30 +423,34 @@ private fun SwipeBackground(
     isArchived: Boolean,
     dismissDirection: SwipeToDismissBoxValue?,
 ) {
-    val color = when (dismissDirection) {
-        SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
-        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.tertiaryContainer
-        null, SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.surfaceContainerLow
-    }
-    val label = when (dismissDirection) {
-        SwipeToDismissBoxValue.StartToEnd -> "Run transform"
-        SwipeToDismissBoxValue.EndToStart -> if (isArchived) "Restore" else "Archive"
-        null, SwipeToDismissBoxValue.Settled -> ""
-    }
-    val icon = when (dismissDirection) {
-        SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.AutoFixHigh
-        SwipeToDismissBoxValue.EndToStart -> if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive
-        null, SwipeToDismissBoxValue.Settled -> null
-    }
+    val color =
+        when (dismissDirection) {
+            SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
+            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.tertiaryContainer
+            null, SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.surfaceContainerLow
+        }
+    val label =
+        when (dismissDirection) {
+            SwipeToDismissBoxValue.StartToEnd -> "Run transform"
+            SwipeToDismissBoxValue.EndToStart -> if (isArchived) "Restore" else "Archive"
+            null, SwipeToDismissBoxValue.Settled -> ""
+        }
+    val icon =
+        when (dismissDirection) {
+            SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.AutoFixHigh
+            SwipeToDismissBoxValue.EndToStart -> if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive
+            null, SwipeToDismissBoxValue.Settled -> null
+        }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = color,
         shape = RoundedCornerShape(20.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -461,15 +477,22 @@ private fun SwipeBackground(
     }
 }
 
-private fun statusLabel(status: SessionStatus, isArchived: Boolean): String = when {
-    isArchived -> "Archived"
-    status == SessionStatus.TRANSCRIBING -> "Transcribing"
-    status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> "Transcribed"
-    status == SessionStatus.FAILED -> "Failed"
-    else -> "Recorded"
-}
+private fun statusLabel(
+    status: SessionStatus,
+    isArchived: Boolean,
+): String =
+    when {
+        isArchived -> "Archived"
+        status == SessionStatus.TRANSCRIBING -> "Transcribing"
+        status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> "Transcribed"
+        status == SessionStatus.FAILED -> "Failed"
+        else -> "Recorded"
+    }
 
-private fun statusIcon(status: SessionStatus, isArchived: Boolean) = when {
+private fun statusIcon(
+    status: SessionStatus,
+    isArchived: Boolean,
+) = when {
     isArchived -> Icons.Filled.Archive
     status == SessionStatus.TRANSCRIBING -> Icons.Filled.HourglassEmpty
     status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> Icons.Filled.CheckCircle
@@ -479,7 +502,10 @@ private fun statusIcon(status: SessionStatus, isArchived: Boolean) = when {
 }
 
 @Composable
-private fun statusColor(status: SessionStatus, isArchived: Boolean) = when {
+private fun statusColor(
+    status: SessionStatus,
+    isArchived: Boolean,
+) = when {
     isArchived -> MaterialTheme.colorScheme.tertiary
     status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.secondary
     status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> MaterialTheme.colorScheme.primary
@@ -488,14 +514,18 @@ private fun statusColor(status: SessionStatus, isArchived: Boolean) = when {
 }
 
 @Composable
-private fun recordContainerColor(status: SessionStatus, isArchived: Boolean): Color = when {
-    isArchived -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f)
-    status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
-    status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED ->
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-    status == SessionStatus.FAILED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
-    else -> MaterialTheme.colorScheme.surfaceContainerHigh
-}
+private fun recordContainerColor(
+    status: SessionStatus,
+    isArchived: Boolean,
+): Color =
+    when {
+        isArchived -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.35f)
+        status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+        status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED ->
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        status == SessionStatus.FAILED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
+    }
 
 @Composable
 internal fun WaveformBackdrop(
@@ -537,16 +567,20 @@ private fun subtleWaveformAmplitude(sample: Float): Float {
     return (0.002f + (gated * 0.55f)).coerceIn(0.002f, 0.6f)
 }
 
-private fun normalizeBackdropSamples(samples: List<Float>, targetCount: Int): List<Float> {
+private fun normalizeBackdropSamples(
+    samples: List<Float>,
+    targetCount: Int,
+): List<Float> {
     if (targetCount <= 0) return emptyList()
     if (samples.isEmpty()) return List(targetCount) { 0f }
     if (samples.size == 1) return List(targetCount) { samples.first() }
 
     val normalized = MutableList(targetCount) { 0f }
     samples.forEachIndexed { index, sample ->
-        val bucket = ((index.toFloat() / samples.lastIndex.coerceAtLeast(1)) * (targetCount - 1))
-            .roundToInt()
-            .coerceIn(0, targetCount - 1)
+        val bucket =
+            ((index.toFloat() / samples.lastIndex.coerceAtLeast(1)) * (targetCount - 1))
+                .roundToInt()
+                .coerceIn(0, targetCount - 1)
         normalized[bucket] = maxOf(normalized[bucket], sample)
     }
     return normalized
@@ -565,9 +599,10 @@ internal fun RecordsFilterDialog(
         title = { Text("Filter Records") },
         text = {
             Column(
-                modifier = Modifier
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("Archive View", style = MaterialTheme.typography.labelLarge)
@@ -607,17 +642,21 @@ internal fun RecordsFilterDialog(
                 HorizontalDivider()
                 Text("Status", style = MaterialTheme.typography.labelLarge)
                 SessionStatus.entries
-                    .filter { it in setOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBING, SessionStatus.FAILED, SessionStatus.TRANSCRIBED, SessionStatus.EDITED) }
+                    .filter {
+                        it in setOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBING, SessionStatus.FAILED, SessionStatus.TRANSCRIBED, SessionStatus.EDITED)
+                    }
                     .forEach { status ->
                         StatusToggleRow(
                             status = status,
                             checked = status in draft.includedStatuses,
                             onToggle = {
-                                draft = draft.copy(
-                                    includedStatuses = draft.includedStatuses.toMutableSet().apply {
-                                        if (contains(status)) remove(status) else add(status)
-                                    }
-                                )
+                                draft =
+                                    draft.copy(
+                                        includedStatuses =
+                                            draft.includedStatuses.toMutableSet().apply {
+                                                if (contains(status)) remove(status) else add(status)
+                                            },
+                                    )
                             },
                         )
                     }
@@ -644,16 +683,18 @@ private fun FilterOptionRow(
     onClick: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = onClick),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onClick, onLongClick = onClick),
         color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(16.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
@@ -672,9 +713,10 @@ private fun StatusToggleRow(
     onToggle: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(onClick = onToggle, onLongClick = onToggle),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onToggle, onLongClick = onToggle),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = checked, onCheckedChange = { onToggle() })
@@ -696,7 +738,10 @@ internal fun RecordInfoDialog(
                 InfoLine("Duration", formatDuration(info.durationMs))
                 InfoLine("File Size", formatFileSize(info.fileSizeBytes))
                 InfoLine("Type", info.audioFormat)
-                InfoLine("Quality", "${info.sampleRateHz / 1000} kHz · ${info.encodingBitRate / 1000} kbps · ${if (info.channelCount == 1) "Mono" else "Stereo"}")
+                InfoLine(
+                    "Quality",
+                    "${info.sampleRateHz / 1000} kHz · ${info.encodingBitRate / 1000} kbps · ${if (info.channelCount == 1) "Mono" else "Stereo"}",
+                )
                 InfoLine("Path", info.filePath)
                 info.transcriptPreview?.takeIf { it.isNotBlank() }?.let {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -713,7 +758,10 @@ internal fun RecordInfoDialog(
 }
 
 @Composable
-private fun InfoLine(label: String, value: String) {
+private fun InfoLine(
+    label: String,
+    value: String,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         Text(text = value, style = MaterialTheme.typography.bodySmall)
@@ -778,41 +826,49 @@ internal fun buildMetaLine(session: RecordingSession): String =
     ).joinToString(" · ")
 
 internal fun buildFilterSummary(filters: RecordsFilterState): String {
-    val statusSummary = if (filters.includedStatuses.isEmpty()) {
-        "All statuses"
-    } else {
-        filters.includedStatuses.joinToString { it.name.lowercase().replace('_', ' ') }
-    }
+    val statusSummary =
+        if (filters.includedStatuses.isEmpty()) {
+            "All statuses"
+        } else {
+            filters.includedStatuses.joinToString { it.name.lowercase().replace('_', ' ') }
+        }
     val archiveSummary = if (filters.showArchived) "Archived only" else "Active only"
-    val dateSummary = when (filters.dateRange) {
-        RecordsDateRange.ALL -> "All time"
-        RecordsDateRange.TODAY -> "Today"
-        RecordsDateRange.LAST_7_DAYS -> "Last 7 days"
-        RecordsDateRange.LAST_30_DAYS -> "Last 30 days"
-    }
-    val sortSummary = when (filters.sortOption) {
-        RecordsSortOption.NEWEST -> "Newest first"
-        RecordsSortOption.OLDEST -> "Oldest first"
-        RecordsSortOption.LONGEST -> "Longest first"
-        RecordsSortOption.LARGEST -> "Largest first"
-    }
+    val dateSummary =
+        when (filters.dateRange) {
+            RecordsDateRange.ALL -> "All time"
+            RecordsDateRange.TODAY -> "Today"
+            RecordsDateRange.LAST_7_DAYS -> "Last 7 days"
+            RecordsDateRange.LAST_30_DAYS -> "Last 30 days"
+        }
+    val sortSummary =
+        when (filters.sortOption) {
+            RecordsSortOption.NEWEST -> "Newest first"
+            RecordsSortOption.OLDEST -> "Oldest first"
+            RecordsSortOption.LONGEST -> "Longest first"
+            RecordsSortOption.LARGEST -> "Largest first"
+        }
     return "$dateSummary · $sortSummary · $statusSummary · $archiveSummary"
 }
 
-internal fun openAudioWith(context: Context, session: RecordingSession) {
+internal fun openAudioWith(
+    context: Context,
+    session: RecordingSession,
+) {
     val file = File(session.audioFilePath)
     if (!file.exists()) return
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    val mimeType = when (file.extension.lowercase()) {
-        "m4a", "mp4" -> "audio/mp4"
-        "ogg" -> "audio/ogg"
-        "webm" -> "audio/webm"
-        else -> "audio/*"
-    }
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, mimeType)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
+    val mimeType =
+        when (file.extension.lowercase()) {
+            "m4a", "mp4" -> "audio/mp4"
+            "ogg" -> "audio/ogg"
+            "webm" -> "audio/webm"
+            else -> "audio/*"
+        }
+    val intent =
+        Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
     context.startActivity(Intent.createChooser(intent, "Open audio with"))
 }
 

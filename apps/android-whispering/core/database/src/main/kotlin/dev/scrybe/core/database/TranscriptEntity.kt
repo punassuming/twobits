@@ -16,8 +16,8 @@ import androidx.room.PrimaryKey
             parentColumns = ["id"],
             childColumns = ["sessionId"],
             onDelete = ForeignKey.CASCADE,
-        )
-    ]
+        ),
+    ],
 )
 data class TranscriptEntity(
     @PrimaryKey val id: String,

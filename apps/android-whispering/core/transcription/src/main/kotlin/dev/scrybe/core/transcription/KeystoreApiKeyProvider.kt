@@ -13,7 +13,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private val Context.apiKeyDataStore: DataStore<Preferences>
-        by preferencesDataStore(name = "api_keys")
+    by preferencesDataStore(name = "api_keys")
 
 /**
  * DataStore-backed API key storage.
@@ -21,22 +21,26 @@ private val Context.apiKeyDataStore: DataStore<Preferences>
  * AndroidKeyStore-backed encryption.
  */
 @Singleton
-class KeystoreApiKeyProvider @Inject constructor(
-    @ApplicationContext private val context: Context,
-) : ApiKeyProvider {
+class KeystoreApiKeyProvider
+    @Inject
+    constructor(
+        @ApplicationContext private val context: Context,
+    ) : ApiKeyProvider {
+        override suspend fun getApiKey(providerType: ProviderType): String? {
+            val key = stringPreferencesKey(providerType.name)
+            return context.apiKeyDataStore.data.first()[key]
+        }
 
-    override suspend fun getApiKey(providerType: ProviderType): String? {
-        val key = stringPreferencesKey(providerType.name)
-        return context.apiKeyDataStore.data.first()[key]
-    }
+        override suspend fun setApiKey(
+            providerType: ProviderType,
+            apiKey: String,
+        ) {
+            val key = stringPreferencesKey(providerType.name)
+            context.apiKeyDataStore.edit { prefs -> prefs[key] = apiKey }
+        }
 
-    override suspend fun setApiKey(providerType: ProviderType, apiKey: String) {
-        val key = stringPreferencesKey(providerType.name)
-        context.apiKeyDataStore.edit { prefs -> prefs[key] = apiKey }
+        override suspend fun clearApiKey(providerType: ProviderType) {
+            val key = stringPreferencesKey(providerType.name)
+            context.apiKeyDataStore.edit { prefs -> prefs.remove(key) }
+        }
     }
-
-    override suspend fun clearApiKey(providerType: ProviderType) {
-        val key = stringPreferencesKey(providerType.name)
-        context.apiKeyDataStore.edit { prefs -> prefs.remove(key) }
-    }
-}

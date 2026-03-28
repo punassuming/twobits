@@ -4,24 +4,64 @@ on:
   push:
     branches: [ "main", "copilot/**" ]
     paths:
+      - 'CHANGELOG.md'
       - 'apps/android-whispering/**'
       - 'Dockerfile.dev'
       - 'docker-compose.yml'
       - '.dockerignore'
       - '.github/workflows/android-ci.yml'
+      - '.github/workflows/release.yml'
   pull_request:
     branches: [ "main" ]
     paths:
+      - 'CHANGELOG.md'
       - 'apps/android-whispering/**'
       - 'Dockerfile.dev'
       - 'docker-compose.yml'
       - '.dockerignore'
       - '.github/workflows/android-ci.yml'
+      - '.github/workflows/release.yml'
 
 jobs:
+  changelog:
+    name: Changelog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate changelog structure
+        run: python3 apps/android-whispering/scripts/manage-changelog.py validate --changelog CHANGELOG.md
+
+      - name: Require changelog update for main-bound changes
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_ref="${{ github.event.pull_request.base.sha }}"
+            head_ref="${{ github.event.pull_request.head.sha }}"
+          else
+            base_ref="${{ github.event.before }}"
+            head_ref="${{ github.sha }}"
+          fi
+
+          python3 apps/android-whispering/scripts/manage-changelog.py \
+            check-updated \
+            --base-ref "$base_ref" \
+            --head-ref "$head_ref" \
+            --changelog CHANGELOG.md
+
   validate:
     name: Validate Configuration
     runs-on: ubuntu-latest
+    needs: changelog
     permissions:
       contents: read
 
@@ -35,7 +75,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: validate
+    needs: [changelog, validate]
     permissions:
       contents: read
 
@@ -66,7 +106,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    needs: validate
+    needs: [changelog, validate]
     permissions:
       contents: read
 
@@ -97,7 +137,7 @@ jobs:
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: validate
+    needs: [changelog, validate]
     permissions:
       contents: read
 

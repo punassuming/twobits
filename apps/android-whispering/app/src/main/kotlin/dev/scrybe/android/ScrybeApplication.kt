@@ -14,7 +14,6 @@ import javax.inject.Inject
 
 @HiltAndroidApp
 class ScrybeApplication : Application() {
-
     @Inject lateinit var transformProfileDao: TransformProfileDao
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -34,7 +33,7 @@ class ScrybeApplication : Application() {
                             steps = TransformStepsCodec.encode(profile.steps),
                             providerType = profile.providerType.name,
                             isDefault = profile.isDefault,
-                        )
+                        ),
                     )
                 } else if (existingProfile.systemPrompt == LEGACY_PROFILE_PROMPTS[profile.id]) {
                     transformProfileDao.insertProfile(
@@ -44,7 +43,7 @@ class ScrybeApplication : Application() {
                             systemPrompt = profile.systemPrompt,
                             steps = TransformStepsCodec.encode(profile.steps),
                             providerType = profile.providerType.name,
-                        )
+                        ),
                     )
                 }
             }
@@ -52,13 +51,14 @@ class ScrybeApplication : Application() {
     }
 
     private companion object {
-        val LEGACY_PROFILE_PROMPTS = mapOf(
-            "default-cleanup" to
-                "You are a helpful editor. Clean up the following dictated text by fixing punctuation, removing filler words, and improving readability. Return only the cleaned text.",
-            "default-summarize" to
-                "You are a helpful assistant. Summarize the following text concisely. Return only the summary.",
-            "default-action-items" to
-                "You are a helpful assistant. Extract all action items from the following text as a bulleted list. Return only the action items.",
-        )
+        val LEGACY_PROFILE_PROMPTS =
+            mapOf(
+                "default-cleanup" to
+                    "You are a helpful editor. Clean up the following dictated text by fixing punctuation, removing filler words, and improving readability. Return only the cleaned text.",
+                "default-summarize" to
+                    "You are a helpful assistant. Summarize the following text concisely. Return only the summary.",
+                "default-action-items" to
+                    "You are a helpful assistant. Extract all action items from the following text as a bulleted list. Return only the action items.",
+            )
     }
 }

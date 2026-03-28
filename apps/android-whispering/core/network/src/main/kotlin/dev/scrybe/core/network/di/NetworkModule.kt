@@ -14,21 +14,24 @@ import javax.inject.Singleton
 object NetworkModule {
     @Provides
     @Singleton
-    fun providesNetworkJson(): Json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
+    fun providesNetworkJson(): Json =
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
 
     @Provides
     @Singleton
     fun providesOkHttpClient(): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = if (dev.scrybe.core.network.BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
-            } else {
-                HttpLoggingInterceptor.Level.NONE
+        val loggingInterceptor =
+            HttpLoggingInterceptor().apply {
+                level =
+                    if (dev.scrybe.core.network.BuildConfig.DEBUG) {
+                        HttpLoggingInterceptor.Level.BODY
+                    } else {
+                        HttpLoggingInterceptor.Level.NONE
+                    }
             }
-        }
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .build()

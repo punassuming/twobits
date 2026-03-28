@@ -1,11 +1,12 @@
 package dev.scrybe.feature.sessiondetail
 
 import dev.scrybe.core.model.RecordingSession
-import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.model.Transcript
+import dev.scrybe.core.model.TransformProfile
 
 sealed interface SessionDetailUiState {
     data object Loading : SessionDetailUiState
+
     data class Success(
         val session: RecordingSession,
         val transcripts: List<Transcript>,
@@ -20,5 +21,6 @@ sealed interface SessionDetailUiState {
         val playbackDurationMs: Long = 0L,
         val shouldPromptForRename: Boolean = false,
     ) : SessionDetailUiState
+
     data class Error(val message: String) : SessionDetailUiState
 }

@@ -1,7 +1,6 @@
 package dev.scrybe.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,26 +12,25 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -47,14 +45,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
-import dev.scrybe.core.common.ReleaseNotes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,11 +83,12 @@ fun SettingsScreen(
         },
     ) { paddingValues ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
@@ -103,11 +102,12 @@ fun SettingsScreen(
                     }
                     SettingOptionRow(
                         title = "Theme",
-                        value = when (uiState.themeMode) {
-                            ThemeMode.SYSTEM -> "Follow system"
-                            ThemeMode.LIGHT -> "Light"
-                            ThemeMode.DARK -> "Dark"
-                        },
+                        value =
+                            when (uiState.themeMode) {
+                                ThemeMode.SYSTEM -> "Follow system"
+                                ThemeMode.LIGHT -> "Light"
+                                ThemeMode.DARK -> "Dark"
+                            },
                         supportingText = "Use the system theme or force light or dark mode.",
                         onClick = { showThemePicker = true },
                     )
@@ -149,21 +149,24 @@ fun SettingsScreen(
                                         label = { Text("OpenAI API key") },
                                         trailingIcon = {
                                             when (uiState.apiKeyValidationStatus) {
-                                                ApiKeyValidationStatus.Valid -> Icon(
-                                                    Icons.Filled.CloudDone,
-                                                    contentDescription = "OpenAI connected",
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                )
-                                                ApiKeyValidationStatus.Invalid -> Icon(
-                                                    Icons.Filled.CloudOff,
-                                                    contentDescription = "OpenAI connection failed",
-                                                    tint = MaterialTheme.colorScheme.error,
-                                                )
-                                                ApiKeyValidationStatus.Validating -> Icon(
-                                                    Icons.Filled.Sync,
-                                                    contentDescription = "Validating API key",
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                )
+                                                ApiKeyValidationStatus.Valid ->
+                                                    Icon(
+                                                        Icons.Filled.CloudDone,
+                                                        contentDescription = "OpenAI connected",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                ApiKeyValidationStatus.Invalid ->
+                                                    Icon(
+                                                        Icons.Filled.CloudOff,
+                                                        contentDescription = "OpenAI connection failed",
+                                                        tint = MaterialTheme.colorScheme.error,
+                                                    )
+                                                ApiKeyValidationStatus.Validating ->
+                                                    Icon(
+                                                        Icons.Filled.Sync,
+                                                        contentDescription = "Validating API key",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                    )
                                                 ApiKeyValidationStatus.Unknown -> Unit
                                             }
                                         },
@@ -171,11 +174,12 @@ fun SettingsScreen(
                                             uiState.apiKeyValidationMessage?.let { message ->
                                                 Text(
                                                     text = message,
-                                                    color = when (uiState.apiKeyValidationStatus) {
-                                                        ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
-                                                        ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
-                                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                                    },
+                                                    color =
+                                                        when (uiState.apiKeyValidationStatus) {
+                                                            ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
+                                                            ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
+                                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                                        },
                                                 )
                                             }
                                         },
@@ -227,44 +231,48 @@ fun SettingsScreen(
                         title = "Format",
                         value = uiState.audioFormat.name,
                         supportingText = "Choose the default container/codec for new recordings.",
-                        optionsSummary = buildOptionsSummary(
-                            selected = uiState.audioFormat,
-                            options = AudioFormat.entries.toList(),
-                            label = { it.name },
-                        ),
+                        optionsSummary =
+                            buildOptionsSummary(
+                                selected = uiState.audioFormat,
+                                options = AudioFormat.entries.toList(),
+                                label = { it.name },
+                            ),
                         onClick = { showFormatPicker = true },
                     )
                     SettingOptionRow(
                         title = "Sample Rate",
                         value = "${uiState.sampleRateHz / 1000} kHz",
                         supportingText = "Higher sample rates capture more detail and use more space.",
-                        optionsSummary = buildOptionsSummary(
-                            selected = uiState.sampleRateHz,
-                            options = listOf(16_000, 22_050, 44_100, 48_000),
-                            label = { "${it / 1000} kHz" },
-                        ),
+                        optionsSummary =
+                            buildOptionsSummary(
+                                selected = uiState.sampleRateHz,
+                                options = listOf(16_000, 22_050, 44_100, 48_000),
+                                label = { "${it / 1000} kHz" },
+                            ),
                         onClick = { showSampleRatePicker = true },
                     )
                     SettingOptionRow(
                         title = "Bit Rate",
                         value = "${uiState.encodingBitRate / 1000} kbps",
                         supportingText = "Higher bit rates improve quality and increase file size.",
-                        optionsSummary = buildOptionsSummary(
-                            selected = uiState.encodingBitRate,
-                            options = listOf(64_000, 96_000, 128_000, 192_000, 256_000),
-                            label = { "${it / 1000} kbps" },
-                        ),
+                        optionsSummary =
+                            buildOptionsSummary(
+                                selected = uiState.encodingBitRate,
+                                options = listOf(64_000, 96_000, 128_000, 192_000, 256_000),
+                                label = { "${it / 1000} kbps" },
+                            ),
                         onClick = { showBitRatePicker = true },
                     )
                     SettingOptionRow(
                         title = "Channels",
                         value = if (uiState.channelCount == 1) "Mono" else "Stereo",
                         supportingText = "Mono keeps files smaller. Stereo is wider but larger.",
-                        optionsSummary = buildOptionsSummary(
-                            selected = uiState.channelCount,
-                            options = listOf(1, 2),
-                            label = { if (it == 1) "Mono" else "Stereo" },
-                        ),
+                        optionsSummary =
+                            buildOptionsSummary(
+                                selected = uiState.channelCount,
+                                options = listOf(1, 2),
+                                label = { if (it == 1) "Mono" else "Stereo" },
+                            ),
                         onClick = { showChannelPicker = true },
                     )
                 }
@@ -325,10 +333,11 @@ fun SettingsScreen(
                     }
                     SettingOptionRow(
                         title = "After recording stops",
-                        value = when (uiState.postStopDestination) {
-                            PostStopDestination.HOME -> "Return to home"
-                            PostStopDestination.SESSION_REVIEW -> "Open session review"
-                        },
+                        value =
+                            when (uiState.postStopDestination) {
+                                PostStopDestination.HOME -> "Return to home"
+                                PostStopDestination.SESSION_REVIEW -> "Open session review"
+                            },
                         supportingText = "Choose where Scrybe should land after a recording is saved from the app or notification.",
                         onClick = { showPostStopPicker = true },
                     )
@@ -421,10 +430,11 @@ fun SettingsScreen(
             title = { Text("Release Notes") },
             text = {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 360.dp)
-                        .verticalScroll(rememberScrollState()),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 360.dp)
+                            .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (uiState.releaseHistory.isEmpty()) {

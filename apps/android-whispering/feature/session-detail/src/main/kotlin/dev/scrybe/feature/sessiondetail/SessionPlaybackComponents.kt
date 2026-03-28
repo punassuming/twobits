@@ -59,23 +59,26 @@ internal fun PlaybackCard(
                 style = MaterialTheme.typography.titleSmall,
             )
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(72.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(72.dp),
             ) {
                 WaveformTimeline(
                     samples = state.session.waveformSamples,
-                    progress = if (state.playbackDurationMs > 0L) {
-                        state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
-                    } else {
-                        0f
-                    },
+                    progress =
+                        if (state.playbackDurationMs > 0L) {
+                            state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
+                        } else {
+                            0f
+                        },
                     modifier = Modifier.fillMaxSize(),
                 )
                 Slider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 2.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 2.dp),
                     value = sliderPosition,
                     onValueChange = { sliderPosition = it },
                     valueRange = 0f..state.playbackDurationMs.coerceAtLeast(1L).toFloat(),

@@ -2,12 +2,10 @@ package dev.scrybe.core.transforms
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DefaultProfilesTest {
-
     @Test
     fun `ALL contains exactly three profiles`() {
         assertEquals(3, DefaultProfiles.ALL.size)
@@ -33,7 +31,7 @@ class DefaultProfilesTest {
         DefaultProfiles.ALL.forEach { profile ->
             assertTrue(
                 "Profile ${profile.name} has empty system prompt",
-                profile.systemPrompt.isNotBlank()
+                profile.systemPrompt.isNotBlank(),
             )
         }
     }

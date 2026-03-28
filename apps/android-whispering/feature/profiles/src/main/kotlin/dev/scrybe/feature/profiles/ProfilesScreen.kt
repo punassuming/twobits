@@ -4,11 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -21,15 +21,15 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -83,18 +83,20 @@ fun ProfilesScreen(
         },
     ) { paddingValues ->
         when (val state = uiState) {
-            is ProfilesUiState.Loading -> Box(
-                Modifier.fillMaxSize().padding(paddingValues),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-            is ProfilesUiState.Error -> Box(
-                Modifier.fillMaxSize().padding(paddingValues),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(state.message, color = MaterialTheme.colorScheme.error)
-            }
+            is ProfilesUiState.Loading ->
+                Box(
+                    Modifier.fillMaxSize().padding(paddingValues),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            is ProfilesUiState.Error ->
+                Box(
+                    Modifier.fillMaxSize().padding(paddingValues),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(state.message, color = MaterialTheme.colorScheme.error)
+                }
             is ProfilesUiState.Success -> {
                 if (state.profiles.isEmpty()) {
                     Box(
@@ -105,9 +107,10 @@ fun ProfilesScreen(
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
@@ -312,7 +315,7 @@ private fun ProfileEditorDialog(
                     minLines = 3,
                     supportingText = {
                         Text(
-                            "Describe the output you want. Scrybe can transcribe audio and run 1-3 prompt steps using {{transcript}} plus {{current_text}} or {{prior_output}}."
+                            "Describe the output you want. Scrybe can transcribe audio and run 1-3 prompt steps using {{transcript}} plus {{current_text}} or {{prior_output}}.",
                         )
                     },
                 )
@@ -336,7 +339,7 @@ private fun ProfileEditorDialog(
                                 "Suggesting..."
                             } else {
                                 "Suggest With AI"
-                            }
+                            },
                         )
                     }
                 }
@@ -358,7 +361,7 @@ private fun ProfileEditorDialog(
                         minLines = 4,
                         supportingText = {
                             Text(
-                                "Use {{transcript}} for the original transcription and {{prior_output}} or {{current_text}} for the previous step output."
+                                "Use {{transcript}} for the original transcription and {{prior_output}} or {{current_text}} for the previous step output.",
                             )
                         },
                     )

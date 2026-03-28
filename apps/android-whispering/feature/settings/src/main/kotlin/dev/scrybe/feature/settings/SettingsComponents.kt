@@ -11,15 +11,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import dev.scrybe.core.model.ProviderType
 
@@ -31,19 +30,21 @@ internal fun <T> buildOptionsSummary(
     options: List<T>,
     label: (T) -> String,
 ): String? {
-    val alternatives = options
-        .filterNot { it == selected }
-        .map(label)
+    val alternatives =
+        options
+            .filterNot { it == selected }
+            .map(label)
     return if (alternatives.isEmpty()) null else "Other options: ${alternatives.joinToString(" • ")}"
 }
 
 internal fun providerSummary(
     providerType: ProviderType,
     selected: Boolean,
-): String = when (providerType) {
-    ProviderType.OPENAI -> if (selected) "Selected provider" else "Cloud transcription and transforms"
-    ProviderType.LOCAL -> "Coming soon"
-}
+): String =
+    when (providerType) {
+        ProviderType.OPENAI -> if (selected) "Selected provider" else "Cloud transcription and transforms"
+        ProviderType.LOCAL -> "Coming soon"
+    }
 
 @Composable
 internal fun SettingOptionRow(
@@ -98,14 +99,16 @@ internal fun ProviderOptionCard(
     icon: @Composable () -> Unit,
     content: @Composable (() -> Unit)? = null,
 ) {
-    val containerColor = when {
-        selected -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-    val contentColor = when {
-        selected -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onSurface
-    }
+    val containerColor =
+        when {
+            selected -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceContainerHigh
+        }
+    val contentColor =
+        when {
+            selected -> MaterialTheme.colorScheme.onPrimaryContainer
+            else -> MaterialTheme.colorScheme.onSurface
+        }
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -140,21 +143,24 @@ internal fun ProviderOptionCard(
                     )
                 }
                 StatusPill(
-                    text = if (enabled) {
-                        if (selected) "Active" else "Available"
-                    } else {
-                        "Unavailable"
-                    },
-                    containerColor = if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
-                    contentColor = if (selected) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    text =
+                        if (enabled) {
+                            if (selected) "Active" else "Available"
+                        } else {
+                            "Unavailable"
+                        },
+                    containerColor =
+                        if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                    contentColor =
+                        if (selected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                 )
             }
             Text(
@@ -182,9 +188,10 @@ internal fun StatusPill(
     ) {
         Text(
             text = text,
-            modifier = Modifier
-                .wrapContentWidth()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier =
+                Modifier
+                    .wrapContentWidth()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
             style = MaterialTheme.typography.labelMedium,
         )
     }
@@ -204,10 +211,11 @@ internal fun <T> OptionPickerDialog(
         title = { Text(title) },
         text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 360.dp)
-                    .verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 options.forEachIndexed { index, option ->
@@ -241,10 +249,11 @@ internal fun SavedFilesDialog(
         title = { Text("Saved Files") },
         text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp)
-                    .verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (files.isEmpty()) {

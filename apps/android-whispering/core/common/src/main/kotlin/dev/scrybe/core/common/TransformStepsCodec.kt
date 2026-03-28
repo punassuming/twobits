@@ -9,11 +9,15 @@ object TransformStepsCodec {
             .filter { it.isNotEmpty() }
             .joinToString(STEP_DELIMITER)
 
-    fun decode(encoded: String, fallback: String = ""): List<String> {
-        val decoded = encoded
-            .split(STEP_DELIMITER)
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
+    fun decode(
+        encoded: String,
+        fallback: String = "",
+    ): List<String> {
+        val decoded =
+            encoded
+                .split(STEP_DELIMITER)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
         return when {
             decoded.isNotEmpty() -> decoded
             fallback.isNotBlank() -> listOf(fallback.trim())

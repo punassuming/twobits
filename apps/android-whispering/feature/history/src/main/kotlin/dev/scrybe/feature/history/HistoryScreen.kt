@@ -4,10 +4,9 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,17 +20,17 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.service.recording.RecordingForegroundService
 import dev.scrybe.service.recording.RecordingServiceActions
@@ -75,28 +75,31 @@ fun HistoryScreen(
     var deleteTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
     var confirmBulkDelete by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
-    val requiredPermissions = remember {
-        buildList {
-            add(Manifest.permission.RECORD_AUDIO)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                add(Manifest.permission.POST_NOTIFICATIONS)
+    val requiredPermissions =
+        remember {
+            buildList {
+                add(Manifest.permission.RECORD_AUDIO)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    add(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
         }
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-    ) { results ->
-        val granted = requiredPermissions.all {
-            results[it] == true || ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-        }
-        if (granted) {
-            context.startForegroundService(
-                Intent(context, RecordingForegroundService::class.java).apply {
-                    action = RecordingServiceActions.ACTION_START
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { results ->
+            val granted =
+                requiredPermissions.all {
+                    results[it] == true || ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
                 }
-            )
+            if (granted) {
+                context.startForegroundService(
+                    Intent(context, RecordingForegroundService::class.java).apply {
+                        action = RecordingServiceActions.ACTION_START
+                    },
+                )
+            }
         }
-    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -122,14 +125,15 @@ fun HistoryScreen(
                         if (isRecording) {
                             deleteTarget = null
                         } else {
-                            val granted = requiredPermissions.all {
-                                ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                            }
+                            val granted =
+                                requiredPermissions.all {
+                                    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                                }
                             if (granted) {
                                 context.startForegroundService(
                                     Intent(context, RecordingForegroundService::class.java).apply {
                                         action = RecordingServiceActions.ACTION_START
-                                    }
+                                    },
                                 )
                             } else {
                                 permissionLauncher.launch(requiredPermissions.toTypedArray())
@@ -153,7 +157,7 @@ fun HistoryScreen(
                             "${successState?.selection?.selectedSessionIds?.size ?: 0} selected"
                         } else {
                             "Records"
-                        }
+                        },
                     )
                 },
                 navigationIcon = {
@@ -200,26 +204,29 @@ fun HistoryScreen(
         },
     ) { paddingValues ->
         when (val state = uiState) {
-            is HistoryUiState.Loading -> Box(
-                Modifier.fillMaxSize().padding(paddingValues),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
+            is HistoryUiState.Loading ->
+                Box(
+                    Modifier.fillMaxSize().padding(paddingValues),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
 
-            is HistoryUiState.Error -> Box(
-                Modifier.fillMaxSize().padding(paddingValues),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(text = state.message, color = MaterialTheme.colorScheme.error)
-            }
+            is HistoryUiState.Error ->
+                Box(
+                    Modifier.fillMaxSize().padding(paddingValues),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(text = state.message, color = MaterialTheme.colorScheme.error)
+                }
 
             is HistoryUiState.Success -> {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     OutlinedTextField(
@@ -244,9 +251,10 @@ fun HistoryScreen(
                         shape = MaterialTheme.shapes.medium,
                     ) {
                         androidx.compose.foundation.layout.Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             TextButton(
@@ -273,9 +281,10 @@ fun HistoryScreen(
                     }
                     if (state.sessions.isEmpty()) {
                         Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(top = 24.dp),
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(top = 24.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
@@ -283,7 +292,7 @@ fun HistoryScreen(
                                     "No archived records"
                                 } else {
                                     "No records match that search or filter"
-                                }
+                                },
                             )
                         }
                     } else {
@@ -306,13 +315,13 @@ fun HistoryScreen(
                                     onDelete = { deleteTarget = item },
                                     onInfo = { infoTarget = item.toRecordInfo() },
                                     onOpenWith = { openAudioWith(context, item.session) },
-                                     onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
-                                     onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
-                                     onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
-                                     confirmSwipeActions = state.interactionPreferences.confirmSwipeActions,
-                                 )
-                             }
-                         }
+                                    onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
+                                    onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
+                                    onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
+                                    confirmSwipeActions = state.interactionPreferences.confirmSwipeActions,
+                                )
+                            }
+                        }
                     }
                 }
             }

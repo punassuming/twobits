@@ -5,5 +5,9 @@ import java.io.File
 
 interface TranscriptionProvider {
     val providerType: ProviderType
-    suspend fun transcribe(audioFile: File, options: TranscriptionOptions): Result<TranscriptResult>
+
+    suspend fun transcribe(
+        audioFile: File,
+        options: TranscriptionOptions,
+    ): Result<TranscriptResult>
 }

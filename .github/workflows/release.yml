@@ -80,6 +80,23 @@ jobs:
         if: steps.release_target.outputs.stale != 'true' && steps.tag.outputs.new_tag != ''
         run: chmod +x apps/android-whispering/gradlew
 
+      - name: Promote changelog release section
+        if: steps.release_target.outputs.stale != 'true' && steps.tag.outputs.new_tag != ''
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_notes_path="${{ runner.temp }}/release-notes.md"
+          python3 apps/android-whispering/scripts/manage-changelog.py \
+            promote-release \
+            --changelog CHANGELOG.md \
+            --version "${{ steps.tag.outputs.new_version }}" \
+            --date "$(date -u +%Y-%m-%d)" \
+            --release-notes-output "$release_notes_path"
+
+          echo "release_notes_path=$release_notes_path" >> "$GITHUB_OUTPUT"
+
       # Updates app version metadata in source so the repository always reflects
       # the latest released version. versionCode is derived from semantic
       # versioning as major * 1,000,000 + minor * 1,000 + patch, which keeps it
@@ -102,8 +119,8 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$build_file"
-          git diff --staged --quiet || git commit -m "chore: bump app version to ${version_name} (${version_code}) [skip ci]"
+          git add "$build_file" CHANGELOG.md
+          git diff --staged --quiet || git commit -m "chore: prepare release ${version_name} (${version_code}) [skip ci]"
           git push origin HEAD:main
 
       # Sets up APK signing. If KEYSTORE_BASE64, STORE_PASSWORD, KEY_ALIAS, and
@@ -191,5 +208,5 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.new_tag }}
           name: ${{ steps.tag.outputs.new_tag }}
-          body: ${{ steps.tag.outputs.changelog }}
+          body_path: ${{ steps.changelog.outputs.release_notes_path }}
           files: apps/android-whispering/app/build/outputs/apk/release/*.apk

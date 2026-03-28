@@ -7,7 +7,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BulkTranscriptionEligibilityTest {
-
     @Test
     fun `RECORDED status is eligible for transcription`() {
         assertTrue(isEligibleForTranscription(SessionStatus.RECORDED))
@@ -54,26 +53,28 @@ class BulkTranscriptionEligibilityTest {
 
     @Test
     fun `bulk eligibility filter keeps only RECORDED and FAILED from a mixed list`() {
-        val statuses = listOf(
-            SessionStatus.RECORDED,
-            SessionStatus.TRANSCRIBING,
-            SessionStatus.TRANSCRIBED,
-            SessionStatus.FAILED,
-            SessionStatus.EDITED,
-        )
+        val statuses =
+            listOf(
+                SessionStatus.RECORDED,
+                SessionStatus.TRANSCRIBING,
+                SessionStatus.TRANSCRIBED,
+                SessionStatus.FAILED,
+                SessionStatus.EDITED,
+            )
         val eligible = statuses.filter { isEligibleForTranscription(it) }
         assertEquals(listOf(SessionStatus.RECORDED, SessionStatus.FAILED), eligible)
     }
 
     @Test
     fun `bulk feedback counts match expected queued and skipped values`() {
-        val statuses = listOf(
-            SessionStatus.RECORDED,
-            SessionStatus.FAILED,
-            SessionStatus.TRANSCRIBING,
-            SessionStatus.TRANSCRIBED,
-            SessionStatus.EDITED,
-        )
+        val statuses =
+            listOf(
+                SessionStatus.RECORDED,
+                SessionStatus.FAILED,
+                SessionStatus.TRANSCRIBING,
+                SessionStatus.TRANSCRIBED,
+                SessionStatus.EDITED,
+            )
         var queued = 0
         var skipped = 0
         statuses.forEach { status ->
@@ -85,11 +86,12 @@ class BulkTranscriptionEligibilityTest {
 
     @Test
     fun `all items already transcribed produces zero queued and correct skip count`() {
-        val statuses = listOf(
-            SessionStatus.TRANSCRIBED,
-            SessionStatus.EDITED,
-            SessionStatus.TRANSCRIBING,
-        )
+        val statuses =
+            listOf(
+                SessionStatus.TRANSCRIBED,
+                SessionStatus.EDITED,
+                SessionStatus.TRANSCRIBING,
+            )
         val queued = statuses.count { isEligibleForTranscription(it) }
         val skipped = statuses.size - queued
         assertEquals(0, queued)
@@ -98,11 +100,12 @@ class BulkTranscriptionEligibilityTest {
 
     @Test
     fun `all items eligible produces full queued count and zero skipped`() {
-        val statuses = listOf(
-            SessionStatus.RECORDED,
-            SessionStatus.RECORDED,
-            SessionStatus.FAILED,
-        )
+        val statuses =
+            listOf(
+                SessionStatus.RECORDED,
+                SessionStatus.RECORDED,
+                SessionStatus.FAILED,
+            )
         val queued = statuses.count { isEligibleForTranscription(it) }
         val skipped = statuses.size - queued
         assertEquals(3, queued)

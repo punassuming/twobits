@@ -9,34 +9,57 @@ This file contains mandatory instructions for AI coding agents (Copilot, Codex, 
 ```bash
 cd apps/android-whispering
 
-# 1. Validate all AndroidManifest.xml files
+# 1. Validate the changelog structure
+python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md
+
+# 2. Validate all AndroidManifest.xml files
 python3 scripts/validate-manifests.py
 
-# 2. Build the debug APK (catches compile errors and Hilt DI wiring issues)
+# 3. Build the debug APK (catches compile errors and Hilt DI wiring issues)
 ./gradlew assembleDebug --no-daemon
 
-# 3. Run all JVM unit tests
+# 4. Run all JVM unit tests
 ./gradlew testDebugUnitTest --no-daemon
 
-# 4. Run Android Lint
+# 5. Run Android Lint
 ./gradlew lint --no-daemon
 
-# 5. Auto-fix Kotlin formatting, then verify it passes
+# 6. Auto-fix Kotlin formatting, then verify it passes
 ./gradlew ktlintFormat --no-daemon
 ./gradlew ktlintCheck --no-daemon
 
-# 6. Run Detekt static analysis
+# 7. Run Detekt static analysis
 ./gradlew detekt --no-daemon
 ```
 
 Or run them all together (after `cd apps/android-whispering`):
 
 ```bash
-python3 scripts/validate-manifests.py && \
+python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md && \
+  python3 scripts/validate-manifests.py && \
   ./gradlew assembleDebug testDebugUnitTest lint ktlintFormat ktlintCheck detekt --no-daemon
 ```
 
 **Do not commit or push code that fails any of these checks.** Fix all errors and warnings before committing.
+
+## Mandatory changelog updates for main-bound changes
+
+Before preparing any commit, pull request, or push that is intended to land on `main`, you MUST use the repo-local skill at [`SKILL.md`](/C:/drive/dev/android/scrybe/.codex/skills/update-changelog-before-main/SKILL.md).
+
+- Update the root [`CHANGELOG.md`](/C:/drive/dev/android/scrybe/CHANGELOG.md) `## Unreleased` section before the commit or PR is prepared.
+- Keep bullets grouped under `Features`, `Improvements`, and `Fixes`.
+- Do not invent version numbers in `CHANGELOG.md`; the release workflow promotes `Unreleased` into the next versioned section automatically.
+
+## Windows / Codex Gradle invocation
+
+If you need to pin the Android toolchain paths in PowerShell, dot-source `scripts/android-env.ps1` first and then run `gradlew.bat` directly.
+
+Use direct Gradle commands with an explicit project cache dir, for example:
+
+```powershell
+. .\apps\android-whispering\scripts\android-env.ps1
+& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" assembleDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info
+```
 
 ## Common mistakes to avoid
 
@@ -46,6 +69,6 @@ python3 scripts/validate-manifests.py && \
 
 ## CI pipeline
 
-GitHub Actions runs on every push to `main` or `copilot/**` branches, and on pull requests targeting `main`. The pipeline runs validate → build, lint, and test in parallel. All jobs must pass for a merge to succeed.
+GitHub Actions runs on every push to `main` or `copilot/**` branches, and on pull requests targeting `main`. The pipeline runs changelog validation plus manifest validation before build, lint, and test. All jobs must pass for a merge to succeed.
 
 Running the checks locally before committing avoids wasted CI minutes and merge blocks.

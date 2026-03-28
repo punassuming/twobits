@@ -1,7 +1,7 @@
 package dev.scrybe.core.transforms.di
 
-import dagger.Module
 import dagger.Binds
+import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoMap
@@ -13,7 +13,6 @@ import dev.scrybe.core.transforms.TransformationProvider
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class TransformsModule {
-
     /**
      * Provides an empty map of transformation providers as a starting point.
      * Concrete providers should use @Binds @IntoMap to register themselves.

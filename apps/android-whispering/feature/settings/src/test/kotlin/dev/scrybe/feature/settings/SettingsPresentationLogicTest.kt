@@ -8,7 +8,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SettingsPresentationLogicTest {
-
     @Test
     fun `OpenAI provider shows OpenAI api key config`() {
         assertTrue(shouldShowOpenAiApiKey(ProviderType.OPENAI.name))
@@ -21,22 +20,24 @@ class SettingsPresentationLogicTest {
 
     @Test
     fun `options summary lists visible alternatives and excludes selected value`() {
-        val summary = buildOptionsSummary(
-            selected = 48_000,
-            options = listOf(16_000, 22_050, 44_100, 48_000),
-            label = { "${it / 1000} kHz" },
-        )
+        val summary =
+            buildOptionsSummary(
+                selected = 48_000,
+                options = listOf(16_000, 22_050, 44_100, 48_000),
+                label = { "${it / 1000} kHz" },
+            )
 
         assertEquals("Other options: 16 kHz • 22 kHz • 44 kHz", summary)
     }
 
     @Test
     fun `options summary is omitted when there are no alternatives`() {
-        val summary = buildOptionsSummary(
-            selected = "AAC",
-            options = listOf("AAC"),
-            label = { it },
-        )
+        val summary =
+            buildOptionsSummary(
+                selected = "AAC",
+                options = listOf("AAC"),
+                label = { it },
+            )
 
         assertNull(summary)
     }

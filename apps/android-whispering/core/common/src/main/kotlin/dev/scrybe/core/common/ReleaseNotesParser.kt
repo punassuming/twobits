@@ -19,32 +19,37 @@ object ReleaseNotesParser {
 
     fun parseReleaseHistory(changelog: String): List<ReleaseNotes> {
         val lines = changelog.lines()
-        val sectionIndices = lines.mapIndexedNotNull { index, line ->
-            if (line.startsWith("## ")) index else null
-        }
+        val sectionIndices =
+            lines.mapIndexedNotNull { index, line ->
+                if (line.startsWith("## ")) index else null
+            }
         if (sectionIndices.isEmpty()) return emptyList()
 
-        return sectionIndices.mapIndexed { idx, startIndex ->
+        return sectionIndices.mapIndexedNotNull { idx, startIndex ->
             val endIndex = sectionIndices.getOrNull(idx + 1) ?: lines.size
             val sectionLines = lines.subList(startIndex, endIndex)
             val title = normalizeHeading(sectionLines.first().removePrefix("## ").trim())
-            val bullets = sectionLines.asSequence()
-                .map { it.trim() }
-                .filter { it.startsWith("* ") || it.startsWith("- ") }
-                .map { normalizeBullet(it) }
-                .filter { it.isNotBlank() }
-                .toList()
-            ReleaseNotes(
-                title = title,
-                summaryItems = bullets.take(MAX_SUMMARY_ITEMS),
-                fullSection = sectionLines.joinToString("\n").trim(),
-                groups = groupBulletsByArea(bullets),
-            )
+            if (title.equals(UNRELEASED_TITLE, ignoreCase = true)) {
+                null
+            } else {
+                val bullets =
+                    sectionLines.asSequence()
+                        .map { it.trim() }
+                        .filter { it.startsWith("* ") || it.startsWith("- ") }
+                        .map { normalizeBullet(it) }
+                        .filter { it.isNotBlank() }
+                        .toList()
+                ReleaseNotes(
+                    title = title,
+                    summaryItems = bullets.take(MAX_SUMMARY_ITEMS),
+                    fullSection = sectionLines.joinToString("\n").trim(),
+                    groups = groupBulletsByArea(bullets),
+                )
+            }
         }
     }
 
-    private fun normalizeHeading(text: String): String =
-        text.replace(LINK_REGEX, "$1")
+    private fun normalizeHeading(text: String): String = text.replace(LINK_REGEX, "$1")
 
     private fun normalizeBullet(text: String): String =
         text.removePrefix("* ")
@@ -55,13 +60,14 @@ object ReleaseNotesParser {
             .trim()
 
     private fun groupBulletsByArea(bullets: List<String>): List<ReleaseNotesGroup> {
-        val grouped = linkedMapOf(
-            "Recording" to mutableListOf<String>(),
-            "AI & Processing" to mutableListOf<String>(),
-            "UI & Workflow" to mutableListOf<String>(),
-            "Platform & Reliability" to mutableListOf<String>(),
-            "Other" to mutableListOf<String>(),
-        )
+        val grouped =
+            linkedMapOf(
+                "Recording" to mutableListOf<String>(),
+                "AI & Processing" to mutableListOf<String>(),
+                "UI & Workflow" to mutableListOf<String>(),
+                "Platform & Reliability" to mutableListOf<String>(),
+                "Other" to mutableListOf<String>(),
+            )
 
         bullets.forEach { bullet ->
             grouped[categorizeBullet(bullet)]?.add(bullet)
@@ -92,6 +98,7 @@ object ReleaseNotesParser {
     }
 
     private const val MAX_SUMMARY_ITEMS = 6
+    private const val UNRELEASED_TITLE = "Unreleased"
     private val LINK_REGEX = Regex("\\[(.+?)]\\(.+?\\)")
     private val COMMIT_LINK_REGEX = Regex("\\s*\\([^)]+\\)$")
     private val MULTI_SPACE_REGEX = Regex("\\s+")

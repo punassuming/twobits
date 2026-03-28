@@ -7,14 +7,13 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoMap
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.transcription.ApiKeyProvider
+import dev.scrybe.core.transcription.KeystoreApiKeyProvider
 import dev.scrybe.core.transcription.OpenAiTranscriptionProvider
 import dev.scrybe.core.transcription.TranscriptionProvider
-import dev.scrybe.core.transcription.KeystoreApiKeyProvider
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class TranscriptionModule {
-
     @Binds
     @IntoMap
     @ProviderTypeKey(ProviderType.OPENAI)
