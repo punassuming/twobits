@@ -76,6 +76,9 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
 
+private const val LIVE_WAVEFORM_TARGET_BAR_COUNT = 72
+private val LIVE_WAVEFORM_MAX_BAR_WIDTH = 2.dp
+
 @Composable
 fun CaptureScreen(
     onNavigateToHistory: () -> Unit,
@@ -636,29 +639,31 @@ private fun AmplitudeVisualizer(
     currentAmplitudeRatio: Float,
     modifier: Modifier = Modifier,
 ) {
-    val displayValues = paddedAmplitudeValues(amplitudes, targetCount = 52)
+    val displayValues = normalizeAmplitudeValues(amplitudes, targetCount = LIVE_WAVEFORM_TARGET_BAR_COUNT)
     val barColor = MaterialTheme.colorScheme.primary
     val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val accentColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.85f)
     Canvas(modifier = modifier) {
-        val baselineY = size.height * 0.84f
+        val centerY = size.height * 0.5f
         drawLine(
             color = baselineColor,
-            start = Offset(0f, baselineY),
-            end = Offset(size.width, baselineY),
+            start = Offset(0f, centerY),
+            end = Offset(size.width, centerY),
             strokeWidth = 2.dp.toPx(),
             cap = StrokeCap.Round,
         )
 
-        val barWidth = (size.width / max(displayValues.size * 3, 1)).coerceAtLeast(1.dp.toPx())
+        val barWidth =
+            (size.width / max(displayValues.size * 3.6f, 1f))
+                .coerceAtLeast(1.dp.toPx())
+                .coerceAtMost(LIVE_WAVEFORM_MAX_BAR_WIDTH.toPx())
         val spacing = (size.width - (barWidth * displayValues.size)) / displayValues.size.coerceAtLeast(1)
-        val ceilingPadding = size.height * 0.12f
+        val halfHeight = size.height * 0.38f
         val activeIndex = displayValues.lastIndex
         displayValues.forEachIndexed { index, amplitude ->
             val shapedAmplitude = visualAmplitude(amplitude)
-            val lineHeight = (baselineY - ceilingPadding) * shapedAmplitude
+            val lineHeight = halfHeight * shapedAmplitude
             val x = (index * (barWidth + spacing)) + barWidth / 2
-            val startY = baselineY - lineHeight
             val color =
                 when {
                     index == activeIndex -> accentColor.copy(alpha = 0.65f + (currentAmplitudeRatio * 0.35f))
@@ -667,8 +672,8 @@ private fun AmplitudeVisualizer(
                 }
             drawLine(
                 color = color,
-                start = Offset(x, startY),
-                end = Offset(x, baselineY),
+                start = Offset(x, centerY - lineHeight),
+                end = Offset(x, centerY + lineHeight),
                 strokeWidth = barWidth,
                 cap = StrokeCap.Round,
             )
@@ -678,18 +683,25 @@ private fun AmplitudeVisualizer(
 
 private fun visualAmplitude(value: Float): Float {
     val gated = if (value < 0.02f) 0f else value
-    return (0.002f + (gated * 0.9f)).coerceIn(0.002f, 1f)
+    return (gated * 0.9f).coerceIn(0f, 1f)
 }
 
-private fun paddedAmplitudeValues(
+private fun normalizeAmplitudeValues(
     values: List<Float>,
     targetCount: Int,
 ): List<Float> {
     if (targetCount <= 0) return emptyList()
     if (values.isEmpty()) return List(targetCount) { 0f }
+    if (values.size == 1) return List(targetCount) { values.first() }
+
     return List(targetCount) { index ->
-        val sourceIndex = index - (targetCount - values.size)
-        if (sourceIndex in values.indices) values[sourceIndex] else 0f
+        val position = (index.toFloat() / (targetCount - 1).coerceAtLeast(1)) * values.lastIndex
+        val lowerIndex = position.toInt().coerceIn(0, values.lastIndex)
+        val upperIndex = (lowerIndex + 1).coerceAtMost(values.lastIndex)
+        val fraction = position - lowerIndex
+        val lowerValue = values[lowerIndex]
+        val upperValue = values[upperIndex]
+        lowerValue + ((upperValue - lowerValue) * fraction)
     }
 }
 

@@ -144,7 +144,7 @@ class AndroidMediaRecorder
                                 elapsedMs = elapsedMs,
                                 amplitudeRatio = smoothedAmplitudeRatio,
                             )
-                        delay(100)
+                        delay(TELEMETRY_INTERVAL_MS)
                     }
                 }
         }
@@ -175,7 +175,8 @@ class AndroidMediaRecorder
 
         private companion object {
             const val MAX_AMPLITUDE = 32767
-            const val MAX_WAVEFORM_SAMPLES = 72
+            const val MAX_WAVEFORM_SAMPLES = 120
+            const val TELEMETRY_INTERVAL_MS = 60L
             const val SILENCE_GATE_RATIO = 0.015f
             const val SMOOTHING_DECAY = 0.62f
         }

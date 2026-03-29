@@ -17,10 +17,13 @@
 ### Improvements
 
 * replace the local Windows Gradle helper flow with a repo-root environment bootstrap that keeps direct `gradlew.bat` runs visible on stdout
+* refine the recording and playback waveforms with denser samples, slimmer bars, a mirrored live capture view, and direct waveform scrubbing in session review
+* streamline the records screen with a more compact filter bar, dedicated left and right swipe actions, and tighter playback and transcript layouts
 
 ### Fixes
 
 * restore the Android verification suite on the latest head by wiring KtLint and Detekt into the Gradle build and resolving the compile regressions they exposed
+* separate manual profile editing from AI-generated profile drafting so profile creation has clearer, more informative flows
 
 
 ## 0.3.1 (2026-03-26)

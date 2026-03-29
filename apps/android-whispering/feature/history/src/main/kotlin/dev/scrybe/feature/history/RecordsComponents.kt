@@ -2,18 +2,20 @@ package dev.scrybe.feature.history
 
 import android.content.Context
 import android.content.Intent
-import android.view.MotionEvent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassEmpty
@@ -57,12 +60,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -76,6 +76,9 @@ import kotlin.math.roundToInt
 
 internal const val RECORD_ROW_SWIPE_THRESHOLD_FRACTION = 0.55f
 private const val RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION = 0.18f
+private const val RECORD_WAVEFORM_TARGET_BAR_COUNT = 120
+private val RECORD_ROW_SWIPE_ICON_LANE_WIDTH = 112.dp
+private val RECORD_WAVEFORM_MAX_BAR_WIDTH = 2.dp
 
 internal fun recordRowEdgeSwipeZoneFraction(): Float = RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
 
@@ -102,7 +105,7 @@ internal fun recordSwipeConfirmationMessage(
         RecordSwipeAction.RESTORE -> "Restore $title to the active records list?"
     }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun RecordRow(
     item: HistorySessionItem,
@@ -126,8 +129,6 @@ internal fun RecordRow(
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
     var pendingSwipeAction by remember(item.session.id) { mutableStateOf<RecordSwipeAction?>(null) }
     val scope = rememberCoroutineScope()
-    var rowWidthPx by remember(item.session.id) { mutableStateOf(0) }
-    var swipeGesturesEnabled by remember(item.session.id) { mutableStateOf(true) }
     val dismissState =
         rememberSwipeToDismissBoxState(
             positionalThreshold = { it * RECORD_ROW_SWIPE_THRESHOLD_FRACTION },
@@ -349,20 +350,9 @@ internal fun RecordRow(
     } else {
         SwipeToDismissBox(
             state = dismissState,
-            gesturesEnabled = swipeGesturesEnabled,
-            modifier =
-                Modifier
-                    .onSizeChanged { size ->
-                        rowWidthPx = size.width
-                    }
-                    .pointerInteropFilter { event ->
-                        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                            val edgeZone = rowWidthPx * RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
-                            val x = event.x
-                            swipeGesturesEnabled = rowWidthPx == 0 || x <= edgeZone || x >= (rowWidthPx - edgeZone)
-                        }
-                        false
-                    },
+            gesturesEnabled = true,
+            enableDismissFromStartToEnd = true,
+            enableDismissFromEndToStart = !item.session.isArchived,
             backgroundContent = {
                 SwipeBackground(
                     isArchived = item.session.isArchived,
@@ -423,55 +413,82 @@ private fun SwipeBackground(
     isArchived: Boolean,
     dismissDirection: SwipeToDismissBoxValue?,
 ) {
-    val color =
+    val laneColor =
         when (dismissDirection) {
             SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
             SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.tertiaryContainer
-            null, SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.surfaceContainerLow
-        }
-    val label =
-        when (dismissDirection) {
-            SwipeToDismissBoxValue.StartToEnd -> "Run transform"
-            SwipeToDismissBoxValue.EndToStart -> if (isArchived) "Restore" else "Archive"
-            null, SwipeToDismissBoxValue.Settled -> ""
+            null, SwipeToDismissBoxValue.Settled -> Color.Transparent
         }
     val icon =
         when (dismissDirection) {
             SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.AutoFixHigh
-            SwipeToDismissBoxValue.EndToStart -> if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive
+            SwipeToDismissBoxValue.EndToStart -> if (isArchived) null else Icons.Filled.Archive
             null, SwipeToDismissBoxValue.Settled -> null
         }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = color,
+        modifier = Modifier.fillMaxSize(),
+        color = Color.Transparent,
         shape = RoundedCornerShape(20.dp),
     ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    icon?.let { Icon(it, contentDescription = null) }
-                    Text(label, style = MaterialTheme.typography.labelLarge)
-                }
-                Spacer(Modifier.weight(1f))
-            } else {
-                Spacer(Modifier.weight(1f))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(label, style = MaterialTheme.typography.labelLarge)
-                    icon?.let { Icon(it, contentDescription = null) }
-                }
+        Box(modifier = Modifier.fillMaxSize()) {
+            when (dismissDirection) {
+                SwipeToDismissBoxValue.StartToEnd ->
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxHeight()
+                                .width(RECORD_ROW_SWIPE_ICON_LANE_WIDTH)
+                                .align(Alignment.CenterStart),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = laneColor,
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                icon?.let { swipeIcon ->
+                                    Icon(
+                                        imageVector = swipeIcon,
+                                        contentDescription = "Run transform",
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                SwipeToDismissBoxValue.EndToStart ->
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxHeight()
+                                .width(RECORD_ROW_SWIPE_ICON_LANE_WIDTH)
+                                .align(Alignment.CenterEnd),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = laneColor,
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                icon?.let { swipeIcon ->
+                                    Icon(
+                                        imageVector = swipeIcon,
+                                        contentDescription = "Archive record",
+                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                null, SwipeToDismissBoxValue.Settled -> Unit
             }
         }
     }
@@ -532,7 +549,7 @@ internal fun WaveformBackdrop(
     samples: List<Float>,
     modifier: Modifier = Modifier,
 ) {
-    val bars = normalizeBackdropSamples(samples, targetCount = 84)
+    val bars = normalizeBackdropSamples(samples, targetCount = RECORD_WAVEFORM_TARGET_BAR_COUNT)
     val color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
     Canvas(modifier = modifier) {
@@ -544,7 +561,10 @@ internal fun WaveformBackdrop(
             strokeWidth = 1.5.dp.toPx(),
             cap = StrokeCap.Round,
         )
-        val barWidth = (size.width / (bars.size * 2.8f)).coerceAtLeast(1.dp.toPx())
+        val barWidth =
+            (size.width / (bars.size * 3.8f))
+                .coerceAtLeast(1.dp.toPx())
+                .coerceAtMost(RECORD_WAVEFORM_MAX_BAR_WIDTH.toPx())
         val spacing = (size.width - (barWidth * bars.size)) / bars.size.coerceAtLeast(1)
         bars.forEachIndexed { index, sample ->
             val shapedAmplitude = subtleWaveformAmplitude(sample)
@@ -587,6 +607,65 @@ private fun normalizeBackdropSamples(
 }
 
 @Composable
+internal fun RecordsFilterBar(
+    filters: RecordsFilterState,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val extraFilterCount = activeRecordsFilterCount(filters)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.FilterList,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "Filters",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Text(
+                    text = buildCompactFilterSummary(filters),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (extraFilterCount > 0) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(999.dp),
+                ) {
+                    Text(
+                        text = extraFilterCount.toString(),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun RecordsFilterDialog(
     current: RecordsFilterState,
     onDismiss: () -> Unit,
@@ -603,7 +682,7 @@ internal fun RecordsFilterDialog(
                     Modifier
                         .heightIn(max = 420.dp)
                         .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("Archive View", style = MaterialTheme.typography.labelLarge)
                 FilterOptionRow(
@@ -688,13 +767,13 @@ private fun FilterOptionRow(
                 .fillMaxWidth()
                 .combinedClickable(onClick = onClick, onLongClick = onClick),
         color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
     ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
@@ -849,6 +928,42 @@ internal fun buildFilterSummary(filters: RecordsFilterState): String {
         }
     return "$dateSummary · $sortSummary · $statusSummary · $archiveSummary"
 }
+
+internal fun buildCompactFilterSummary(filters: RecordsFilterState): String {
+    val parts =
+        buildList {
+            add(if (filters.showArchived) "Archived" else "Active")
+            when (filters.dateRange) {
+                RecordsDateRange.ALL -> Unit
+                RecordsDateRange.TODAY -> add("Today")
+                RecordsDateRange.LAST_7_DAYS -> add("Last 7 days")
+                RecordsDateRange.LAST_30_DAYS -> add("Last 30 days")
+            }
+            when (filters.sortOption) {
+                RecordsSortOption.NEWEST -> Unit
+                RecordsSortOption.OLDEST -> add("Oldest")
+                RecordsSortOption.LONGEST -> add("Longest")
+                RecordsSortOption.LARGEST -> add("Largest")
+            }
+            if (filters.includedStatuses.isNotEmpty()) {
+                add(
+                    if (filters.includedStatuses.size == 1) {
+                        filters.includedStatuses.first().name.lowercase().replace('_', ' ').replaceFirstChar(Char::titlecase)
+                    } else {
+                        "${filters.includedStatuses.size} statuses"
+                    },
+                )
+            }
+        }
+    return parts.joinToString(" · ")
+}
+
+internal fun activeRecordsFilterCount(filters: RecordsFilterState): Int =
+    listOf(
+        filters.dateRange != RecordsDateRange.ALL,
+        filters.sortOption != RecordsSortOption.NEWEST,
+        filters.includedStatuses.isNotEmpty(),
+    ).count { it }
 
 internal fun openAudioWith(
     context: Context,

@@ -146,7 +146,7 @@ class CaptureViewModel
         }
 
         private companion object {
-            const val MAX_HISTORY = 32
+            const val MAX_HISTORY = 120
             val RECENT_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, h:mm a")
         }
     }

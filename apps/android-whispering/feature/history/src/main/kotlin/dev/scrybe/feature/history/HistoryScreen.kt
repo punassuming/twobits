@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
@@ -38,7 +37,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -195,9 +193,7 @@ fun HistoryScreen(
                             Icon(Icons.Filled.Delete, contentDescription = "Delete selected records")
                         }
                     } else {
-                        IconButton(onClick = { showFilters = true }) {
-                            Icon(Icons.Filled.FilterList, contentDescription = "Filter records")
-                        }
+                        Unit
                     }
                 },
             )
@@ -227,7 +223,7 @@ fun HistoryScreen(
                             .fillMaxSize()
                             .padding(paddingValues)
                             .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     OutlinedTextField(
                         value = searchQuery,
@@ -240,45 +236,10 @@ fun HistoryScreen(
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                         label = { Text("Search records or transcript text") },
                     )
-                    Text(
-                        text = buildFilterSummary(state.filters),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    RecordsFilterBar(
+                        filters = state.filters,
+                        onClick = { showFilters = true },
                     )
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = MaterialTheme.shapes.medium,
-                    ) {
-                        androidx.compose.foundation.layout.Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            TextButton(
-                                onClick = {
-                                    if (state.filters.showArchived) {
-                                        viewModel.updateFilters(state.filters.copy(showArchived = false))
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text("Active")
-                            }
-                            TextButton(
-                                onClick = {
-                                    if (!state.filters.showArchived) {
-                                        viewModel.updateFilters(state.filters.copy(showArchived = true))
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text("Archived")
-                            }
-                        }
-                    }
                     if (state.sessions.isEmpty()) {
                         Box(
                             modifier =

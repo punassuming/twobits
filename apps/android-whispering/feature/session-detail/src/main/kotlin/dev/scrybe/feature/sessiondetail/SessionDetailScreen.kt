@@ -245,9 +245,9 @@ fun SessionDetailScreen(
                     SessionOverviewCard(state)
                     PlaybackCard(
                         state = state,
-                        onSeek = viewModel::seekPlayback,
                         onTogglePlayback = viewModel::togglePlayback,
                         onStopPlayback = viewModel::stopPlayback,
+                        onSeek = viewModel::seekPlayback,
                     )
                     TranscriptSection(
                         state = state,
@@ -532,22 +532,10 @@ private fun TranscriptSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (rawTranscripts.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Transcript", style = MaterialTheme.typography.labelLarge)
-                OutlinedButton(onClick = onEditTranscript, enabled = state.currentTranscript != null) {
-                    Icon(Icons.Filled.Edit, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Edit")
-                }
-            }
             rawTranscripts.forEach { transcript ->
                 TranscriptCard(
                     transcript = transcript,
-                    titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited" else "Transcript",
+                    titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited" else null,
                     onDelete = { onDeleteTranscript(transcript) },
                     onEdit = onEditTranscript,
                 )
@@ -631,7 +619,7 @@ private fun TranscriptCardActions(
 @Composable
 private fun TranscriptCard(
     transcript: Transcript,
-    titleOverride: String,
+    titleOverride: String?,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
 ) {
@@ -657,26 +645,28 @@ private fun TranscriptCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = titleOverride,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    transcript.transformProfileId?.let {
+                titleOverride?.let { title ->
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
-                            text = it,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            text = title,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
                         )
+                        transcript.transformProfileId?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
-                }
+                } ?: Spacer(modifier = Modifier.weight(1f))
                 TranscriptCardActions(
                     expanded = expanded,
                     onCopy = {
