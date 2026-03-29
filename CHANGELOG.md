@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.4.0 (2026-03-29)
+
+### Features
+
 * require `CHANGELOG.md` updates before pull requests or pushes targeting `main`, and automatically promote those notes into the next tagged release
 
 ### Improvements
@@ -13,6 +21,7 @@
 ### Fixes
 
 * restore the Android verification suite on the latest head by wiring KtLint and Detekt into the Gradle build and resolving the compile regressions they exposed
+
 
 ## 0.3.1 (2026-03-26)
 
@@ -24,6 +33,7 @@
 ### Fixes
 
 * require confirmation before swipe-to-transform, archive, or restore actions so record gestures are harder to trigger accidentally
+
 
 ## 0.3.0 (2026-03-26)
 
@@ -40,6 +50,7 @@
 
 * add retry and reset recovery actions for recordings stuck in a transcription state
 * restore the missing transcription module dependency that was breaking Android builds
+
 
 ## 0.2.0 (2026-03-26)
 
@@ -58,6 +69,7 @@
 * resolve Android build regressions caused by small UI and project wiring issues
 * harden the release workflow so mainline releases are more reliable
 
+
 ## 0.1.0 (2026-03-25)
 
 ### Improvements
@@ -65,11 +77,13 @@
 * optimize Android CI and release automation so validation and release steps run more predictably
 * add a local PowerShell Gradle helper to make Windows builds easier to run outside CI
 
+
 ## 0.0.10 (2026-03-25)
 
 ### Fixes
 
 * clean up foreground recording notification refresh logic to resolve the build issues introduced after 0.0.9
+
 
 ## 0.0.9 (2026-03-25)
 
@@ -78,12 +92,14 @@
 * centralize live recording notification refreshes behind a dedicated helper so Android 13+ permission checks stay lint-clean and safe at runtime
 * keep elapsed-time and input-level notification updates working when notification permission is available without tripping `MissingPermission` warnings
 
+
 ## 0.0.8 (2026-03-25)
 
 ### Fixes
 
 * add an Android 13+ `POST_NOTIFICATIONS` runtime permission check before refreshing the foreground recording notification
 * prevent recording notification updates from failing lint or unsafe notification calls on devices that have not granted notification permission
+
 
 ## 0.0.7 (2026-03-24)
 
@@ -99,6 +115,7 @@
 * enrich the foreground recording notification with live elapsed time and simple input-level feedback
 * surface session status, archive state, transcript previews, and clearer metadata across the records list and session detail screens
 * add estimated transcription cost visibility in session detail and aggregate transcription spend reporting in Settings
+
 
 ## 0.0.6 (2026-03-23)
 
@@ -119,6 +136,7 @@
 * keep only one canonical raw transcript per session instead of stacking duplicate retranscriptions
 * make release notes surface the latest update as a concise in-app summary for version 0.0.6
 
+
 ## 0.0.5 (2026-03-23)
 
 ### Features
@@ -137,6 +155,7 @@
 
 * keep auto-transcription alive after the recording service shuts down
 * send valid typed content payloads to the OpenAI responses API for transforms
+
 
 ## [1.1.0](https://github.com/punassuming/scrybe/compare/scrybe-v1.0.0...scrybe-v1.1.0) (2026-03-10)
 
