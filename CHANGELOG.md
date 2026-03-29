@@ -9,6 +9,7 @@
 ### Fixes
 
 * skip release promotion cleanly when `CHANGELOG.md` has no unreleased bullets instead of failing the release workflow
+* retry CI Gradle tasks when Maven Central denies a transient dependency fetch instead of failing the workflow on the first 403
 ## 0.4.0 (2026-03-29)
 
 ### Features

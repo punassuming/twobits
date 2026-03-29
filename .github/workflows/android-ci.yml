@@ -101,7 +101,8 @@ jobs:
 
       - name: Build debug and release APKs
         working-directory: apps/android-whispering
-        run: ./gradlew assembleDebug assembleRelease --no-daemon
+        shell: bash
+        run: bash scripts/ci-gradle-retry.sh assembleDebug assembleRelease
 
   lint:
     name: Lint
@@ -132,7 +133,8 @@ jobs:
 
       - name: Run Android Lint
         working-directory: apps/android-whispering
-        run: ./gradlew lint --no-daemon
+        shell: bash
+        run: bash scripts/ci-gradle-retry.sh lint
 
   test:
     name: Unit Tests
@@ -163,4 +165,5 @@ jobs:
 
       - name: Run Unit Tests
         working-directory: apps/android-whispering
-        run: ./gradlew testDebugUnitTest --no-daemon
+        shell: bash
+        run: bash scripts/ci-gradle-retry.sh testDebugUnitTest

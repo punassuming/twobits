@@ -210,7 +210,8 @@ jobs:
       - name: Build release APK
         if: steps.release_target.outputs.stale != 'true' && steps.tag.outputs.new_tag != ''
         working-directory: apps/android-whispering
-        run: ./gradlew assembleRelease --no-daemon
+        shell: bash
+        run: bash scripts/ci-gradle-retry.sh assembleRelease
         # KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD are set in
         # GITHUB_ENV by the "Set up release signing" step above, ensuring the
         # build always uses the same credentials that were used to configure the
