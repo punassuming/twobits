@@ -38,8 +38,8 @@ android {
         applicationId = "dev.scrybe.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4000 // Managed by release workflow: major * 1_000_000 + minor * 1_000 + patch
-        versionName = "0.4.0"
+        versionCode = 5001 // Managed by release workflow: major * 1_000_000 + minor * 1_000 + patch
+        versionName = "0.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

@@ -8,8 +8,17 @@
 
 ### Fixes
 
+## 0.5.1 (2026-03-29)
+
+### Features
+
+### Improvements
+
+### Fixes
+
 * skip release promotion cleanly when `CHANGELOG.md` has no unreleased bullets instead of failing the release workflow
 * retry CI Gradle tasks when Maven Central denies a transient dependency fetch instead of failing the workflow on the first 403
+
 ## 0.4.0 (2026-03-29)
 
 ### Features
@@ -28,6 +37,7 @@
 * separate manual profile editing from AI-generated profile drafting so profile creation has clearer, more informative flows
 
 
+
 ## 0.3.1 (2026-03-26)
 
 ### Features
@@ -38,6 +48,7 @@
 ### Fixes
 
 * require confirmation before swipe-to-transform, archive, or restore actions so record gestures are harder to trigger accidentally
+
 
 
 ## 0.3.0 (2026-03-26)
@@ -55,6 +66,7 @@
 
 * add retry and reset recovery actions for recordings stuck in a transcription state
 * restore the missing transcription module dependency that was breaking Android builds
+
 
 
 ## 0.2.0 (2026-03-26)
@@ -75,6 +87,7 @@
 * harden the release workflow so mainline releases are more reliable
 
 
+
 ## 0.1.0 (2026-03-25)
 
 ### Improvements
@@ -83,11 +96,13 @@
 * add a local PowerShell Gradle helper to make Windows builds easier to run outside CI
 
 
+
 ## 0.0.10 (2026-03-25)
 
 ### Fixes
 
 * clean up foreground recording notification refresh logic to resolve the build issues introduced after 0.0.9
+
 
 
 ## 0.0.9 (2026-03-25)
@@ -98,12 +113,14 @@
 * keep elapsed-time and input-level notification updates working when notification permission is available without tripping `MissingPermission` warnings
 
 
+
 ## 0.0.8 (2026-03-25)
 
 ### Fixes
 
 * add an Android 13+ `POST_NOTIFICATIONS` runtime permission check before refreshing the foreground recording notification
 * prevent recording notification updates from failing lint or unsafe notification calls on devices that have not granted notification permission
+
 
 
 ## 0.0.7 (2026-03-24)
@@ -120,6 +137,7 @@
 * enrich the foreground recording notification with live elapsed time and simple input-level feedback
 * surface session status, archive state, transcript previews, and clearer metadata across the records list and session detail screens
 * add estimated transcription cost visibility in session detail and aggregate transcription spend reporting in Settings
+
 
 
 ## 0.0.6 (2026-03-23)
@@ -142,6 +160,7 @@
 * make release notes surface the latest update as a concise in-app summary for version 0.0.6
 
 
+
 ## 0.0.5 (2026-03-23)
 
 ### Features
@@ -160,6 +179,7 @@
 
 * keep auto-transcription alive after the recording service shuts down
 * send valid typed content payloads to the OpenAI responses API for transforms
+
 
 
 ## [1.1.0](https://github.com/punassuming/scrybe/compare/scrybe-v1.0.0...scrybe-v1.1.0) (2026-03-10)
