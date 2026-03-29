@@ -37,6 +37,12 @@ def main() -> int:
     check_parser.add_argument("--head-ref", required=True)
     check_parser.add_argument("--changelog", default="CHANGELOG.md")
 
+    has_bullets_parser = subparsers.add_parser(
+        "has-unreleased-bullets",
+        help="Print whether the Unreleased section contains any changelog bullets.",
+    )
+    has_bullets_parser.add_argument("--changelog", default="CHANGELOG.md")
+
     promote_parser = subparsers.add_parser(
         "promote-release",
         help="Convert the Unreleased section into a versioned release section.",
@@ -57,6 +63,11 @@ def main() -> int:
     if args.command == "check-updated":
         changelog_path = resolve_path(args.changelog)
         return check_updated(changelog_path, args.base_ref, args.head_ref)
+
+    if args.command == "has-unreleased-bullets":
+        changelog_path = resolve_path(args.changelog)
+        print("true" if has_unreleased_bullets(changelog_path) else "false")
+        return 0
 
     if args.command == "promote-release":
         changelog_path = resolve_path(args.changelog)
@@ -155,6 +166,13 @@ def check_updated(changelog_path: Path, base_ref: str, head_ref: str) -> int:
 
     print("CHANGELOG.md was updated alongside the requested changes.")
     return 0
+
+
+def has_unreleased_bullets(changelog_path: Path) -> bool:
+    validate_changelog(changelog_path)
+    sections = read_sections(changelog_path)
+    unreleased = next(section for section in sections if section.heading == UNRELEASED_HEADING)
+    return has_bullets(unreleased.body)
 
 
 def promote_release(

@@ -51,8 +51,22 @@ jobs:
       #   feat:       → minor bump
       #   fix:, chore:, etc. → patch bump (default_bump)
       #   BREAKING CHANGE    → major bump
-      - name: Compute next version and create tag
+      - name: Check unreleased changelog content
         if: steps.release_target.outputs.stale != 'true'
+        id: changelog_ready
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          has_bullets="$(python3 apps/android-whispering/scripts/manage-changelog.py has-unreleased-bullets --changelog CHANGELOG.md)"
+          echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
+
+          if [ "$has_bullets" != "true" ]; then
+            echo "Skipping release because CHANGELOG.md has no unreleased bullets."
+          fi
+
+      - name: Compute next version and create tag
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
         id: tag
         uses: mathieudutour/github-tag-action@v6.2
         with:
