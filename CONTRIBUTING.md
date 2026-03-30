@@ -170,6 +170,31 @@ Recommended direct commands:
 | Android Lint | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" lint --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
 | Recording service lint only | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" :service:recording:lintDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
 
+### Repo helper commands
+
+If you want one command surface for the common local tasks, use the repo-root helper:
+
+| Task | Helper command |
+|------|----------------|
+| Show resolved toolchain paths | `.\scripts\android.ps1 env` |
+| Build debug APK | `.\scripts\android.ps1 build` |
+| Build release APK | `.\scripts\android.ps1 release` |
+| Install debug APK | `.\scripts\android.ps1 install` |
+| Install and launch the app | `.\scripts\android.ps1 run` |
+| Android Lint | `.\scripts\android.ps1 lint` |
+| Unit tests | `.\scripts\android.ps1 test` |
+| Detekt | `.\scripts\android.ps1 detekt` |
+| KtLint format | `.\scripts\android.ps1 format` |
+| KtLint check | `.\scripts\android.ps1 check-format` |
+| Full verification gate | `.\scripts\android.ps1 verify` |
+| List emulators | `.\scripts\android.ps1 emulators` |
+| Launch an emulator | `.\scripts\android.ps1 emulator -Avd scrybe-api35` |
+| List devices | `.\scripts\android.ps1 devices` |
+| Filtered app/runtime logcat | `.\scripts\android.ps1 logcat` |
+| Raw Gradle passthrough | `.\scripts\android.ps1 gradle assembleDebug --stacktrace` |
+
+The helper wraps `apps/android-whispering/scripts/android-env.ps1`, uses the checked-in Gradle wrapper, and forces `--console=plain --info` so long-running Gradle work stays visible in the terminal.
+
 ### Build troubleshooting
 
 If `gradlew.bat` fails before Gradle even starts, the usual cause is a lock or ACL issue under `GRADLE_USER_HOME`, often in:
@@ -233,6 +258,14 @@ Useful checks while iterating:
 adb devices
 adb logcat -d AndroidRuntime:E ActivityManager:I ActivityTaskManager:I *:S
 adb shell dumpsys window | Select-String "mCurrentFocus|mFocusedApp"
+```
+
+The helper script above shortens that flow to:
+
+```powershell
+.\scripts\android.ps1 emulator -Avd scrybe-api35
+.\scripts\android.ps1 run
+.\scripts\android.ps1 logcat
 ```
 
 ---

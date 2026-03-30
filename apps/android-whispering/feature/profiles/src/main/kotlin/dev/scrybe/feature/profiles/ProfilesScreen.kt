@@ -545,7 +545,7 @@ private fun AiProfileDraftDialog(
                         ) {
                             Icon(Icons.Filled.Psychology, contentDescription = null)
                             Text(
-                                text = "Drafted with OpenAI gpt-4.1-mini",
+                                text = "Drafted with OpenAI gpt-5-mini",
                                 style = MaterialTheme.typography.labelLarge,
                             )
                         }

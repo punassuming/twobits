@@ -174,6 +174,20 @@ cd C:\drive\dev\android\scrybe
 
 The bootstrap script keeps Gradle state under the repo root, exports the checked-in wrapper path as `SCRYBE_ANDROID_GRADLEW`, and keeps `--info` enabled so long-running builds stay chatty on stdout.
 
+If you want a single command entrypoint instead of remembering Gradle and ADB commands, use the repo helper from the repo root:
+
+```powershell
+.\scripts\android.ps1 build
+.\scripts\android.ps1 install
+.\scripts\android.ps1 run
+.\scripts\android.ps1 lint
+.\scripts\android.ps1 test
+.\scripts\android.ps1 emulator -Avd scrybe-api35
+.\scripts\android.ps1 verify
+```
+
+The helper wraps `android-env.ps1`, uses the checked-in Gradle wrapper, keeps output on stdout with `--console=plain --info`, and also exposes ADB / emulator shortcuts such as `devices`, `emulators`, `logcat`, `stop-app`, and raw `gradle` passthrough.
+
 After first launch, open **Settings**, enter your OpenAI API key, and tap **Save** — the app validates the key against the OpenAI API and shows a live connection status before storing it.
 
 ### Containerized development

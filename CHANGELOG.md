@@ -6,7 +6,13 @@
 
 ### Improvements
 
+* add a repo-root PowerShell helper for emulator, build, install, run, lint, test, format, detekt, and full local verification commands
+* switch AI profile draft suggestions to `gpt-5-mini` while leaving the normal transform pipeline unchanged
 ### Fixes
+
+* restrict recordings swipe gestures to the left and right edge lanes so center drags no longer trigger transform or archive actions
+* skip release promotion cleanly when `CHANGELOG.md` has no unreleased bullets instead of failing the release workflow
+* retry CI Gradle tasks when Maven Central denies a transient dependency fetch instead of failing the workflow on the first 403
 
 ## 0.5.1 (2026-03-29)
 
@@ -15,9 +21,6 @@
 ### Improvements
 
 ### Fixes
-
-* skip release promotion cleanly when `CHANGELOG.md` has no unreleased bullets instead of failing the release workflow
-* retry CI Gradle tasks when Maven Central denies a transient dependency fetch instead of failing the workflow on the first 403
 
 ## 0.4.0 (2026-03-29)
 

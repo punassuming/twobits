@@ -6,6 +6,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,6 +65,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -72,6 +77,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 internal const val RECORD_ROW_SWIPE_THRESHOLD_FRACTION = 0.55f
@@ -162,6 +168,7 @@ internal fun RecordRow(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .blockCenterOriginSwipes()
                     .combinedClickable(
                         onClick = {
                             if (selectionEnabled) onToggleSelection() else onOpen()
@@ -406,6 +413,68 @@ internal fun RecordRow(
         )
     }
 }
+
+private fun Modifier.blockCenterOriginSwipes(): Modifier =
+    pointerInput(RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            val width = size.width.toFloat()
+            if (width <= 0f) return@awaitEachGesture
+
+            val edgeWidth = width * RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
+            val startedInEdge =
+                down.position.x <= edgeWidth ||
+                    down.position.x >= (width - edgeWidth)
+
+            if (startedInEdge) return@awaitEachGesture
+
+            var pointerId = down.id
+            var totalHorizontal = 0f
+            var totalVertical = 0f
+
+            while (true) {
+                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                val change =
+                    event.changes.firstOrNull { it.id == pointerId }
+                        ?: event.changes.firstOrNull()
+                        ?: break
+
+                pointerId = change.id
+                if (!change.pressed) break
+
+                val delta = change.positionChange()
+                totalHorizontal += delta.x
+                totalVertical += delta.y
+
+                val horizontalDragDetected =
+                    abs(totalHorizontal) > viewConfiguration.touchSlop &&
+                        abs(totalHorizontal) > abs(totalVertical)
+                val verticalDragDetected =
+                    abs(totalVertical) > viewConfiguration.touchSlop &&
+                        abs(totalVertical) >= abs(totalHorizontal)
+
+                if (horizontalDragDetected) {
+                    change.consume()
+                    while (true) {
+                        val blockingEvent = awaitPointerEvent(pass = PointerEventPass.Initial)
+                        blockingEvent.changes.forEach { blockingChange ->
+                            if (blockingChange.pressed) {
+                                blockingChange.consume()
+                            }
+                        }
+                        if (blockingEvent.changes.none { it.pressed }) {
+                            break
+                        }
+                    }
+                    break
+                }
+
+                if (verticalDragDetected) {
+                    break
+                }
+            }
+        }
+    }
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)

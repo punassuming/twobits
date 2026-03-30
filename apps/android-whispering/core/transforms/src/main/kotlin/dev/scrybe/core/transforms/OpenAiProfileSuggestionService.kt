@@ -228,7 +228,7 @@ class OpenAiProfileSuggestionService
         )
 
         private companion object {
-            const val MODEL_NAME = "gpt-4.1-mini"
+            const val MODEL_NAME = "gpt-5-mini"
             val JSON_MEDIA_TYPE = "application/json".toMediaType()
         }
     }
