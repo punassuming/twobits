@@ -31,8 +31,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -50,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
@@ -69,6 +72,8 @@ fun SettingsScreen(
     var showSampleRatePicker by remember { mutableStateOf(false) }
     var showBitRatePicker by remember { mutableStateOf(false) }
     var showChannelPicker by remember { mutableStateOf(false) }
+    var showProfileModelPicker by remember { mutableStateOf(false) }
+    val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
 
     Scaffold(
         topBar = {
@@ -199,6 +204,82 @@ fun SettingsScreen(
                                             modifier = Modifier.weight(1f),
                                         ) {
                                             Text("Clear Key")
+                                        }
+                                    }
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        color = MaterialTheme.colorScheme.surface,
+                                        shape = MaterialTheme.shapes.medium,
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            Text(
+                                                text = "AI profile draft model",
+                                                style = MaterialTheme.typography.labelLarge,
+                                            )
+                                            Text(
+                                                text = selectedProfileModel.title,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                            Text(
+                                                text = selectedProfileModel.supportingText,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Text(
+                                                text = "Profiles uses this model whenever you generate an AI draft.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        viewModel.clearProfileSuggestionModelTestState()
+                                                        showProfileModelPicker = true
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                ) {
+                                                    Text("Choose Model")
+                                                }
+                                                OutlinedButton(
+                                                    onClick = viewModel::testProfileSuggestionModel,
+                                                    modifier = Modifier.weight(1f),
+                                                    enabled =
+                                                        uiState.profileSuggestionModelTestState !is
+                                                            ProfileSuggestionModelTestUiState.Loading,
+                                                ) {
+                                                    Text(
+                                                        if (uiState.profileSuggestionModelTestState is ProfileSuggestionModelTestUiState.Loading) {
+                                                            "Testing..."
+                                                        } else {
+                                                            "Test Model"
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                            when (val modelTestState = uiState.profileSuggestionModelTestState) {
+                                                is ProfileSuggestionModelTestUiState.Success ->
+                                                    Text(
+                                                        text = "Connected. OpenAI accepted ${modelTestState.resolvedModelName}.",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                is ProfileSuggestionModelTestUiState.Error ->
+                                                    Text(
+                                                        text = modelTestState.message,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.error,
+                                                    )
+                                                ProfileSuggestionModelTestUiState.Idle,
+                                                ProfileSuggestionModelTestUiState.Loading,
+                                                -> Unit
+                                            }
                                         }
                                     }
                                 }
@@ -377,20 +458,90 @@ fun SettingsScreen(
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Filled.Info, contentDescription = null)
                         Text("Usage", style = MaterialTheme.typography.titleMedium)
                     }
-                    Text("Records: ${uiState.usageStats.recordCount}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Transcriptions: ${uiState.usageStats.transcriptionCount}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Transforms: ${uiState.usageStats.transformCount}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Total recording time: ${formatTotalDuration(uiState.usageStats.totalDurationMs)}", style = MaterialTheme.typography.bodyMedium)
-                    Text("Storage used: ${formatFileSize(uiState.usageStats.totalStorageBytes)}", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Estimated transcription spend: ${formatUsd(uiState.usageStats.totalEstimatedCostUsd)}",
-                        style = MaterialTheme.typography.bodyMedium,
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        UsageMetricCell(
+                            label = "Total recordings",
+                            value = uiState.usageStats.recordCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                        UsageMetricCell(
+                            label = "Active",
+                            value = uiState.usageStats.activeRecordCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        UsageMetricCell(
+                            label = "Archived",
+                            value = uiState.usageStats.archivedRecordCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                        UsageMetricCell(
+                            label = "Average length",
+                            value = formatCompactDuration(uiState.usageStats.averageDurationMs),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        UsageMetricCell(
+                            label = "Transcriptions",
+                            value = uiState.usageStats.transcriptionCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                        UsageMetricCell(
+                            label = "Transforms",
+                            value = uiState.usageStats.transformCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        UsageMetricCell(
+                            label = "Exports",
+                            value = uiState.usageStats.exportFileCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                        UsageMetricCell(
+                            label = "Saved copies",
+                            value = uiState.usageStats.savedCopyCount.toString(),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        UsageMetricCell(
+                            label = "Total recording time",
+                            value = formatTotalDuration(uiState.usageStats.totalDurationMs),
+                            modifier = Modifier.weight(1f),
+                        )
+                        UsageMetricCell(
+                            label = "Storage used",
+                            value = formatFileSize(uiState.usageStats.totalStorageBytes),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    UsageMetricCell(
+                        label = "Estimated transcription spend",
+                        value = formatUsd(uiState.usageStats.totalEstimatedCostUsd),
                     )
                 }
             }
@@ -562,6 +713,20 @@ fun SettingsScreen(
             onSelect = {
                 viewModel.setChannelCount(it)
                 showChannelPicker = false
+            },
+        )
+    }
+
+    if (showProfileModelPicker) {
+        OptionPickerDialog(
+            title = "Profile Draft Model",
+            options = OpenAiProfileSuggestionModel.entries.toList(),
+            selected = selectedProfileModel,
+            label = { it.title },
+            onDismiss = { showProfileModelPicker = false },
+            onSelect = {
+                viewModel.setProfileSuggestionModel(it.apiName)
+                showProfileModelPicker = false
             },
         )
     }

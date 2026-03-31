@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,7 @@ class AppPreferencesDataStore
         private object Keys {
             val DEFAULT_PROVIDER = stringPreferencesKey("default_provider")
             val DEFAULT_TRANSFORM_PROFILE_ID = stringPreferencesKey("default_transform_profile_id")
+            val PROFILE_SUGGESTION_MODEL = stringPreferencesKey("profile_suggestion_model")
             val AUTO_TRANSCRIBE = booleanPreferencesKey("auto_transcribe")
             val MAX_RECORDING_DURATION_MS = stringPreferencesKey("max_recording_duration_ms")
             val AUDIO_FORMAT = stringPreferencesKey("audio_format")
@@ -55,6 +57,13 @@ class AppPreferencesDataStore
         val defaultTransformProfileId: Flow<String?> =
             context.dataStore.data.map { prefs ->
                 prefs[Keys.DEFAULT_TRANSFORM_PROFILE_ID]
+            }
+
+        val profileSuggestionModel: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                OpenAiProfileSuggestionModel.fromApiName(
+                    prefs[Keys.PROFILE_SUGGESTION_MODEL],
+                ).apiName
             }
 
         val audioFormat: Flow<AudioFormat> =
@@ -128,6 +137,13 @@ class AppPreferencesDataStore
                 } else {
                     prefs.remove(Keys.DEFAULT_TRANSFORM_PROFILE_ID)
                 }
+            }
+        }
+
+        suspend fun setProfileSuggestionModel(modelName: String) {
+            context.dataStore.edit { prefs ->
+                prefs[Keys.PROFILE_SUGGESTION_MODEL] =
+                    OpenAiProfileSuggestionModel.fromApiName(modelName).apiName
             }
         }
 

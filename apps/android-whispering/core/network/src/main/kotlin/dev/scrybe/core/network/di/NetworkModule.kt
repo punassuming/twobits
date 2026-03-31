@@ -7,6 +7,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -34,6 +35,15 @@ object NetworkModule {
             }
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
+            .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(UPLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+            .readTimeout(RESPONSE_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+            .callTimeout(CALL_TIMEOUT_MINUTES, TimeUnit.MINUTES)
             .build()
     }
+
+    private const val CONNECT_TIMEOUT_SECONDS = 30L
+    private const val UPLOAD_TIMEOUT_MINUTES = 5L
+    private const val RESPONSE_TIMEOUT_MINUTES = 10L
+    private const val CALL_TIMEOUT_MINUTES = 15L
 }

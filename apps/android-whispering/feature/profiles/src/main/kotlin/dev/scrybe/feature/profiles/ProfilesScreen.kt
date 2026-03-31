@@ -53,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.TransformProfile
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +64,7 @@ fun ProfilesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val suggestionState by viewModel.suggestionState.collectAsState()
+    val profileSuggestionModel by viewModel.profileSuggestionModel.collectAsState()
     var editorDraft by remember { mutableStateOf<ProfileEditorDraft?>(null) }
     var showAiCreator by remember { mutableStateOf(false) }
 
@@ -151,6 +153,7 @@ fun ProfilesScreen(
 
     if (showAiCreator) {
         AiProfileDraftDialog(
+            selectedModelName = profileSuggestionModel,
             suggestionState = suggestionState,
             onDismiss = {
                 viewModel.clearSuggestionState()
@@ -400,7 +403,7 @@ private fun ProfileEditorDialog(
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -408,8 +411,8 @@ private fun ProfileEditorDialog(
                     shape = MaterialTheme.shapes.medium,
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
                             text = "Prompt inputs",
@@ -443,7 +446,7 @@ private fun ProfileEditorDialog(
                         },
                         label = { Text("Step ${index + 1}") },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 4,
+                        minLines = 3,
                         supportingText = {
                             Text(
                                 "Use {{transcript}} for the original transcription and {{prior_output}} or {{current_text}} for the previous step output.",
@@ -453,7 +456,7 @@ private fun ProfileEditorDialog(
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     TextButton(
                         onClick = { steps = steps + "" },
@@ -503,6 +506,7 @@ private fun ProfileEditorDialog(
 
 @Composable
 private fun AiProfileDraftDialog(
+    selectedModelName: String,
     suggestionState: ProfileSuggestionUiState,
     onDismiss: () -> Unit,
     onSuggest: (String, String, String, List<String>) -> Unit,
@@ -515,6 +519,7 @@ private fun AiProfileDraftDialog(
     var seedDescription by remember { mutableStateOf("") }
     var isDefault by remember { mutableStateOf(false) }
     var latestSuggestion by remember { mutableStateOf<dev.scrybe.core.transforms.ProfileSuggestion?>(null) }
+    val selectedModel = OpenAiProfileSuggestionModel.fromApiName(selectedModelName)
 
     LaunchedEffect(suggestionState) {
         val success = suggestionState as? ProfileSuggestionUiState.Success ?: return@LaunchedEffect
@@ -528,7 +533,7 @@ private fun AiProfileDraftDialog(
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -536,8 +541,8 @@ private fun AiProfileDraftDialog(
                     shape = MaterialTheme.shapes.medium,
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -545,12 +550,22 @@ private fun AiProfileDraftDialog(
                         ) {
                             Icon(Icons.Filled.Psychology, contentDescription = null)
                             Text(
-                                text = "Drafted with OpenAI gpt-5-mini",
+                                text = "Drafted with OpenAI ${selectedModel.apiName}",
                                 style = MaterialTheme.typography.labelLarge,
                             )
                         }
                         Text(
                             text = "The AI creates a 1-3 step starting profile. Saved steps still run through Scrybe's normal transform pipeline using {{transcript}} first, then {{current_text}} or {{prior_output}}.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "Uses ${selectedModel.title}. Change or test this model from Settings.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = selectedModel.supportingText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -568,7 +583,7 @@ private fun AiProfileDraftDialog(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     OutlinedTextField(
                         value = seedName,
@@ -599,8 +614,8 @@ private fun AiProfileDraftDialog(
                         shape = MaterialTheme.shapes.medium,
                     ) {
                         Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             Text(
                                 text = suggestion.name,

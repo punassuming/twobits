@@ -18,6 +18,7 @@ data class RecentCaptureSession(
     val createdAtLabel: String,
     val status: SessionStatus,
     val transcriptPreview: String?,
+    val isArchived: Boolean,
 )
 
 enum class CapturePhase {

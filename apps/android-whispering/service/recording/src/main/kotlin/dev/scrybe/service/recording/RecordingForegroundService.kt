@@ -21,6 +21,7 @@ import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
@@ -50,6 +51,7 @@ class RecordingForegroundService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var lastNotifiedSecond: Long = -1L
+    private var telemetryJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -74,19 +76,21 @@ class RecordingForegroundService : Service() {
             RecordingNotificationFactory.NOTIFICATION_ID,
             notificationFactory.buildNotification(this),
         )
-        serviceScope.launch {
-            audioRecorder.telemetry.collectLatest { telemetry ->
-                val elapsedSecond = telemetry.elapsedMs / 1000
-                if (elapsedSecond == lastNotifiedSecond) return@collectLatest
-                lastNotifiedSecond = elapsedSecond
-                if (hasNotificationPermission()) {
-                    updateRecordingNotification(
-                        elapsedMs = telemetry.elapsedMs,
-                        amplitudeRatio = telemetry.amplitudeRatio,
-                    )
+        telemetryJob?.cancel()
+        telemetryJob =
+            serviceScope.launch {
+                audioRecorder.telemetry.collectLatest { telemetry ->
+                    val elapsedSecond = telemetry.elapsedMs / 1000
+                    if (elapsedSecond == lastNotifiedSecond) return@collectLatest
+                    lastNotifiedSecond = elapsedSecond
+                    if (hasNotificationPermission()) {
+                        updateRecordingNotification(
+                            elapsedMs = telemetry.elapsedMs,
+                            amplitudeRatio = telemetry.amplitudeRatio,
+                        )
+                    }
                 }
             }
-        }
         serviceScope.launch {
             val config =
                 RecordingConfig(
@@ -97,6 +101,11 @@ class RecordingForegroundService : Service() {
                     channelCount = preferencesDataStore.channelCount.first(),
                 )
             audioRecorder.startRecording(config)
+                .onFailure { error ->
+                    android.util.Log.e(TAG, "Failed to start recording", error)
+                    recordingSessionEvents.onRecordingError(error.message ?: "Failed to start recording")
+                    cleanupAfterRecordingCommand()
+                }
         }
     }
 
@@ -107,30 +116,50 @@ class RecordingForegroundService : Service() {
                     val sessionId = withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
                     recordingSessionEvents.onSessionCompleted(sessionId)
                     transcriptionScope.launch {
+                        if (!preferencesDataStore.autoTranscribe.first()) {
+                            return@launch
+                        }
+                        if (recordedAudio.durationMs < MIN_AUTO_TRANSCRIBE_DURATION_MS) {
+                            recordingSessionEvents.onRecordingError(SHORT_AUTO_TRANSCRIBE_MESSAGE)
+                            return@launch
+                        }
                         sessionTranscriptionCoordinator.autoTranscribeIfEnabled(sessionId)
                             .onFailure {
                                 android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
+                                recordingSessionEvents.onRecordingError(
+                                    it.message ?: "Auto-transcription failed",
+                                )
                             }
                     }
                 }
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+                .onFailure { error ->
+                    android.util.Log.e(TAG, "Failed to stop recording", error)
+                    recordingSessionEvents.onRecordingError(error.message ?: "Failed to stop recording")
+                }
+            cleanupAfterRecordingCommand()
         }
     }
 
     private fun handleCancel() {
         audioRecorder.cancelRecording()
-        lastNotifiedSecond = -1L
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        cleanupAfterRecordingCommand()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         serviceScope.cancel()
+        telemetryJob?.cancel()
         lastNotifiedSecond = -1L
         super.onDestroy()
+    }
+
+    private fun cleanupAfterRecordingCommand() {
+        telemetryJob?.cancel()
+        telemetryJob = null
+        lastNotifiedSecond = -1L
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private suspend fun persistRecording(recordedAudio: RecordedAudio): String {
@@ -187,6 +216,9 @@ class RecordingForegroundService : Service() {
 
     private companion object {
         const val TAG = "RecordingService"
+        const val MIN_AUTO_TRANSCRIBE_DURATION_MS = 1_000L
+        const val SHORT_AUTO_TRANSCRIBE_MESSAGE =
+            "Recording was saved, but it was too short to auto-transcribe reliably."
         val TITLE_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
     }
 }

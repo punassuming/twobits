@@ -7,6 +7,7 @@ import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transforms.OpenAiProfileSuggestionService
@@ -63,6 +64,13 @@ class ProfilesViewModel
 
         private val _suggestionState = MutableStateFlow<ProfileSuggestionUiState>(ProfileSuggestionUiState.Idle)
         val suggestionState: StateFlow<ProfileSuggestionUiState> = _suggestionState.asStateFlow()
+        val profileSuggestionModel: StateFlow<String> =
+            preferencesDataStore.profileSuggestionModel
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = OpenAiProfileSuggestionModel.default.apiName,
+                )
 
         fun saveProfile(
             existingId: String?,
@@ -127,6 +135,7 @@ class ProfilesViewModel
                     existingName = currentName,
                     existingDescription = currentDescription,
                     existingSteps = currentSteps,
+                    modelName = profileSuggestionModel.value,
                 ).fold(
                     onSuccess = {
                         _suggestionState.value = ProfileSuggestionUiState.Success(it)

@@ -20,6 +20,7 @@ class OpenAiTranscriptionProvider
         private val okHttpClient: OkHttpClient,
         private val json: Json,
         private val apiKeyProvider: ApiKeyProvider,
+        private val audioChunker: OpenAiAudioChunker,
     ) : TranscriptionProvider {
         override val providerType: ProviderType = ProviderType.OPENAI
 
@@ -33,51 +34,72 @@ class OpenAiTranscriptionProvider
                         apiKeyProvider.getApiKey(ProviderType.OPENAI)
                             ?: throw IllegalStateException("No API key configured for OpenAI")
 
-                    val mediaType = audioFile.toMediaType()
-                    val requestBody =
-                        MultipartBody.Builder()
-                            .setType(MultipartBody.FORM)
-                            .addFormDataPart("model", "whisper-1")
-                            .addFormDataPart(
-                                "file",
-                                audioFile.name,
-                                audioFile.asRequestBody(mediaType.toMediaType()),
-                            )
-                            .apply {
-                                options.language?.let { addFormDataPart("language", it) }
-                                options.prompt?.let { addFormDataPart("prompt", it) }
-                                addFormDataPart("response_format", options.responseFormat)
+                    val audioChunks = audioChunker.createChunksIfNeeded(audioFile)
+                    try {
+                        val transcriptText =
+                            audioChunks.joinToString(separator = "\n\n") { chunk ->
+                                transcribeChunk(
+                                    audioFile = chunk,
+                                    apiKey = apiKey,
+                                    options = options,
+                                )
                             }
-                            .build()
 
-                    val request =
-                        Request.Builder()
-                            .url("https://api.openai.com/v1/audio/transcriptions")
-                            .header("Authorization", "Bearer $apiKey")
-                            .header("Accept", "application/json")
-                            .post(requestBody)
-                            .build()
-
-                    okHttpClient.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
-                            Log.e(TAG, "OpenAI transcription failed: ${response.code} ${response.message} $errorBody")
-                            throw IllegalStateException(
-                                "OpenAI API error: ${response.code} ${response.message}" +
-                                    if (errorBody.isNotBlank()) " - $errorBody" else "",
-                            )
-                        }
-
-                        val body = response.body?.string() ?: throw Exception("Empty response body")
-                        val openAiResponse = json.decodeFromString<OpenAiTranscriptionResponse>(body)
                         TranscriptResult(
-                            text = openAiResponse.text,
+                            text = transcriptText.trim(),
                             language = null,
                             durationSeconds = null,
                         )
+                    } finally {
+                        audioChunker.cleanupChunks(audioChunks, audioFile)
                     }
                 }
             }
+
+        private fun transcribeChunk(
+            audioFile: File,
+            apiKey: String,
+            options: TranscriptionOptions,
+        ): String {
+            val mediaType = audioFile.toMediaType()
+            val requestBody =
+                MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart("model", "whisper-1")
+                    .addFormDataPart(
+                        "file",
+                        audioFile.name,
+                        audioFile.asRequestBody(mediaType.toMediaType()),
+                    )
+                    .apply {
+                        options.language?.let { addFormDataPart("language", it) }
+                        options.prompt?.let { addFormDataPart("prompt", it) }
+                        addFormDataPart("response_format", options.responseFormat)
+                    }
+                    .build()
+
+            val request =
+                Request.Builder()
+                    .url("https://api.openai.com/v1/audio/transcriptions")
+                    .header("Authorization", "Bearer $apiKey")
+                    .header("Accept", "application/json")
+                    .post(requestBody)
+                    .build()
+
+            return okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                    Log.e(TAG, "OpenAI transcription failed: ${response.code} ${response.message} $errorBody")
+                    throw IllegalStateException(
+                        "OpenAI API error: ${response.code} ${response.message}" +
+                            if (errorBody.isNotBlank()) " - $errorBody" else "",
+                    )
+                }
+
+                val body = response.body?.string() ?: throw IllegalStateException("Empty response body")
+                json.decodeFromString<OpenAiTranscriptionResponse>(body).text
+            }
+        }
 
         @Serializable
         private data class OpenAiTranscriptionResponse(val text: String)

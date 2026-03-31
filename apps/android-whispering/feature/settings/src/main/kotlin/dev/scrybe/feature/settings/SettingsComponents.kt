@@ -318,4 +318,45 @@ internal fun formatTotalDuration(durationMs: Long): String {
     return if (hours > 0) "$hours h $minutes m" else "$minutes m"
 }
 
+internal fun formatCompactDuration(durationMs: Long): String {
+    if (durationMs <= 0L) return "0 sec"
+    val totalSeconds = durationMs / 1_000
+    val hours = totalSeconds / 3_600
+    val minutes = (totalSeconds % 3_600) / 60
+    val seconds = totalSeconds % 60
+    return when {
+        hours > 0 -> "${hours}h ${minutes}m"
+        minutes > 0 -> "${minutes}m ${seconds}s"
+        else -> "${seconds}s"
+    }
+}
+
 internal fun formatUsd(amount: Double): String = "$" + String.format("%.2f", amount)
+
+@Composable
+internal fun UsageMetricCell(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+    }
+}

@@ -14,11 +14,13 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
 import dev.scrybe.core.transcription.ApiKeyProvider
 import dev.scrybe.core.transcription.OpenAiApiKeyValidator
+import dev.scrybe.core.transforms.OpenAiProfileSuggestionService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +54,8 @@ data class SettingsUiState(
     val usageStats: UsageStats = UsageStats(),
     val apiKeyValidationStatus: ApiKeyValidationStatus = ApiKeyValidationStatus.Unknown,
     val apiKeyValidationMessage: String? = null,
+    val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
+    val profileSuggestionModelTestState: ProfileSuggestionModelTestUiState = ProfileSuggestionModelTestUiState.Idle,
 )
 
 data class SavedFileEntry(
@@ -63,11 +67,16 @@ data class SavedFileEntry(
 
 data class UsageStats(
     val recordCount: Int = 0,
+    val activeRecordCount: Int = 0,
+    val archivedRecordCount: Int = 0,
     val transcriptionCount: Int = 0,
     val transformCount: Int = 0,
     val totalDurationMs: Long = 0L,
+    val averageDurationMs: Long = 0L,
     val totalStorageBytes: Long = 0L,
     val totalEstimatedCostUsd: Double = 0.0,
+    val exportFileCount: Int = 0,
+    val savedCopyCount: Int = 0,
 )
 
 enum class ApiKeyValidationStatus {
@@ -75,6 +84,16 @@ enum class ApiKeyValidationStatus {
     Validating,
     Valid,
     Invalid,
+}
+
+sealed interface ProfileSuggestionModelTestUiState {
+    data object Idle : ProfileSuggestionModelTestUiState
+
+    data object Loading : ProfileSuggestionModelTestUiState
+
+    data class Success(val resolvedModelName: String) : ProfileSuggestionModelTestUiState
+
+    data class Error(val message: String) : ProfileSuggestionModelTestUiState
 }
 
 @HiltViewModel
@@ -89,12 +108,15 @@ class SettingsViewModel
         transformProfileDao: TransformProfileDao,
         private val apiKeyProvider: ApiKeyProvider,
         private val apiKeyValidator: OpenAiApiKeyValidator,
+        private val profileSuggestionService: OpenAiProfileSuggestionService,
     ) : ViewModel() {
         private val apiKey = MutableStateFlow("")
         private val appMetadata = MutableStateFlow(AppMetadata())
         private val savedFiles = MutableStateFlow<List<SavedFileEntry>>(emptyList())
         private val apiKeyValidationStatus = MutableStateFlow(ApiKeyValidationStatus.Unknown)
         private val apiKeyValidationMessage = MutableStateFlow<String?>(null)
+        private val profileSuggestionModelTestState =
+            MutableStateFlow<ProfileSuggestionModelTestUiState>(ProfileSuggestionModelTestUiState.Idle)
         private val localMetadata =
             combine(apiKey, appMetadata) { currentApiKey, metadata ->
                 LocalMetadata(
@@ -117,13 +139,15 @@ class SettingsViewModel
                 preferencesDataStore.defaultProvider,
                 preferencesDataStore.autoTranscribe,
                 preferencesDataStore.defaultTransformProfileId,
+                preferencesDataStore.profileSuggestionModel,
                 transformProfileDao.getAllProfiles(),
-            ) { provider, autoTranscribe, profileId, profiles ->
+            ) { provider, autoTranscribe, profileId, profileSuggestionModel, profiles ->
                 ProfileSettings(
                     defaultProvider = provider,
                     autoTranscribe = autoTranscribe,
                     defaultTransformProfileId = profileId,
                     defaultTransformProfileName = profiles.firstOrNull { it.id == profileId }?.name,
+                    profileSuggestionModel = profileSuggestionModel,
                 )
             }
         private val displayPreferences =
@@ -180,16 +204,23 @@ class SettingsViewModel
                 transformRunDao.getAllRuns(),
                 savedFiles,
             ) { sessions, transcripts, runs, savedFiles ->
+                val archivedCount = sessions.count { it.isArchived }
+                val totalDurationMs = sessions.sumOf { it.durationMs }
                 UsageData(
                     savedFiles = savedFiles,
                     usageStats =
                         UsageStats(
                             recordCount = sessions.size,
+                            activeRecordCount = sessions.size - archivedCount,
+                            archivedRecordCount = archivedCount,
                             transcriptionCount = transcripts.count { it.type == "RAW" || it.type == "EDITED" },
                             transformCount = runs.size,
-                            totalDurationMs = sessions.sumOf { it.durationMs },
+                            totalDurationMs = totalDurationMs,
+                            averageDurationMs = if (sessions.isEmpty()) 0L else totalDurationMs / sessions.size,
                             totalStorageBytes = sessions.sumOf { it.fileSizeBytes },
                             totalEstimatedCostUsd = sessions.sumOf { it.estimatedTranscriptionCostUsd ?: 0.0 },
+                            exportFileCount = savedFiles.count { it.category == "Exports" },
+                            savedCopyCount = savedFiles.count { it.category == "Saved Copies" },
                         ),
                 )
             }
@@ -205,6 +236,7 @@ class SettingsViewModel
                     autoTranscribe = profileSettings.autoTranscribe,
                     defaultTransformProfileId = profileSettings.defaultTransformProfileId,
                     defaultTransformProfileName = profileSettings.defaultTransformProfileName,
+                    profileSuggestionModel = profileSettings.profileSuggestionModel,
                     themeMode = recordingPreferences.themeMode,
                     keepScreenOn = recordingPreferences.keepScreenOn,
                     showRenameAfterRecording = recordingPreferences.showRenameAfterRecording,
@@ -229,7 +261,8 @@ class SettingsViewModel
             combine(
                 settingsData,
                 apiKeyValidation,
-            ) { settingsData, validation ->
+                profileSuggestionModelTestState,
+            ) { settingsData, validation, modelTestState ->
                 SettingsUiState(
                     defaultProvider = settingsData.defaultProvider,
                     autoTranscribe = settingsData.autoTranscribe,
@@ -254,6 +287,8 @@ class SettingsViewModel
                     usageStats = settingsData.usageStats,
                     apiKeyValidationStatus = validation.status,
                     apiKeyValidationMessage = validation.message,
+                    profileSuggestionModel = settingsData.profileSuggestionModel,
+                    profileSuggestionModelTestState = modelTestState,
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -320,6 +355,7 @@ class SettingsViewModel
             apiKey.value = value
             apiKeyValidationStatus.value = ApiKeyValidationStatus.Unknown
             apiKeyValidationMessage.value = null
+            profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
         }
 
         fun saveApiKey() {
@@ -329,9 +365,11 @@ class SettingsViewModel
                     apiKeyProvider.clearApiKey(ProviderType.OPENAI)
                     apiKeyValidationStatus.value = ApiKeyValidationStatus.Unknown
                     apiKeyValidationMessage.value = "API key cleared"
+                    profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
                 } else {
                     apiKeyValidationStatus.value = ApiKeyValidationStatus.Validating
                     apiKeyValidationMessage.value = "Checking OpenAI connection..."
+                    profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
                     apiKeyValidator.validate(trimmed)
                         .onSuccess {
                             apiKeyProvider.setApiKey(ProviderType.OPENAI, trimmed)
@@ -354,7 +392,38 @@ class SettingsViewModel
                 apiKey.value = ""
                 apiKeyValidationStatus.value = ApiKeyValidationStatus.Unknown
                 apiKeyValidationMessage.value = "API key cleared"
+                profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
             }
+        }
+
+        fun setProfileSuggestionModel(modelName: String) {
+            viewModelScope.launch {
+                preferencesDataStore.setProfileSuggestionModel(modelName)
+                profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
+            }
+        }
+
+        fun testProfileSuggestionModel() {
+            viewModelScope.launch {
+                profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Loading
+                profileSuggestionService.testModel(uiState.value.profileSuggestionModel)
+                    .fold(
+                        onSuccess = { resolvedModel ->
+                            profileSuggestionModelTestState.value =
+                                ProfileSuggestionModelTestUiState.Success(resolvedModel)
+                        },
+                        onFailure = {
+                            profileSuggestionModelTestState.value =
+                                ProfileSuggestionModelTestUiState.Error(
+                                    it.message ?: "Failed to test the selected model",
+                                )
+                        },
+                    )
+            }
+        }
+
+        fun clearProfileSuggestionModelTestState() {
+            profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
         }
 
         fun refreshSavedFiles() {
@@ -426,6 +495,7 @@ class SettingsViewModel
             val encodingBitRate: Int = 128_000,
             val channelCount: Int = 1,
             val apiKey: String = "",
+            val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
             val versionName: String = "",
             val versionCode: Long = 0L,
             val latestReleaseTitle: String? = null,
@@ -440,6 +510,7 @@ class SettingsViewModel
             val autoTranscribe: Boolean = false,
             val defaultTransformProfileId: String? = null,
             val defaultTransformProfileName: String? = null,
+            val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
         )
 
         private data class RecordingPreferences(

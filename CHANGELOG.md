@@ -16,9 +16,13 @@
 
 * add a repo-root PowerShell helper for emulator, build, install, run, lint, test, format, detekt, and full local verification commands
 * switch AI profile draft suggestions to `gpt-5-mini` while leaving the normal transform pipeline unchanged
+* let Settings choose and test the OpenAI model used for AI profile drafts before generation starts
+* streamline the capture home screen with a Material-style top app bar, a persistent waveform above the record button, and scrollable recent recordings that stay visible again
+* reshape the Settings usage section into a full-width metric grid and add active, archived, average-length, export, and saved-copy stats
 ### Fixes
 
 * restrict recordings swipe gestures to the left and right edge lanes so center drags no longer trigger transform or archive actions
+* raise OpenAI upload timeouts, chunk oversized recordings before transcription, and surface short-recording failures instead of crashing on a fast stop
 * skip release promotion cleanly when `CHANGELOG.md` has no unreleased bullets instead of failing the release workflow
 * retry CI Gradle tasks when Maven Central denies a transient dependency fetch instead of failing the workflow on the first 403
 

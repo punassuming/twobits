@@ -12,8 +12,14 @@ class RecordingSessionEvents
     constructor() {
         private val _completedSessions = MutableSharedFlow<String>(extraBufferCapacity = 1)
         val completedSessions: SharedFlow<String> = _completedSessions.asSharedFlow()
+        private val _recordingErrors = MutableSharedFlow<String>(extraBufferCapacity = 1)
+        val recordingErrors: SharedFlow<String> = _recordingErrors.asSharedFlow()
 
         fun onSessionCompleted(sessionId: String) {
             _completedSessions.tryEmit(sessionId)
+        }
+
+        fun onRecordingError(message: String) {
+            _recordingErrors.tryEmit(message)
         }
     }

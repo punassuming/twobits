@@ -26,6 +26,7 @@ class OpenAiProfileSuggestionService
             existingName: String,
             existingDescription: String,
             existingSteps: List<String>,
+            modelName: String,
         ): Result<ProfileSuggestion> =
             runCatching {
                 withContext(Dispatchers.IO) {
@@ -42,51 +43,19 @@ class OpenAiProfileSuggestionService
                         apiKeyProvider.getApiKey(ProviderType.OPENAI)
                             ?: throw IllegalStateException("No API key configured for OpenAI")
 
-                    val requestBody =
-                        OpenAiResponseRequest(
-                            model = MODEL_NAME,
+                    val parsed =
+                        executeResponseRequest(
+                            apiKey = apiKey,
+                            modelName = modelName,
                             instructions = buildInstructions(),
-                            input =
-                                listOf(
-                                    ResponseInputMessage(
-                                        type = "message",
-                                        role = "user",
-                                        content =
-                                            listOf(
-                                                InputText(
-                                                    type = "input_text",
-                                                    text =
-                                                        buildUserMessage(
-                                                            userRequest = userRequest,
-                                                            existingName = existingName,
-                                                            existingDescription = existingDescription,
-                                                            existingSteps = existingSteps,
-                                                        ),
-                                                ),
-                                            ),
-                                    ),
+                            userMessage =
+                                buildUserMessage(
+                                    userRequest = userRequest,
+                                    existingName = existingName,
+                                    existingDescription = existingDescription,
+                                    existingSteps = existingSteps,
                                 ),
                         )
-
-                    val request =
-                        Request.Builder()
-                            .url("https://api.openai.com/v1/responses")
-                            .header("Authorization", "Bearer $apiKey")
-                            .header("Content-Type", "application/json")
-                            .post(json.encodeToString(OpenAiResponseRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA_TYPE))
-                            .build()
-
-                    val response = okHttpClient.newCall(request).execute()
-                    if (!response.isSuccessful) {
-                        val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
-                        throw IOException(
-                            "OpenAI API error: ${response.code} ${response.message}" +
-                                if (errorBody.isNotBlank()) " - $errorBody" else "",
-                        )
-                    }
-
-                    val body = response.body?.string() ?: throw IOException("Empty response body")
-                    val parsed = json.decodeFromString(OpenAiResponseResponse.serializer(), body)
                     val outputText =
                         parsed.outputText?.takeIf { it.isNotBlank() }
                             ?: parsed.output
@@ -118,6 +87,27 @@ class OpenAiProfileSuggestionService
                         description = suggestion.description.trim(),
                         steps = normalizedSteps,
                     )
+                }
+            }
+
+        suspend fun testModel(
+            modelName: String,
+        ): Result<String> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val apiKey =
+                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
+                            ?: throw IllegalStateException("No API key configured for OpenAI")
+
+                    val parsed =
+                        executeResponseRequest(
+                            apiKey = apiKey,
+                            modelName = modelName,
+                            instructions = "Reply with READY.",
+                            userMessage = "Test the configured profile suggestion model.",
+                        )
+
+                    parsed.model ?: modelName
                 }
             }
 
@@ -182,6 +172,54 @@ class OpenAiProfileSuggestionService
                 .trim()
         }
 
+        private fun executeResponseRequest(
+            apiKey: String,
+            modelName: String,
+            instructions: String,
+            userMessage: String,
+        ): OpenAiResponseResponse {
+            val requestBody =
+                OpenAiResponseRequest(
+                    model = modelName,
+                    instructions = instructions,
+                    input =
+                        listOf(
+                            ResponseInputMessage(
+                                type = "message",
+                                role = "user",
+                                content =
+                                    listOf(
+                                        InputText(
+                                            type = "input_text",
+                                            text = userMessage,
+                                        ),
+                                    ),
+                            ),
+                        ),
+                )
+
+            val request =
+                Request.Builder()
+                    .url("https://api.openai.com/v1/responses")
+                    .header("Authorization", "Bearer $apiKey")
+                    .header("Content-Type", "application/json")
+                    .post(json.encodeToString(OpenAiResponseRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA_TYPE))
+                    .build()
+
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                    throw IOException(
+                        "OpenAI API error: ${response.code} ${response.message}" +
+                            if (errorBody.isNotBlank()) " - $errorBody" else "",
+                    )
+                }
+
+                val body = response.body?.string() ?: throw IOException("Empty response body")
+                return json.decodeFromString(OpenAiResponseResponse.serializer(), body)
+            }
+        }
+
         @Serializable
         private data class OpenAiResponseRequest(
             val model: String,
@@ -228,7 +266,6 @@ class OpenAiProfileSuggestionService
         )
 
         private companion object {
-            const val MODEL_NAME = "gpt-5-mini"
             val JSON_MEDIA_TYPE = "application/json".toMediaType()
         }
     }

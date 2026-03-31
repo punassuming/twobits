@@ -56,17 +56,24 @@ class AndroidMediaRecorder
                         MediaRecorder()
                     }
 
-                recorder.apply {
-                    setAudioSource(MediaRecorder.AudioSource.MIC)
-                    setOutputFormat(config.audioFormat.outputFormat)
-                    setAudioEncoder(config.audioFormat.audioEncoder)
-                    setAudioSamplingRate(config.sampleRateHz)
-                    setAudioEncodingBitRate(config.encodingBitRate)
-                    setAudioChannels(config.channelCount)
-                    setOutputFile(outputFile.absolutePath)
-                    setMaxDuration(config.maxDurationMs.toInt())
-                    prepare()
-                    start()
+                runCatching {
+                    recorder.apply {
+                        setAudioSource(MediaRecorder.AudioSource.MIC)
+                        setOutputFormat(config.audioFormat.outputFormat)
+                        setAudioEncoder(config.audioFormat.audioEncoder)
+                        setAudioSamplingRate(config.sampleRateHz)
+                        setAudioEncodingBitRate(config.encodingBitRate)
+                        setAudioChannels(config.channelCount)
+                        setOutputFile(outputFile.absolutePath)
+                        setMaxDuration(config.maxDurationMs.toInt())
+                        prepare()
+                        start()
+                    }
+                }.onFailure { error ->
+                    runCatching { recorder.reset() }
+                    runCatching { recorder.release() }
+                    runCatching { outputFile.delete() }
+                    throw error
                 }
 
                 mediaRecorder = recorder
@@ -88,34 +95,45 @@ class AndroidMediaRecorder
                 val recorder = requireNotNull(mediaRecorder) { "MediaRecorder is not recording" }
                 val file = requireNotNull(currentFile) { "No current recording file" }
                 val durationMs = System.currentTimeMillis() - startTimeMs
+                stopTelemetryUpdates(recorder)
 
-                recorder.stop()
-                recorder.release()
-                mediaRecorder = null
-                telemetryJob?.cancel()
-                _isRecording.value = false
-                _telemetry.value = RecordingTelemetry()
-
-                RecordedAudio(
-                    filePath = file.absolutePath,
-                    durationMs = durationMs,
-                    fileSizeBytes = file.length(),
-                    audioFormat = currentAudioFormat,
-                    sampleRateHz = currentSampleRateHz,
-                    encodingBitRate = currentEncodingBitRate,
-                    channelCount = currentChannelCount,
-                    waveformSamples = downsampleWaveform(waveformSamples, MAX_WAVEFORM_SAMPLES),
-                )
+                try {
+                    recorder.stop()
+                    RecordedAudio(
+                        filePath = file.absolutePath,
+                        durationMs = durationMs,
+                        fileSizeBytes = file.length(),
+                        audioFormat = currentAudioFormat,
+                        sampleRateHz = currentSampleRateHz,
+                        encodingBitRate = currentEncodingBitRate,
+                        channelCount = currentChannelCount,
+                        waveformSamples = downsampleWaveform(waveformSamples, MAX_WAVEFORM_SAMPLES),
+                    )
+                } catch (error: RuntimeException) {
+                    runCatching { file.delete() }
+                    throw IllegalStateException(SHORT_RECORDING_MESSAGE, error)
+                } finally {
+                    runCatching { recorder.reset() }
+                    runCatching { recorder.release() }
+                    mediaRecorder = null
+                    currentFile = null
+                    telemetryJob?.cancel()
+                    waveformSamples = mutableListOf()
+                    smoothedAmplitudeRatio = 0f
+                    _isRecording.value = false
+                    _telemetry.value = RecordingTelemetry()
+                }
             }
 
         override fun cancelRecording() {
+            val recorder = mediaRecorder
+            stopTelemetryUpdates(recorder)
             try {
-                mediaRecorder?.stop()
-                mediaRecorder?.release()
+                recorder?.stop()
+                recorder?.release()
             } catch (_: Exception) {
                 // ignore
             }
-            telemetryJob?.cancel()
             mediaRecorder = null
             currentFile?.delete()
             currentFile = null
@@ -131,9 +149,7 @@ class AndroidMediaRecorder
                 recorderScope.launch {
                     while (isActive && mediaRecorder === recorder) {
                         val elapsedMs = System.currentTimeMillis() - startTimeMs
-                        val rawAmplitudeRatio =
-                            (recorder.maxAmplitude / MAX_AMPLITUDE.toFloat())
-                                .coerceIn(0f, 1f)
+                        val rawAmplitudeRatio = recorder.readAmplitudeRatio() ?: break
                         val gatedAmplitudeRatio = if (rawAmplitudeRatio < SILENCE_GATE_RATIO) 0f else rawAmplitudeRatio
                         smoothedAmplitudeRatio = (smoothedAmplitudeRatio * SMOOTHING_DECAY) +
                             (gatedAmplitudeRatio * (1f - SMOOTHING_DECAY))
@@ -147,6 +163,14 @@ class AndroidMediaRecorder
                         delay(TELEMETRY_INTERVAL_MS)
                     }
                 }
+        }
+
+        private fun stopTelemetryUpdates(recorder: MediaRecorder?) {
+            telemetryJob?.cancel()
+            telemetryJob = null
+            if (mediaRecorder === recorder) {
+                mediaRecorder = null
+            }
         }
 
         private val AudioFormat.extension get() =
@@ -179,6 +203,7 @@ class AndroidMediaRecorder
             const val TELEMETRY_INTERVAL_MS = 60L
             const val SILENCE_GATE_RATIO = 0.015f
             const val SMOOTHING_DECAY = 0.62f
+            const val SHORT_RECORDING_MESSAGE = "Recording was too short to save. Try holding record for a little longer."
         }
 
         private fun downsampleWaveform(
@@ -195,4 +220,9 @@ class AndroidMediaRecorder
                 samples.subList(start, endExclusive).maxOrNull() ?: 0f
             }
         }
+
+        private fun MediaRecorder.readAmplitudeRatio(): Float? =
+            runCatching {
+                (maxAmplitude / MAX_AMPLITUDE.toFloat()).coerceIn(0f, 1f)
+            }.getOrNull()
     }

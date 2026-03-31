@@ -12,6 +12,7 @@ import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.service.recording.RecordingForegroundService
 import dev.scrybe.service.recording.RecordingServiceActions
+import dev.scrybe.service.recording.RecordingSessionEvents
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +32,7 @@ class CaptureViewModel
         private val recordingSessionDao: RecordingSessionDao,
         private val transcriptDao: TranscriptDao,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val recordingSessionEvents: RecordingSessionEvents,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(CaptureUiState())
         val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
@@ -80,8 +82,20 @@ class CaptureViewModel
                 }
             }
             viewModelScope.launch {
+                recordingSessionEvents.recordingErrors.collectLatest { message ->
+                    _uiState.value =
+                        _uiState.value.copy(
+                            phase = CapturePhase.IDLE,
+                            elapsedMs = 0L,
+                            currentAmplitudeRatio = 0f,
+                            amplitudeHistory = emptyList(),
+                            errorMessage = message,
+                        )
+                }
+            }
+            viewModelScope.launch {
                 combine(
-                    recordingSessionDao.getActiveSessions(),
+                    recordingSessionDao.getAllSessions(),
                     transcriptDao.getAllTranscripts(),
                 ) { sessions, transcripts ->
                     val transcriptLookup =
@@ -104,6 +118,7 @@ class CaptureViewModel
                                     .format(RECENT_TIME_FORMATTER),
                             status = dev.scrybe.core.model.SessionStatus.valueOf(session.status),
                             transcriptPreview = transcriptLookup[session.id],
+                            isArchived = session.isArchived,
                         )
                     }
                 }.collectLatest { recentSessions ->
@@ -114,7 +129,7 @@ class CaptureViewModel
 
         fun startRecording() {
             viewModelScope.launch {
-                _uiState.value = CaptureUiState(phase = CapturePhase.RECORDING)
+                _uiState.value = CaptureUiState(phase = CapturePhase.RECORDING, keepScreenOn = _uiState.value.keepScreenOn)
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
                         action = RecordingServiceActions.ACTION_START
@@ -125,7 +140,7 @@ class CaptureViewModel
 
         fun stopRecording() {
             viewModelScope.launch {
-                _uiState.value = _uiState.value.copy(phase = CapturePhase.STOPPING)
+                _uiState.value = _uiState.value.copy(phase = CapturePhase.STOPPING, errorMessage = null)
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
                         action = RecordingServiceActions.ACTION_STOP
@@ -141,7 +156,7 @@ class CaptureViewModel
                         action = RecordingServiceActions.ACTION_CANCEL
                     }
                 context.startService(intent)
-                _uiState.value = CaptureUiState()
+                _uiState.value = CaptureUiState(keepScreenOn = _uiState.value.keepScreenOn)
             }
         }
 

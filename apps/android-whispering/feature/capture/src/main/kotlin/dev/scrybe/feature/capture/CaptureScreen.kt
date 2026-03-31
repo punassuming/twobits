@@ -24,8 +24,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,10 +47,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -57,7 +63,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -67,6 +72,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -79,6 +85,7 @@ import kotlin.math.sin
 private const val LIVE_WAVEFORM_TARGET_BAR_COUNT = 72
 private val LIVE_WAVEFORM_MAX_BAR_WIDTH = 2.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaptureScreen(
     onNavigateToHistory: () -> Unit,
@@ -123,151 +130,127 @@ fun CaptureScreen(
         }
     }
 
-    Column(
+    Scaffold(
         modifier =
             Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .safeDrawingPadding()
-                .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.Top),
-    ) {
-        Text("Scrybe", style = MaterialTheme.typography.headlineMedium)
-        Text(
-            text = "Capture audio, review the recording, transcribe it with OpenAI, and turn it into polished notes or action items.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        HomeCard {
-            Surface(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 112.dp),
-                color = Color.Transparent,
-            ) {
-                AnimatedContent(
-                    targetState = uiState.phase,
-                    transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
-                    label = "capture-phase",
-                ) { phase ->
-                    when (phase) {
-                        CapturePhase.IDLE -> {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = "Ready to capture",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    textAlign = TextAlign.Center,
-                                )
-                                Text(
-                                    text =
-                                        if (hasRequiredPermissions) {
-                                            "Tap record to start a new capture with transcription and reusable AI transforms."
-                                        } else {
-                                            "Microphone permission is required before you can record."
-                                        },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                        CapturePhase.RECORDING -> {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = "Recording\u2026 ${formatElapsedTime(uiState.elapsedMs)}",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    textAlign = TextAlign.Center,
-                                )
-                                Text(
-                                    text = "The timeline stays open while audio builds in. Stop here or from the notification when you’re done.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                        CapturePhase.STOPPING -> {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(text = "Stopping\u2026", style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    text = "We’re saving the recording and handing off to your selected post-stop destination.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            RecordActionButton(
-                onClick = {
-                    when (uiState.phase) {
-                        CapturePhase.IDLE -> {
-                            if (hasRequiredPermissions) {
-                                viewModel.startRecording()
-                            } else {
-                                permissionLauncher.launch(requiredPermissions.toTypedArray())
-                            }
-                        }
-                        CapturePhase.RECORDING -> viewModel.stopRecording()
-                        CapturePhase.STOPPING -> Unit
+                .safeDrawingPadding(),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Scrybe", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            text = "Capture and shape recent recordings",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 },
-                ringColor =
-                    if (uiState.phase == CapturePhase.RECORDING) {
-                        MaterialTheme.colorScheme.tertiary
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                centerColor =
-                    if (uiState.phase == CapturePhase.RECORDING) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
-                isActive = uiState.phase == CapturePhase.RECORDING,
-                amplitudeRatio = uiState.currentAmplitudeRatio,
-                modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                actions = {
+                    TopBarAction(
+                        onClick = onNavigateToHistory,
+                        icon = Icons.Filled.History,
+                        contentDescription = "Records",
+                    )
+                    TopBarAction(
+                        onClick = onNavigateToProfiles,
+                        icon = Icons.Filled.AutoAwesome,
+                        contentDescription = "Profiles",
+                    )
+                    TopBarAction(
+                        onClick = onNavigateToSettings,
+                        icon = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                    )
+                },
             )
-            AmplitudeVisualizer(
-                amplitudes = uiState.amplitudeHistory,
-                currentAmplitudeRatio = uiState.currentAmplitudeRatio,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-            )
-        }
-        QuickActionRow(
-            onNavigateToHistory = onNavigateToHistory,
-            onNavigateToProfiles = onNavigateToProfiles,
-            onNavigateToSettings = onNavigateToSettings,
-        )
-        RecentRecordingsSection(
-            sessions = uiState.recentSessions,
-            onOpenSession = onNavigateToSessionDetail,
-        )
-        uiState.errorMessage?.let { message ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-            ) {
-                Text(
-                    text = "Error: $message",
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
+        },
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding =
+                PaddingValues(
+                    start = 20.dp,
+                    top = paddingValues.calculateTopPadding() + 12.dp,
+                    end = 20.dp,
+                    bottom = paddingValues.calculateBottomPadding() + 20.dp,
+                ),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            item {
+                HomeCard {
+                    CaptureHeroHeader(
+                        phase = uiState.phase,
+                        hasRequiredPermissions = hasRequiredPermissions,
+                        elapsedMs = uiState.elapsedMs,
+                    )
+                    AmplitudeVisualizer(
+                        amplitudes = uiState.amplitudeHistory,
+                        currentAmplitudeRatio = uiState.currentAmplitudeRatio,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(92.dp),
+                    )
+                    RecordActionButton(
+                        onClick = {
+                            when (uiState.phase) {
+                                CapturePhase.IDLE -> {
+                                    if (hasRequiredPermissions) {
+                                        viewModel.startRecording()
+                                    } else {
+                                        permissionLauncher.launch(requiredPermissions.toTypedArray())
+                                    }
+                                }
+
+                                CapturePhase.RECORDING -> viewModel.stopRecording()
+                                CapturePhase.STOPPING -> Unit
+                            }
+                        },
+                        ringColor =
+                            if (uiState.phase == CapturePhase.RECORDING) {
+                                MaterialTheme.colorScheme.tertiary
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                        centerColor =
+                            if (uiState.phase == CapturePhase.RECORDING) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                        isActive = uiState.phase == CapturePhase.RECORDING,
+                        amplitudeRatio = uiState.currentAmplitudeRatio,
+                        modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+                    )
+                }
+            }
+            item {
+                RecentRecordingsSection(
+                    sessions = uiState.recentSessions,
+                    onOpenSession = onNavigateToSessionDetail,
+                    onOpenHistory = onNavigateToHistory,
                 )
+            }
+            uiState.errorMessage?.let { message ->
+                item {
+                    Card(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .widthIn(max = 760.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    ) {
+                        Text(
+                            text = "Error: $message",
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
             }
         }
     }
@@ -277,14 +260,32 @@ fun CaptureScreen(
 private fun RecentRecordingsSection(
     sessions: List<RecentCaptureSession>,
     onOpenSession: (String) -> Unit,
+    onOpenHistory: () -> Unit,
 ) {
     HomeCard {
-        Text(
-            text = "Recent Records",
-            style = MaterialTheme.typography.titleMedium,
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Start,
-        )
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "Recent recordings",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = "Jump back into the latest saved sessions.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            FilledTonalIconButton(onClick = onOpenHistory) {
+                Icon(Icons.Filled.History, contentDescription = "Open records")
+            }
+        }
         if (sessions.isEmpty()) {
             Text(
                 text = "No recordings yet. Start one above and it will appear here as soon as it is saved.",
@@ -319,12 +320,9 @@ private fun RecentRecordingsSection(
                                 text = session.title,
                                 style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                            Text(
-                                text = session.status.name.lowercase().replace('_', ' ').replaceFirstChar(Char::titlecase),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
+                            SessionMetaPill(session = session)
                         }
                         Text(
                             text = session.createdAtLabel,
@@ -337,6 +335,100 @@ private fun RecentRecordingsSection(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 2,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CaptureHeroHeader(
+    phase: CapturePhase,
+    hasRequiredPermissions: Boolean,
+    elapsedMs: Long,
+) {
+    Surface(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 104.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            AnimatedContent(
+                targetState = phase,
+                transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
+                label = "capture-phase",
+            ) { currentPhase ->
+                when (currentPhase) {
+                    CapturePhase.IDLE -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = "Ready to record",
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
+                            )
+                            Text(
+                                text =
+                                    if (hasRequiredPermissions) {
+                                        "Tap the button below to start a capture. Recent sessions stay available underneath."
+                                    } else {
+                                        "Microphone permission is required before Scrybe can start recording."
+                                    },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+
+                    CapturePhase.RECORDING -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = "Recording ${formatElapsedTime(elapsedMs)}",
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
+                            )
+                            Text(
+                                text = "The waveform stays live above the record button while this session builds.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+
+                    CapturePhase.STOPPING -> {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = "Saving recording",
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
+                            )
+                            Text(
+                                text = "Scrybe is finishing the file and handing it off to your post-stop flow.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
                             )
                         }
                     }
@@ -363,87 +455,26 @@ private fun HomeCard(content: @Composable ColumnScope.() -> Unit) {
                     .animateContentSize()
                     .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             content = content,
         )
     }
 }
 
 @Composable
-private fun QuickActionRow(
-    onNavigateToHistory: () -> Unit,
-    onNavigateToProfiles: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = 760.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        QuickActionCard(
-            onClick = onNavigateToHistory,
-            modifier = Modifier.weight(1f),
-            icon = {
-                Icon(Icons.Filled.History, contentDescription = null)
-            },
-            label = "Records",
-        )
-        QuickActionCard(
-            onClick = onNavigateToProfiles,
-            modifier = Modifier.weight(1f),
-            icon = {
-                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-            },
-            label = "Profiles",
-        )
-        QuickActionCard(
-            onClick = onNavigateToSettings,
-            modifier = Modifier.weight(1f),
-            icon = {
-                Icon(Icons.Filled.Settings, contentDescription = null)
-            },
-            label = "Settings",
-        )
-    }
-}
-
-@Composable
-private fun QuickActionCard(
+private fun TopBarAction(
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    icon: @Composable () -> Unit,
-    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
 ) {
-    Card(
-        modifier =
-            modifier
-                .heightIn(min = 92.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+    FilledTonalIconButton(
+        onClick = onClick,
         colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             ),
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            icon()
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = label,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
+        Icon(icon, contentDescription = contentDescription)
     }
 }
 
@@ -678,6 +709,26 @@ private fun AmplitudeVisualizer(
                 cap = StrokeCap.Round,
             )
         }
+    }
+}
+
+@Composable
+private fun SessionMetaPill(session: RecentCaptureSession) {
+    val text =
+        when {
+            session.isArchived -> "Archived"
+            else -> session.status.name.lowercase().replace('_', ' ').replaceFirstChar(Char::titlecase)
+        }
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(999.dp),
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
     }
 }
 
