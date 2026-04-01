@@ -40,6 +40,7 @@ class AppPreferencesDataStore
             val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
             val SHOW_RENAME_AFTER_RECORDING = booleanPreferencesKey("show_rename_after_recording")
             val CONFIRM_RECORD_SWIPE_ACTIONS = booleanPreferencesKey("confirm_record_swipe_actions")
+            val SHOW_RECORDING_INFO_IN_LIST = booleanPreferencesKey("show_recording_info_in_list")
             val POST_STOP_DESTINATION = stringPreferencesKey("post_stop_destination")
             val LAST_SEEN_WHATS_NEW_VERSION_CODE = stringPreferencesKey("last_seen_whats_new_version_code")
         }
@@ -110,6 +111,11 @@ class AppPreferencesDataStore
                 prefs[Keys.CONFIRM_RECORD_SWIPE_ACTIONS] ?: true
             }
 
+        val showRecordingInfoInList: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.SHOW_RECORDING_INFO_IN_LIST] ?: true
+            }
+
         val postStopDestination: Flow<PostStopDestination> =
             context.dataStore.data.map { prefs ->
                 prefs[Keys.POST_STOP_DESTINATION]
@@ -177,6 +183,10 @@ class AppPreferencesDataStore
 
         suspend fun setConfirmRecordSwipeActions(enabled: Boolean) {
             context.dataStore.edit { prefs -> prefs[Keys.CONFIRM_RECORD_SWIPE_ACTIONS] = enabled }
+        }
+
+        suspend fun setShowRecordingInfoInList(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.SHOW_RECORDING_INFO_IN_LIST] = enabled }
         }
 
         suspend fun setPostStopDestination(destination: PostStopDestination) {

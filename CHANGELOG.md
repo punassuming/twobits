@@ -4,7 +4,13 @@
 
 ### Features
 
+* allow editing the recording name directly in the capture screen header by tapping the edit icon while recording; the chosen name is saved when the recording stops
+* add "Share Transcript" option to the recordings list item menu; tap to send the transcript text to any app via the Android share sheet
+* add "Show recording information in list" toggle in Settings → Recording Behavior to hide or reveal the metadata line (format, sample rate, bitrate, channels) in the recordings list
+
 ### Improvements
+
+* add Kotlin, Min SDK, Target SDK, and License badges to the README
 
 ### Fixes
 

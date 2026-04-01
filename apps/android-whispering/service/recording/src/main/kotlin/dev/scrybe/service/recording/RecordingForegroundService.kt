@@ -65,7 +65,9 @@ class RecordingForegroundService : Service() {
     ): Int {
         when (intent?.action) {
             RecordingServiceActions.ACTION_START -> handleStart()
-            RecordingServiceActions.ACTION_STOP -> handleStop()
+            RecordingServiceActions.ACTION_STOP -> handleStop(
+                intent.getStringExtra(RecordingServiceActions.EXTRA_RECORDING_NAME),
+            )
             RecordingServiceActions.ACTION_CANCEL -> handleCancel()
         }
         return START_STICKY
@@ -109,11 +111,11 @@ class RecordingForegroundService : Service() {
         }
     }
 
-    private fun handleStop() {
+    private fun handleStop(pendingName: String? = null) {
         serviceScope.launch {
             audioRecorder.stopRecording()
                 .onSuccess { recordedAudio ->
-                    val sessionId = withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
+                    val sessionId = withContext(Dispatchers.IO) { persistRecording(recordedAudio, pendingName) }
                     recordingSessionEvents.onSessionCompleted(sessionId)
                     transcriptionScope.launch {
                         if (!preferencesDataStore.autoTranscribe.first()) {
@@ -162,10 +164,11 @@ class RecordingForegroundService : Service() {
         stopSelf()
     }
 
-    private suspend fun persistRecording(recordedAudio: RecordedAudio): String {
+    private suspend fun persistRecording(recordedAudio: RecordedAudio, pendingName: String? = null): String {
         val finishedAt = System.currentTimeMillis()
         val createdAt = finishedAt - recordedAudio.durationMs
-        val title = "Recording ${TITLE_FORMAT.format(Date(createdAt))}"
+        val title = pendingName?.trim()?.takeIf { it.isNotBlank() }
+            ?: "Recording ${TITLE_FORMAT.format(Date(createdAt))}"
         val sessionId = UUID.randomUUID().toString()
 
         recordingSessionDao.insertSession(

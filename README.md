@@ -1,6 +1,10 @@
 # Scrybe
 
 [![Android CI](https://github.com/punassuming/scrybe/actions/workflows/android-ci.yml/badge.svg)](https://github.com/punassuming/scrybe/actions/workflows/android-ci.yml)
+[![Kotlin](https://img.shields.io/badge/kotlin-1.9.25-blue.svg?logo=kotlin)](https://kotlinlang.org)
+[![Min SDK](https://img.shields.io/badge/min%20sdk-26%20(Android%208.0)-brightgreen.svg)](https://developer.android.com/about/versions/oreo)
+[![Target SDK](https://img.shields.io/badge/target%20sdk-35%20(Android%2015)-brightgreen.svg)](https://developer.android.com/about/versions/15)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Scrybe is an Android application for recording audio, transcribing it with AI, and transforming the resulting text into structured notes. Think of it as a voice-to-document pipeline that lives entirely on your phone.
 

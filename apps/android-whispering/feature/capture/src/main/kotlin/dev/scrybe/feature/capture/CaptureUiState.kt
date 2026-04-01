@@ -10,6 +10,7 @@ data class CaptureUiState(
     val keepScreenOn: Boolean = true,
     val recentSessions: List<RecentCaptureSession> = emptyList(),
     val errorMessage: String? = null,
+    val pendingRecordingName: String? = null,
 )
 
 data class RecentCaptureSession(

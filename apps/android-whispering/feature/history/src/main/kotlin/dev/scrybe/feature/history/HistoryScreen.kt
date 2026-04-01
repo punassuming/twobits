@@ -103,6 +103,14 @@ fun HistoryScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is HistoryEvent.Message -> snackbarHostState.showSnackbar(event.text)
+                is HistoryEvent.ShareText -> {
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, event.title)
+                        putExtra(Intent.EXTRA_TEXT, event.text)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Share transcript"))
+                }
             }
         }
     }
@@ -277,8 +285,10 @@ fun HistoryScreen(
                                     onInfo = { infoTarget = item.toRecordInfo() },
                                     onOpenWith = { openAudioWith(context, item.session) },
                                     onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
+                                    onShareTranscript = { viewModel.shareTranscript(item.session.id) },
                                     onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
                                     onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
+                                    showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
                                     confirmSwipeActions = state.interactionPreferences.confirmSwipeActions,
                                 )
                             }

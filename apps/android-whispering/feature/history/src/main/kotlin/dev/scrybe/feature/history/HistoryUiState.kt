@@ -32,6 +32,7 @@ data class RecordsFilterState(
 
 data class RecordsInteractionPreferences(
     val confirmSwipeActions: Boolean = true,
+    val showRecordingInfoInList: Boolean = true,
 )
 
 data class RecordInfo(
