@@ -434,7 +434,7 @@ private fun CaptureHeroHeader(
                                 )
                                 Icon(
                                     Icons.Filled.Edit,
-                                    contentDescription = "Set recording name",
+                                    contentDescription = null,
                                     modifier = Modifier.size(18.dp),
                                     tint = MaterialTheme.colorScheme.primary,
                                 )
@@ -824,7 +824,6 @@ private fun RenameRecordingDialog(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text("Recording name") },
-                placeholder = { Text("Enter a name for this recording") },
             )
         },
         confirmButton = {

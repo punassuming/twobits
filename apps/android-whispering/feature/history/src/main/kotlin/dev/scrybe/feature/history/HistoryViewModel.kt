@@ -232,9 +232,15 @@ class HistoryViewModel
                     _events.emit(HistoryEvent.Message("Recording not found"))
                     return@launch
                 }
-                val transcript = transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.EDITED.name)
-                    ?: transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.TRANSFORMED.name)
-                    ?: transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.RAW.name)
+                val transcripts = transcriptDao.getTranscriptsForSession(sessionId).first()
+                val priorityOrder = listOf(
+                    TranscriptType.EDITED.name,
+                    TranscriptType.TRANSFORMED.name,
+                    TranscriptType.RAW.name,
+                )
+                val transcriptsByType = transcripts.groupBy { it.type }
+                val transcript = priorityOrder
+                    .firstNotNullOfOrNull { type -> transcriptsByType[type]?.maxByOrNull { it.createdAt } }
                 if (transcript == null) {
                     _events.emit(HistoryEvent.Message("No transcript available to share"))
                 } else {
