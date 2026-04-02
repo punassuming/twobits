@@ -39,6 +39,7 @@ data class SettingsUiState(
     val keepScreenOn: Boolean = true,
     val showRenameAfterRecording: Boolean = true,
     val confirmRecordSwipeActions: Boolean = true,
+    val showRecordingInfoInList: Boolean = true,
     val postStopDestination: PostStopDestination = PostStopDestination.HOME,
     val audioFormat: AudioFormat = AudioFormat.AAC,
     val sampleRateHz: Int = 48_000,
@@ -184,7 +185,8 @@ class SettingsViewModel
             combine(
                 displayPreferences,
                 audioPreferences,
-            ) { displayPreferences, audioPreferences ->
+                preferencesDataStore.showRecordingInfoInList,
+            ) { displayPreferences, audioPreferences, showRecordingInfoInList ->
                 RecordingPreferences(
                     themeMode = displayPreferences.themeMode,
                     keepScreenOn = displayPreferences.keepScreenOn,
@@ -195,6 +197,7 @@ class SettingsViewModel
                     sampleRateHz = audioPreferences.sampleRateHz,
                     encodingBitRate = audioPreferences.encodingBitRate,
                     channelCount = audioPreferences.channelCount,
+                    showRecordingInfoInList = showRecordingInfoInList,
                 )
             }
         private val usageData =
@@ -242,6 +245,7 @@ class SettingsViewModel
                     showRenameAfterRecording = recordingPreferences.showRenameAfterRecording,
                     confirmRecordSwipeActions = recordingPreferences.confirmRecordSwipeActions,
                     postStopDestination = recordingPreferences.postStopDestination,
+                    showRecordingInfoInList = recordingPreferences.showRecordingInfoInList,
                     audioFormat = recordingPreferences.audioFormat,
                     sampleRateHz = recordingPreferences.sampleRateHz,
                     encodingBitRate = recordingPreferences.encodingBitRate,
@@ -272,6 +276,7 @@ class SettingsViewModel
                     keepScreenOn = settingsData.keepScreenOn,
                     showRenameAfterRecording = settingsData.showRenameAfterRecording,
                     confirmRecordSwipeActions = settingsData.confirmRecordSwipeActions,
+                    showRecordingInfoInList = settingsData.showRecordingInfoInList,
                     postStopDestination = settingsData.postStopDestination,
                     audioFormat = settingsData.audioFormat,
                     sampleRateHz = settingsData.sampleRateHz,
@@ -329,6 +334,10 @@ class SettingsViewModel
 
         fun setConfirmRecordSwipeActions(enabled: Boolean) {
             viewModelScope.launch { preferencesDataStore.setConfirmRecordSwipeActions(enabled) }
+        }
+
+        fun setShowRecordingInfoInList(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setShowRecordingInfoInList(enabled) }
         }
 
         fun setPostStopDestination(destination: PostStopDestination) {
@@ -489,6 +498,7 @@ class SettingsViewModel
             val keepScreenOn: Boolean = true,
             val showRenameAfterRecording: Boolean = true,
             val confirmRecordSwipeActions: Boolean = true,
+            val showRecordingInfoInList: Boolean = true,
             val postStopDestination: PostStopDestination = PostStopDestination.HOME,
             val audioFormat: AudioFormat = AudioFormat.AAC,
             val sampleRateHz: Int = 48_000,
@@ -518,6 +528,7 @@ class SettingsViewModel
             val keepScreenOn: Boolean = true,
             val showRenameAfterRecording: Boolean = true,
             val confirmRecordSwipeActions: Boolean = true,
+            val showRecordingInfoInList: Boolean = true,
             val postStopDestination: PostStopDestination = PostStopDestination.HOME,
             val audioFormat: AudioFormat = AudioFormat.AAC,
             val sampleRateHz: Int = 48_000,

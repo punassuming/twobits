@@ -412,6 +412,16 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setConfirmRecordSwipeActions(it) },
                         )
                     }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Show recording information in list", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = uiState.showRecordingInfoInList,
+                            onCheckedChange = { viewModel.setShowRecordingInfoInList(it) },
+                        )
+                    }
                     SettingOptionRow(
                         title = "After recording stops",
                         value =

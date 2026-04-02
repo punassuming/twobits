@@ -35,12 +35,14 @@ import javax.inject.Inject
 
 sealed interface HistoryEvent {
     data class Message(val text: String) : HistoryEvent
+    data class ShareText(val title: String, val text: String) : HistoryEvent
 }
 
 private data class HistoryUiInputs(
     val query: String,
     val filters: RecordsFilterState,
     val confirmSwipeActions: Boolean,
+    val showRecordingInfoInList: Boolean,
     val selection: RecordsSelectionState,
 )
 
@@ -69,12 +71,14 @@ class HistoryViewModel
                 query,
                 filters,
                 preferencesDataStore.confirmRecordSwipeActions,
+                preferencesDataStore.showRecordingInfoInList,
                 selection,
-            ) { queryValue, filterState, confirmSwipeActions, selectionState ->
+            ) { queryValue, filterState, confirmSwipeActions, showRecordingInfoInList, selectionState ->
                 HistoryUiInputs(
                     query = queryValue,
                     filters = filterState,
                     confirmSwipeActions = confirmSwipeActions,
+                    showRecordingInfoInList = showRecordingInfoInList,
                     selection = selectionState,
                 )
             }
@@ -154,7 +158,10 @@ class HistoryViewModel
                 HistoryUiState.Success(
                     sessions = filteredSessions,
                     filters = inputs.filters,
-                    interactionPreferences = RecordsInteractionPreferences(confirmSwipeActions = inputs.confirmSwipeActions),
+                    interactionPreferences = RecordsInteractionPreferences(
+                        confirmSwipeActions = inputs.confirmSwipeActions,
+                        showRecordingInfoInList = inputs.showRecordingInfoInList,
+                    ),
                     selection =
                         inputs.selection.copy(
                             selectedSessionIds =
@@ -214,6 +221,30 @@ class HistoryViewModel
                     _events.emit(HistoryEvent.Message("Record deleted"))
                 }.onFailure {
                     _events.emit(HistoryEvent.Message(it.message ?: "Unable to delete record"))
+                }
+            }
+        }
+
+        fun shareTranscript(sessionId: String) {
+            viewModelScope.launch {
+                val session = recordingSessionDao.getSessionByIdOnce(sessionId)
+                if (session == null) {
+                    _events.emit(HistoryEvent.Message("Recording not found"))
+                    return@launch
+                }
+                val transcripts = transcriptDao.getTranscriptsForSession(sessionId).first()
+                val priorityOrder = listOf(
+                    TranscriptType.EDITED.name,
+                    TranscriptType.TRANSFORMED.name,
+                    TranscriptType.RAW.name,
+                )
+                val transcriptsByType = transcripts.groupBy { it.type }
+                val transcript = priorityOrder
+                    .firstNotNullOfOrNull { type -> transcriptsByType[type]?.maxByOrNull { it.createdAt } }
+                if (transcript == null) {
+                    _events.emit(HistoryEvent.Message("No transcript available to share"))
+                } else {
+                    _events.emit(HistoryEvent.ShareText(title = session.title, text = transcript.content))
                 }
             }
         }

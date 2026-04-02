@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -128,8 +129,10 @@ internal fun RecordRow(
     onInfo: () -> Unit,
     onOpenWith: () -> Unit,
     onSaveCopy: () -> Unit,
+    onShareTranscript: () -> Unit,
     onRetryTranscription: () -> Unit,
     onResetTranscriptionState: () -> Unit,
+    showRecordingInfo: Boolean,
     confirmSwipeActions: Boolean,
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
@@ -229,13 +232,15 @@ internal fun RecordRow(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Text(
-                            text = buildMetaLine(item.session),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (showRecordingInfo) {
+                            Text(
+                                text = buildMetaLine(item.session),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                         item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
                             Text(
                                 text = preview,
@@ -316,6 +321,16 @@ internal fun RecordRow(
                                         onInfo()
                                     },
                                 )
+                                if (item.transcriptPreview != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("Share Transcript") },
+                                        leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onShareTranscript()
+                                        },
+                                    )
+                                }
                                 if (item.session.status == SessionStatus.FAILED) {
                                     DropdownMenuItem(
                                         text = { Text("Retry Transcription") },
