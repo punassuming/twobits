@@ -40,11 +40,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -57,16 +55,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -103,7 +97,6 @@ fun CaptureScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val view = LocalView.current
-    var showRenameDialog by remember { mutableStateOf(false) }
     val requiredPermissions =
         remember {
             buildList {
@@ -193,8 +186,6 @@ fun CaptureScreen(
                         phase = uiState.phase,
                         hasRequiredPermissions = hasRequiredPermissions,
                         elapsedMs = uiState.elapsedMs,
-                        pendingName = uiState.pendingRecordingName,
-                        onClickToRename = { showRenameDialog = true },
                     )
                     AmplitudeVisualizer(
                         amplitudes = uiState.amplitudeHistory,
@@ -262,17 +253,6 @@ fun CaptureScreen(
                 }
             }
         }
-    }
-
-    if (showRenameDialog && uiState.phase == CapturePhase.RECORDING) {
-        RenameRecordingDialog(
-            initialName = uiState.pendingRecordingName ?: "",
-            onDismiss = { showRenameDialog = false },
-            onConfirm = { name ->
-                viewModel.setRecordingName(name)
-                showRenameDialog = false
-            },
-        )
     }
 }
 
@@ -369,8 +349,6 @@ private fun CaptureHeroHeader(
     phase: CapturePhase,
     hasRequiredPermissions: Boolean,
     elapsedMs: Long,
-    pendingName: String? = null,
-    onClickToRename: () -> Unit = {},
 ) {
     Surface(
         modifier =
@@ -419,41 +397,20 @@ private fun CaptureHeroHeader(
 
                     CapturePhase.RECORDING -> {
                         Column(
-                            modifier = Modifier.clickable(onClick = onClickToRename),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = "Recording ${formatElapsedTime(elapsedMs)}",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    textAlign = TextAlign.Center,
-                                )
-                                Icon(
-                                    Icons.Filled.Edit,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                            if (pendingName != null) {
-                                Text(
-                                    text = pendingName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    textAlign = TextAlign.Center,
-                                )
-                            } else {
-                                Text(
-                                    text = "Tap to set a name for this recording",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
+                            Text(
+                                text = "Recording ${formatElapsedTime(elapsedMs)}",
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center,
+                            )
+                            Text(
+                                text = "The waveform stays live above the record button while this session builds.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
                         }
                     }
 
@@ -804,37 +761,4 @@ private fun formatElapsedTime(elapsedMs: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
-}
-
-@Composable
-private fun RenameRecordingDialog(
-    initialName: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-) {
-    var name by remember(initialName) { mutableStateOf(initialName) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Name This Recording") },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text("Recording name") },
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(name) }) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
 }

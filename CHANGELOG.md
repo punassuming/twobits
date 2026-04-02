@@ -4,7 +4,7 @@
 
 ### Features
 
-* allow editing the recording name directly in the capture screen header by tapping the edit icon while recording; the chosen name is saved when the recording stops
+* allow renaming a recording by tapping its title in the session detail view; an edit icon next to the title signals the affordance and opens the rename dialog
 * add "Share Transcript" option to the recordings list item menu; tap to send the transcript text to any app via the Android share sheet
 * add "Show recording information in list" toggle in Settings → Recording Behavior to hide or reveal the metadata line (format, sample rate, bitrate, channels) in the recordings list
 

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -83,6 +85,7 @@ fun SessionDetailScreen(
     var actionMenuExpanded by remember { mutableStateOf(false) }
     var isEditingTranscript by remember { mutableStateOf(false) }
     var deleteTranscriptTarget by remember { mutableStateOf<Transcript?>(null) }
+    var showRenameDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -124,11 +127,36 @@ fun SessionDetailScreen(
             val successState = uiState as? SessionDetailUiState.Success
             TopAppBar(
                 title = {
-                    Text(
-                        text = successState?.session?.title ?: "Session Review",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    val titleText = successState?.session?.title ?: "Session Review"
+                    if (successState != null) {
+                        Row(
+                            modifier = Modifier.clickable(
+                                role = Role.Button,
+                                onClickLabel = "Rename recording",
+                                onClick = { showRenameDialog = true },
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = titleText,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = titleText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -270,6 +298,17 @@ fun SessionDetailScreen(
             initialTitle = successState.session.title,
             onDismiss = viewModel::dismissRenamePrompt,
             onConfirm = viewModel::renameSession,
+        )
+    }
+
+    if (showRenameDialog && successState != null) {
+        RenamePromptDialog(
+            initialTitle = successState.session.title,
+            onDismiss = { showRenameDialog = false },
+            onConfirm = { newTitle ->
+                viewModel.renameSession(newTitle)
+                showRenameDialog = false
+            },
         )
     }
 

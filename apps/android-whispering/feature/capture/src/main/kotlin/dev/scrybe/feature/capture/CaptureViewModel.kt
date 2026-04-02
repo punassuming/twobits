@@ -140,14 +140,10 @@ class CaptureViewModel
 
         fun stopRecording() {
             viewModelScope.launch {
-                val pendingName = _uiState.value.pendingRecordingName
-                _uiState.value = _uiState.value.copy(phase = CapturePhase.STOPPING, errorMessage = null, pendingRecordingName = null)
+                _uiState.value = _uiState.value.copy(phase = CapturePhase.STOPPING, errorMessage = null)
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
                         action = RecordingServiceActions.ACTION_STOP
-                        if (!pendingName.isNullOrBlank()) {
-                            putExtra(RecordingServiceActions.EXTRA_RECORDING_NAME, pendingName)
-                        }
                     }
                 context.startService(intent)
             }
@@ -162,10 +158,6 @@ class CaptureViewModel
                 context.startService(intent)
                 _uiState.value = CaptureUiState(keepScreenOn = _uiState.value.keepScreenOn)
             }
-        }
-
-        fun setRecordingName(name: String) {
-            _uiState.value = _uiState.value.copy(pendingRecordingName = name.trim().takeIf { it.isNotBlank() })
         }
 
         private companion object {
