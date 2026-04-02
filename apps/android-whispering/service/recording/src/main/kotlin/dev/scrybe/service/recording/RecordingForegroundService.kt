@@ -172,6 +172,7 @@ class RecordingForegroundService : Service() {
             RecordingSessionEntity(
                 id = sessionId,
                 title = title,
+                tags = "",
                 audioFilePath = recordedAudio.filePath,
                 durationMs = recordedAudio.durationMs,
                 fileSizeBytes = recordedAudio.fileSizeBytes,

@@ -25,6 +25,7 @@ class ExportCoordinatorTest {
         RecordingSession(
             id = "session-123",
             title = "My Recording",
+            tags = emptyList(),
             audioFilePath = "/data/test.m4a",
             durationMs = 30_000L,
             fileSizeBytes = 512_000L,

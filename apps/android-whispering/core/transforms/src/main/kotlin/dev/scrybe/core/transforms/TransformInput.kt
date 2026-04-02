@@ -7,4 +7,5 @@ data class TransformInput(
     val currentText: String,
     val profileId: String,
     val systemPrompt: String,
+    val combinedTranscriptText: String? = null,
 )

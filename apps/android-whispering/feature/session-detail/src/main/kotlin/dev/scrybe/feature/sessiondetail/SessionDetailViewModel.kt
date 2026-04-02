@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioPlayer
+import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
@@ -27,6 +28,7 @@ import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
+import dev.scrybe.core.transforms.OpenAiTagSuggestionService
 import dev.scrybe.core.transforms.SessionTransformCoordinator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,6 +56,7 @@ class SessionDetailViewModel
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
+        private val tagSuggestionService: OpenAiTagSuggestionService,
         private val exportCoordinator: ExportCoordinator,
         private val audioPlayer: AudioPlayer,
         @ApplicationContext private val context: Context,
@@ -64,6 +67,7 @@ class SessionDetailViewModel
         val uiState: StateFlow<SessionDetailUiState> = _uiState.asStateFlow()
         private val isTransforming = MutableStateFlow(false)
         private val renamePromptDismissed = MutableStateFlow(false)
+        private val tagSuggestionState = MutableStateFlow<TagSuggestionUiState>(TagSuggestionUiState.Idle)
         private val _events = MutableSharedFlow<SessionDetailEvent>()
         val events = _events.asSharedFlow()
 
@@ -97,7 +101,8 @@ class SessionDetailViewModel
                     preferencesDataStore.defaultTransformProfileId,
                     isTransforming,
                     playbackBundle,
-                ) { sessionBundle, defaultProfileId, isTransforming, playbackBundle ->
+                    tagSuggestionState,
+                ) { sessionBundle, defaultProfileId, isTransforming, playbackBundle, tagSuggestionState ->
                     val (sessionEntity, transcriptEntities, profileEntities) = sessionBundle
                     val (playbackState, showRenameAfterRecording, renamePromptDismissed) = playbackBundle
                     if (sessionEntity == null) {
@@ -107,6 +112,7 @@ class SessionDetailViewModel
                             RecordingSession(
                                 id = sessionEntity.id,
                                 title = sessionEntity.title,
+                                tags = TagsCodec.decode(sessionEntity.tags),
                                 audioFilePath = sessionEntity.audioFilePath,
                                 durationMs = sessionEntity.durationMs,
                                 fileSizeBytes = sessionEntity.fileSizeBytes,
@@ -184,6 +190,7 @@ class SessionDetailViewModel
                                     showRenameAfterRecording = showRenameAfterRecording,
                                     renamePromptDismissed = renamePromptDismissed,
                                 ),
+                            tagSuggestionState = tagSuggestionState,
                         )
                     }
                 }
@@ -363,6 +370,57 @@ class SessionDetailViewModel
                 renamePromptDismissed.value = true
                 _events.emit(SessionDetailEvent.Message("Recording renamed"))
             }
+        }
+
+        fun saveTags(tagsInput: String) {
+            val normalizedTags = TagsCodec.normalizeInput(tagsInput)
+            viewModelScope.launch {
+                val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+                sessionDao.updateSession(
+                    session.copy(
+                        tags = TagsCodec.encode(normalizedTags),
+                        updatedAt = System.currentTimeMillis(),
+                    ),
+                )
+                tagSuggestionState.value = TagSuggestionUiState.Idle
+                _events.emit(
+                    SessionDetailEvent.Message(
+                        if (normalizedTags.isEmpty()) "Tags cleared" else "Saved ${normalizedTags.size} tags",
+                    ),
+                )
+            }
+        }
+
+        fun suggestTags() {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            val transcriptText = state.currentTranscript?.content ?: state.originalTranscript?.content
+            if (transcriptText.isNullOrBlank()) {
+                viewModelScope.launch {
+                    _events.emit(SessionDetailEvent.Message("Transcribe this recording before suggesting tags"))
+                }
+                return
+            }
+
+            viewModelScope.launch {
+                tagSuggestionState.value = TagSuggestionUiState.Loading
+                tagSuggestionService.suggestTags(
+                    title = state.session.title,
+                    transcriptText = transcriptText,
+                    existingTags = state.session.tags,
+                ).fold(
+                    onSuccess = { suggestedTags ->
+                        tagSuggestionState.value = TagSuggestionUiState.Success(suggestedTags)
+                    },
+                    onFailure = { error ->
+                        tagSuggestionState.value =
+                            TagSuggestionUiState.Error(error.message ?: "Failed to suggest tags")
+                    },
+                )
+            }
+        }
+
+        fun clearTagSuggestionState() {
+            tagSuggestionState.value = TagSuggestionUiState.Idle
         }
 
         fun saveTranscriptEdit(content: String) {

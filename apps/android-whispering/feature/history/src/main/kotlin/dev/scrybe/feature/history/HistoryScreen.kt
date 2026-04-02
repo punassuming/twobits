@@ -185,7 +185,7 @@ fun HistoryScreen(
                             Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Transcribe selected records")
                         }
                         IconButton(onClick = { viewModel.transformSelectedSessions() }) {
-                            Icon(Icons.Filled.AutoFixHigh, contentDescription = "Run default transform")
+                            Icon(Icons.Filled.AutoFixHigh, contentDescription = "Run default transform or consolidate selected records")
                         }
                         IconButton(
                             onClick = {
@@ -242,7 +242,7 @@ fun HistoryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                        label = { Text("Search records or transcript text") },
+                        label = { Text("Search records, tags, or transcript text") },
                     )
                     RecordsFilterBar(
                         filters = state.filters,

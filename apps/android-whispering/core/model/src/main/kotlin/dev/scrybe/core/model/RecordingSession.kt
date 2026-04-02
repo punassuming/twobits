@@ -5,6 +5,7 @@ import java.time.Instant
 data class RecordingSession(
     val id: String,
     val title: String,
+    val tags: List<String>,
     val audioFilePath: String,
     val durationMs: Long,
     val fileSizeBytes: Long,

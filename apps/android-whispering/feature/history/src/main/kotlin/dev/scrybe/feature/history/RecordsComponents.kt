@@ -232,11 +232,21 @@ internal fun RecordRow(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+<<<<<<< HEAD
                         if (showRecordingInfo) {
                             Text(
                                 text = buildMetaLine(item.session),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (item.session.tags.isNotEmpty()) {
+                            Text(
+                                text = item.session.tags.joinToString("  •  "),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -898,6 +908,9 @@ internal fun RecordInfoDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 InfoLine("Recorded", info.createdAt.atZone(ZoneId.systemDefault()).format(HISTORY_TIME_FORMATTER))
+                if (info.tags.isNotEmpty()) {
+                    InfoLine("Tags", info.tags.joinToString(", "))
+                }
                 InfoLine("Duration", formatDuration(info.durationMs))
                 InfoLine("File Size", formatFileSize(info.fileSizeBytes))
                 InfoLine("Type", info.audioFormat)
@@ -967,6 +980,7 @@ internal fun RenameSessionDialog(
 internal fun HistorySessionItem.toRecordInfo(): RecordInfo =
     RecordInfo(
         title = session.title,
+        tags = session.tags,
         createdAt = session.createdAt,
         durationMs = session.durationMs,
         fileSizeBytes = session.fileSizeBytes,

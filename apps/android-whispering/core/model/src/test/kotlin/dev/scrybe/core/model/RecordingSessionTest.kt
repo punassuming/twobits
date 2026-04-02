@@ -14,6 +14,7 @@ class RecordingSessionTest {
             RecordingSession(
                 id = "test-id",
                 title = "Test Recording",
+                tags = emptyList(),
                 audioFilePath = "/data/recordings/test.m4a",
                 durationMs = 60_000L,
                 fileSizeBytes = 1_024_000L,
@@ -91,6 +92,7 @@ class RecordingSessionTest {
             RecordingSession(
                 id = "test-id",
                 title = "Test Recording",
+                tags = emptyList(),
                 audioFilePath = "/data/recordings/test.m4a",
                 durationMs = 60_000L,
                 fileSizeBytes = 1_024_000L,
@@ -127,6 +129,7 @@ class RecordingSessionTest {
             RecordingSession(
                 id = "stuck-id",
                 title = "Stuck Recording",
+                tags = emptyList(),
                 audioFilePath = "/data/recordings/stuck.m4a",
                 durationMs = 30_000L,
                 fileSizeBytes = 512_000L,
@@ -162,6 +165,7 @@ class RecordingSessionTest {
             RecordingSession(
                 id = "stuck-id",
                 title = "Stuck Recording",
+                tags = emptyList(),
                 audioFilePath = "/data/recordings/stuck.m4a",
                 durationMs = 30_000L,
                 fileSizeBytes = 512_000L,
@@ -205,6 +209,7 @@ class RecordingSessionTest {
             RecordingSession(
                 id = "archived-id",
                 title = "Archived Recording",
+                tags = emptyList(),
                 audioFilePath = "/data/recordings/archived.m4a",
                 durationMs = 60_000L,
                 fileSizeBytes = 1_024_000L,
@@ -232,6 +237,7 @@ class RecordingSessionTest {
             RecordingSession(
                 id = "archived-id",
                 title = "Archived Recording",
+                tags = emptyList(),
                 audioFilePath = "/data/recordings/archived.m4a",
                 durationMs = 60_000L,
                 fileSizeBytes = 1_024_000L,
@@ -270,6 +276,7 @@ class RecordingSessionTest {
             RecordingSession(
                 id = "transcribed-id",
                 title = "Transcribed Recording",
+                tags = emptyList(),
                 audioFilePath = "/data/recordings/transcribed.m4a",
                 durationMs = 60_000L,
                 fileSizeBytes = 1_024_000L,

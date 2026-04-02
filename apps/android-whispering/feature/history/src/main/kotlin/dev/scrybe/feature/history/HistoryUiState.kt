@@ -37,6 +37,7 @@ data class RecordsInteractionPreferences(
 
 data class RecordInfo(
     val title: String,
+    val tags: List<String>,
     val createdAt: Instant,
     val durationMs: Long,
     val fileSizeBytes: Long,

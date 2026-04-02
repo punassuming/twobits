@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class RecordingSessionEntity(
     @PrimaryKey val id: String,
     val title: String,
+    val tags: String,
     val audioFilePath: String,
     val durationMs: Long,
     val fileSizeBytes: Long,

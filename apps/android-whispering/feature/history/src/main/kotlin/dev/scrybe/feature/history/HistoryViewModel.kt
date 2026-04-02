@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
+import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TranscriptDao
@@ -104,6 +105,7 @@ class HistoryViewModel
                         RecordingSession(
                             id = entity.id,
                             title = entity.title,
+                            tags = TagsCodec.decode(entity.tags),
                             audioFilePath = entity.audioFilePath,
                             durationMs = entity.durationMs,
                             fileSizeBytes = entity.fileSizeBytes,
@@ -143,6 +145,7 @@ class HistoryViewModel
                             } else {
                                 val searchTerm = inputs.query.trim().lowercase()
                                 session.title.lowercase().contains(searchTerm) ||
+                                    session.tags.any { it.lowercase().contains(searchTerm) } ||
                                     session.status.name.lowercase().contains(searchTerm) ||
                                     latestTranscriptBySession[session.id].orEmpty().lowercase().contains(searchTerm)
                             }
@@ -410,13 +413,30 @@ class HistoryViewModel
                     return@launch
                 }
 
-                var completed = 0
-                selectedIds.forEach { sessionId ->
-                    sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
-                        .onSuccess { completed += 1 }
-                }
+                val message =
+                    if (selectedIds.size == 1) {
+                        sessionTransformCoordinator.transformLatestRawTranscript(selectedIds.first(), profileId)
+                            .fold(
+                                onSuccess = { "Transform completed" },
+                                onFailure = { it.message ?: "Transform failed" },
+                            )
+                    } else {
+                        sessionTransformCoordinator.transformCombinedLatestTranscripts(selectedIds, profileId)
+                            .fold(
+                                onSuccess = { result ->
+                                    buildString {
+                                        append("Consolidated ${result.includedSessionCount} transcripts into ")
+                                        append(result.anchorSessionTitle)
+                                        if (result.skippedSessionCount > 0) {
+                                            append(" (${result.skippedSessionCount} skipped without transcripts)")
+                                        }
+                                    }
+                                },
+                                onFailure = { it.message ?: "Consolidation failed" },
+                            )
+                    }
                 selection.value = RecordsSelectionState()
-                _events.emit(HistoryEvent.Message("Transformed $completed of ${selectedIds.size} records"))
+                _events.emit(HistoryEvent.Message(message))
             }
         }
 

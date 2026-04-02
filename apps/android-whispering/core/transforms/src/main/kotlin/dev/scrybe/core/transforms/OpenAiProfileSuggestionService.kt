@@ -120,6 +120,7 @@ class OpenAiProfileSuggestionService
             - It can run one or more text transformation steps after transcription.
             - Each transform step is a prompt template that returns transformed text.
             - {{transcript}} inserts the original machine transcript.
+            - {{combined_transcripts}} inserts all selected transcript text together when a bulk consolidation transform runs.
             - {{current_text}} and {{prior_output}} insert the latest intermediate text from the previous step.
             - Profiles must stay inside Scrybe's current capabilities. Do not require web browsing, external APIs, email sending, task creation, calendars, or file system actions.
 

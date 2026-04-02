@@ -419,7 +419,7 @@ private fun ProfileEditorDialog(
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Text(
-                            text = "Step 1 should usually use {{transcript}}. Later steps can use {{current_text}} or {{prior_output}} to build on earlier output.",
+                            text = "Step 1 should usually use {{transcript}}. Bulk consolidation transforms can also use {{combined_transcripts}}. Later steps can use {{current_text}} or {{prior_output}} to build on earlier output.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -449,7 +449,7 @@ private fun ProfileEditorDialog(
                         minLines = 3,
                         supportingText = {
                             Text(
-                                "Use {{transcript}} for the original transcription and {{prior_output}} or {{current_text}} for the previous step output.",
+                                "Use {{transcript}} for the original transcription, {{combined_transcripts}} for multi-recording consolidation, and {{prior_output}} or {{current_text}} for previous-step output.",
                             )
                         },
                     )
@@ -555,7 +555,7 @@ private fun AiProfileDraftDialog(
                             )
                         }
                         Text(
-                            text = "The AI creates a 1-3 step starting profile. Saved steps still run through Scrybe's normal transform pipeline using {{transcript}} first, then {{current_text}} or {{prior_output}}.",
+                            text = "The AI creates a 1-3 step starting profile. Saved steps still run through Scrybe's normal transform pipeline using {{transcript}} or {{combined_transcripts}} first, then {{current_text}} or {{prior_output}}.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

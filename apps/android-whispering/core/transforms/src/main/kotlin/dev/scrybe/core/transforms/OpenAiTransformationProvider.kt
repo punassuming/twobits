@@ -109,6 +109,7 @@ class OpenAiTransformationProvider
             val replacements =
                 mapOf(
                     TRANSCRIPT_PLACEHOLDER to input.transcriptText,
+                    COMBINED_TRANSCRIPTS_PLACEHOLDER to (input.combinedTranscriptText ?: input.transcriptText),
                     TEXT_PLACEHOLDER to input.currentText,
                     CURRENT_TEXT_PLACEHOLDER to input.currentText,
                     PRIOR_OUTPUT_PLACEHOLDER to input.currentText,
@@ -123,6 +124,7 @@ class OpenAiTransformationProvider
 
         private fun containsTranscriptPlaceholder(systemPrompt: String): Boolean =
             systemPrompt.contains(TRANSCRIPT_PLACEHOLDER) ||
+                systemPrompt.contains(COMBINED_TRANSCRIPTS_PLACEHOLDER) ||
                 systemPrompt.contains(TEXT_PLACEHOLDER) ||
                 systemPrompt.contains(CURRENT_TEXT_PLACEHOLDER) ||
                 systemPrompt.contains(PRIOR_OUTPUT_PLACEHOLDER)
@@ -168,6 +170,7 @@ class OpenAiTransformationProvider
         private companion object {
             const val MODEL_NAME = "gpt-4.1-mini"
             const val TRANSCRIPT_PLACEHOLDER = "{{transcript}}"
+            const val COMBINED_TRANSCRIPTS_PLACEHOLDER = "{{combined_transcripts}}"
             const val TEXT_PLACEHOLDER = "{{text}}"
             const val CURRENT_TEXT_PLACEHOLDER = "{{current_text}}"
             const val PRIOR_OUTPUT_PLACEHOLDER = "{{prior_output}}"

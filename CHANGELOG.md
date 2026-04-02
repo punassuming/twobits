@@ -27,6 +27,8 @@
 
 ### Features
 
+* consolidate multiple selected transcripts into one default-profile transform output and add searchable recording tags with AI tag suggestions
+
 ### Improvements
 
 * add a repo-root PowerShell helper for emulator, build, install, run, lint, test, format, detekt, and full local verification commands

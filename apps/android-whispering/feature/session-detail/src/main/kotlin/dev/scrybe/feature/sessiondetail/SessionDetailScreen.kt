@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Unarchive
@@ -44,9 +45,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -84,6 +87,7 @@ fun SessionDetailScreen(
     val context = LocalContext.current
     var actionMenuExpanded by remember { mutableStateOf(false) }
     var isEditingTranscript by remember { mutableStateOf(false) }
+    var isEditingTags by remember { mutableStateOf(false) }
     var deleteTranscriptTarget by remember { mutableStateOf<Transcript?>(null) }
     var showRenameDialog by remember { mutableStateOf(false) }
 
@@ -218,6 +222,15 @@ fun SessionDetailScreen(
                                     )
                                 }
                                 DropdownMenuItem(
+                                    text = { Text("Manage tags") },
+                                    leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
+                                    onClick = {
+                                        actionMenuExpanded = false
+                                        viewModel.clearTagSuggestionState()
+                                        isEditingTags = true
+                                    },
+                                )
+                                DropdownMenuItem(
                                     text = { Text(if (successState.session.isArchived) "Restore" else "Archive") },
                                     leadingIcon = {
                                         Icon(
@@ -319,6 +332,22 @@ fun SessionDetailScreen(
             onSave = {
                 viewModel.saveTranscriptEdit(it)
                 isEditingTranscript = false
+            },
+        )
+    }
+
+    if (isEditingTags && successState != null) {
+        TagEditorDialog(
+            initialTags = successState.session.tags,
+            tagSuggestionState = successState.tagSuggestionState,
+            onDismiss = {
+                viewModel.clearTagSuggestionState()
+                isEditingTags = false
+            },
+            onSuggest = viewModel::suggestTags,
+            onSave = { tagsInput ->
+                viewModel.saveTags(tagsInput)
+                isEditingTags = false
             },
         )
     }
@@ -425,7 +454,34 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+            if (state.session.tags.isNotEmpty()) {
+                SessionTagsRow(tags = state.session.tags)
+            }
         }
+    }
+}
+
+@Composable
+private fun SessionTagsRow(
+    tags: List<String>,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Label,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = tags.joinToString("  •  "),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -752,6 +808,95 @@ private fun EditTranscriptDialog(
                 onClick = { onSave(value) },
                 enabled = value.isNotBlank(),
             ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+private fun TagEditorDialog(
+    initialTags: List<String>,
+    tagSuggestionState: TagSuggestionUiState,
+    onDismiss: () -> Unit,
+    onSuggest: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var value by remember(initialTags) { mutableStateOf(initialTags.joinToString(", ")) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Manage Tags") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    label = { Text("Tags") },
+                    supportingText = { Text("Use commas or new lines. Tags are searchable from Records.") },
+                )
+                OutlinedButton(
+                    onClick = onSuggest,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = tagSuggestionState !is TagSuggestionUiState.Loading,
+                ) {
+                    Text(
+                        if (tagSuggestionState is TagSuggestionUiState.Loading) {
+                            "Suggesting..."
+                        } else {
+                            "Suggest with AI"
+                        },
+                    )
+                }
+                when (tagSuggestionState) {
+                    is TagSuggestionUiState.Success -> {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text("Suggested tags", style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    text = tagSuggestionState.tags.joinToString(", "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                OutlinedButton(
+                                    onClick = { value = tagSuggestionState.tags.joinToString(", ") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("Use suggestions")
+                                }
+                            }
+                        }
+                    }
+                    is TagSuggestionUiState.Error ->
+                        Text(
+                            text = tagSuggestionState.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    TagSuggestionUiState.Idle,
+                    TagSuggestionUiState.Loading,
+                    -> Unit
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onSave(value) }) {
                 Text("Save")
             }
         },
