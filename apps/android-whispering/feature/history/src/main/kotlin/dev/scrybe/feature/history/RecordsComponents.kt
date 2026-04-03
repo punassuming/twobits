@@ -232,7 +232,6 @@ internal fun RecordRow(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-<<<<<<< HEAD
                         if (showRecordingInfo) {
                             Text(
                                 text = buildMetaLine(item.session),
