@@ -4,6 +4,9 @@
 
 ### Features
 
+* consolidate multiple selected transcripts into one default-profile transform output so related recordings can be summarized together
+* add recording tags with manual editing, AI tag suggestions, and tag-aware search across Records and session details
+
 ### Improvements
 
 ### Fixes
