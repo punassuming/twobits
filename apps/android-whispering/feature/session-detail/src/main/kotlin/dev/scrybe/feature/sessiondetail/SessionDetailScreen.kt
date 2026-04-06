@@ -393,7 +393,6 @@ fun SessionDetailScreen(
 }
 
 @Composable
-@Composable
 private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
     val audioFile = File(state.session.audioFilePath)
     val context = LocalContext.current

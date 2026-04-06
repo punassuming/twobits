@@ -485,7 +485,9 @@ class HistoryViewModel
                 runCatching {
                     val recordingsDir =
                         context.filesDir.resolve("recordings").apply { mkdirs() }
-                    val fileName = "recording_${UUID.randomUUID()}.m4a"
+                    val mimeType = context.contentResolver.getType(uri)
+                    val ext = mimeExtension(mimeType)
+                    val fileName = "recording_${UUID.randomUUID()}.$ext"
                     val destination = File(recordingsDir, fileName)
 
                     context.contentResolver.openInputStream(uri)?.use { input ->
@@ -562,13 +564,14 @@ class HistoryViewModel
 
                 val audioFormat = audioFormatFromExtension(file.extension)
                 val createdAt = file.lastModified()
-                val title = TITLE_FORMAT.format(Date(createdAt))
+                val formattedTimestamp =
+                    TITLE_FORMAT.format(Date(createdAt))
                 val sessionId = UUID.randomUUID().toString()
 
                 recordingSessionDao.insertSession(
                     RecordingSessionEntity(
                         id = sessionId,
-                        title = "Recording $title",
+                        title = "Recording $formattedTimestamp",
                         tags = "",
                         audioFilePath = file.absolutePath,
                         durationMs = durationMs,
@@ -653,6 +656,14 @@ internal fun audioFormatFromExtension(ext: String): AudioFormat =
         "ogg" -> AudioFormat.OGG
         "webm" -> AudioFormat.WEBM
         else -> AudioFormat.AAC
+    }
+
+private fun mimeExtension(mimeType: String?): String =
+    when (mimeType?.lowercase()) {
+        "audio/mp4", "audio/aac", "audio/x-m4a" -> "m4a"
+        "audio/ogg" -> "ogg"
+        "audio/webm" -> "webm"
+        else -> "m4a"
     }
 
 internal fun isEligibleForTranscription(status: SessionStatus): Boolean = status == SessionStatus.RECORDED || status == SessionStatus.FAILED
