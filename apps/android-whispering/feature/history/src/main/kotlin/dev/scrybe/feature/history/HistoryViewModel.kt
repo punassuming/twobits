@@ -539,7 +539,6 @@ class HistoryViewModel
             }
         }
 
-        @Suppress("TooGenericExceptionCaught")
         private suspend fun createSessionFromFile(file: File) {
             val retriever = MediaMetadataRetriever()
             try {
@@ -647,7 +646,7 @@ class HistoryViewModel
         }
     }
 
-private fun audioFormatFromExtension(ext: String): AudioFormat =
+internal fun audioFormatFromExtension(ext: String): AudioFormat =
     when (ext.lowercase()) {
         "m4a" -> AudioFormat.AAC
         "mp4" -> AudioFormat.MP4
