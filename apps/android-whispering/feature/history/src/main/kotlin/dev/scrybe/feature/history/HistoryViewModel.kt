@@ -1,6 +1,8 @@
 package dev.scrybe.feature.history
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -9,6 +11,7 @@ import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
@@ -29,9 +32,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
+import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 import javax.inject.Inject
 
 sealed interface HistoryEvent {
@@ -91,6 +98,7 @@ class HistoryViewModel
                     newStatus = SessionStatus.FAILED.name,
                     updatedAt = System.currentTimeMillis(),
                 )
+                recoverOrphanedRecordings()
             }
         }
 
@@ -472,6 +480,117 @@ class HistoryViewModel
             }
         }
 
+        fun importRecording(uri: Uri) {
+            viewModelScope.launch {
+                runCatching {
+                    val recordingsDir =
+                        context.filesDir.resolve("recordings").apply { mkdirs() }
+                    val fileName = "recording_${UUID.randomUUID()}.m4a"
+                    val destination = File(recordingsDir, fileName)
+
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        destination.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    } ?: error("Unable to read file")
+
+                    createSessionFromFile(destination)
+                }.onSuccess {
+                    _events.emit(HistoryEvent.Message("Recording imported"))
+                }.onFailure {
+                    _events.emit(
+                        HistoryEvent.Message(
+                            it.message ?: "Unable to import recording",
+                        ),
+                    )
+                }
+            }
+        }
+
+        private suspend fun recoverOrphanedRecordings() {
+            val recordingsDir = context.filesDir.resolve("recordings")
+            if (!recordingsDir.exists()) return
+
+            val knownPaths =
+                recordingSessionDao.getAllAudioFilePaths().toSet()
+            val audioExtensions = setOf("m4a", "mp4", "ogg", "webm")
+            val orphanedFiles =
+                recordingsDir.listFiles()
+                    ?.filter { file ->
+                        file.isFile &&
+                            file.extension.lowercase() in audioExtensions &&
+                            file.absolutePath !in knownPaths
+                    }
+                    .orEmpty()
+
+            if (orphanedFiles.isEmpty()) return
+
+            var recovered = 0
+            orphanedFiles.forEach { file ->
+                runCatching { createSessionFromFile(file) }
+                    .onSuccess { recovered++ }
+            }
+            if (recovered > 0) {
+                _events.emit(
+                    HistoryEvent.Message(
+                        "Recovered $recovered recording(s) from disk",
+                    ),
+                )
+            }
+        }
+
+        @Suppress("TooGenericExceptionCaught")
+        private suspend fun createSessionFromFile(file: File) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(file.absolutePath)
+                val durationMs = retriever
+                    .extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_DURATION,
+                    )?.toLongOrNull() ?: 0L
+                val sampleRate = retriever
+                    .extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_SAMPLERATE,
+                    )?.toIntOrNull() ?: DEFAULT_SAMPLE_RATE
+                val bitrate = retriever
+                    .extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_BITRATE,
+                    )?.toIntOrNull() ?: DEFAULT_BIT_RATE
+                val channelCount = retriever
+                    .extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_CHANNEL_COUNT,
+                    )?.toIntOrNull() ?: 1
+
+                val audioFormat = audioFormatFromExtension(file.extension)
+                val createdAt = file.lastModified()
+                val title = TITLE_FORMAT.format(Date(createdAt))
+                val sessionId = UUID.randomUUID().toString()
+
+                recordingSessionDao.insertSession(
+                    RecordingSessionEntity(
+                        id = sessionId,
+                        title = "Recording $title",
+                        tags = "",
+                        audioFilePath = file.absolutePath,
+                        durationMs = durationMs,
+                        fileSizeBytes = file.length(),
+                        audioFormat = audioFormat.name,
+                        sampleRateHz = sampleRate,
+                        encodingBitRate = bitrate,
+                        channelCount = channelCount,
+                        waveformSamples = "",
+                        status = SessionStatus.RECORDED.name,
+                        isArchived = false,
+                        estimatedTranscriptionCostUsd = null,
+                        createdAt = createdAt,
+                        updatedAt = createdAt,
+                    ),
+                )
+            } finally {
+                retriever.release()
+            }
+        }
+
         private fun comparatorFor(sortOption: RecordsSortOption): Comparator<RecordingSession> =
             when (sortOption) {
                 RecordsSortOption.NEWEST -> compareByDescending<RecordingSession> { it.createdAt }
@@ -519,6 +638,22 @@ class HistoryViewModel
             val current = runCatching { SessionStatus.valueOf(status) }.getOrDefault(SessionStatus.RECORDED)
             return if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
         }
+
+        companion object {
+            private val TITLE_FORMAT =
+                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+            private const val DEFAULT_SAMPLE_RATE = 48_000
+            private const val DEFAULT_BIT_RATE = 128_000
+        }
+    }
+
+private fun audioFormatFromExtension(ext: String): AudioFormat =
+    when (ext.lowercase()) {
+        "m4a" -> AudioFormat.AAC
+        "mp4" -> AudioFormat.MP4
+        "ogg" -> AudioFormat.OGG
+        "webm" -> AudioFormat.WEBM
+        else -> AudioFormat.AAC
     }
 
 internal fun isEligibleForTranscription(status: SessionStatus): Boolean = status == SessionStatus.RECORDED || status == SessionStatus.FAILED

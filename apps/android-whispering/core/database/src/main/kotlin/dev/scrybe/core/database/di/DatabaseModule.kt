@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.scrybe.core.database.AppDatabase
+import dev.scrybe.core.database.MIGRATION_4_5
 import javax.inject.Singleton
 
 @Module
@@ -23,7 +24,8 @@ object DatabaseModule {
             AppDatabase::class.java,
             "scrybe-db",
         )
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_4_5)
+            .fallbackToDestructiveMigrationFrom(1, 2, 3)
             .build()
 
     @Provides

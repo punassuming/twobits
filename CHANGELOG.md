@@ -4,9 +4,16 @@
 
 ### Features
 
+* add import recordings button in the records screen and top bar to bring in audio files from external storage
+* display clickable file path link in session detail overview card so users can quickly locate or copy the audio file path
+
 ### Improvements
 
+* auto-recover orphaned recording files on startup by scanning the recordings directory for audio files that lost their database entries
+
 ### Fixes
+
+* replace destructive database migration with a proper schema migration so upgrading no longer silently deletes all previous recordings
 
 ## 0.8.0 (2026-04-06)
 
