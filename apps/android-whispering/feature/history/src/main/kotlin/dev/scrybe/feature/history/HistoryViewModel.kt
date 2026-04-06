@@ -494,7 +494,7 @@ class HistoryViewModel
                         destination.outputStream().use { output ->
                             input.copyTo(output)
                         }
-                    } ?: error("Unable to read file")
+                    } ?: error("Failed to open input stream for selected file")
 
                     createSessionFromFile(destination)
                 }.onSuccess {
@@ -531,6 +531,12 @@ class HistoryViewModel
             orphanedFiles.forEach { file ->
                 runCatching { createSessionFromFile(file) }
                     .onSuccess { recovered++ }
+                    .onFailure { e ->
+                        android.util.Log.w(
+                            TAG,
+                            "Failed to recover ${file.name}: ${e.message}",
+                        )
+                    }
             }
             if (recovered > 0) {
                 _events.emit(
@@ -642,6 +648,7 @@ class HistoryViewModel
         }
 
         companion object {
+            private const val TAG = "HistoryViewModel"
             private val TITLE_FORMAT =
                 SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
             private const val DEFAULT_SAMPLE_RATE = 48_000
