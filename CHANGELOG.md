@@ -13,6 +13,7 @@
 
 ### Fixes
 
+* fix compile error caused by referencing non-existent `MediaMetadataRetriever.METADATA_KEY_CHANNEL_COUNT`; channel count is now extracted via `MediaExtractor` and `MediaFormat.KEY_CHANNEL_COUNT`
 * replace destructive database migration with a proper schema migration so upgrading no longer silently deletes all previous recordings
 
 ## 0.8.0 (2026-04-06)
