@@ -1,6 +1,8 @@
 package dev.scrybe.feature.history
 
 import android.content.Context
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.lifecycle.ViewModel
@@ -563,10 +565,26 @@ class HistoryViewModel
                     .extractMetadata(
                         MediaMetadataRetriever.METADATA_KEY_BITRATE,
                     )?.toIntOrNull() ?: DEFAULT_BIT_RATE
-                val channelCount = retriever
-                    .extractMetadata(
-                        MediaMetadataRetriever.METADATA_KEY_CHANNEL_COUNT,
-                    )?.toIntOrNull() ?: 1
+                val channelCount = runCatching {
+                    val extractor = MediaExtractor()
+                    try {
+                        extractor.setDataSource(file.absolutePath)
+                        val audioTrackIndex = (0 until extractor.trackCount).firstOrNull { trackIndex ->
+                            extractor.getTrackFormat(trackIndex).getString(MediaFormat.KEY_MIME)
+                                ?.startsWith("audio/") == true
+                        }
+                        if (audioTrackIndex != null) {
+                            extractor.getTrackFormat(audioTrackIndex)
+                                .getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                        } else {
+                            1
+                        }
+                    } finally {
+                        extractor.release()
+                    }
+                }.onFailure { e ->
+                    android.util.Log.w(TAG, "Failed to extract channel count from ${file.name}: ${e.message}")
+                }.getOrDefault(1)
 
                 val audioFormat = audioFormatFromExtension(file.extension)
                 val createdAt = file.lastModified()
