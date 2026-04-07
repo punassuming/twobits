@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.8.1 (2026-04-07)
+
+### Features
+
 * add import recordings button in the records screen and top bar to bring in audio files from external storage
 * display clickable file path link in session detail overview card so users can quickly locate or copy the audio file path
 
@@ -16,6 +24,7 @@
 * fix compile error caused by referencing non-existent `MediaMetadataRetriever.METADATA_KEY_CHANNEL_COUNT`; channel count is now extracted via `MediaExtractor` and `MediaFormat.KEY_CHANNEL_COUNT`
 * replace destructive database migration with a proper schema migration so upgrading no longer silently deletes all previous recordings
 
+
 ## 0.8.0 (2026-04-06)
 
 ### Features
@@ -26,6 +35,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 ## 0.7.0 (2026-04-02)
@@ -41,6 +51,7 @@
 * add Kotlin, Min SDK, Target SDK, and License badges to the README
 
 ### Fixes
+
 
 
 
@@ -67,6 +78,7 @@
 
 
 
+
 ## 0.5.1 (2026-03-29)
 
 ### Features
@@ -74,6 +86,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -100,6 +113,7 @@
 
 
 
+
 ## 0.3.1 (2026-03-26)
 
 ### Features
@@ -110,6 +124,7 @@
 ### Fixes
 
 * require confirmation before swipe-to-transform, archive, or restore actions so record gestures are harder to trigger accidentally
+
 
 
 
@@ -131,6 +146,7 @@
 
 * add retry and reset recovery actions for recordings stuck in a transcription state
 * restore the missing transcription module dependency that was breaking Android builds
+
 
 
 
@@ -159,6 +175,7 @@
 
 
 
+
 ## 0.1.0 (2026-03-25)
 
 ### Improvements
@@ -171,11 +188,13 @@
 
 
 
+
 ## 0.0.10 (2026-03-25)
 
 ### Fixes
 
 * clean up foreground recording notification refresh logic to resolve the build issues introduced after 0.0.9
+
 
 
 
@@ -194,12 +213,14 @@
 
 
 
+
 ## 0.0.8 (2026-03-25)
 
 ### Fixes
 
 * add an Android 13+ `POST_NOTIFICATIONS` runtime permission check before refreshing the foreground recording notification
 * prevent recording notification updates from failing lint or unsafe notification calls on devices that have not granted notification permission
+
 
 
 
@@ -220,6 +241,7 @@
 * enrich the foreground recording notification with live elapsed time and simple input-level feedback
 * surface session status, archive state, transcript previews, and clearer metadata across the records list and session detail screens
 * add estimated transcription cost visibility in session detail and aggregate transcription spend reporting in Settings
+
 
 
 
@@ -250,6 +272,7 @@
 
 
 
+
 ## 0.0.5 (2026-03-23)
 
 ### Features
@@ -268,6 +291,7 @@
 
 * keep auto-transcription alive after the recording service shuts down
 * send valid typed content payloads to the OpenAI responses API for transforms
+
 
 
 
