@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
@@ -33,6 +35,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -97,6 +100,13 @@ fun HistoryScreen(
                     },
                 )
             }
+        }
+
+    val importLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            uri?.let { viewModel.importRecording(it) }
         }
 
     LaunchedEffect(viewModel) {
@@ -201,7 +211,18 @@ fun HistoryScreen(
                             Icon(Icons.Filled.Delete, contentDescription = "Delete selected records")
                         }
                     } else {
-                        Unit
+                        IconButton(
+                            onClick = {
+                                importLauncher.launch(
+                                    arrayOf("audio/*"),
+                                )
+                            },
+                        ) {
+                            Icon(
+                                Icons.Filled.FileOpen,
+                                contentDescription = "Import recording",
+                            )
+                        }
                     }
                 },
             )
@@ -256,13 +277,38 @@ fun HistoryScreen(
                                     .padding(top = 24.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                if (state.filters.showArchived) {
-                                    "No archived records"
-                                } else {
-                                    "No records match that search or filter"
-                                },
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                            ) {
+                                Text(
+                                    if (state.filters.showArchived) {
+                                        "No archived records"
+                                    } else {
+                                        "No records match that search or filter"
+                                    },
+                                )
+                                OutlinedButton(
+                                    onClick = {
+                                        importLauncher.launch(
+                                            arrayOf("audio/*"),
+                                        )
+                                    },
+                                ) {
+                                    Row(
+                                        horizontalArrangement =
+                                            Arrangement.spacedBy(8.dp),
+                                        verticalAlignment =
+                                            Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.FileOpen,
+                                            contentDescription = null,
+                                        )
+                                        Text("Import Recording")
+                                    }
+                                }
+                            }
                         }
                     } else {
                         LazyColumn(

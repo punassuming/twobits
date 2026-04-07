@@ -395,6 +395,8 @@ fun SessionDetailScreen(
 @Composable
 private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
     val audioFile = File(state.session.audioFilePath)
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors =
@@ -447,6 +449,35 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            clipboardManager.setText(
+                                AnnotatedString(state.session.audioFilePath),
+                            )
+                            Toast
+                                .makeText(context, "Path copied", Toast.LENGTH_SHORT)
+                                .show()
+                        },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    Icons.Filled.FileOpen,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = state.session.audioFilePath,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             state.session.estimatedTranscriptionCostUsd?.let { cost ->
                 Text(
                     text = "Estimated transcription cost ${formatUsd(cost)}",

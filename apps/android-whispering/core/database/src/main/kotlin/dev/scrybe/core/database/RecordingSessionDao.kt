@@ -39,4 +39,7 @@ interface RecordingSessionDao {
         newStatus: String,
         updatedAt: Long,
     )
+
+    @Query("SELECT audioFilePath FROM recording_sessions")
+    suspend fun getAllAudioFilePaths(): List<String>
 }
