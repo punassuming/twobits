@@ -69,6 +69,8 @@ Use direct Gradle commands with an explicit project cache dir, for example:
 
 ## CI pipeline
 
-GitHub Actions runs on every push to `main` or `copilot/**` branches, and on pull requests targeting `main`. The pipeline runs changelog validation plus manifest validation before build, lint, and test. All jobs must pass for a merge to succeed.
+GitHub Actions runs on every push to `main` or `copilot/**` branches, and on pull requests targeting `main`. The pipeline runs changelog validation plus manifest validation before Android verification. All jobs must pass for a merge to succeed.
+
+Android CI is intentionally consolidated into a single Gradle verification job that runs `assembleDebug`, `testDebugUnitTest`, `lint`, `ktlintCheck`, and `detekt` in one invocation to avoid repeated environment setup and duplicate build cycles. Release APK assembly happens in the separate release workflow on successful pushes to `main`.
 
 Running the checks locally before committing avoids wasted CI minutes and merge blocks.

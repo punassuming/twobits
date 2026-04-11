@@ -207,6 +207,9 @@ jobs:
 
           rm -f "${{ runner.temp }}/keystore-validation.p12"
 
+      # Normal Android CI now validates compile, unit tests, lint, ktlint, and
+      # detekt through a single debug-focused verification job. The release
+      # workflow remains the only place that assembles the signed release APK.
       - name: Build release APK
         if: steps.release_target.outputs.stale != 'true' && steps.tag.outputs.new_tag != ''
         working-directory: apps/android-whispering

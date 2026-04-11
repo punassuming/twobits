@@ -16,6 +16,7 @@
 
 * refresh the capture and records screens with a shorter home header subtitle, icon-based recent recording badges, a top-level filters card, a true single-line search field, and a Record button that returns to the home recorder
 * default new recordings to skip the automatic rename prompt now that titles can be edited directly from the session header
+* speed up GitHub Android CI by consolidating verification into one job and keeping release APK assembly in the release workflow
 
 ### Fixes
 
