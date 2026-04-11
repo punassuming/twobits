@@ -99,8 +99,17 @@ fun HistoryScreen(
                         action = RecordingServiceActions.ACTION_START
                     },
                 )
+                onNavigateBack()
             }
         }
+    val startRecordingAndReturn = {
+        context.startForegroundService(
+            Intent(context, RecordingForegroundService::class.java).apply {
+                action = RecordingServiceActions.ACTION_START
+            },
+        )
+        onNavigateBack()
+    }
 
     val importLauncher =
         rememberLauncherForActivityResult(
@@ -114,11 +123,12 @@ fun HistoryScreen(
             when (event) {
                 is HistoryEvent.Message -> snackbarHostState.showSnackbar(event.text)
                 is HistoryEvent.ShareText -> {
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, event.title)
-                        putExtra(Intent.EXTRA_TEXT, event.text)
-                    }
+                    val intent =
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, event.title)
+                            putExtra(Intent.EXTRA_TEXT, event.text)
+                        }
                     context.startActivity(Intent.createChooser(intent, "Share transcript"))
                 }
             }
@@ -139,28 +149,24 @@ fun HistoryScreen(
                 ExtendedFloatingActionButton(
                     onClick = {
                         if (isRecording) {
-                            deleteTarget = null
+                            onNavigateBack()
                         } else {
                             val granted =
                                 requiredPermissions.all {
                                     ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
                                 }
                             if (granted) {
-                                context.startForegroundService(
-                                    Intent(context, RecordingForegroundService::class.java).apply {
-                                        action = RecordingServiceActions.ACTION_START
-                                    },
-                                )
+                                startRecordingAndReturn()
                             } else {
                                 permissionLauncher.launch(requiredPermissions.toTypedArray())
                             }
                         }
                     },
                     text = {
-                        Text(if (isRecording) "Recording…" else "Record Again")
+                        Text(if (isRecording) "Recording…" else "Record")
                     },
                     icon = {
-                        Icon(Icons.Filled.Mic, contentDescription = "Record again")
+                        Icon(Icons.Filled.Mic, contentDescription = "Record")
                     },
                 )
             }
@@ -254,6 +260,10 @@ fun HistoryScreen(
                             .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    RecordsFilterBar(
+                        filters = state.filters,
+                        onClick = { showFilters = true },
+                    )
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = {
@@ -263,11 +273,8 @@ fun HistoryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                        label = { Text("Search records, tags, or transcript text") },
-                    )
-                    RecordsFilterBar(
-                        filters = state.filters,
-                        onClick = { showFilters = true },
+                        label = { Text("Search") },
+                        placeholder = { Text("Search records, tags, or transcript text") },
                     )
                     if (state.sessions.isEmpty()) {
                         Box(

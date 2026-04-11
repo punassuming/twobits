@@ -2,6 +2,8 @@ package dev.scrybe.feature.history
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -10,14 +12,13 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -44,28 +45,25 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -74,18 +72,17 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
-import kotlinx.coroutines.launch
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-internal const val RECORD_ROW_SWIPE_THRESHOLD_FRACTION = 0.55f
-private const val RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION = 0.18f
+internal const val RECORD_ROW_SWIPE_THRESHOLD_FRACTION = 0.68f
+private const val RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION = 0.12f
 private const val RECORD_WAVEFORM_TARGET_BAR_COUNT = 120
-private val RECORD_ROW_SWIPE_ICON_LANE_WIDTH = 112.dp
 private val RECORD_WAVEFORM_MAX_BAR_WIDTH = 2.dp
+private const val RECORD_ROW_SWIPE_CONTENT_MIN_SCALE = 0.84f
 
 internal fun recordRowEdgeSwipeZoneFraction(): Float = RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
 
@@ -137,237 +134,250 @@ internal fun RecordRow(
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
     var pendingSwipeAction by remember(item.session.id) { mutableStateOf<RecordSwipeAction?>(null) }
-    val scope = rememberCoroutineScope()
-    val dismissState =
-        rememberSwipeToDismissBoxState(
-            positionalThreshold = { it * RECORD_ROW_SWIPE_THRESHOLD_FRACTION },
-            confirmValueChange = { value ->
-                if (selectionEnabled) return@rememberSwipeToDismissBoxState false
-                when (value) {
-                    SwipeToDismissBoxValue.StartToEnd -> {
-                        if (confirmSwipeActions) {
-                            pendingSwipeAction = RecordSwipeAction.TRANSFORM
-                        } else {
-                            onTransform()
-                        }
-                        false
-                    }
-                    SwipeToDismissBoxValue.EndToStart -> {
-                        if (confirmSwipeActions) {
-                            pendingSwipeAction =
-                                if (item.session.isArchived) RecordSwipeAction.RESTORE else RecordSwipeAction.ARCHIVE
-                        } else {
-                            if (item.session.isArchived) onRestore() else onArchive()
-                        }
-                        false
-                    }
-                    SwipeToDismissBoxValue.Settled -> false
-                }
-            },
-        )
+    var swipePreviewAction by remember(item.session.id) { mutableStateOf<RecordSwipeAction?>(null) }
+    var swipePreviewProgress by remember(item.session.id) { mutableFloatStateOf(0f) }
+    val animatedSwipePreviewProgress by animateFloatAsState(
+        targetValue = swipePreviewProgress,
+        animationSpec = tween(durationMillis = 140),
+        label = "record-row-swipe-preview",
+    )
+    val contentScale =
+        1f - ((1f - RECORD_ROW_SWIPE_CONTENT_MIN_SCALE) * animatedSwipePreviewProgress.coerceIn(0f, 1f))
+    val runSwipeAction: (RecordSwipeAction) -> Unit = { action ->
+        if (confirmSwipeActions) {
+            pendingSwipeAction = action
+        } else {
+            when (action) {
+                RecordSwipeAction.TRANSFORM -> onTransform()
+                RecordSwipeAction.ARCHIVE -> onArchive()
+                RecordSwipeAction.RESTORE -> onRestore()
+            }
+        }
+    }
 
     val rowContent: @Composable () -> Unit = {
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .blockCenterOriginSwipes()
-                    .combinedClickable(
-                        onClick = {
-                            if (selectionEnabled) onToggleSelection() else onOpen()
-                        },
-                        onLongClick = {
-                            if (selectionEnabled) onToggleSelection() else onLongPress()
-                        },
-                    ),
-            color =
-                if (selected) {
-                    MaterialTheme.colorScheme.secondaryContainer
-                } else {
-                    recordContainerColor(item.session.status, item.session.isArchived)
-                },
-            shape = RoundedCornerShape(20.dp),
-        ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                WaveformBackdrop(
-                    samples = item.session.waveformSamples,
-                    modifier =
-                        Modifier
-                            .matchParentSize()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+        Box(modifier = Modifier.fillMaxWidth()) {
+            if (!selectionEnabled) {
+                SwipeBackground(
+                    action = swipePreviewAction,
+                    progress = animatedSwipePreviewProgress,
                 )
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    if (selectionEnabled) {
-                        Checkbox(
-                            checked = selected,
-                            onCheckedChange = { onToggleSelection() },
-                            modifier = Modifier.padding(top = 2.dp),
+            }
+            Surface(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            scaleX = contentScale
+                            scaleY = contentScale
+                            alpha = 1f - (animatedSwipePreviewProgress * 0.16f)
+                        }
+                        .recordSwipePreview(
+                            enabled = !selectionEnabled,
+                            isArchived = item.session.isArchived,
+                            onPreviewChanged = { action, progress ->
+                                swipePreviewAction = action
+                                swipePreviewProgress = progress
+                            },
+                            onTriggered = runSwipeAction,
                         )
-                    }
-                    Icon(
-                        statusIcon(item.session.status, item.session.isArchived),
-                        contentDescription = statusLabel(item.session.status, item.session.isArchived),
-                        modifier = Modifier.padding(top = 2.dp),
-                        tint = statusColor(item.session.status, item.session.isArchived),
+                        .combinedClickable(
+                            onClick = {
+                                if (selectionEnabled) onToggleSelection() else onOpen()
+                            },
+                            onLongClick = {
+                                if (selectionEnabled) onToggleSelection() else onLongPress()
+                            },
+                        ),
+                color =
+                    if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        recordContainerColor(item.session.status, item.session.isArchived)
+                    },
+                shape = RoundedCornerShape(20.dp),
+            ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    WaveformBackdrop(
+                        samples = item.session.waveformSamples,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                     )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text(
-                            text = item.session.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                        if (selectionEnabled) {
+                            Checkbox(
+                                checked = selected,
+                                onCheckedChange = { onToggleSelection() },
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                        Icon(
+                            statusIcon(item.session.status, item.session.isArchived),
+                            contentDescription = statusLabel(item.session.status, item.session.isArchived),
+                            modifier = Modifier.padding(top = 2.dp),
+                            tint = statusColor(item.session.status, item.session.isArchived),
                         )
-                        Text(
-                            text = item.session.createdAt.atZone(ZoneId.systemDefault()).format(HISTORY_TIME_FORMATTER),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (showRecordingInfo) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             Text(
-                                text = buildMetaLine(item.session),
+                                text = item.session.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = item.session.createdAt.atZone(ZoneId.systemDefault()).format(HISTORY_TIME_FORMATTER),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                             )
-                        }
-                        if (item.session.tags.isNotEmpty()) {
-                            Text(
-                                text = item.session.tags.joinToString("  •  "),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
-                            Text(
-                                text = preview,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    if (!selectionEnabled) {
-                        Box {
-                            IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "Record actions")
+                            if (showRecordingInfo) {
+                                Text(
+                                    text = buildMetaLine(item.session),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
-                            DropdownMenu(
-                                expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Open") },
-                                    leadingIcon = { Icon(Icons.Filled.History, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onOpen()
-                                    },
+                            if (item.session.tags.isNotEmpty()) {
+                                Text(
+                                    text = item.session.tags.joinToString("  •  "),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Open With") },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onOpenWith()
-                                    },
+                            }
+                            item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+                                Text(
+                                    text = preview,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Save Copy") },
-                                    leadingIcon = { Icon(Icons.Filled.SaveAlt, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onSaveCopy()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Run Default Transform") },
-                                    leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onTransform()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(if (item.session.isArchived) "Restore" else "Archive") },
-                                    leadingIcon = {
-                                        Icon(
-                                            if (item.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
-                                            contentDescription = null,
+                            }
+                        }
+                        if (!selectionEnabled) {
+                            Box {
+                                IconButton(onClick = { menuExpanded = true }) {
+                                    Icon(Icons.Filled.MoreVert, contentDescription = "Record actions")
+                                }
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Open") },
+                                        leadingIcon = { Icon(Icons.Filled.History, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onOpen()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Open With") },
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onOpenWith()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Save Copy") },
+                                        leadingIcon = { Icon(Icons.Filled.SaveAlt, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onSaveCopy()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Run Default Transform") },
+                                        leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onTransform()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text(if (item.session.isArchived) "Restore" else "Archive") },
+                                        leadingIcon = {
+                                            Icon(
+                                                if (item.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+                                                contentDescription = null,
+                                            )
+                                        },
+                                        onClick = {
+                                            menuExpanded = false
+                                            if (item.session.isArchived) onRestore() else onArchive()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Rename") },
+                                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onRename()
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Information") },
+                                        leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onInfo()
+                                        },
+                                    )
+                                    if (item.transcriptPreview != null) {
+                                        DropdownMenuItem(
+                                            text = { Text("Share Transcript") },
+                                            leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onShareTranscript()
+                                            },
                                         )
-                                    },
-                                    onClick = {
-                                        menuExpanded = false
-                                        if (item.session.isArchived) onRestore() else onArchive()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Rename") },
-                                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onRename()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Information") },
-                                    leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onInfo()
-                                    },
-                                )
-                                if (item.transcriptPreview != null) {
+                                    }
+                                    if (item.session.status == SessionStatus.FAILED) {
+                                        DropdownMenuItem(
+                                            text = { Text("Retry Transcription") },
+                                            leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onRetryTranscription()
+                                            },
+                                        )
+                                    }
+                                    if (item.session.status == SessionStatus.TRANSCRIBING) {
+                                        DropdownMenuItem(
+                                            text = { Text("Clear Stuck State") },
+                                            leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onResetTranscriptionState()
+                                            },
+                                        )
+                                    }
                                     DropdownMenuItem(
-                                        text = { Text("Share Transcript") },
-                                        leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
+                                        text = { Text("Delete") },
+                                        leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
                                         onClick = {
                                             menuExpanded = false
-                                            onShareTranscript()
+                                            onDelete()
                                         },
                                     )
                                 }
-                                if (item.session.status == SessionStatus.FAILED) {
-                                    DropdownMenuItem(
-                                        text = { Text("Retry Transcription") },
-                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onRetryTranscription()
-                                        },
-                                    )
-                                }
-                                if (item.session.status == SessionStatus.TRANSCRIBING) {
-                                    DropdownMenuItem(
-                                        text = { Text("Clear Stuck State") },
-                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onResetTranscriptionState()
-                                        },
-                                    )
-                                }
-                                DropdownMenuItem(
-                                    text = { Text("Delete") },
-                                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onDelete()
-                                    },
-                                )
                             }
                         }
                     }
@@ -376,30 +386,12 @@ internal fun RecordRow(
         }
     }
 
-    if (selectionEnabled) {
-        rowContent()
-    } else {
-        SwipeToDismissBox(
-            state = dismissState,
-            gesturesEnabled = true,
-            enableDismissFromStartToEnd = true,
-            enableDismissFromEndToStart = !item.session.isArchived,
-            backgroundContent = {
-                SwipeBackground(
-                    isArchived = item.session.isArchived,
-                    dismissDirection = dismissState.dismissDirection,
-                )
-            },
-        ) {
-            rowContent()
-        }
-    }
+    rowContent()
 
     pendingSwipeAction?.let { action ->
         AlertDialog(
             onDismissRequest = {
                 pendingSwipeAction = null
-                scope.launch { dismissState.reset() }
             },
             title = { Text(recordSwipeConfirmationTitle(action)) },
             text = { Text(recordSwipeConfirmationMessage(action, item.session.title)) },
@@ -412,7 +404,6 @@ internal fun RecordRow(
                             RecordSwipeAction.RESTORE -> onRestore()
                         }
                         pendingSwipeAction = null
-                        scope.launch { dismissState.reset() }
                     },
                 ) {
                     Text(
@@ -428,7 +419,6 @@ internal fun RecordRow(
                 TextButton(
                     onClick = {
                         pendingSwipeAction = null
-                        scope.launch { dismissState.reset() }
                     },
                 ) {
                     Text("Cancel")
@@ -438,154 +428,166 @@ internal fun RecordRow(
     }
 }
 
-private fun Modifier.blockCenterOriginSwipes(): Modifier =
-    pointerInput(RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION) {
-        awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-            val width = size.width.toFloat()
-            if (width <= 0f) return@awaitEachGesture
+private fun Modifier.recordSwipePreview(
+    enabled: Boolean,
+    isArchived: Boolean,
+    onPreviewChanged: (RecordSwipeAction?, Float) -> Unit,
+    onTriggered: (RecordSwipeAction) -> Unit,
+): Modifier =
+    if (!enabled) {
+        this
+    } else {
+        pointerInput(isArchived) {
+            awaitEachGesture {
+                onPreviewChanged(null, 0f)
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                val width = size.width.toFloat()
+                if (width <= 0f) return@awaitEachGesture
 
-            val edgeWidth = width * RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
-            val startedInEdge =
-                down.position.x <= edgeWidth ||
-                    down.position.x >= (width - edgeWidth)
+                val edgeWidth = width * RECORD_ROW_EDGE_SWIPE_ZONE_FRACTION
+                val startedFromStart = down.position.x <= edgeWidth
+                val startedFromEnd = down.position.x >= (width - edgeWidth)
+                if (!startedFromStart && !startedFromEnd) return@awaitEachGesture
 
-            if (startedInEdge) return@awaitEachGesture
+                val action = swipeActionForEdge(isArchived = isArchived, fromStart = startedFromStart)
+                val directionSign = if (startedFromStart) 1f else -1f
+                val triggerDistance = width * RECORD_ROW_SWIPE_THRESHOLD_FRACTION
+                var pointerId = down.id
+                var totalHorizontal = 0f
+                var totalVertical = 0f
+                var locked = false
 
-            var pointerId = down.id
-            var totalHorizontal = 0f
-            var totalVertical = 0f
+                while (true) {
+                    val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                    val change =
+                        event.changes.firstOrNull { it.id == pointerId }
+                            ?: event.changes.firstOrNull()
+                            ?: break
 
-            while (true) {
-                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                val change =
-                    event.changes.firstOrNull { it.id == pointerId }
-                        ?: event.changes.firstOrNull()
-                        ?: break
+                    pointerId = change.id
+                    val delta = change.positionChange()
+                    totalHorizontal += delta.x
+                    totalVertical += delta.y
+                    val desiredDistance = totalHorizontal * directionSign
 
-                pointerId = change.id
-                if (!change.pressed) break
-
-                val delta = change.positionChange()
-                totalHorizontal += delta.x
-                totalVertical += delta.y
-
-                val horizontalDragDetected =
-                    abs(totalHorizontal) > viewConfiguration.touchSlop &&
-                        abs(totalHorizontal) > abs(totalVertical)
-                val verticalDragDetected =
-                    abs(totalVertical) > viewConfiguration.touchSlop &&
-                        abs(totalVertical) >= abs(totalHorizontal)
-
-                if (horizontalDragDetected) {
-                    change.consume()
-                    while (true) {
-                        val blockingEvent = awaitPointerEvent(pass = PointerEventPass.Initial)
-                        blockingEvent.changes.forEach { blockingChange ->
-                            if (blockingChange.pressed) {
-                                blockingChange.consume()
-                            }
-                        }
-                        if (blockingEvent.changes.none { it.pressed }) {
+                    if (!locked) {
+                        val horizontalDragDetected =
+                            abs(totalHorizontal) > viewConfiguration.touchSlop &&
+                                abs(totalHorizontal) > (abs(totalVertical) * 1.25f) &&
+                                desiredDistance > 0f
+                        val verticalDragDetected =
+                            abs(totalVertical) > viewConfiguration.touchSlop &&
+                                abs(totalVertical) >= abs(totalHorizontal)
+                        if (verticalDragDetected || (abs(totalHorizontal) > viewConfiguration.touchSlop && desiredDistance <= 0f)) {
+                            onPreviewChanged(null, 0f)
                             break
                         }
+                        if (horizontalDragDetected) {
+                            locked = true
+                        }
                     }
-                    break
-                }
 
-                if (verticalDragDetected) {
-                    break
+                    if (locked) {
+                        val progress = (desiredDistance / triggerDistance).coerceIn(0f, 1f)
+                        onPreviewChanged(action, progress)
+                        event.changes.filter { it.pressed }.forEach { it.consume() }
+                    }
+
+                    if (event.changes.none { it.pressed }) {
+                        if (locked) {
+                            val progress = (desiredDistance / triggerDistance).coerceIn(0f, 1f)
+                            if (progress >= 1f) {
+                                onTriggered(action)
+                            }
+                        }
+                        onPreviewChanged(null, 0f)
+                        break
+                    }
                 }
             }
         }
     }
 
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun SwipeBackground(
+private fun swipeActionForEdge(
     isArchived: Boolean,
-    dismissDirection: SwipeToDismissBoxValue?,
+    fromStart: Boolean,
+): RecordSwipeAction =
+    when {
+        fromStart -> RecordSwipeAction.TRANSFORM
+        isArchived -> RecordSwipeAction.RESTORE
+        else -> RecordSwipeAction.ARCHIVE
+    }
+
+@Composable
+private fun BoxScope.SwipeBackground(
+    action: RecordSwipeAction?,
+    progress: Float,
 ) {
-    val laneColor =
-        when (dismissDirection) {
-            SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.secondaryContainer
-            SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.tertiaryContainer
-            null, SwipeToDismissBoxValue.Settled -> Color.Transparent
-        }
-    val icon =
-        when (dismissDirection) {
-            SwipeToDismissBoxValue.StartToEnd -> Icons.Filled.AutoFixHigh
-            SwipeToDismissBoxValue.EndToStart -> if (isArchived) null else Icons.Filled.Archive
-            null, SwipeToDismissBoxValue.Settled -> null
-        }
+    if (action == null || progress <= 0f) return
+    val presentation = swipeActionPresentation(action)
     Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color.Transparent,
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .align(Alignment.Center),
+        color = presentation.containerColor.copy(alpha = 0.22f + (progress * 0.60f)),
         shape = RoundedCornerShape(20.dp),
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            when (dismissDirection) {
-                SwipeToDismissBoxValue.StartToEnd ->
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxHeight()
-                                .width(RECORD_ROW_SWIPE_ICON_LANE_WIDTH)
-                                .align(Alignment.CenterStart),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = laneColor,
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                icon?.let { swipeIcon ->
-                                    Icon(
-                                        imageVector = swipeIcon,
-                                        contentDescription = "Run transform",
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                SwipeToDismissBoxValue.EndToStart ->
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxHeight()
-                                .width(RECORD_ROW_SWIPE_ICON_LANE_WIDTH)
-                                .align(Alignment.CenterEnd),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = laneColor,
-                        ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                icon?.let { swipeIcon ->
-                                    Icon(
-                                        imageVector = swipeIcon,
-                                        contentDescription = "Archive record",
-                                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                null, SwipeToDismissBoxValue.Settled -> Unit
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    imageVector = presentation.icon,
+                    contentDescription = presentation.label,
+                    tint = presentation.contentColor,
+                )
+                Text(
+                    text = presentation.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = presentation.contentColor,
+                )
             }
         }
     }
 }
+
+@Composable
+private fun swipeActionPresentation(action: RecordSwipeAction): SwipeActionPresentation =
+    when (action) {
+        RecordSwipeAction.TRANSFORM ->
+            SwipeActionPresentation(
+                icon = Icons.Filled.AutoFixHigh,
+                label = "Transform",
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        RecordSwipeAction.ARCHIVE ->
+            SwipeActionPresentation(
+                icon = Icons.Filled.Archive,
+                label = "Archive",
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+        RecordSwipeAction.RESTORE ->
+            SwipeActionPresentation(
+                icon = Icons.Filled.Unarchive,
+                label = "Restore",
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+    }
+
+private data class SwipeActionPresentation(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+    val containerColor: Color,
+    val contentColor: Color,
+)
 
 private fun statusLabel(
     status: SessionStatus,

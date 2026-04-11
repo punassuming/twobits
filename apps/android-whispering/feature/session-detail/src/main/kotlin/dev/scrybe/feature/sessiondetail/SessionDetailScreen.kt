@@ -4,7 +4,6 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -134,11 +134,12 @@ fun SessionDetailScreen(
                     val titleText = successState?.session?.title ?: "Session Review"
                     if (successState != null) {
                         Row(
-                            modifier = Modifier.clickable(
-                                role = Role.Button,
-                                onClickLabel = "Rename recording",
-                                onClick = { showRenameDialog = true },
-                            ),
+                            modifier =
+                                Modifier.clickable(
+                                    role = Role.Button,
+                                    onClickLabel = "Rename recording",
+                                    onClick = { showRenameDialog = true },
+                                ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {

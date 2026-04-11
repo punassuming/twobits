@@ -39,8 +39,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -69,6 +75,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
@@ -77,6 +84,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.scrybe.core.model.SessionStatus
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -142,9 +150,11 @@ fun CaptureScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text("Scrybe", style = MaterialTheme.typography.titleLarge)
                         Text(
-                            text = "Capture and shape recent recordings",
-                            style = MaterialTheme.typography.bodySmall,
+                            text = "Record, review, and revisit sessions",
+                            style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 },
@@ -714,23 +724,75 @@ private fun AmplitudeVisualizer(
 
 @Composable
 private fun SessionMetaPill(session: RecentCaptureSession) {
-    val text =
-        when {
-            session.isArchived -> "Archived"
-            else -> session.status.name.lowercase().replace('_', ' ').replaceFirstChar(Char::titlecase)
-        }
+    val presentation = recentSessionModePresentation(session)
     Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = presentation.containerColor,
         shape = RoundedCornerShape(999.dp),
     ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        Icon(
+            imageVector = presentation.icon,
+            contentDescription = presentation.contentDescription,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            tint = presentation.tint,
         )
     }
 }
+
+@Composable
+private fun recentSessionModePresentation(session: RecentCaptureSession): RecentSessionModePresentation {
+    val colorScheme = MaterialTheme.colorScheme
+    return when {
+        session.isArchived ->
+            RecentSessionModePresentation(
+                icon = Icons.Filled.Archive,
+                contentDescription = "Archived recording",
+                tint = colorScheme.onTertiaryContainer,
+                containerColor = colorScheme.tertiaryContainer,
+            )
+        session.status == SessionStatus.TRANSCRIBING ->
+            RecentSessionModePresentation(
+                icon = Icons.Filled.HourglassEmpty,
+                contentDescription = "Transcription in progress",
+                tint = colorScheme.onSecondaryContainer,
+                containerColor = colorScheme.secondaryContainer,
+            )
+        session.status == SessionStatus.TRANSCRIBED ->
+            RecentSessionModePresentation(
+                icon = Icons.Filled.Description,
+                contentDescription = "Transcribed recording",
+                tint = colorScheme.onPrimaryContainer,
+                containerColor = colorScheme.primaryContainer,
+            )
+        session.status == SessionStatus.EDITED ->
+            RecentSessionModePresentation(
+                icon = Icons.Filled.Edit,
+                contentDescription = "Edited transcript",
+                tint = colorScheme.onPrimaryContainer,
+                containerColor = colorScheme.primaryContainer,
+            )
+        session.status == SessionStatus.FAILED ->
+            RecentSessionModePresentation(
+                icon = Icons.Filled.Error,
+                contentDescription = "Transcription failed",
+                tint = colorScheme.onErrorContainer,
+                containerColor = colorScheme.errorContainer,
+            )
+        else ->
+            RecentSessionModePresentation(
+                icon = Icons.Filled.CheckCircle,
+                contentDescription = "Saved recording",
+                tint = colorScheme.onSecondaryContainer,
+                containerColor = colorScheme.secondaryContainer,
+            )
+    }
+}
+
+private data class RecentSessionModePresentation(
+    val icon: ImageVector,
+    val contentDescription: String,
+    val tint: Color,
+    val containerColor: Color,
+)
 
 private fun visualAmplitude(value: Float): Float {
     val gated = if (value < 0.02f) 0f else value

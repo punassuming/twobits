@@ -6,7 +6,12 @@
 
 ### Improvements
 
+* refresh the capture and records screens with a shorter home header subtitle, icon-based recent recording badges, a top-level filters card, a true single-line search field, and a Record button that returns to the home recorder
+* default new recordings to skip the automatic rename prompt now that titles can be edited directly from the session header
+
 ### Fixes
+
+* make records swipe actions less sensitive with narrower edge-only gestures, one-way swipe directions, and full-card action overlays instead of sliding row content sideways
 
 ## 0.8.1 (2026-04-07)
 

@@ -37,7 +37,7 @@ data class SettingsUiState(
     val defaultTransformProfileName: String? = null,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val keepScreenOn: Boolean = true,
-    val showRenameAfterRecording: Boolean = true,
+    val showRenameAfterRecording: Boolean = false,
     val confirmRecordSwipeActions: Boolean = true,
     val showRecordingInfoInList: Boolean = true,
     val postStopDestination: PostStopDestination = PostStopDestination.HOME,
@@ -496,7 +496,7 @@ class SettingsViewModel
             val defaultTransformProfileName: String? = null,
             val themeMode: ThemeMode = ThemeMode.SYSTEM,
             val keepScreenOn: Boolean = true,
-            val showRenameAfterRecording: Boolean = true,
+            val showRenameAfterRecording: Boolean = false,
             val confirmRecordSwipeActions: Boolean = true,
             val showRecordingInfoInList: Boolean = true,
             val postStopDestination: PostStopDestination = PostStopDestination.HOME,
@@ -526,7 +526,7 @@ class SettingsViewModel
         private data class RecordingPreferences(
             val themeMode: ThemeMode = ThemeMode.SYSTEM,
             val keepScreenOn: Boolean = true,
-            val showRenameAfterRecording: Boolean = true,
+            val showRenameAfterRecording: Boolean = false,
             val confirmRecordSwipeActions: Boolean = true,
             val showRecordingInfoInList: Boolean = true,
             val postStopDestination: PostStopDestination = PostStopDestination.HOME,
@@ -539,7 +539,7 @@ class SettingsViewModel
         private data class DisplayPreferences(
             val themeMode: ThemeMode = ThemeMode.SYSTEM,
             val keepScreenOn: Boolean = true,
-            val showRenameAfterRecording: Boolean = true,
+            val showRenameAfterRecording: Boolean = false,
             val confirmRecordSwipeActions: Boolean = true,
             val postStopDestination: PostStopDestination = PostStopDestination.HOME,
         )

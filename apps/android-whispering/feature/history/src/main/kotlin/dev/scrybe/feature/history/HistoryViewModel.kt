@@ -45,6 +45,7 @@ import javax.inject.Inject
 
 sealed interface HistoryEvent {
     data class Message(val text: String) : HistoryEvent
+
     data class ShareText(val title: String, val text: String) : HistoryEvent
 }
 
@@ -171,10 +172,11 @@ class HistoryViewModel
                 HistoryUiState.Success(
                     sessions = filteredSessions,
                     filters = inputs.filters,
-                    interactionPreferences = RecordsInteractionPreferences(
-                        confirmSwipeActions = inputs.confirmSwipeActions,
-                        showRecordingInfoInList = inputs.showRecordingInfoInList,
-                    ),
+                    interactionPreferences =
+                        RecordsInteractionPreferences(
+                            confirmSwipeActions = inputs.confirmSwipeActions,
+                            showRecordingInfoInList = inputs.showRecordingInfoInList,
+                        ),
                     selection =
                         inputs.selection.copy(
                             selectedSessionIds =
@@ -246,14 +248,16 @@ class HistoryViewModel
                     return@launch
                 }
                 val transcripts = transcriptDao.getTranscriptsForSession(sessionId).first()
-                val priorityOrder = listOf(
-                    TranscriptType.EDITED.name,
-                    TranscriptType.TRANSFORMED.name,
-                    TranscriptType.RAW.name,
-                )
+                val priorityOrder =
+                    listOf(
+                        TranscriptType.EDITED.name,
+                        TranscriptType.TRANSFORMED.name,
+                        TranscriptType.RAW.name,
+                    )
                 val transcriptsByType = transcripts.groupBy { it.type }
-                val transcript = priorityOrder
-                    .firstNotNullOfOrNull { type -> transcriptsByType[type]?.maxByOrNull { it.createdAt } }
+                val transcript =
+                    priorityOrder
+                        .firstNotNullOfOrNull { type -> transcriptsByType[type]?.maxByOrNull { it.createdAt } }
                 if (transcript == null) {
                     _events.emit(HistoryEvent.Message("No transcript available to share"))
                 } else {
@@ -553,38 +557,43 @@ class HistoryViewModel
             val retriever = MediaMetadataRetriever()
             try {
                 retriever.setDataSource(file.absolutePath)
-                val durationMs = retriever
-                    .extractMetadata(
-                        MediaMetadataRetriever.METADATA_KEY_DURATION,
-                    )?.toLongOrNull() ?: 0L
-                val sampleRate = retriever
-                    .extractMetadata(
-                        MediaMetadataRetriever.METADATA_KEY_SAMPLERATE,
-                    )?.toIntOrNull() ?: DEFAULT_SAMPLE_RATE
-                val bitrate = retriever
-                    .extractMetadata(
-                        MediaMetadataRetriever.METADATA_KEY_BITRATE,
-                    )?.toIntOrNull() ?: DEFAULT_BIT_RATE
-                val channelCount = runCatching {
-                    val extractor = MediaExtractor()
-                    try {
-                        extractor.setDataSource(file.absolutePath)
-                        val audioTrackIndex = (0 until extractor.trackCount).firstOrNull { trackIndex ->
-                            extractor.getTrackFormat(trackIndex).getString(MediaFormat.KEY_MIME)
-                                ?.startsWith("audio/") == true
+                val durationMs =
+                    retriever
+                        .extractMetadata(
+                            MediaMetadataRetriever.METADATA_KEY_DURATION,
+                        )?.toLongOrNull() ?: 0L
+                val sampleRate =
+                    retriever
+                        .extractMetadata(
+                            MediaMetadataRetriever.METADATA_KEY_SAMPLERATE,
+                        )?.toIntOrNull() ?: DEFAULT_SAMPLE_RATE
+                val bitrate =
+                    retriever
+                        .extractMetadata(
+                            MediaMetadataRetriever.METADATA_KEY_BITRATE,
+                        )?.toIntOrNull() ?: DEFAULT_BIT_RATE
+                val channelCount =
+                    runCatching {
+                        val extractor = MediaExtractor()
+                        try {
+                            extractor.setDataSource(file.absolutePath)
+                            val audioTrackIndex =
+                                (0 until extractor.trackCount).firstOrNull { trackIndex ->
+                                    extractor.getTrackFormat(trackIndex).getString(MediaFormat.KEY_MIME)
+                                        ?.startsWith("audio/") == true
+                                }
+                            if (audioTrackIndex != null) {
+                                extractor.getTrackFormat(audioTrackIndex)
+                                    .getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                            } else {
+                                1
+                            }
+                        } finally {
+                            extractor.release()
                         }
-                        if (audioTrackIndex != null) {
-                            extractor.getTrackFormat(audioTrackIndex)
-                                .getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                        } else {
-                            1
-                        }
-                    } finally {
-                        extractor.release()
-                    }
-                }.onFailure { e ->
-                    android.util.Log.w(TAG, "Failed to extract channel count from ${file.name}: ${e.message}")
-                }.getOrDefault(1)
+                    }.onFailure { e ->
+                        android.util.Log.w(TAG, "Failed to extract channel count from ${file.name}: ${e.message}")
+                    }.getOrDefault(1)
 
                 val audioFormat = audioFormatFromExtension(file.extension)
                 val createdAt = file.lastModified()

@@ -103,7 +103,7 @@ class AppPreferencesDataStore
 
         val showRenameAfterRecording: Flow<Boolean> =
             context.dataStore.data.map { prefs ->
-                prefs[Keys.SHOW_RENAME_AFTER_RECORDING] ?: true
+                prefs[Keys.SHOW_RENAME_AFTER_RECORDING] ?: false
             }
 
         val confirmRecordSwipeActions: Flow<Boolean> =
