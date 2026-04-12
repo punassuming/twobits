@@ -1,12 +1,15 @@
 package dev.scrybe.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -47,10 +50,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ReleaseNotes
+import dev.scrybe.core.common.ScrybeLayoutDefaults
+import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.PostStopDestination
@@ -87,24 +94,28 @@ fun SettingsScreen(
             )
         },
     ) { paddingValues ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 12.dp)
+                        .fillMaxWidth()
+                        .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
+                verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+            ) {
+                SettingsSectionCard(
+                    title = "Appearance",
+                    icon = Icons.Filled.Palette,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.Palette, contentDescription = null)
-                        Text("Appearance", style = MaterialTheme.typography.titleMedium)
-                    }
                     SettingOptionRow(
                         title = "Theme",
                         value =
@@ -117,17 +128,11 @@ fun SettingsScreen(
                         onClick = { showThemePicker = true },
                     )
                 }
-            }
 
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                SettingsSectionCard(
+                    title = "Provider",
+                    icon = Icons.Filled.SettingsSuggest,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.SettingsSuggest, contentDescription = null)
-                        Text("Provider", style = MaterialTheme.typography.titleMedium)
-                    }
                     Text(
                         text = "Choose where transcription runs. Provider-specific credentials live inside the active provider section.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -297,17 +302,12 @@ fun SettingsScreen(
                         },
                     )
                 }
-            }
 
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                SettingsSectionCard(
+                    title = "Recording Defaults",
+                    icon = Icons.Filled.Storage,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.Storage, contentDescription = null)
-                        Text("Recording Defaults", style = MaterialTheme.typography.titleMedium)
-                    }
                     SettingOptionRow(
                         title = "Format",
                         value = uiState.audioFormat.name,
@@ -357,17 +357,12 @@ fun SettingsScreen(
                         onClick = { showChannelPicker = true },
                     )
                 }
-            }
 
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                SettingsSectionCard(
+                    title = "Recording Behavior",
+                    icon = Icons.Filled.AutoAwesome,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                        Text("Recording Behavior", style = MaterialTheme.typography.titleMedium)
-                    }
                     Text(
                         text = "Default transform profile: ${uiState.defaultTransformProfileName ?: "None selected"}",
                         style = MaterialTheme.typography.bodyMedium,
@@ -438,17 +433,11 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
-            }
 
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                SettingsSectionCard(
+                    title = "Saved Files",
+                    icon = Icons.Filled.FolderOpen,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.FolderOpen, contentDescription = null)
-                        Text("Saved Files", style = MaterialTheme.typography.titleMedium)
-                    }
                     Text(
                         text = "${uiState.savedFiles.size} files available in app storage.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -463,17 +452,11 @@ fun SettingsScreen(
                         Text("Browse Saved Files")
                     }
                 }
-            }
 
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                SettingsSectionCard(
+                    title = "Usage",
+                    icon = Icons.Filled.Info,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.Info, contentDescription = null)
-                        Text("Usage", style = MaterialTheme.typography.titleMedium)
-                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -554,17 +537,11 @@ fun SettingsScreen(
                         value = formatUsd(uiState.usageStats.totalEstimatedCostUsd),
                     )
                 }
-            }
 
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                SettingsSectionCard(
+                    title = "About & What's New",
+                    icon = Icons.Filled.Info,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.Info, contentDescription = null)
-                        Text("About & What's New", style = MaterialTheme.typography.titleMedium)
-                    }
                     Text(
                         text = "Version ${uiState.versionName.ifBlank { "dev" }} (${uiState.versionCode})",
                         style = MaterialTheme.typography.bodyMedium,
@@ -739,6 +716,28 @@ fun SettingsScreen(
                 showProfileModelPicker = false
             },
         )
+    }
+}
+
+@Composable
+private fun SettingsSectionCard(
+    title: String,
+    icon: ImageVector,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    ScrybeSectionCard(
+        containerColor = containerColor,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(icon, contentDescription = null)
+            Text(title, style = MaterialTheme.typography.titleMedium)
+        }
+        content()
     }
 }
 

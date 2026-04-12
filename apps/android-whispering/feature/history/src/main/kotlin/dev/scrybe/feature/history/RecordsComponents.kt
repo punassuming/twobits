@@ -195,7 +195,7 @@ internal fun RecordRow(
                     } else {
                         recordContainerColor(item.session.status, item.session.isArchived)
                     },
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.large,
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     WaveformBackdrop(
@@ -203,15 +203,15 @@ internal fun RecordRow(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
                     )
                     Row(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.Top,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         if (selectionEnabled) {
                             Checkbox(

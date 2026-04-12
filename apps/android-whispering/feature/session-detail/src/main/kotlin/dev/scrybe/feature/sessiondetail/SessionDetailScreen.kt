@@ -68,6 +68,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.scrybe.core.common.ScrybeLayoutDefaults
+import dev.scrybe.core.common.ScrybeSectionCard
+import dev.scrybe.core.common.ScrybeSectionHeader
+import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
@@ -275,32 +279,41 @@ fun SessionDetailScreen(
                 }
 
             is SessionDetailUiState.Success -> {
-                Column(
+                Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
-                            .padding(16.dp)
-                            .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
+                    contentAlignment = Alignment.TopCenter,
                 ) {
-                    SessionOverviewCard(state)
-                    PlaybackCard(
-                        state = state,
-                        onTogglePlayback = viewModel::togglePlayback,
-                        onStopPlayback = viewModel::stopPlayback,
-                        onSeek = viewModel::seekPlayback,
-                    )
-                    TranscriptSection(
-                        state = state,
-                        onEditTranscript = { isEditingTranscript = true },
-                        onDeleteTranscript = { deleteTranscriptTarget = it },
-                    )
-                    TransformSection(
-                        state = state,
-                        onTransformDefault = viewModel::transformDefaultProfile,
-                        onTransformProfile = viewModel::transform,
-                    )
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .scrybeContentWidth()
+                                .padding(vertical = 12.dp)
+                                .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                    ) {
+                        SessionOverviewCard(state)
+                        PlaybackCard(
+                            state = state,
+                            onTogglePlayback = viewModel::togglePlayback,
+                            onStopPlayback = viewModel::stopPlayback,
+                            onSeek = viewModel::seekPlayback,
+                        )
+                        TranscriptSection(
+                            state = state,
+                            onEditTranscript = { isEditingTranscript = true },
+                            onDeleteTranscript = { deleteTranscriptTarget = it },
+                        )
+                        TransformSection(
+                            state = state,
+                            onTransformDefault = viewModel::transformDefaultProfile,
+                            onTransformProfile = viewModel::transform,
+                        )
+                    }
                 }
             }
         }
@@ -398,58 +411,61 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
     val audioFile = File(state.session.audioFilePath)
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    if (state.session.isArchived) {
-                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
+    ScrybeSectionCard(
+        containerColor =
             if (state.session.isArchived) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Filled.Archive,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
-                    )
-                    Text(
-                        text = "Archived",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    )
-                }
-            }
-            Text(
-                text = "Recorded ${state.session.createdAt.atZone(ZoneId.systemDefault()).format(SUMMARY_TIME_FORMATTER)}",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                CompactMetaItem(formatDuration(state.session.durationMs))
-                CompactMetaItem(state.session.status.name)
-                CompactMetaItem(state.session.audioFormat.name)
-            }
-            Text(
-                text = "${audioFile.name.ifBlank { state.session.audioFilePath }} · ${formatFileSize(state.session.fileSizeBytes)} · ${state.session.sampleRateHz / 1000} kHz · ${state.session.encodingBitRate / 1000} kbps · ${if (state.session.channelCount == 1) "Mono" else "Stereo"}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
+                MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ScrybeSectionHeader(
+            title = "Recording details",
+            subtitle = "Recorded ${state.session.createdAt.atZone(ZoneId.systemDefault()).format(SUMMARY_TIME_FORMATTER)}",
+            trailing =
+                if (state.session.isArchived) {
+                    {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Filled.Archive,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                            )
+                            Text(
+                                text = "Archived",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.tertiary,
+                            )
+                        }
+                    }
+                } else {
+                    null
+                },
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CompactMetaItem(formatDuration(state.session.durationMs))
+            CompactMetaItem(state.session.status.name.lowercase().replaceFirstChar(Char::titlecase))
+            CompactMetaItem(state.session.audioFormat.name)
+        }
+        Text(
+            text = "${audioFile.name.ifBlank { state.session.audioFilePath }} · ${formatFileSize(state.session.fileSizeBytes)} · ${state.session.sampleRateHz / 1000} kHz · ${state.session.encodingBitRate / 1000} kbps · ${if (state.session.channelCount == 1) "Mono" else "Stereo"}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface,
+            shape = MaterialTheme.shapes.medium,
+        ) {
             Row(
                 modifier =
                     Modifier
@@ -461,34 +477,36 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
                             Toast
                                 .makeText(context, "Path copied", Toast.LENGTH_SHORT)
                                 .show()
-                        },
+                        }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Icon(
                     Icons.Filled.FileOpen,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(16.dp),
                     tint = MaterialTheme.colorScheme.primary,
                 )
                 Text(
                     text = state.session.audioFilePath,
+                    modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            state.session.estimatedTranscriptionCostUsd?.let { cost ->
-                Text(
-                    text = "Estimated transcription cost ${formatUsd(cost)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            if (state.session.tags.isNotEmpty()) {
-                SessionTagsRow(tags = state.session.tags)
-            }
+        }
+        state.session.estimatedTranscriptionCostUsd?.let { cost ->
+            Text(
+                text = "Estimated transcription cost ${formatUsd(cost)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        if (state.session.tags.isNotEmpty()) {
+            SessionTagsRow(tags = state.session.tags)
         }
     }
 }
@@ -521,12 +539,14 @@ private fun SessionTagsRow(
 private fun RowScope.CompactMetaItem(
     value: String,
 ) {
-    Box(
+    Surface(
         modifier = Modifier.weight(1f),
-        contentAlignment = Alignment.CenterStart,
+        color = MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.medium,
     ) {
         Text(
             text = value,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -543,36 +563,28 @@ private fun TransformSection(
     if (state.profiles.isEmpty()) {
         return
     }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ScrybeSectionCard(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ScrybeSectionHeader(
+            title = "Post-process",
+            subtitle = "Run a saved prompt against the latest transcription.",
+        )
+        OutlinedButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onTransformDefault,
+            enabled = state.transcripts.any { it.type.name == "RAW" } && !state.isTransforming,
         ) {
-            Text("Post-process", style = MaterialTheme.typography.titleSmall)
-            Text(
-                text = "Run a saved prompt against the latest transcription.",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(if (state.isTransforming) "Running default..." else "Run Default Profile")
+        }
+        state.profiles.forEach { profile ->
+            TransformProfileRow(
+                profile = profile,
+                isDefault = profile.id == state.defaultProfileId || profile.isDefault,
+                onRun = { onTransformProfile(profile.id) },
             )
-            OutlinedButton(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = onTransformDefault,
-                enabled = state.transcripts.any { it.type.name == "RAW" } && !state.isTransforming,
-            ) {
-                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(if (state.isTransforming) "Running default..." else "Run Default Profile")
-            }
-            state.profiles.forEach { profile ->
-                TransformProfileRow(
-                    profile = profile,
-                    isDefault = profile.id == state.defaultProfileId || profile.isDefault,
-                    onRun = { onTransformProfile(profile.id) },
-                )
-            }
         }
     }
 }
@@ -637,13 +649,9 @@ private fun TranscriptSection(
 ) {
     val transcripts = state.transcripts
     if (state.currentTranscript == null && transcripts.isEmpty()) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        ) {
+        ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
             Text(
                 text = "No transcripts yet. You can transcribe this recording from here.",
-                modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

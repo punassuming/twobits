@@ -56,6 +56,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.scrybe.core.common.ScrybeLayoutDefaults
+import dev.scrybe.core.common.ScrybeSectionCard
+import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.service.recording.RecordingForegroundService
 import dev.scrybe.service.recording.RecordingServiceActions
 
@@ -252,98 +255,111 @@ fun HistoryScreen(
                 }
 
             is HistoryUiState.Success -> {
-                Column(
+                Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
-                            .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                            .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
+                    contentAlignment = Alignment.TopCenter,
                 ) {
-                    RecordsFilterBar(
-                        filters = state.filters,
-                        onClick = { showFilters = true },
-                    )
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = {
-                            searchQuery = it
-                            viewModel.updateQuery(it)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                        label = { Text("Search") },
-                        placeholder = { Text("Search records, tags, or transcript text") },
-                    )
-                    if (state.sessions.isEmpty()) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(top = 24.dp),
-                            contentAlignment = Alignment.Center,
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .scrybeContentWidth()
+                                .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                    ) {
+                        ScrybeSectionCard(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                            RecordsFilterBar(
+                                filters = state.filters,
+                                onClick = { showFilters = true },
+                            )
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = {
+                                    searchQuery = it
+                                    viewModel.updateQuery(it)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                                label = { Text("Search") },
+                                placeholder = { Text("Title, tags, or transcript text") },
+                            )
+                        }
+                        if (state.sessions.isEmpty()) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(top = 24.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Text(
-                                    if (state.filters.showArchived) {
-                                        "No archived records"
-                                    } else {
-                                        "No records match that search or filter"
-                                    },
-                                )
-                                OutlinedButton(
-                                    onClick = {
-                                        importLauncher.launch(
-                                            arrayOf("audio/*"),
-                                        )
-                                    },
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
                                 ) {
-                                    Row(
-                                        horizontalArrangement =
-                                            Arrangement.spacedBy(8.dp),
-                                        verticalAlignment =
-                                            Alignment.CenterVertically,
+                                    Text(
+                                        if (state.filters.showArchived) {
+                                            "No archived records"
+                                        } else {
+                                            "No records match that search or filter"
+                                        },
+                                    )
+                                    OutlinedButton(
+                                        onClick = {
+                                            importLauncher.launch(
+                                                arrayOf("audio/*"),
+                                            )
+                                        },
                                     ) {
-                                        Icon(
-                                            Icons.Filled.FileOpen,
-                                            contentDescription = null,
-                                        )
-                                        Text("Import Recording")
+                                        Row(
+                                            horizontalArrangement =
+                                                Arrangement.spacedBy(8.dp),
+                                            verticalAlignment =
+                                                Alignment.CenterVertically,
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.FileOpen,
+                                                contentDescription = null,
+                                            )
+                                            Text("Import Recording")
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            items(state.sessions, key = { it.session.id }) { item ->
-                                RecordRow(
-                                    item = item,
-                                    onOpen = { onSessionClick(item.session.id) },
-                                    selectionEnabled = state.selection.isSelecting,
-                                    selected = item.session.id in state.selection.selectedSessionIds,
-                                    onLongPress = { viewModel.enterSelectionMode(item.session.id) },
-                                    onToggleSelection = { viewModel.toggleSelection(item.session.id) },
-                                    onArchive = { viewModel.setArchived(item.session.id, true) },
-                                    onRestore = { viewModel.setArchived(item.session.id, false) },
-                                    onTransform = { viewModel.transformWithDefaultProfile(item.session.id) },
-                                    onRename = { renameTarget = item },
-                                    onDelete = { deleteTarget = item },
-                                    onInfo = { infoTarget = item.toRecordInfo() },
-                                    onOpenWith = { openAudioWith(context, item.session) },
-                                    onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
-                                    onShareTranscript = { viewModel.shareTranscript(item.session.id) },
-                                    onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
-                                    onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
-                                    showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
-                                    confirmSwipeActions = state.interactionPreferences.confirmSwipeActions,
-                                )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(state.sessions, key = { it.session.id }) { item ->
+                                    RecordRow(
+                                        item = item,
+                                        onOpen = { onSessionClick(item.session.id) },
+                                        selectionEnabled = state.selection.isSelecting,
+                                        selected = item.session.id in state.selection.selectedSessionIds,
+                                        onLongPress = { viewModel.enterSelectionMode(item.session.id) },
+                                        onToggleSelection = { viewModel.toggleSelection(item.session.id) },
+                                        onArchive = { viewModel.setArchived(item.session.id, true) },
+                                        onRestore = { viewModel.setArchived(item.session.id, false) },
+                                        onTransform = { viewModel.transformWithDefaultProfile(item.session.id) },
+                                        onRename = { renameTarget = item },
+                                        onDelete = { deleteTarget = item },
+                                        onInfo = { infoTarget = item.toRecordInfo() },
+                                        onOpenWith = { openAudioWith(context, item.session) },
+                                        onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
+                                        onShareTranscript = { viewModel.shareTranscript(item.session.id) },
+                                        onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
+                                        onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
+                                        showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
+                                        confirmSwipeActions = state.interactionPreferences.confirmSwipeActions,
+                                    )
+                                }
                             }
                         }
                     }

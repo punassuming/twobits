@@ -26,8 +26,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -53,6 +51,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.scrybe.core.common.ScrybeLayoutDefaults
+import dev.scrybe.core.common.ScrybeSectionCard
+import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.TransformProfile
 
@@ -101,8 +102,13 @@ fun ProfilesScreen(
                         Modifier
                             .fillMaxSize()
                             .padding(paddingValues),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding =
+                        androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = ScrybeLayoutDefaults.screenHorizontalPadding,
+                            vertical = 12.dp,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     item {
                         ProfileCreationCard(
@@ -210,43 +216,30 @@ private fun ProfileCreationCard(
     onCreateManual: () -> Unit,
     onCreateWithAi: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    ScrybeSectionCard {
+        ScrybeSectionHeader(
+            title = "Create a profile",
+            subtitle = "Build one manually or let AI draft a starting point, then refine it before saving.",
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(
-                text = "Create a profile",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = "Build one manually or let AI draft a starting point, then refine it before saving.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Button(
+                onClick = onCreateManual,
+                modifier = Modifier.weight(1f),
             ) {
-                Button(
-                    onClick = onCreateManual,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("New Profile")
-                }
-                OutlinedButton(
-                    onClick = onCreateWithAi,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("AI Draft")
-                }
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("New Profile")
+            }
+            OutlinedButton(
+                onClick = onCreateWithAi,
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("AI Draft")
             }
         }
     }
@@ -254,24 +247,16 @@ private fun ProfileCreationCard(
 
 @Composable
 private fun EmptyProfilesCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = "No profiles configured",
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = "Profiles let Scrybe run one to three prompt steps against a transcript after recording.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+    ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+        Text(
+            text = "No profiles configured",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Text(
+            text = "Profiles let Scrybe run one to three prompt steps against a transcript after recording.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -282,12 +267,8 @@ private fun ProfileRow(
     onDelete: () -> Unit,
     onSetDefault: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-    ) {
+    ScrybeSectionCard {
         Column(
-            modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(

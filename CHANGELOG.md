@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* align capture, records, profiles, settings, and session review screens around a shared spacing and card layout system to reduce dead space and make navigation feel more consistent
+
 ### Fixes
 
 ## 0.8.2 (2026-04-11)

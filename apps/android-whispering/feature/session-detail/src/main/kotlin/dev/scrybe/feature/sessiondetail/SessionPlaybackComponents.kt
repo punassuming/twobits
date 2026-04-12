@@ -6,20 +6,16 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +34,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import dev.scrybe.core.common.ScrybeSectionCard
+import dev.scrybe.core.common.ScrybeSectionHeader
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -51,23 +49,12 @@ internal fun PlaybackCard(
     onStopPlayback: () -> Unit,
     onSeek: (Long) -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ScrybeSectionCard(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Playback",
-                    style = MaterialTheme.typography.titleSmall,
-                )
+        ScrybeSectionHeader(
+            title = "Playback",
+            trailing = {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -90,38 +77,38 @@ internal fun PlaybackCard(
                         )
                     }
                 }
-            }
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(72.dp),
-            ) {
-                WaveformTimeline(
-                    samples = state.session.waveformSamples,
-                    progress =
-                        if (state.playbackDurationMs > 0L) {
-                            state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
-                        } else {
-                            0f
-                        },
-                    durationMs = state.playbackDurationMs,
-                    onSeek = onSeek,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = formatPlaybackTime(state.playbackPositionMs),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = formatPlaybackTime(state.playbackDurationMs),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            },
+        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(64.dp),
+        ) {
+            WaveformTimeline(
+                samples = state.session.waveformSamples,
+                progress =
+                    if (state.playbackDurationMs > 0L) {
+                        state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
+                    } else {
+                        0f
+                    },
+                durationMs = state.playbackDurationMs,
+                onSeek = onSeek,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = formatPlaybackTime(state.playbackPositionMs),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = formatPlaybackTime(state.playbackDurationMs),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -84,6 +83,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.scrybe.core.common.ScrybeLayoutDefaults
+import dev.scrybe.core.common.ScrybeSectionCard
+import dev.scrybe.core.common.ScrybeSectionHeader
+import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.SessionStatus
 import kotlin.math.PI
 import kotlin.math.cos
@@ -182,12 +185,12 @@ fun CaptureScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding =
                 PaddingValues(
-                    start = 20.dp,
-                    top = paddingValues.calculateTopPadding() + 12.dp,
-                    end = 20.dp,
-                    bottom = paddingValues.calculateBottomPadding() + 20.dp,
+                    start = ScrybeLayoutDefaults.screenHorizontalPadding,
+                    top = paddingValues.calculateTopPadding() + 8.dp,
+                    end = ScrybeLayoutDefaults.screenHorizontalPadding,
+                    bottom = paddingValues.calculateBottomPadding() + 16.dp,
                 ),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             item {
@@ -203,7 +206,7 @@ fun CaptureScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(92.dp),
+                                .height(72.dp),
                     )
                     RecordActionButton(
                         onClick = {
@@ -251,7 +254,7 @@ fun CaptureScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .widthIn(max = 760.dp),
+                                .scrybeContentWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     ) {
                         Text(
@@ -273,29 +276,15 @@ private fun RecentRecordingsSection(
     onOpenHistory: () -> Unit,
 ) {
     HomeCard {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = "Recent recordings",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = "Jump back into the latest saved sessions.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            FilledTonalIconButton(onClick = onOpenHistory) {
-                Icon(Icons.Filled.History, contentDescription = "Open records")
-            }
-        }
+        ScrybeSectionHeader(
+            title = "Recent recordings",
+            subtitle = "Jump back into the latest saved sessions.",
+            trailing = {
+                FilledTonalIconButton(onClick = onOpenHistory) {
+                    Icon(Icons.Filled.History, contentDescription = "Open records")
+                }
+            },
+        )
         if (sessions.isEmpty()) {
             Text(
                 text = "No recordings yet. Start one above and it will appear here as soon as it is saved.",
@@ -319,7 +308,7 @@ private fun RecentRecordingsSection(
                 ) {
                     Column(
                         modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -364,7 +353,7 @@ private fun CaptureHeroHeader(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 104.dp),
+                .heightIn(min = 92.dp),
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(18.dp),
     ) {
@@ -372,7 +361,7 @@ private fun CaptureHeroHeader(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             contentAlignment = Alignment.Center,
         ) {
             AnimatedContent(
@@ -388,7 +377,7 @@ private fun CaptureHeroHeader(
                         ) {
                             Text(
                                 text = "Ready to record",
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = MaterialTheme.typography.titleLarge,
                                 textAlign = TextAlign.Center,
                             )
                             Text(
@@ -412,7 +401,7 @@ private fun CaptureHeroHeader(
                         ) {
                             Text(
                                 text = "Recording ${formatElapsedTime(elapsedMs)}",
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = MaterialTheme.typography.titleLarge,
                                 textAlign = TextAlign.Center,
                             )
                             Text(
@@ -431,7 +420,7 @@ private fun CaptureHeroHeader(
                         ) {
                             Text(
                                 text = "Saving recording",
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = MaterialTheme.typography.titleLarge,
                                 textAlign = TextAlign.Center,
                             )
                             Text(
@@ -450,24 +439,12 @@ private fun CaptureHeroHeader(
 
 @Composable
 private fun HomeCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = 760.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ScrybeSectionCard(
+        modifier = Modifier.animateContentSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .animateContentSize()
-                    .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content,
-        )
+        content()
     }
 }
 
@@ -567,13 +544,13 @@ private fun RecordActionButton(
         modifier =
             modifier
                 .fillMaxWidth()
-                .widthIn(max = 760.dp),
+                .scrybeContentWidth(),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier =
                 Modifier
-                    .size(198.dp)
+                    .size(178.dp)
                     .graphicsLayer {
                         val combinedScale = pulseScale * audioReactiveScale
                         scaleX = combinedScale
@@ -582,21 +559,21 @@ private fun RecordActionButton(
             contentAlignment = Alignment.Center,
         ) {
             RingLayer(
-                diameter = 192.dp,
+                diameter = 172.dp,
                 color = ringColor.copy(alpha = 0.10f),
                 scale = outerRingScale,
                 wavePhase = wavePhase,
                 waveStrength = waveStrength * 0.75f,
             )
             RingLayer(
-                diameter = 164.dp,
+                diameter = 148.dp,
                 color = ringColor.copy(alpha = 0.16f),
                 scale = middleRingScale,
                 wavePhase = wavePhase + 0.8f,
                 waveStrength = waveStrength,
             )
             RingLayer(
-                diameter = 138.dp,
+                diameter = 126.dp,
                 color = ringColor.copy(alpha = 0.22f),
                 scale = innerRingScale,
                 wavePhase = wavePhase + 1.6f,
@@ -604,14 +581,14 @@ private fun RecordActionButton(
             )
             Button(
                 onClick = onClick,
-                modifier = Modifier.size(112.dp),
+                modifier = Modifier.size(98.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = centerColor),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Mic,
                     contentDescription = null,
-                    modifier = Modifier.size(38.dp),
+                    modifier = Modifier.size(34.dp),
                 )
             }
         }
