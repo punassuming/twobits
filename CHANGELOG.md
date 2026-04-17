@@ -4,7 +4,12 @@
 
 ### Features
 
+* add hierarchical recording folders with breadcrumb navigation, move-to-folder actions, and AI-powered clustering to organize sessions
+
 ### Improvements
+
+* polish capture and settings interactions with richer recording start/stop feedback, inline audio format controls, and configurable external app intent integration
+* refine session workflows with transform result copy/share dialogs, clearer loading/status indicators, and an upgraded saved-files browser
 
 ### Fixes
 
