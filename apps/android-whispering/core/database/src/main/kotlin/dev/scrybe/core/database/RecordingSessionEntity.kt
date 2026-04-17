@@ -19,6 +19,7 @@ data class RecordingSessionEntity(
     val status: String,
     val isArchived: Boolean,
     val estimatedTranscriptionCostUsd: Double?,
+    val folderId: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
 )

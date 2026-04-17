@@ -61,6 +61,9 @@ data class SettingsUiState(
     val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
     val profileSuggestionModelTestState: ProfileSuggestionModelTestUiState = ProfileSuggestionModelTestUiState.Idle,
     val transformModel: String = OpenAiTransformModel.default.apiName,
+    val taskForgeEnabled: Boolean = false,
+    val taskForgePackageName: String = "",
+    val taskForgeAction: String = "android.intent.action.SEND",
 )
 
 data class SavedFileEntry(
@@ -68,6 +71,7 @@ data class SavedFileEntry(
     val path: String,
     val sizeBytes: Long,
     val category: String,
+    val lastModified: Long = 0L,
 )
 
 data class UsageStats(
@@ -241,7 +245,15 @@ class SettingsViewModel
                         ),
                 )
             }
-        private val settingsData =
+        private val taskForgeSettings =
+            combine(
+                preferencesDataStore.taskForgeEnabled,
+                preferencesDataStore.taskForgePackageName,
+                preferencesDataStore.taskForgeAction,
+            ) { enabled, packageName, action ->
+                TaskForgeSettings(enabled = enabled, packageName = packageName, action = action)
+            }
+        private val coreSettingsData =
             combine(
                 profileSettings,
                 recordingPreferences,
@@ -276,6 +288,14 @@ class SettingsViewModel
                     releaseHistory = metadata.appMetadata.releaseHistory,
                     savedFiles = usageData.savedFiles,
                     usageStats = usageData.usageStats,
+                )
+            }
+        private val settingsData =
+            combine(coreSettingsData, taskForgeSettings) { core, taskForge ->
+                core.copy(
+                    taskForgeEnabled = taskForge.enabled,
+                    taskForgePackageName = taskForge.packageName,
+                    taskForgeAction = taskForge.action,
                 )
             }
 
@@ -315,6 +335,9 @@ class SettingsViewModel
                     profileSuggestionModel = settingsData.profileSuggestionModel,
                     profileSuggestionModelTestState = modelTestState,
                     transformModel = settingsData.transformModel,
+                    taskForgeEnabled = settingsData.taskForgeEnabled,
+                    taskForgePackageName = settingsData.taskForgePackageName,
+                    taskForgeAction = settingsData.taskForgeAction,
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -445,6 +468,18 @@ class SettingsViewModel
             viewModelScope.launch { preferencesDataStore.setRecordingSoundOnStartStop(enabled) }
         }
 
+        fun setTaskForgeEnabled(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setTaskForgeEnabled(enabled) }
+        }
+
+        fun setTaskForgePackageName(packageName: String) {
+            viewModelScope.launch { preferencesDataStore.setTaskForgePackageName(packageName) }
+        }
+
+        fun setTaskForgeAction(action: String) {
+            viewModelScope.launch { preferencesDataStore.setTaskForgeAction(action) }
+        }
+
         fun testProfileSuggestionModel() {
             viewModelScope.launch {
                 profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Loading
@@ -542,6 +577,9 @@ class SettingsViewModel
             val apiKey: String = "",
             val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
             val transformModel: String = OpenAiTransformModel.default.apiName,
+            val taskForgeEnabled: Boolean = false,
+            val taskForgePackageName: String = "",
+            val taskForgeAction: String = "android.intent.action.SEND",
             val versionName: String = "",
             val versionCode: Long = 0L,
             val latestReleaseTitle: String? = null,
@@ -594,6 +632,12 @@ class SettingsViewModel
             val channelCount: Int = 1,
         )
 
+        private data class TaskForgeSettings(
+            val enabled: Boolean = false,
+            val packageName: String = "",
+            val action: String = "android.intent.action.SEND",
+        )
+
         private data class UsageData(
             val savedFiles: List<SavedFileEntry> = emptyList(),
             val usageStats: UsageStats = UsageStats(),
@@ -622,6 +666,7 @@ class SettingsViewModel
                             path = file.absolutePath,
                             sizeBytes = file.length(),
                             category = category,
+                            lastModified = file.lastModified(),
                         )
                     }
                     .orEmpty()

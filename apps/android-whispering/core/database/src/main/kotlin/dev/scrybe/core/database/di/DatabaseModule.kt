@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.scrybe.core.database.AppDatabase
 import dev.scrybe.core.database.MIGRATION_4_5
+import dev.scrybe.core.database.MIGRATION_5_6
 import javax.inject.Singleton
 
 @Module
@@ -24,7 +25,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "scrybe-db",
         )
-            .addMigrations(MIGRATION_4_5)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigrationFrom(1, 2, 3)
             .build()
 
@@ -42,4 +43,7 @@ object DatabaseModule {
 
     @Provides
     fun providesProviderConfigDao(database: AppDatabase) = database.providerConfigDao()
+
+    @Provides
+    fun providesFolderDao(database: AppDatabase) = database.folderDao()
 }

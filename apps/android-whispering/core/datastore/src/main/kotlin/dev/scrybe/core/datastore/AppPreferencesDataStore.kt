@@ -47,6 +47,9 @@ class AppPreferencesDataStore
             val LAST_SEEN_WHATS_NEW_VERSION_CODE = stringPreferencesKey("last_seen_whats_new_version_code")
             val RECORDING_VIBRATE_ON_START_STOP = booleanPreferencesKey("recording_vibrate_on_start_stop")
             val RECORDING_SOUND_ON_START_STOP = booleanPreferencesKey("recording_sound_on_start_stop")
+            val TASKFORGE_ENABLED = booleanPreferencesKey("taskforge_enabled")
+            val TASKFORGE_PACKAGE_NAME = stringPreferencesKey("taskforge_package_name")
+            val TASKFORGE_ACTION = stringPreferencesKey("taskforge_action")
         }
 
         val defaultProvider: Flow<String> =
@@ -149,6 +152,21 @@ class AppPreferencesDataStore
                 prefs[Keys.RECORDING_SOUND_ON_START_STOP] ?: false
             }
 
+        val taskForgeEnabled: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.TASKFORGE_ENABLED] ?: false
+            }
+
+        val taskForgePackageName: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.TASKFORGE_PACKAGE_NAME] ?: ""
+            }
+
+        val taskForgeAction: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.TASKFORGE_ACTION] ?: "android.intent.action.SEND"
+            }
+
         suspend fun setDefaultProvider(provider: String) {
             context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PROVIDER] = provider }
         }
@@ -233,5 +251,17 @@ class AppPreferencesDataStore
 
         suspend fun setRecordingSoundOnStartStop(enabled: Boolean) {
             context.dataStore.edit { prefs -> prefs[Keys.RECORDING_SOUND_ON_START_STOP] = enabled }
+        }
+
+        suspend fun setTaskForgeEnabled(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.TASKFORGE_ENABLED] = enabled }
+        }
+
+        suspend fun setTaskForgePackageName(packageName: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.TASKFORGE_PACKAGE_NAME] = packageName }
+        }
+
+        suspend fun setTaskForgeAction(action: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.TASKFORGE_ACTION] = action }
         }
     }

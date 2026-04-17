@@ -326,6 +326,32 @@ class SessionDetailViewModel
             }
         }
 
+        fun sendToTaskForge() {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            viewModelScope.launch {
+                val transcript = state.currentTranscript
+                if (transcript == null) {
+                    _events.emit(SessionDetailEvent.Message("No transcript available to send"))
+                    return@launch
+                }
+                val enabled = preferencesDataStore.taskForgeEnabled.first()
+                if (!enabled) {
+                    _events.emit(SessionDetailEvent.Message("Enable external integration in Settings first"))
+                    return@launch
+                }
+                val packageName = preferencesDataStore.taskForgePackageName.first()
+                val action = preferencesDataStore.taskForgeAction.first()
+                _events.emit(
+                    SessionDetailEvent.SendToExternal(
+                        title = state.session.title,
+                        text = transcript.content,
+                        packageName = packageName,
+                        action = action.ifBlank { "android.intent.action.SEND" },
+                    ),
+                )
+            }
+        }
+
         fun shareAudioFile() {
             val state = _uiState.value as? SessionDetailUiState.Success ?: return
             viewModelScope.launch {

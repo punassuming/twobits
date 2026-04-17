@@ -15,4 +15,11 @@ sealed interface SessionDetailEvent {
         val profileName: String,
         val text: String,
     ) : SessionDetailEvent
+
+    data class SendToExternal(
+        val title: String,
+        val text: String,
+        val packageName: String,
+        val action: String,
+    ) : SessionDetailEvent
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -26,16 +28,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -59,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -67,6 +75,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.scrybe.core.common.SessionStatusPresentation
+import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import java.io.File
@@ -740,7 +749,7 @@ internal fun RecordsFilterDialog(
                         .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Archive View", style = MaterialTheme.typography.labelLarge)
+                FilterSectionLabel(icon = Icons.Filled.Inventory2, text = "Archive View")
                 FilterOptionRow(
                     title = "Active records",
                     selected = !draft.showArchived,
@@ -752,7 +761,7 @@ internal fun RecordsFilterDialog(
                     onClick = { draft = draft.copy(showArchived = true) },
                 )
                 HorizontalDivider()
-                Text("Sort", style = MaterialTheme.typography.labelLarge)
+                FilterSectionLabel(icon = Icons.Filled.Sort, text = "Sort")
                 RecordsSortOption.entries.forEach { option ->
                     FilterOptionRow(
                         title = option.name.lowercase().replaceFirstChar(Char::titlecase),
@@ -761,7 +770,7 @@ internal fun RecordsFilterDialog(
                     )
                 }
                 HorizontalDivider()
-                Text("Date Range", style = MaterialTheme.typography.labelLarge)
+                FilterSectionLabel(icon = Icons.Filled.CalendarMonth, text = "Date Range")
                 listOf(
                     RecordsDateRange.ALL to "All time",
                     RecordsDateRange.TODAY to "Today",
@@ -775,7 +784,7 @@ internal fun RecordsFilterDialog(
                     )
                 }
                 HorizontalDivider()
-                Text("Status", style = MaterialTheme.typography.labelLarge)
+                FilterSectionLabel(icon = Icons.Filled.Circle, text = "Status")
                 SessionStatus.entries
                     .filter {
                         it in setOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBING, SessionStatus.FAILED, SessionStatus.TRANSCRIBED, SessionStatus.EDITED)
@@ -808,6 +817,25 @@ internal fun RecordsFilterDialog(
             }
         },
     )
+}
+
+@Composable
+private fun FilterSectionLabel(
+    icon: ImageVector,
+    text: String,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(text, style = MaterialTheme.typography.labelLarge)
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -1087,3 +1115,169 @@ internal fun formatFileSize(bytes: Long): String {
 
 internal val HISTORY_TIME_FORMATTER: DateTimeFormatter =
     DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")
+
+@Composable
+internal fun FolderRow(
+    folder: Folder,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 1.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = folder.name,
+                style = MaterialTheme.typography.titleSmall,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun BreadcrumbRow(
+    breadcrumb: List<Folder>,
+    onNavigateToRoot: () -> Unit,
+    onNavigateToFolder: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Records",
+            modifier = Modifier.clickable { onNavigateToRoot() },
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        breadcrumb.forEachIndexed { index, folder ->
+            Text(
+                text = " \u203A ",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val isLast = index == breadcrumb.lastIndex
+            Text(
+                text = folder.name,
+                modifier = if (!isLast) Modifier.clickable { onNavigateToFolder(folder.id) } else Modifier,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isLast) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun CreateFolderDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New Folder") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Folder name") },
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+internal fun MoveFolderDialog(
+    folders: List<Folder>,
+    onDismiss: () -> Unit,
+    onSelect: (String?) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move to Folder") },
+        text = {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Surface(
+                    onClick = { onSelect(null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    tonalElevation = 1.dp,
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text("Root (no folder)", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                folders.forEach { folder ->
+                    Surface(
+                        onClick = { onSelect(folder.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        tonalElevation = 1.dp,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Text(folder.name, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                if (folders.isEmpty()) {
+                    Text(
+                        "No folders yet. Create a folder first.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(8.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}

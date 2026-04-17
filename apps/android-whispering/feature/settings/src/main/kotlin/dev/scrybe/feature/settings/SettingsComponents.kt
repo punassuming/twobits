@@ -243,6 +243,7 @@ internal fun SavedFilesDialog(
     files: List<SavedFileEntry>,
     onDismiss: () -> Unit,
     onDelete: (String) -> Unit,
+    onOpenFolder: ((String) -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -277,11 +278,23 @@ internal fun SavedFilesDialog(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (file.lastModified > 0) {
+                                    Text(
+                                        text = formatTimestamp(file.lastModified),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.End,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
+                                    if (onOpenFolder != null) {
+                                        TextButton(onClick = { onOpenFolder(file.path) }) {
+                                            Text("Open Folder")
+                                        }
+                                    }
                                     TextButton(onClick = { onDelete(file.path) }) {
                                         Text("Delete")
                                     }
@@ -298,6 +311,11 @@ internal fun SavedFilesDialog(
             }
         },
     )
+}
+
+internal fun formatTimestamp(epochMillis: Long): String {
+    val formatter = java.text.SimpleDateFormat("MMM d, yyyy h:mm a", java.util.Locale.getDefault())
+    return formatter.format(java.util.Date(epochMillis))
 }
 
 internal fun formatFileSize(bytes: Long): String {

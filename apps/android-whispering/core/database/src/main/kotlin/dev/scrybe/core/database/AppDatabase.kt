@@ -10,8 +10,9 @@ import androidx.room.RoomDatabase
         TransformProfileEntity::class,
         TransformRunEntity::class,
         ProviderConfigEntity::class,
+        FolderEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,4 +25,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun transformRunDao(): TransformRunDao
 
     abstract fun providerConfigDao(): ProviderConfigDao
+
+    abstract fun folderDao(): FolderDao
 }

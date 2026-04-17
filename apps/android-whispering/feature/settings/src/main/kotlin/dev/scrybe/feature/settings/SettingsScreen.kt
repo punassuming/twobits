@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.Storage
@@ -37,6 +38,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -76,7 +80,6 @@ fun SettingsScreen(
     var showSavedFiles by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
     var showPostStopPicker by remember { mutableStateOf(false) }
-    var showFormatPicker by remember { mutableStateOf(false) }
     var showSampleRatePicker by remember { mutableStateOf(false) }
     var showBitRatePicker by remember { mutableStateOf(false) }
     var showChannelPicker by remember { mutableStateOf(false) }
@@ -342,18 +345,29 @@ fun SettingsScreen(
                     icon = Icons.Filled.Storage,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
-                    SettingOptionRow(
-                        title = "Format",
-                        value = uiState.audioFormat.name,
-                        supportingText = "Choose the default container/codec for new recordings.",
-                        optionsSummary =
-                            buildOptionsSummary(
-                                selected = uiState.audioFormat,
-                                options = AudioFormat.entries.toList(),
-                                label = { it.name },
-                            ),
-                        onClick = { showFormatPicker = true },
+                    Text(
+                        text = "Format",
+                        style = MaterialTheme.typography.titleSmall,
                     )
+                    Text(
+                        text = "Choose the default container/codec for new recordings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        AudioFormat.entries.forEachIndexed { index, format ->
+                            SegmentedButton(
+                                selected = uiState.audioFormat == format,
+                                onClick = { viewModel.setAudioFormat(format) },
+                                shape = SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = AudioFormat.entries.size,
+                                ),
+                            ) {
+                                Text(format.name)
+                            }
+                        }
+                    }
                     SettingOptionRow(
                         title = "Sample Rate",
                         value = "${uiState.sampleRateHz / 1000} kHz",
@@ -486,6 +500,49 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
+                }
+
+                SettingsSectionCard(
+                    title = "External Integration",
+                    icon = Icons.Filled.IosShare,
+                ) {
+                    Text(
+                        text = "Send transcripts to another app via a configurable intent.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Enable external integration", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = uiState.taskForgeEnabled,
+                            onCheckedChange = { viewModel.setTaskForgeEnabled(it) },
+                        )
+                    }
+                    if (uiState.taskForgeEnabled) {
+                        OutlinedTextField(
+                            value = uiState.taskForgePackageName,
+                            onValueChange = viewModel::setTaskForgePackageName,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("Target package name") },
+                            placeholder = { Text("com.example.taskforge") },
+                        )
+                        OutlinedTextField(
+                            value = uiState.taskForgeAction,
+                            onValueChange = viewModel::setTaskForgeAction,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            label = { Text("Intent action") },
+                            placeholder = { Text("android.intent.action.SEND") },
+                        )
+                        Text(
+                            text = "Leave package name empty to show the system chooser.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 SettingsSectionCard(
@@ -653,10 +710,24 @@ fun SettingsScreen(
     }
 
     if (showSavedFiles) {
+        val context = androidx.compose.ui.platform.LocalContext.current
         SavedFilesDialog(
             files = uiState.savedFiles,
             onDismiss = { showSavedFiles = false },
             onDelete = viewModel::deleteSavedFile,
+            onOpenFolder = { filePath ->
+                val parentDir = java.io.File(filePath).parentFile ?: return@SavedFilesDialog
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    parentDir,
+                )
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "resource/folder")
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                runCatching { context.startActivity(intent) }
+            },
         )
     }
 
@@ -676,20 +747,6 @@ fun SettingsScreen(
             onSelect = {
                 viewModel.setThemeMode(it)
                 showThemePicker = false
-            },
-        )
-    }
-
-    if (showFormatPicker) {
-        OptionPickerDialog(
-            title = "Default Format",
-            options = AudioFormat.entries.toList(),
-            selected = uiState.audioFormat,
-            label = { it.name },
-            onDismiss = { showFormatPicker = false },
-            onSelect = {
-                viewModel.setAudioFormat(it)
-                showFormatPicker = false
             },
         )
     }

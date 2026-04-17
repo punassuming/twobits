@@ -11,6 +11,9 @@ interface TranscriptDao {
     @Query("SELECT * FROM transcripts ORDER BY createdAt DESC")
     fun getAllTranscripts(): Flow<List<TranscriptEntity>>
 
+    @Query("SELECT * FROM transcripts ORDER BY createdAt DESC")
+    suspend fun getAllTranscriptsOnce(): List<TranscriptEntity>
+
     @Query("SELECT * FROM transcripts WHERE sessionId = :sessionId ORDER BY createdAt ASC")
     fun getTranscriptsForSession(sessionId: String): Flow<List<TranscriptEntity>>
 

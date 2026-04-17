@@ -133,6 +133,23 @@ fun SessionDetailScreen(
                 is SessionDetailEvent.TransformResult -> {
                     transformResult = event
                 }
+                is SessionDetailEvent.SendToExternal -> {
+                    val intent =
+                        Intent(event.action).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, event.title)
+                            putExtra(Intent.EXTRA_TEXT, event.text)
+                            if (event.packageName.isNotBlank()) {
+                                setPackage(event.packageName)
+                            }
+                        }
+                    runCatching { context.startActivity(intent) }
+                        .onFailure {
+                            snackbarHostState.showSnackbar(
+                                "Unable to send: ${it.message ?: "app not found"}",
+                            )
+                        }
+                }
             }
         }
     }
@@ -234,6 +251,15 @@ fun SessionDetailScreen(
                                         },
                                     )
                                 }
+                                DropdownMenuItem(
+                                    text = { Text("Send to external app") },
+                                    leadingIcon = { Icon(Icons.Filled.IosShare, contentDescription = null) },
+                                    enabled = successState.transcripts.isNotEmpty(),
+                                    onClick = {
+                                        actionMenuExpanded = false
+                                        viewModel.sendToTaskForge()
+                                    },
+                                )
                                 DropdownMenuItem(
                                     text = { Text("Manage tags") },
                                     leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
