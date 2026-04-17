@@ -47,6 +47,11 @@ sealed interface HistoryEvent {
     data class Message(val text: String) : HistoryEvent
 
     data class ShareText(val title: String, val text: String) : HistoryEvent
+
+    data class TransformResult(
+        val profileName: String,
+        val text: String,
+    ) : HistoryEvent
 }
 
 private data class HistoryUiInputs(
@@ -73,6 +78,7 @@ class HistoryViewModel
         private val query = MutableStateFlow("")
         private val filters = MutableStateFlow(RecordsFilterState())
         private val selection = MutableStateFlow(RecordsSelectionState())
+        private val transformingSessionIds = MutableStateFlow<Set<String>>(emptySet())
         private val _events = MutableSharedFlow<HistoryEvent>()
         val events = _events.asSharedFlow()
         val isRecording = audioRecorder.isRecording
@@ -110,7 +116,8 @@ class HistoryViewModel
                 recordingSessionDao.getAllSessions(),
                 transcriptDao.getAllTranscripts(),
                 historyUiInputs,
-            ) { entities, transcripts, inputs ->
+                transformingSessionIds,
+            ) { entities, transcripts, inputs, currentlyTransforming ->
                 val sessions =
                     entities.map { entity ->
                         RecordingSession(
@@ -184,6 +191,7 @@ class HistoryViewModel
                                     filteredSessions.map { it.session.id }.toSet(),
                                 ),
                         ),
+                    transformingSessionIds = currentlyTransforming,
                 ) as HistoryUiState
             }
                 .catch { emit(HistoryUiState.Error(it.message ?: "Unknown error")) }
@@ -316,9 +324,18 @@ class HistoryViewModel
                     _events.emit(HistoryEvent.Message("Choose a default profile before transforming"))
                     return@launch
                 }
+                transformingSessionIds.value = transformingSessionIds.value + sessionId
                 sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
-                    .onSuccess { _events.emit(HistoryEvent.Message("Transform completed")) }
+                    .onSuccess { transcript ->
+                        _events.emit(
+                            HistoryEvent.TransformResult(
+                                profileName = "Transform",
+                                text = transcript.content,
+                            ),
+                        )
+                    }
                     .onFailure { _events.emit(HistoryEvent.Message(it.message ?: "Transform failed")) }
+                transformingSessionIds.value = transformingSessionIds.value - sessionId
             }
         }
 

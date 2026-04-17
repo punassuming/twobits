@@ -202,9 +202,20 @@ class SessionDetailViewModel
         fun transform(profileId: String) {
             viewModelScope.launch {
                 isTransforming.value = true
+                val profileName =
+                    (_uiState.value as? SessionDetailUiState.Success)
+                        ?.profiles
+                        ?.firstOrNull { it.id == profileId }
+                        ?.name
+                        ?: "Transform"
                 sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
-                    .onSuccess {
-                        _events.emit(SessionDetailEvent.Message("Transform completed."))
+                    .onSuccess { transcript ->
+                        _events.emit(
+                            SessionDetailEvent.TransformResult(
+                                profileName = profileName,
+                                text = transcript.content,
+                            ),
+                        )
                     }
                     .onFailure {
                         Log.e(TAG, "Transform failed for session $sessionId", it)

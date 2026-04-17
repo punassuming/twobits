@@ -26,16 +26,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
@@ -70,6 +66,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import java.io.File
@@ -221,10 +218,10 @@ internal fun RecordRow(
                             )
                         }
                         Icon(
-                            statusIcon(item.session.status, item.session.isArchived),
-                            contentDescription = statusLabel(item.session.status, item.session.isArchived),
+                            SessionStatusPresentation.icon(item.session.status, item.session.isArchived),
+                            contentDescription = SessionStatusPresentation.label(item.session.status, item.session.isArchived),
                             modifier = Modifier.padding(top = 2.dp),
-                            tint = statusColor(item.session.status, item.session.isArchived),
+                            tint = SessionStatusPresentation.color(item.session.status, item.session.isArchived),
                         )
                         Column(
                             modifier = Modifier.weight(1f),
@@ -589,42 +586,6 @@ private data class SwipeActionPresentation(
     val contentColor: Color,
 )
 
-private fun statusLabel(
-    status: SessionStatus,
-    isArchived: Boolean,
-): String =
-    when {
-        isArchived -> "Archived"
-        status == SessionStatus.TRANSCRIBING -> "Transcribing"
-        status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> "Transcribed"
-        status == SessionStatus.FAILED -> "Failed"
-        else -> "Recorded"
-    }
-
-private fun statusIcon(
-    status: SessionStatus,
-    isArchived: Boolean,
-) = when {
-    isArchived -> Icons.Filled.Archive
-    status == SessionStatus.TRANSCRIBING -> Icons.Filled.HourglassEmpty
-    status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> Icons.Filled.CheckCircle
-    status == SessionStatus.FAILED -> Icons.Filled.Error
-    // Covers RECORDED, IDLE, RECORDING, STOPPING, QUEUED and any future pre-transcription states
-    else -> Icons.Filled.Mic
-}
-
-@Composable
-private fun statusColor(
-    status: SessionStatus,
-    isArchived: Boolean,
-) = when {
-    isArchived -> MaterialTheme.colorScheme.tertiary
-    status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.secondary
-    status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> MaterialTheme.colorScheme.primary
-    status == SessionStatus.FAILED -> MaterialTheme.colorScheme.error
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
-}
-
 @Composable
 private fun recordContainerColor(
     status: SessionStatus,
@@ -902,7 +863,9 @@ private fun StatusToggleRow(
 internal fun RecordInfoDialog(
     info: RecordInfo,
     onDismiss: () -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
+    var confirmDelete by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(info.title) },
@@ -929,6 +892,24 @@ internal fun RecordInfoDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("Close")
+            }
+        },
+        dismissButton = {
+            if (onDelete != null) {
+                if (confirmDelete) {
+                    TextButton(
+                        onClick = {
+                            onDelete()
+                            onDismiss()
+                        },
+                    ) {
+                        Text("Confirm Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                } else {
+                    TextButton(onClick = { confirmDelete = true }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
         },
     )

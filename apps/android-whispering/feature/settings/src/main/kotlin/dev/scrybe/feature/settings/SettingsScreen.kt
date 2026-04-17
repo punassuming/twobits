@@ -60,6 +60,7 @@ import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
+import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
@@ -80,7 +81,9 @@ fun SettingsScreen(
     var showBitRatePicker by remember { mutableStateOf(false) }
     var showChannelPicker by remember { mutableStateOf(false) }
     var showProfileModelPicker by remember { mutableStateOf(false) }
+    var showTransformModelPicker by remember { mutableStateOf(false) }
     val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
+    val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
 
     Scaffold(
         topBar = {
@@ -304,6 +307,37 @@ fun SettingsScreen(
                 }
 
                 SettingsSectionCard(
+                    title = "Transform Model",
+                    icon = Icons.Filled.AutoAwesome,
+                ) {
+                    Text(
+                        text = "Model used to run transform profiles against your transcripts.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = selectedTransformModel.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = selectedTransformModel.supportingText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = selectedTransformModel.costSummary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedButton(
+                        onClick = { showTransformModelPicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Choose Transform Model")
+                    }
+                }
+
+                SettingsSectionCard(
                     title = "Recording Defaults",
                     icon = Icons.Filled.Storage,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -415,6 +449,26 @@ fun SettingsScreen(
                         Switch(
                             checked = uiState.showRecordingInfoInList,
                             onCheckedChange = { viewModel.setShowRecordingInfoInList(it) },
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Vibrate on record start/stop", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = uiState.recordingVibrateOnStartStop,
+                            onCheckedChange = { viewModel.setRecordingVibrateOnStartStop(it) },
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Sound on record start/stop", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = uiState.recordingSoundOnStartStop,
+                            onCheckedChange = { viewModel.setRecordingSoundOnStartStop(it) },
                         )
                     }
                     SettingOptionRow(
@@ -714,6 +768,20 @@ fun SettingsScreen(
             onSelect = {
                 viewModel.setProfileSuggestionModel(it.apiName)
                 showProfileModelPicker = false
+            },
+        )
+    }
+
+    if (showTransformModelPicker) {
+        OptionPickerDialog(
+            title = "Transform Model",
+            options = OpenAiTransformModel.entries.toList(),
+            selected = selectedTransformModel,
+            label = { "${it.title} — ${it.costSummary}" },
+            onDismiss = { showTransformModelPicker = false },
+            onSelect = {
+                viewModel.setTransformModel(it.apiName)
+                showTransformModelPicker = false
             },
         )
     }

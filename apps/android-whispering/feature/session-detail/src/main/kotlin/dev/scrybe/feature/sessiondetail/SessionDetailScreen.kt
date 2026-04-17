@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -46,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -69,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ScrybeLayoutDefaults
+import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.common.scrybeContentWidth
@@ -94,6 +98,7 @@ fun SessionDetailScreen(
     var isEditingTags by remember { mutableStateOf(false) }
     var deleteTranscriptTarget by remember { mutableStateOf<Transcript?>(null) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var transformResult by remember { mutableStateOf<SessionDetailEvent.TransformResult?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -124,6 +129,9 @@ fun SessionDetailScreen(
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
                     context.startActivity(Intent.createChooser(intent, "Share audio"))
+                }
+                is SessionDetailEvent.TransformResult -> {
+                    transformResult = event
                 }
             }
         }
@@ -404,6 +412,79 @@ fun SessionDetailScreen(
             },
         )
     }
+
+    transformResult?.let { result ->
+        TransformResultDialog(
+            profileName = result.profileName,
+            text = result.text,
+            onDismiss = { transformResult = null },
+            onShare = {
+                viewModel.shareLatestTranscript()
+                transformResult = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun TransformResultDialog(
+    profileName: String,
+    text: String,
+    onDismiss: () -> Unit,
+    onShare: () -> Unit,
+) {
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("$profileName result") },
+        text = {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done")
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(
+                    onClick = {
+                        clipboardManager.setText(AnnotatedString(text))
+                        Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                    },
+                ) {
+                    Icon(
+                        Icons.Filled.ContentCopy,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Copy")
+                }
+                TextButton(onClick = onShare) {
+                    Icon(
+                        Icons.Filled.IosShare,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Share")
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -450,17 +531,46 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CompactMetaItem(formatDuration(state.session.durationMs))
-            CompactMetaItem(state.session.status.name.lowercase().replaceFirstChar(Char::titlecase))
-            CompactMetaItem(state.session.audioFormat.name)
+            MetaChip(
+                value = formatDuration(state.session.durationMs),
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            StatusMetaChip(
+                status = state.session.status,
+                isArchived = state.session.isArchived,
+            )
+            MetaChip(
+                value = state.session.audioFormat.name,
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
         }
-        Text(
-            text = "${audioFile.name.ifBlank { state.session.audioFilePath }} · ${formatFileSize(state.session.fileSizeBytes)} · ${state.session.sampleRateHz / 1000} kHz · ${state.session.encodingBitRate / 1000} kbps · ${if (state.session.channelCount == 1) "Mono" else "Stereo"}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            MetaChip(
+                value = formatFileSize(state.session.fileSizeBytes),
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            MetaChip(
+                value = "${state.session.sampleRateHz / 1000} kHz",
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+            MetaChip(
+                value = "${state.session.encodingBitRate / 1000} kbps",
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+            MetaChip(
+                value = if (state.session.channelCount == 1) "Mono" else "Stereo",
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            )
+        }
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
@@ -536,21 +646,56 @@ private fun SessionTagsRow(
 }
 
 @Composable
-private fun RowScope.CompactMetaItem(
+private fun RowScope.MetaChip(
     value: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
 ) {
     Surface(
         modifier = Modifier.weight(1f),
-        color = MaterialTheme.colorScheme.surface,
+        color = containerColor,
+        contentColor = contentColor,
         shape = MaterialTheme.shapes.medium,
     ) {
         Text(
             text = value,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+@Composable
+private fun RowScope.StatusMetaChip(
+    status: dev.scrybe.core.model.SessionStatus,
+    isArchived: Boolean,
+) {
+    val tint = SessionStatusPresentation.color(status, isArchived)
+    Surface(
+        modifier = Modifier.weight(1f),
+        color = tint.copy(alpha = 0.12f),
+        contentColor = tint,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = SessionStatusPresentation.icon(status, isArchived),
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                text = SessionStatusPresentation.label(status, isArchived),
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -616,17 +761,18 @@ private fun TransformProfileRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    if (isDefault) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = "Default profile",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                     Text(
                         text = profile.name,
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    if (isDefault) {
-                        Text(
-                            text = "Default",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
                 }
                 Text(
                     text = profile.description,

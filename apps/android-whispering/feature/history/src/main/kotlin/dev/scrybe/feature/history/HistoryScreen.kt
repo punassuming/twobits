@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,9 +12,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -21,8 +28,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
@@ -52,7 +61,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -75,10 +86,11 @@ fun HistoryScreen(
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var renameTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
-    var infoTarget by remember { mutableStateOf<RecordInfo?>(null) }
+    var infoTarget by remember { mutableStateOf<Pair<String, RecordInfo>?>(null) }
     var deleteTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
     var confirmBulkDelete by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
+    var transformResultEvent by remember { mutableStateOf<HistoryEvent.TransformResult?>(null) }
     val requiredPermissions =
         remember {
             buildList {
@@ -133,6 +145,9 @@ fun HistoryScreen(
                             putExtra(Intent.EXTRA_TEXT, event.text)
                         }
                     context.startActivity(Intent.createChooser(intent, "Share transcript"))
+                }
+                is HistoryEvent.TransformResult -> {
+                    transformResultEvent = event
                 }
             }
         }
@@ -350,7 +365,7 @@ fun HistoryScreen(
                                         onTransform = { viewModel.transformWithDefaultProfile(item.session.id) },
                                         onRename = { renameTarget = item },
                                         onDelete = { deleteTarget = item },
-                                        onInfo = { infoTarget = item.toRecordInfo() },
+                                        onInfo = { infoTarget = item.session.id to item.toRecordInfo() },
                                         onOpenWith = { openAudioWith(context, item.session) },
                                         onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
                                         onShareTranscript = { viewModel.shareTranscript(item.session.id) },
@@ -440,10 +455,77 @@ fun HistoryScreen(
         )
     }
 
-    infoTarget?.let { info ->
+    infoTarget?.let { (sessionId, info) ->
         RecordInfoDialog(
             info = info,
             onDismiss = { infoTarget = null },
+            onDelete = {
+                viewModel.deleteSession(sessionId)
+            },
+        )
+    }
+
+    transformResultEvent?.let { result ->
+        val clipboardManager = LocalClipboardManager.current
+        AlertDialog(
+            onDismissRequest = { transformResultEvent = null },
+            title = { Text("${result.profileName} result") },
+            text = {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        text = result.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { transformResultEvent = null }) {
+                    Text("Done")
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(result.text))
+                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                        },
+                    ) {
+                        Icon(
+                            Icons.Filled.ContentCopy,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Copy")
+                    }
+                    TextButton(
+                        onClick = {
+                            val intent =
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, result.text)
+                                }
+                            context.startActivity(Intent.createChooser(intent, "Share"))
+                            transformResultEvent = null
+                        },
+                    ) {
+                        Icon(
+                            Icons.Filled.IosShare,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Share")
+                    }
+                }
+            },
         )
     }
 }

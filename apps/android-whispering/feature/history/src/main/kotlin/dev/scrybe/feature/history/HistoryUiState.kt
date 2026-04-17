@@ -63,6 +63,7 @@ sealed interface HistoryUiState {
         val filters: RecordsFilterState,
         val interactionPreferences: RecordsInteractionPreferences = RecordsInteractionPreferences(),
         val selection: RecordsSelectionState = RecordsSelectionState(),
+        val transformingSessionIds: Set<String> = emptySet(),
     ) : HistoryUiState
 
     data class Error(val message: String) : HistoryUiState

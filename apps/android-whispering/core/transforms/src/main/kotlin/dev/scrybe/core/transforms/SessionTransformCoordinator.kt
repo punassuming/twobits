@@ -8,6 +8,8 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.database.TransformRunEntity
+import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformStatus
@@ -36,6 +38,7 @@ class SessionTransformCoordinator
         private val transformProfileDao: TransformProfileDao,
         private val transformRunDao: TransformRunDao,
         private val transformationPipeline: TransformationPipeline,
+        private val appPreferencesDataStore: AppPreferencesDataStore,
     ) {
         suspend fun transformLatestRawTranscript(
             sessionId: String,
@@ -150,6 +153,10 @@ class SessionTransformCoordinator
             )
 
             val providerType = ProviderType.valueOf(profile.providerType)
+            val configuredModelName =
+                OpenAiTransformModel.fromApiName(
+                    appPreferencesDataStore.transformModel.first(),
+                ).apiName
             val transformResult =
                 runCatching {
                     var intermediateText = currentText
@@ -165,6 +172,7 @@ class SessionTransformCoordinator
                                         profileId = profile.id,
                                         systemPrompt = stepPrompt,
                                         combinedTranscriptText = combinedTranscriptText,
+                                        modelName = configuredModelName,
                                     ),
                                 providerType = providerType,
                             ).getOrThrow()
