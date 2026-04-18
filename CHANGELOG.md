@@ -13,6 +13,8 @@
 
 ### Fixes
 
+* restore Android CI by fixing `CaptureScreen` coroutine launch usage and declaring vibration permission for recording feedback
+
 ## 0.8.3 (2026-04-12)
 
 ### Features
