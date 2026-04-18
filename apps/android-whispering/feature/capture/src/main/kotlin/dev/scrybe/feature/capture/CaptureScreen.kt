@@ -91,6 +91,7 @@ import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.SessionStatus
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -485,10 +486,10 @@ private fun RecordActionButton(
         if (isActive) {
             burstScale.snapTo(1f)
             burstAlpha.snapTo(0.4f)
-            kotlinx.coroutines.launch {
+            launch {
                 burstScale.animateTo(2.2f, animationSpec = tween(durationMillis = 500))
             }
-            kotlinx.coroutines.launch {
+            launch {
                 burstAlpha.animateTo(0f, animationSpec = tween(durationMillis = 500))
             }
             centerBounce.snapTo(0.85f)
