@@ -48,11 +48,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,9 +72,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
+import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType

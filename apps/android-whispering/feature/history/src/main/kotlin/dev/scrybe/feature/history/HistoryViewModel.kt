@@ -19,8 +19,8 @@ import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
-import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
@@ -851,9 +851,10 @@ class HistoryViewModel
                         var createdFolders = 0
                         var movedSessions = 0
                         clusters.forEach { cluster ->
-                            val existingFolder = existingFolders.find {
-                                it.name.equals(cluster.folderName, ignoreCase = true)
-                            }
+                            val existingFolder =
+                                existingFolders.find {
+                                    it.name.equals(cluster.folderName, ignoreCase = true)
+                                }
                             val folderId =
                                 if (existingFolder != null) {
                                     existingFolder.id

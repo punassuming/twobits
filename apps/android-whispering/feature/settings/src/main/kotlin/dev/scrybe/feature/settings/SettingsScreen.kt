@@ -359,10 +359,11 @@ fun SettingsScreen(
                             SegmentedButton(
                                 selected = uiState.audioFormat == format,
                                 onClick = { viewModel.setAudioFormat(format) },
-                                shape = SegmentedButtonDefaults.itemShape(
-                                    index = index,
-                                    count = AudioFormat.entries.size,
-                                ),
+                                shape =
+                                    SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = AudioFormat.entries.size,
+                                    ),
                             ) {
                                 Text(format.name)
                             }
@@ -717,15 +718,17 @@ fun SettingsScreen(
             onDelete = viewModel::deleteSavedFile,
             onOpenFolder = { filePath ->
                 val parentDir = java.io.File(filePath).parentFile ?: return@SavedFilesDialog
-                val uri = androidx.core.content.FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    parentDir,
-                )
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "resource/folder")
-                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
+                val uri =
+                    androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        parentDir,
+                    )
+                val intent =
+                    android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "resource/folder")
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
                 runCatching { context.startActivity(intent) }
             },
         )
