@@ -15,6 +15,7 @@ import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
+import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
@@ -39,6 +40,8 @@ data class SettingsUiState(
     val keepScreenOn: Boolean = true,
     val showRenameAfterRecording: Boolean = false,
     val confirmRecordSwipeActions: Boolean = true,
+    val recordingVibrateOnStartStop: Boolean = true,
+    val recordingSoundOnStartStop: Boolean = false,
     val showRecordingInfoInList: Boolean = true,
     val postStopDestination: PostStopDestination = PostStopDestination.HOME,
     val audioFormat: AudioFormat = AudioFormat.AAC,
@@ -57,6 +60,10 @@ data class SettingsUiState(
     val apiKeyValidationMessage: String? = null,
     val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
     val profileSuggestionModelTestState: ProfileSuggestionModelTestUiState = ProfileSuggestionModelTestUiState.Idle,
+    val transformModel: String = OpenAiTransformModel.default.apiName,
+    val taskForgeEnabled: Boolean = false,
+    val taskForgePackageName: String = "",
+    val taskForgeAction: String = "android.intent.action.SEND",
 )
 
 data class SavedFileEntry(
@@ -64,6 +71,7 @@ data class SavedFileEntry(
     val path: String,
     val sizeBytes: Long,
     val category: String,
+    val lastModified: Long = 0L,
 )
 
 data class UsageStats(
@@ -181,12 +189,20 @@ class SettingsViewModel
                     channelCount = channelCount,
                 )
             }
+        private val recordingFeedbackPreferences =
+            combine(
+                preferencesDataStore.recordingVibrateOnStartStop,
+                preferencesDataStore.recordingSoundOnStartStop,
+            ) { vibrate, sound ->
+                RecordingFeedbackPreferences(vibrate = vibrate, sound = sound)
+            }
         private val recordingPreferences =
             combine(
                 displayPreferences,
                 audioPreferences,
                 preferencesDataStore.showRecordingInfoInList,
-            ) { displayPreferences, audioPreferences, showRecordingInfoInList ->
+                recordingFeedbackPreferences,
+            ) { displayPreferences, audioPreferences, showRecordingInfoInList, feedback ->
                 RecordingPreferences(
                     themeMode = displayPreferences.themeMode,
                     keepScreenOn = displayPreferences.keepScreenOn,
@@ -198,6 +214,8 @@ class SettingsViewModel
                     encodingBitRate = audioPreferences.encodingBitRate,
                     channelCount = audioPreferences.channelCount,
                     showRecordingInfoInList = showRecordingInfoInList,
+                    recordingVibrateOnStartStop = feedback.vibrate,
+                    recordingSoundOnStartStop = feedback.sound,
                 )
             }
         private val usageData =
@@ -227,19 +245,29 @@ class SettingsViewModel
                         ),
                 )
             }
-        private val settingsData =
+        private val taskForgeSettings =
+            combine(
+                preferencesDataStore.taskForgeEnabled,
+                preferencesDataStore.taskForgePackageName,
+                preferencesDataStore.taskForgeAction,
+            ) { enabled, packageName, action ->
+                TaskForgeSettings(enabled = enabled, packageName = packageName, action = action)
+            }
+        private val coreSettingsData =
             combine(
                 profileSettings,
                 recordingPreferences,
                 localMetadata,
                 usageData,
-            ) { profileSettings, recordingPreferences, metadata, usageData ->
+                preferencesDataStore.transformModel,
+            ) { profileSettings, recordingPreferences, metadata, usageData, transformModel ->
                 SettingsData(
                     defaultProvider = profileSettings.defaultProvider,
                     autoTranscribe = profileSettings.autoTranscribe,
                     defaultTransformProfileId = profileSettings.defaultTransformProfileId,
                     defaultTransformProfileName = profileSettings.defaultTransformProfileName,
                     profileSuggestionModel = profileSettings.profileSuggestionModel,
+                    transformModel = transformModel,
                     themeMode = recordingPreferences.themeMode,
                     keepScreenOn = recordingPreferences.keepScreenOn,
                     showRenameAfterRecording = recordingPreferences.showRenameAfterRecording,
@@ -250,6 +278,8 @@ class SettingsViewModel
                     sampleRateHz = recordingPreferences.sampleRateHz,
                     encodingBitRate = recordingPreferences.encodingBitRate,
                     channelCount = recordingPreferences.channelCount,
+                    recordingVibrateOnStartStop = recordingPreferences.recordingVibrateOnStartStop,
+                    recordingSoundOnStartStop = recordingPreferences.recordingSoundOnStartStop,
                     apiKey = metadata.apiKey,
                     versionName = metadata.appMetadata.versionName,
                     versionCode = metadata.appMetadata.versionCode,
@@ -258,6 +288,14 @@ class SettingsViewModel
                     releaseHistory = metadata.appMetadata.releaseHistory,
                     savedFiles = usageData.savedFiles,
                     usageStats = usageData.usageStats,
+                )
+            }
+        private val settingsData =
+            combine(coreSettingsData, taskForgeSettings) { core, taskForge ->
+                core.copy(
+                    taskForgeEnabled = taskForge.enabled,
+                    taskForgePackageName = taskForge.packageName,
+                    taskForgeAction = taskForge.action,
                 )
             }
 
@@ -282,6 +320,8 @@ class SettingsViewModel
                     sampleRateHz = settingsData.sampleRateHz,
                     encodingBitRate = settingsData.encodingBitRate,
                     channelCount = settingsData.channelCount,
+                    recordingVibrateOnStartStop = settingsData.recordingVibrateOnStartStop,
+                    recordingSoundOnStartStop = settingsData.recordingSoundOnStartStop,
                     apiKey = settingsData.apiKey,
                     versionName = settingsData.versionName,
                     versionCode = settingsData.versionCode,
@@ -294,6 +334,10 @@ class SettingsViewModel
                     apiKeyValidationMessage = validation.message,
                     profileSuggestionModel = settingsData.profileSuggestionModel,
                     profileSuggestionModelTestState = modelTestState,
+                    transformModel = settingsData.transformModel,
+                    taskForgeEnabled = settingsData.taskForgeEnabled,
+                    taskForgePackageName = settingsData.taskForgePackageName,
+                    taskForgeAction = settingsData.taskForgeAction,
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -412,6 +456,30 @@ class SettingsViewModel
             }
         }
 
+        fun setTransformModel(modelName: String) {
+            viewModelScope.launch { preferencesDataStore.setTransformModel(modelName) }
+        }
+
+        fun setRecordingVibrateOnStartStop(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setRecordingVibrateOnStartStop(enabled) }
+        }
+
+        fun setRecordingSoundOnStartStop(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setRecordingSoundOnStartStop(enabled) }
+        }
+
+        fun setTaskForgeEnabled(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setTaskForgeEnabled(enabled) }
+        }
+
+        fun setTaskForgePackageName(packageName: String) {
+            viewModelScope.launch { preferencesDataStore.setTaskForgePackageName(packageName) }
+        }
+
+        fun setTaskForgeAction(action: String) {
+            viewModelScope.launch { preferencesDataStore.setTaskForgeAction(action) }
+        }
+
         fun testProfileSuggestionModel() {
             viewModelScope.launch {
                 profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Loading
@@ -504,8 +572,14 @@ class SettingsViewModel
             val sampleRateHz: Int = 48_000,
             val encodingBitRate: Int = 128_000,
             val channelCount: Int = 1,
+            val recordingVibrateOnStartStop: Boolean = true,
+            val recordingSoundOnStartStop: Boolean = false,
             val apiKey: String = "",
             val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
+            val transformModel: String = OpenAiTransformModel.default.apiName,
+            val taskForgeEnabled: Boolean = false,
+            val taskForgePackageName: String = "",
+            val taskForgeAction: String = "android.intent.action.SEND",
             val versionName: String = "",
             val versionCode: Long = 0L,
             val latestReleaseTitle: String? = null,
@@ -534,6 +608,13 @@ class SettingsViewModel
             val sampleRateHz: Int = 48_000,
             val encodingBitRate: Int = 128_000,
             val channelCount: Int = 1,
+            val recordingVibrateOnStartStop: Boolean = true,
+            val recordingSoundOnStartStop: Boolean = false,
+        )
+
+        private data class RecordingFeedbackPreferences(
+            val vibrate: Boolean = true,
+            val sound: Boolean = false,
         )
 
         private data class DisplayPreferences(
@@ -549,6 +630,12 @@ class SettingsViewModel
             val sampleRateHz: Int = 48_000,
             val encodingBitRate: Int = 128_000,
             val channelCount: Int = 1,
+        )
+
+        private data class TaskForgeSettings(
+            val enabled: Boolean = false,
+            val packageName: String = "",
+            val action: String = "android.intent.action.SEND",
         )
 
         private data class UsageData(
@@ -579,6 +666,7 @@ class SettingsViewModel
                             path = file.absolutePath,
                             sizeBytes = file.length(),
                             category = category,
+                            lastModified = file.lastModified(),
                         )
                     }
                     .orEmpty()

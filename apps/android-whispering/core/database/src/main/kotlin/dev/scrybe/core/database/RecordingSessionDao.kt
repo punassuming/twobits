@@ -12,6 +12,9 @@ interface RecordingSessionDao {
     @Query("SELECT * FROM recording_sessions ORDER BY createdAt DESC")
     fun getAllSessions(): Flow<List<RecordingSessionEntity>>
 
+    @Query("SELECT * FROM recording_sessions ORDER BY createdAt DESC")
+    suspend fun getAllSessionsOnce(): List<RecordingSessionEntity>
+
     @Query("SELECT * FROM recording_sessions WHERE isArchived = 0 ORDER BY createdAt DESC")
     fun getActiveSessions(): Flow<List<RecordingSessionEntity>>
 
@@ -42,4 +45,17 @@ interface RecordingSessionDao {
 
     @Query("SELECT audioFilePath FROM recording_sessions")
     suspend fun getAllAudioFilePaths(): List<String>
+
+    @Query("SELECT * FROM recording_sessions WHERE folderId = :folderId ORDER BY createdAt DESC")
+    fun getSessionsByFolder(folderId: String): Flow<List<RecordingSessionEntity>>
+
+    @Query("SELECT * FROM recording_sessions WHERE folderId IS NULL ORDER BY createdAt DESC")
+    fun getSessionsWithoutFolder(): Flow<List<RecordingSessionEntity>>
+
+    @Query("UPDATE recording_sessions SET folderId = :folderId, updatedAt = :updatedAt WHERE id IN (:sessionIds)")
+    suspend fun moveSessionsToFolder(
+        sessionIds: List<String>,
+        folderId: String?,
+        updatedAt: Long,
+    )
 }

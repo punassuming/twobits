@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -280,37 +282,12 @@ private fun ProfileRow(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = profile.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (profile.isDefault) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.CheckCircle,
-                                    contentDescription = "Default profile",
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                                Text(
-                                    text = "Default",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    }
+                    Text(
+                        text = profile.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text(
                         text = profile.description,
                         style = MaterialTheme.typography.bodyMedium,
@@ -505,17 +482,34 @@ private fun AiProfileDraftDialog(
     LaunchedEffect(suggestionState) {
         val success = suggestionState as? ProfileSuggestionUiState.Success ?: return@LaunchedEffect
         latestSuggestion = success.suggestion
+        if (seedName.isBlank()) seedName = success.suggestion.name
+        if (seedDescription.isBlank()) seedDescription = success.suggestion.description
         onSuggestionConsumed()
     }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("AI Profile Draft") },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp,
+        ) {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Text(
+                    text = "AI Profile Draft",
+                    style = MaterialTheme.typography.headlineSmall,
+                )
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -634,45 +628,42 @@ private fun AiProfileDraftDialog(
                         onCheckedChange = { isDefault = it },
                     )
                 }
-            }
-        },
-        confirmButton = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                latestSuggestion?.let { suggestion ->
-                    TextButton(onClick = { onEditSuggestion(suggestion, isDefault) }) {
-                        Text("Edit Draft")
-                    }
-                    Button(onClick = { onSaveSuggestion(suggestion, isDefault) }) {
-                        Text("Create Profile")
-                    }
-                } ?: Button(
-                    onClick = {
-                        onSuggest(
-                            request,
-                            seedName,
-                            seedDescription,
-                            emptyList(),
-                        )
-                    },
-                    enabled = suggestionState !is ProfileSuggestionUiState.Loading && request.isNotBlank(),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        if (suggestionState is ProfileSuggestionUiState.Loading) {
-                            "Generating..."
-                        } else {
-                            "Generate Draft"
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    latestSuggestion?.let { suggestion ->
+                        TextButton(onClick = { onEditSuggestion(suggestion, isDefault) }) {
+                            Text("Edit Draft")
+                        }
+                        Button(onClick = { onSaveSuggestion(suggestion, isDefault) }) {
+                            Text("Create Profile")
+                        }
+                    } ?: Button(
+                        onClick = {
+                            onSuggest(
+                                request,
+                                seedName,
+                                seedDescription,
+                                emptyList(),
+                            )
                         },
-                    )
+                        enabled = suggestionState !is ProfileSuggestionUiState.Loading && request.isNotBlank(),
+                    ) {
+                        Text(
+                            if (suggestionState is ProfileSuggestionUiState.Loading) {
+                                "Generating..."
+                            } else {
+                                "Generate Draft"
+                            },
+                        )
+                    }
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
+        }
+    }
 }

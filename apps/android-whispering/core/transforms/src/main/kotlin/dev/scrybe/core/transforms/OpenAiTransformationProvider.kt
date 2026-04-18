@@ -1,5 +1,6 @@
 package dev.scrybe.core.transforms
 
+import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.transcription.ApiKeyProvider
 import kotlinx.coroutines.Dispatchers
@@ -30,9 +31,13 @@ class OpenAiTransformationProvider
                         apiKeyProvider.getApiKey(ProviderType.OPENAI)
                             ?: throw IllegalStateException("No API key configured for OpenAI")
 
+                    val modelName =
+                        input.modelName?.takeIf { it.isNotBlank() }
+                            ?: OpenAiTransformModel.default.apiName
+
                     val requestBody =
                         OpenAiResponseRequest(
-                            model = MODEL_NAME,
+                            model = modelName,
                             instructions = renderInstructions(input),
                             input =
                                 listOf(
@@ -168,7 +173,6 @@ class OpenAiTransformationProvider
         )
 
         private companion object {
-            const val MODEL_NAME = "gpt-4.1-mini"
             const val TRANSCRIPT_PLACEHOLDER = "{{transcript}}"
             const val COMBINED_TRANSCRIPTS_PLACEHOLDER = "{{combined_transcripts}}"
             const val TEXT_PLACEHOLDER = "{{text}}"

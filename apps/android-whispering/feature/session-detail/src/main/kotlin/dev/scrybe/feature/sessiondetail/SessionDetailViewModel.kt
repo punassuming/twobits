@@ -202,9 +202,20 @@ class SessionDetailViewModel
         fun transform(profileId: String) {
             viewModelScope.launch {
                 isTransforming.value = true
+                val profileName =
+                    (_uiState.value as? SessionDetailUiState.Success)
+                        ?.profiles
+                        ?.firstOrNull { it.id == profileId }
+                        ?.name
+                        ?: "Transform"
                 sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
-                    .onSuccess {
-                        _events.emit(SessionDetailEvent.Message("Transform completed."))
+                    .onSuccess { transcript ->
+                        _events.emit(
+                            SessionDetailEvent.TransformResult(
+                                profileName = profileName,
+                                text = transcript.content,
+                            ),
+                        )
                     }
                     .onFailure {
                         Log.e(TAG, "Transform failed for session $sessionId", it)
@@ -312,6 +323,32 @@ class SessionDetailViewModel
                         ),
                     )
                 }
+            }
+        }
+
+        fun sendToTaskForge() {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            viewModelScope.launch {
+                val transcript = state.currentTranscript
+                if (transcript == null) {
+                    _events.emit(SessionDetailEvent.Message("No transcript available to send"))
+                    return@launch
+                }
+                val enabled = preferencesDataStore.taskForgeEnabled.first()
+                if (!enabled) {
+                    _events.emit(SessionDetailEvent.Message("Enable external integration in Settings first"))
+                    return@launch
+                }
+                val packageName = preferencesDataStore.taskForgePackageName.first()
+                val action = preferencesDataStore.taskForgeAction.first()
+                _events.emit(
+                    SessionDetailEvent.SendToExternal(
+                        title = state.session.title,
+                        text = transcript.content,
+                        packageName = packageName,
+                        action = action.ifBlank { "android.intent.action.SEND" },
+                    ),
+                )
             }
         }
 

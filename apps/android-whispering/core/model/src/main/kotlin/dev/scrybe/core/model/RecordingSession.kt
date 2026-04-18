@@ -17,6 +17,7 @@ data class RecordingSession(
     val status: SessionStatus,
     val isArchived: Boolean,
     val estimatedTranscriptionCostUsd: Double?,
+    val folderId: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

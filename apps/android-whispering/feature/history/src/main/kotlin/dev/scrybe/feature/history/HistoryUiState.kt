@@ -1,5 +1,6 @@
 package dev.scrybe.feature.history
 
+import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import java.time.Instant
@@ -63,6 +64,11 @@ sealed interface HistoryUiState {
         val filters: RecordsFilterState,
         val interactionPreferences: RecordsInteractionPreferences = RecordsInteractionPreferences(),
         val selection: RecordsSelectionState = RecordsSelectionState(),
+        val transformingSessionIds: Set<String> = emptySet(),
+        val currentFolderId: String? = null,
+        val subfolders: List<Folder> = emptyList(),
+        val breadcrumb: List<Folder> = emptyList(),
+        val allFolders: List<Folder> = emptyList(),
     ) : HistoryUiState
 
     data class Error(val message: String) : HistoryUiState

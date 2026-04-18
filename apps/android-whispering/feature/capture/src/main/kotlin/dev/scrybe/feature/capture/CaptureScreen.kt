@@ -7,12 +7,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -65,6 +67,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -474,6 +477,28 @@ private fun RecordActionButton(
     amplitudeRatio: Float = 0f,
     modifier: Modifier = Modifier,
 ) {
+    val burstScale = remember { Animatable(0f) }
+    val burstAlpha = remember { Animatable(0f) }
+    val centerBounce = remember { Animatable(1f) }
+
+    LaunchedEffect(isActive) {
+        if (isActive) {
+            burstScale.snapTo(1f)
+            burstAlpha.snapTo(0.4f)
+            kotlinx.coroutines.launch {
+                burstScale.animateTo(2.2f, animationSpec = tween(durationMillis = 500))
+            }
+            kotlinx.coroutines.launch {
+                burstAlpha.animateTo(0f, animationSpec = tween(durationMillis = 500))
+            }
+            centerBounce.snapTo(0.85f)
+            centerBounce.animateTo(1f, animationSpec = spring(dampingRatio = 0.4f, stiffness = 300f))
+        } else {
+            centerBounce.snapTo(1.1f)
+            centerBounce.animateTo(1f, animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f))
+        }
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "record-action")
     val audioReactiveScale by animateFloatAsState(
         targetValue = 1f + (amplitudeRatio.coerceIn(0f, 1f) * if (isActive) 0.12f else 0.03f),
@@ -558,6 +583,24 @@ private fun RecordActionButton(
                     },
             contentAlignment = Alignment.Center,
         ) {
+            if (burstAlpha.value > 0f) {
+                Canvas(
+                    modifier =
+                        Modifier
+                            .size(172.dp)
+                            .graphicsLayer {
+                                scaleX = burstScale.value
+                                scaleY = burstScale.value
+                                alpha = burstAlpha.value
+                            },
+                ) {
+                    drawCircle(
+                        color = ringColor,
+                        radius = size.minDimension / 2f,
+                        style = Stroke(width = 4.dp.toPx()),
+                    )
+                }
+            }
             RingLayer(
                 diameter = 172.dp,
                 color = ringColor.copy(alpha = 0.10f),
@@ -581,7 +624,13 @@ private fun RecordActionButton(
             )
             Button(
                 onClick = onClick,
-                modifier = Modifier.size(98.dp),
+                modifier =
+                    Modifier
+                        .size(98.dp)
+                        .graphicsLayer {
+                            scaleX = centerBounce.value
+                            scaleY = centerBounce.value
+                        },
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = centerColor),
             ) {

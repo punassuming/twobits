@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
+import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +31,7 @@ class AppPreferencesDataStore
             val DEFAULT_PROVIDER = stringPreferencesKey("default_provider")
             val DEFAULT_TRANSFORM_PROFILE_ID = stringPreferencesKey("default_transform_profile_id")
             val PROFILE_SUGGESTION_MODEL = stringPreferencesKey("profile_suggestion_model")
+            val TRANSFORM_MODEL = stringPreferencesKey("transform_model")
             val AUTO_TRANSCRIBE = booleanPreferencesKey("auto_transcribe")
             val MAX_RECORDING_DURATION_MS = stringPreferencesKey("max_recording_duration_ms")
             val AUDIO_FORMAT = stringPreferencesKey("audio_format")
@@ -43,6 +45,11 @@ class AppPreferencesDataStore
             val SHOW_RECORDING_INFO_IN_LIST = booleanPreferencesKey("show_recording_info_in_list")
             val POST_STOP_DESTINATION = stringPreferencesKey("post_stop_destination")
             val LAST_SEEN_WHATS_NEW_VERSION_CODE = stringPreferencesKey("last_seen_whats_new_version_code")
+            val RECORDING_VIBRATE_ON_START_STOP = booleanPreferencesKey("recording_vibrate_on_start_stop")
+            val RECORDING_SOUND_ON_START_STOP = booleanPreferencesKey("recording_sound_on_start_stop")
+            val TASKFORGE_ENABLED = booleanPreferencesKey("taskforge_enabled")
+            val TASKFORGE_PACKAGE_NAME = stringPreferencesKey("taskforge_package_name")
+            val TASKFORGE_ACTION = stringPreferencesKey("taskforge_action")
         }
 
         val defaultProvider: Flow<String> =
@@ -64,6 +71,13 @@ class AppPreferencesDataStore
             context.dataStore.data.map { prefs ->
                 OpenAiProfileSuggestionModel.fromApiName(
                     prefs[Keys.PROFILE_SUGGESTION_MODEL],
+                ).apiName
+            }
+
+        val transformModel: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                OpenAiTransformModel.fromApiName(
+                    prefs[Keys.TRANSFORM_MODEL],
                 ).apiName
             }
 
@@ -128,6 +142,31 @@ class AppPreferencesDataStore
                 prefs[Keys.LAST_SEEN_WHATS_NEW_VERSION_CODE]?.toLongOrNull() ?: 0L
             }
 
+        val recordingVibrateOnStartStop: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.RECORDING_VIBRATE_ON_START_STOP] ?: true
+            }
+
+        val recordingSoundOnStartStop: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.RECORDING_SOUND_ON_START_STOP] ?: false
+            }
+
+        val taskForgeEnabled: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.TASKFORGE_ENABLED] ?: false
+            }
+
+        val taskForgePackageName: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.TASKFORGE_PACKAGE_NAME] ?: ""
+            }
+
+        val taskForgeAction: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.TASKFORGE_ACTION] ?: "android.intent.action.SEND"
+            }
+
         suspend fun setDefaultProvider(provider: String) {
             context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PROVIDER] = provider }
         }
@@ -150,6 +189,13 @@ class AppPreferencesDataStore
             context.dataStore.edit { prefs ->
                 prefs[Keys.PROFILE_SUGGESTION_MODEL] =
                     OpenAiProfileSuggestionModel.fromApiName(modelName).apiName
+            }
+        }
+
+        suspend fun setTransformModel(modelName: String) {
+            context.dataStore.edit { prefs ->
+                prefs[Keys.TRANSFORM_MODEL] =
+                    OpenAiTransformModel.fromApiName(modelName).apiName
             }
         }
 
@@ -197,5 +243,25 @@ class AppPreferencesDataStore
             context.dataStore.edit { prefs ->
                 prefs[Keys.LAST_SEEN_WHATS_NEW_VERSION_CODE] = versionCode.toString()
             }
+        }
+
+        suspend fun setRecordingVibrateOnStartStop(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.RECORDING_VIBRATE_ON_START_STOP] = enabled }
+        }
+
+        suspend fun setRecordingSoundOnStartStop(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.RECORDING_SOUND_ON_START_STOP] = enabled }
+        }
+
+        suspend fun setTaskForgeEnabled(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.TASKFORGE_ENABLED] = enabled }
+        }
+
+        suspend fun setTaskForgePackageName(packageName: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.TASKFORGE_PACKAGE_NAME] = packageName }
+        }
+
+        suspend fun setTaskForgeAction(action: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.TASKFORGE_ACTION] = action }
         }
     }

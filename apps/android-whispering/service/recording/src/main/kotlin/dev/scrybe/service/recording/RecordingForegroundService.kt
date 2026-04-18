@@ -3,10 +3,16 @@ package dev.scrybe.service.recording
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
@@ -76,6 +82,7 @@ class RecordingForegroundService : Service() {
             RecordingNotificationFactory.NOTIFICATION_ID,
             notificationFactory.buildNotification(this),
         )
+        serviceScope.launch { playRecordingFeedback() }
         telemetryJob?.cancel()
         telemetryJob =
             serviceScope.launch {
@@ -111,6 +118,7 @@ class RecordingForegroundService : Service() {
 
     private fun handleStop() {
         serviceScope.launch {
+            playRecordingFeedback()
             audioRecorder.stopRecording()
                 .onSuccess { recordedAudio ->
                     val sessionId = withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
@@ -213,6 +221,30 @@ class RecordingForegroundService : Service() {
                     amplitudeRatio = amplitudeRatio,
                 ),
             )
+    }
+
+    @Suppress("DEPRECATION")
+    private suspend fun playRecordingFeedback() {
+        val shouldVibrate = preferencesDataStore.recordingVibrateOnStartStop.first()
+        val shouldSound = preferencesDataStore.recordingSoundOnStartStop.first()
+
+        if (shouldVibrate) {
+            val vibrator =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                    vibratorManager.defaultVibrator
+                } else {
+                    getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                }
+            vibrator.vibrate(VibrationEffect.createOneShot(100, VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+
+        if (shouldSound) {
+            runCatching {
+                val toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 50)
+                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
+            }
+        }
     }
 
     private companion object {

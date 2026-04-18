@@ -12,16 +12,21 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.database.FolderDao
+import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
+import dev.scrybe.core.transforms.OpenAiClusteringService
+import dev.scrybe.core.transforms.SessionSummary
 import dev.scrybe.core.transforms.SessionTransformCoordinator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +52,11 @@ sealed interface HistoryEvent {
     data class Message(val text: String) : HistoryEvent
 
     data class ShareText(val title: String, val text: String) : HistoryEvent
+
+    data class TransformResult(
+        val profileName: String,
+        val text: String,
+    ) : HistoryEvent
 }
 
 private data class HistoryUiInputs(
@@ -55,6 +65,11 @@ private data class HistoryUiInputs(
     val confirmSwipeActions: Boolean,
     val showRecordingInfoInList: Boolean,
     val selection: RecordsSelectionState,
+)
+
+private data class FolderNavState(
+    val currentFolderId: String?,
+    val allFolders: List<Folder>,
 )
 
 @HiltViewModel
@@ -66,13 +81,17 @@ class HistoryViewModel
         private val recordingSessionDao: RecordingSessionDao,
         private val transcriptDao: TranscriptDao,
         private val transformRunDao: TransformRunDao,
+        private val folderDao: FolderDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
+        private val clusteringService: OpenAiClusteringService,
     ) : ViewModel() {
         private val query = MutableStateFlow("")
         private val filters = MutableStateFlow(RecordsFilterState())
         private val selection = MutableStateFlow(RecordsSelectionState())
+        private val transformingSessionIds = MutableStateFlow<Set<String>>(emptySet())
+        private val currentFolderId = MutableStateFlow<String?>(null)
         private val _events = MutableSharedFlow<HistoryEvent>()
         val events = _events.asSharedFlow()
         val isRecording = audioRecorder.isRecording
@@ -94,6 +113,25 @@ class HistoryViewModel
                 )
             }
 
+        private val folderNavState =
+            combine(
+                currentFolderId,
+                folderDao.getAllFolders(),
+            ) { folderId, entities ->
+                FolderNavState(
+                    currentFolderId = folderId,
+                    allFolders =
+                        entities.map { entity ->
+                            Folder(
+                                id = entity.id,
+                                name = entity.name,
+                                parentFolderId = entity.parentFolderId,
+                                createdAt = Instant.ofEpochMilli(entity.createdAt),
+                            )
+                        },
+                )
+            }
+
         init {
             viewModelScope.launch {
                 recordingSessionDao.updateSessionsByStatus(
@@ -110,7 +148,9 @@ class HistoryViewModel
                 recordingSessionDao.getAllSessions(),
                 transcriptDao.getAllTranscripts(),
                 historyUiInputs,
-            ) { entities, transcripts, inputs ->
+                transformingSessionIds,
+                folderNavState,
+            ) { entities, transcripts, inputs, currentlyTransforming, folderNav ->
                 val sessions =
                     entities.map { entity ->
                         RecordingSession(
@@ -128,6 +168,7 @@ class HistoryViewModel
                             status = SessionStatus.valueOf(entity.status),
                             isArchived = entity.isArchived,
                             estimatedTranscriptionCostUsd = entity.estimatedTranscriptionCostUsd,
+                            folderId = entity.folderId,
                             createdAt = Instant.ofEpochMilli(entity.createdAt),
                             updatedAt = Instant.ofEpochMilli(entity.updatedAt),
                         )
@@ -146,6 +187,7 @@ class HistoryViewModel
                 val filteredSessions =
                     sessions
                         .filter { session -> session.isArchived == inputs.filters.showArchived }
+                        .filter { session -> session.folderId == folderNav.currentFolderId }
                         .filter { session -> matchesDateFilter(session, inputs.filters.dateRange) }
                         .filter { session ->
                             inputs.filters.includedStatuses.isEmpty() || session.status in inputs.filters.includedStatuses
@@ -169,6 +211,12 @@ class HistoryViewModel
                             )
                         }
 
+                val subfolders =
+                    folderNav.allFolders
+                        .filter { it.parentFolderId == folderNav.currentFolderId }
+                        .sortedBy { it.name.lowercase() }
+                val breadcrumb = buildBreadcrumb(folderNav.currentFolderId, folderNav.allFolders)
+
                 HistoryUiState.Success(
                     sessions = filteredSessions,
                     filters = inputs.filters,
@@ -184,6 +232,11 @@ class HistoryViewModel
                                     filteredSessions.map { it.session.id }.toSet(),
                                 ),
                         ),
+                    transformingSessionIds = currentlyTransforming,
+                    currentFolderId = folderNav.currentFolderId,
+                    subfolders = subfolders,
+                    breadcrumb = breadcrumb,
+                    allFolders = folderNav.allFolders,
                 ) as HistoryUiState
             }
                 .catch { emit(HistoryUiState.Error(it.message ?: "Unknown error")) }
@@ -316,9 +369,18 @@ class HistoryViewModel
                     _events.emit(HistoryEvent.Message("Choose a default profile before transforming"))
                     return@launch
                 }
+                transformingSessionIds.value = transformingSessionIds.value + sessionId
                 sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
-                    .onSuccess { _events.emit(HistoryEvent.Message("Transform completed")) }
+                    .onSuccess { transcript ->
+                        _events.emit(
+                            HistoryEvent.TransformResult(
+                                profileName = "Transform",
+                                text = transcript.content,
+                            ),
+                        )
+                    }
                     .onFailure { _events.emit(HistoryEvent.Message(it.message ?: "Transform failed")) }
+                transformingSessionIds.value = transformingSessionIds.value - sessionId
             }
         }
 
@@ -674,6 +736,160 @@ class HistoryViewModel
             return if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
         }
 
+        fun navigateToFolder(folderId: String?) {
+            currentFolderId.value = folderId
+            selection.value = RecordsSelectionState()
+        }
+
+        fun navigateUp() {
+            viewModelScope.launch {
+                val current = currentFolderId.value ?: return@launch
+                val folder = folderDao.getFolderById(current)
+                currentFolderId.value = folder?.parentFolderId
+                selection.value = RecordsSelectionState()
+            }
+        }
+
+        fun createFolder(
+            name: String,
+            parentFolderId: String? = null,
+        ) {
+            viewModelScope.launch {
+                val folder =
+                    FolderEntity(
+                        id = UUID.randomUUID().toString(),
+                        name = name.trim(),
+                        parentFolderId = parentFolderId,
+                        createdAt = System.currentTimeMillis(),
+                    )
+                folderDao.insertFolder(folder)
+                _events.emit(HistoryEvent.Message("Folder created"))
+            }
+        }
+
+        fun renameFolder(
+            folderId: String,
+            newName: String,
+        ) {
+            viewModelScope.launch {
+                val folder = folderDao.getFolderById(folderId) ?: return@launch
+                folderDao.updateFolder(folder.copy(name = newName.trim()))
+                _events.emit(HistoryEvent.Message("Folder renamed"))
+            }
+        }
+
+        fun deleteFolder(folderId: String) {
+            viewModelScope.launch {
+                recordingSessionDao.moveSessionsToFolder(
+                    sessionIds = recordingSessionDao.getSessionsByFolder(folderId).first().map { it.id },
+                    folderId = null,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                folderDao.deleteFolder(folderId)
+                _events.emit(HistoryEvent.Message("Folder deleted"))
+            }
+        }
+
+        fun moveSessionsToFolder(
+            sessionIds: List<String>,
+            folderId: String?,
+        ) {
+            viewModelScope.launch {
+                recordingSessionDao.moveSessionsToFolder(
+                    sessionIds = sessionIds,
+                    folderId = folderId,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                selection.value = RecordsSelectionState()
+                val label = if (folderId != null) "Moved to folder" else "Removed from folder"
+                _events.emit(HistoryEvent.Message(label))
+            }
+        }
+
+        fun suggestAndApplyClusters() {
+            viewModelScope.launch {
+                _events.emit(HistoryEvent.Message("Analyzing recordings…"))
+
+                val allSessions = recordingSessionDao.getAllSessionsOnce()
+                val transcripts = transcriptDao.getAllTranscriptsOnce()
+                val latestTranscriptBySession =
+                    transcripts
+                        .groupBy { it.sessionId }
+                        .mapValues { (_, items) -> items.maxByOrNull { it.createdAt }?.content }
+
+                val summaries =
+                    allSessions
+                        .filter { !it.isArchived }
+                        .map { entity ->
+                            SessionSummary(
+                                id = entity.id,
+                                title = entity.title,
+                                tags = TagsCodec.decode(entity.tags),
+                                transcriptPreview = latestTranscriptBySession[entity.id],
+                            )
+                        }
+
+                if (summaries.isEmpty()) {
+                    _events.emit(HistoryEvent.Message("No recordings to organize"))
+                    return@launch
+                }
+
+                val existingFolders = folderDao.getAllFoldersOnce()
+                val folderNames = existingFolders.map { it.name }
+                val commonTags =
+                    summaries
+                        .flatMap { it.tags }
+                        .groupingBy { it }
+                        .eachCount()
+                        .entries
+                        .sortedByDescending { it.value }
+                        .take(20)
+                        .map { it.key }
+
+                clusteringService.suggestClusters(summaries, folderNames, commonTags)
+                    .onSuccess { clusters ->
+                        var createdFolders = 0
+                        var movedSessions = 0
+                        clusters.forEach { cluster ->
+                            val existingFolder = existingFolders.find {
+                                it.name.equals(cluster.folderName, ignoreCase = true)
+                            }
+                            val folderId =
+                                if (existingFolder != null) {
+                                    existingFolder.id
+                                } else {
+                                    val newId = UUID.randomUUID().toString()
+                                    folderDao.insertFolder(
+                                        FolderEntity(
+                                            id = newId,
+                                            name = cluster.folderName,
+                                            parentFolderId = currentFolderId.value,
+                                            createdAt = System.currentTimeMillis(),
+                                        ),
+                                    )
+                                    createdFolders++
+                                    newId
+                                }
+                            recordingSessionDao.moveSessionsToFolder(
+                                sessionIds = cluster.sessionIds,
+                                folderId = folderId,
+                                updatedAt = System.currentTimeMillis(),
+                            )
+                            movedSessions += cluster.sessionIds.size
+                        }
+                        _events.emit(
+                            HistoryEvent.Message(
+                                "Organized $movedSessions recordings into ${clusters.size} folders" +
+                                    if (createdFolders > 0) " ($createdFolders new)" else "",
+                            ),
+                        )
+                    }
+                    .onFailure {
+                        _events.emit(HistoryEvent.Message(it.message ?: "Clustering failed"))
+                    }
+            }
+        }
+
         companion object {
             private const val TAG = "HistoryViewModel"
             private val TITLE_FORMAT =
@@ -699,5 +915,20 @@ private fun mimeExtension(mimeType: String?): String =
         "audio/webm" -> "webm"
         else -> "m4a"
     }
+
+private fun buildBreadcrumb(
+    currentFolderId: String?,
+    allFolders: List<Folder>,
+): List<Folder> {
+    if (currentFolderId == null) return emptyList()
+    val trail = mutableListOf<Folder>()
+    var folderId: String? = currentFolderId
+    while (folderId != null) {
+        val folder = allFolders.find { it.id == folderId } ?: break
+        trail.add(0, folder)
+        folderId = folder.parentFolderId
+    }
+    return trail
+}
 
 internal fun isEligibleForTranscription(status: SessionStatus): Boolean = status == SessionStatus.RECORDED || status == SessionStatus.FAILED

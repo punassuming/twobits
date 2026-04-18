@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,9 +12,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -21,8 +28,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
@@ -52,7 +64,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -75,10 +89,13 @@ fun HistoryScreen(
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var renameTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
-    var infoTarget by remember { mutableStateOf<RecordInfo?>(null) }
+    var infoTarget by remember { mutableStateOf<Pair<String, RecordInfo>?>(null) }
     var deleteTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
     var confirmBulkDelete by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
+    var showCreateFolder by remember { mutableStateOf(false) }
+    var showMoveToFolder by remember { mutableStateOf(false) }
+    var transformResultEvent by remember { mutableStateOf<HistoryEvent.TransformResult?>(null) }
     val requiredPermissions =
         remember {
             buildList {
@@ -134,6 +151,9 @@ fun HistoryScreen(
                         }
                     context.startActivity(Intent.createChooser(intent, "Share transcript"))
                 }
+                is HistoryEvent.TransformResult -> {
+                    transformResultEvent = event
+                }
             }
         }
     }
@@ -141,8 +161,11 @@ fun HistoryScreen(
     val successState = uiState as? HistoryUiState.Success
     val isSelecting = successState?.selection?.isSelecting == true
 
-    BackHandler(enabled = isSelecting) {
-        viewModel.clearSelection()
+    BackHandler(enabled = isSelecting || successState?.currentFolderId != null) {
+        when {
+            isSelecting -> viewModel.clearSelection()
+            else -> viewModel.navigateUp()
+        }
     }
 
     Scaffold(
@@ -178,16 +201,21 @@ fun HistoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (isSelecting) {
-                            "${successState?.selection?.selectedSessionIds?.size ?: 0} selected"
-                        } else {
-                            "Records"
+                        when {
+                            isSelecting -> "${successState?.selection?.selectedSessionIds?.size ?: 0} selected"
+                            successState?.currentFolderId != null ->
+                                successState.breadcrumb.lastOrNull()?.name ?: "Records"
+                            else -> "Records"
                         },
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        if (isSelecting) viewModel.clearSelection() else onNavigateBack()
+                        when {
+                            isSelecting -> viewModel.clearSelection()
+                            successState?.currentFolderId != null -> viewModel.navigateUp()
+                            else -> onNavigateBack()
+                        }
                     }) {
                         Icon(
                             if (isSelecting) Icons.Filled.Close else Icons.AutoMirrored.Filled.ArrowBack,
@@ -216,10 +244,19 @@ fun HistoryScreen(
                                 contentDescription = if (successState.filters.showArchived) "Restore selected records" else "Archive selected records",
                             )
                         }
+                        IconButton(onClick = { showMoveToFolder = true }) {
+                            Icon(Icons.Filled.DriveFileMove, contentDescription = "Move to folder")
+                        }
                         IconButton(onClick = { confirmBulkDelete = true }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Delete selected records")
                         }
                     } else {
+                        IconButton(onClick = { viewModel.suggestAndApplyClusters() }) {
+                            Icon(Icons.Filled.AutoAwesome, contentDescription = "Organize with AI")
+                        }
+                        IconButton(onClick = { showCreateFolder = true }) {
+                            Icon(Icons.Filled.CreateNewFolder, contentDescription = "Create folder")
+                        }
                         IconButton(
                             onClick = {
                                 importLauncher.launch(
@@ -271,6 +308,13 @@ fun HistoryScreen(
                                 .padding(vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
                     ) {
+                        if (state.breadcrumb.isNotEmpty()) {
+                            BreadcrumbRow(
+                                breadcrumb = state.breadcrumb,
+                                onNavigateToRoot = { viewModel.navigateToFolder(null) },
+                                onNavigateToFolder = { viewModel.navigateToFolder(it) },
+                            )
+                        }
                         ScrybeSectionCard(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
@@ -291,7 +335,7 @@ fun HistoryScreen(
                                 placeholder = { Text("Title, tags, or transcript text") },
                             )
                         }
-                        if (state.sessions.isEmpty()) {
+                        if (state.sessions.isEmpty() && state.subfolders.isEmpty()) {
                             Box(
                                 modifier =
                                     Modifier
@@ -304,10 +348,10 @@ fun HistoryScreen(
                                     verticalArrangement = Arrangement.spacedBy(16.dp),
                                 ) {
                                     Text(
-                                        if (state.filters.showArchived) {
-                                            "No archived records"
-                                        } else {
-                                            "No records match that search or filter"
+                                        when {
+                                            state.currentFolderId != null -> "This folder is empty"
+                                            state.filters.showArchived -> "No archived records"
+                                            else -> "No records match that search or filter"
                                         },
                                     )
                                     OutlinedButton(
@@ -337,6 +381,12 @@ fun HistoryScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
+                                items(state.subfolders, key = { "folder-${it.id}" }) { folder ->
+                                    FolderRow(
+                                        folder = folder,
+                                        onClick = { viewModel.navigateToFolder(folder.id) },
+                                    )
+                                }
                                 items(state.sessions, key = { it.session.id }) { item ->
                                     RecordRow(
                                         item = item,
@@ -350,7 +400,7 @@ fun HistoryScreen(
                                         onTransform = { viewModel.transformWithDefaultProfile(item.session.id) },
                                         onRename = { renameTarget = item },
                                         onDelete = { deleteTarget = item },
-                                        onInfo = { infoTarget = item.toRecordInfo() },
+                                        onInfo = { infoTarget = item.session.id to item.toRecordInfo() },
                                         onOpenWith = { openAudioWith(context, item.session) },
                                         onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
                                         onShareTranscript = { viewModel.shareTranscript(item.session.id) },
@@ -440,10 +490,101 @@ fun HistoryScreen(
         )
     }
 
-    infoTarget?.let { info ->
+    infoTarget?.let { (sessionId, info) ->
         RecordInfoDialog(
             info = info,
             onDismiss = { infoTarget = null },
+            onDelete = {
+                viewModel.deleteSession(sessionId)
+            },
+        )
+    }
+
+    if (showCreateFolder) {
+        CreateFolderDialog(
+            onDismiss = { showCreateFolder = false },
+            onConfirm = { name ->
+                viewModel.createFolder(name, successState?.currentFolderId)
+                showCreateFolder = false
+            },
+        )
+    }
+
+    if (showMoveToFolder && successState != null) {
+        MoveFolderDialog(
+            folders = successState.allFolders,
+            onDismiss = { showMoveToFolder = false },
+            onSelect = { folderId ->
+                viewModel.moveSessionsToFolder(
+                    sessionIds = successState.selection.selectedSessionIds.toList(),
+                    folderId = folderId,
+                )
+                showMoveToFolder = false
+            },
+        )
+    }
+
+    transformResultEvent?.let { result ->
+        val clipboardManager = LocalClipboardManager.current
+        AlertDialog(
+            onDismissRequest = { transformResultEvent = null },
+            title = { Text("${result.profileName} result") },
+            text = {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(
+                        text = result.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { transformResultEvent = null }) {
+                    Text("Done")
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(result.text))
+                            Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                        },
+                    ) {
+                        Icon(
+                            Icons.Filled.ContentCopy,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Copy")
+                    }
+                    TextButton(
+                        onClick = {
+                            val intent =
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, result.text)
+                                }
+                            context.startActivity(Intent.createChooser(intent, "Share"))
+                            transformResultEvent = null
+                        },
+                    ) {
+                        Icon(
+                            Icons.Filled.IosShare,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Share")
+                    }
+                }
+            },
         )
     }
 }

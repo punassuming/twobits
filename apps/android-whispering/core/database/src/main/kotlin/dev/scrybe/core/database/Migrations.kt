@@ -18,3 +18,22 @@ val MIGRATION_4_5: Migration =
             )
         }
     }
+
+val MIGRATION_5_6: Migration =
+    object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS folders (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    parentFolderId TEXT,
+                    createdAt INTEGER NOT NULL
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "ALTER TABLE recording_sessions ADD COLUMN folderId TEXT DEFAULT NULL",
+            )
+        }
+    }
