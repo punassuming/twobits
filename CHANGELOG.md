@@ -14,6 +14,7 @@
 ### Fixes
 
 * restore Android CI by fixing `CaptureScreen` coroutine launch usage and declaring vibration permission for recording feedback
+* fix a `CaptureScreen` compilation issue that affected record-button animation handling in Android CI
 
 ## 0.8.3 (2026-04-12)
 

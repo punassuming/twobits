@@ -42,9 +42,9 @@ python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md && \
 
 **Do not commit or push code that fails any of these checks.** Fix all errors and warnings before committing.
 
-## Mandatory changelog updates for main-bound changes
+## Mandatory changelog updates for pull requests and main-bound changes
 
-Before preparing any commit, pull request, or push that is intended to land on `main`, you MUST use the repo-local skill at [`SKILL.md`](/C:/drive/dev/android/scrybe/.codex/skills/update-changelog-before-main/SKILL.md).
+Before preparing any commit, pull request, or push, you MUST use the repo-local skill at [`SKILL.md`](/C:/drive/dev/android/scrybe/.codex/skills/update-changelog-before-main/SKILL.md) and update changelog notes.
 
 - Update the root [`CHANGELOG.md`](/C:/drive/dev/android/scrybe/CHANGELOG.md) `## Unreleased` section before the commit or PR is prepared.
 - Keep bullets grouped under `Features`, `Improvements`, and `Fixes`.
