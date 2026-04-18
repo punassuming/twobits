@@ -14,7 +14,7 @@
 ### Fixes
 
 * restore Android CI by fixing `CaptureScreen` coroutine launch usage and declaring vibration permission for recording feedback
-* fix `RecordActionButton` animation launches in `CaptureScreen` by running them inside an explicit `coroutineScope` so `:feature:capture:compileDebugKotlin` succeeds in CI
+* fix a `CaptureScreen` compilation issue that affected record-button animation handling in Android CI
 
 ## 0.8.3 (2026-04-12)
 
