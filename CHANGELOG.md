@@ -6,7 +6,7 @@
 
 ### Improvements
 
-* improve navigation and organization UX with a bottom navigation bar, folder management actions (rename/move/delete), swipe edge hints, and streamlined settings cards for recording automation/feedback and transform provider configuration
+* Improve navigation and organization UX with a bottom navigation bar, folder management actions (rename/move/delete), swipe edge hints, and streamlined settings cards for recording automation/feedback and transform provider configuration
 
 ### Fixes
 
