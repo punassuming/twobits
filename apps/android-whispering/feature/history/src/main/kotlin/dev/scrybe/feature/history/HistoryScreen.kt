@@ -567,9 +567,14 @@ fun HistoryScreen(
 
     if (moveFolderTarget != null && successState != null) {
         val targetFolder = moveFolderTarget!!
-        val excludedIds = folderDescendantIds(targetFolder.id, successState.allFolders) + targetFolder.id
+        val availableFolders =
+            remember(targetFolder.id, successState.allFolders) {
+                val excludedIds =
+                    (folderDescendantIds(targetFolder.id, successState.allFolders) + targetFolder.id).toSet()
+                successState.allFolders.filter { it.id !in excludedIds }
+            }
         MoveFolderDialog(
-            folders = successState.allFolders.filter { it.id !in excludedIds },
+            folders = availableFolders,
             onDismiss = { moveFolderTarget = null },
             onSelect = { newParentId ->
                 viewModel.moveFolderToParent(targetFolder.id, newParentId)
