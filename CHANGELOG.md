@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* improve navigation and organization UX with a bottom navigation bar, folder management actions (rename/move/delete), swipe edge hints, and streamlined settings cards for recording automation/feedback and transform provider configuration
+
 ### Fixes
 
 ## 0.9.0 (2026-04-18)
