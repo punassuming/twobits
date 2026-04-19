@@ -6,7 +6,10 @@
 
 ### Improvements
 
-* Improve navigation and organization UX with a bottom navigation bar, folder management actions (rename/move/delete), swipe edge hints, and streamlined settings cards for recording automation/feedback and transform provider configuration
+* Add a bottom navigation bar for faster switching between Record, History, and Profiles
+* Add folder management actions in History for rename, move, and delete
+* Add swipe edge hint icons on record rows to improve gesture discoverability
+* Streamline Settings by splitting recording automation/feedback sections and folding transform model controls into provider configuration
 
 ### Fixes
 
