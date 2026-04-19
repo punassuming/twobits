@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ExpandLess
@@ -307,36 +309,46 @@ fun SettingsScreen(
                             Icon(Icons.Filled.Storage, contentDescription = null)
                         },
                     )
-                }
-
-                SettingsSectionCard(
-                    title = "Transform Model",
-                    icon = Icons.Filled.AutoAwesome,
-                ) {
-                    Text(
-                        text = "Model used to run transform profiles against your transcripts.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = selectedTransformModel.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = selectedTransformModel.supportingText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = selectedTransformModel.costSummary,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    OutlinedButton(
-                        onClick = { showTransformModelPicker = true },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Choose Transform Model")
+                    HorizontalDivider()
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.AutoAwesome,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Text("Transform Model", style = MaterialTheme.typography.titleSmall)
+                        }
+                        Text(
+                            text = "Model used to run transform profiles against your transcripts.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = selectedTransformModel.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = selectedTransformModel.supportingText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = selectedTransformModel.costSummary,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(
+                            onClick = { showTransformModelPicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Choose Transform Model")
+                        }
                     }
                 }
 
@@ -408,7 +420,7 @@ fun SettingsScreen(
                 }
 
                 SettingsSectionCard(
-                    title = "Recording Behavior",
+                    title = "Recording Automation",
                     icon = Icons.Filled.AutoAwesome,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
@@ -446,6 +458,28 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setShowRenameAfterRecording(it) },
                         )
                     }
+                    SettingOptionRow(
+                        title = "After recording stops",
+                        value =
+                            when (uiState.postStopDestination) {
+                                PostStopDestination.HOME -> "Return to home"
+                                PostStopDestination.SESSION_REVIEW -> "Open session review"
+                            },
+                        supportingText = "Choose where Scrybe should land after a recording is saved from the app or notification.",
+                        onClick = { showPostStopPicker = true },
+                    )
+                    Text(
+                        text = "You can change the default prompt profile from the Profiles screen.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+
+                SettingsSectionCard(
+                    title = "Recording Feedback",
+                    icon = Icons.Filled.Notifications,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -486,21 +520,6 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setRecordingSoundOnStartStop(it) },
                         )
                     }
-                    SettingOptionRow(
-                        title = "After recording stops",
-                        value =
-                            when (uiState.postStopDestination) {
-                                PostStopDestination.HOME -> "Return to home"
-                                PostStopDestination.SESSION_REVIEW -> "Open session review"
-                            },
-                        supportingText = "Choose where Scrybe should land after a recording is saved from the app or notification.",
-                        onClick = { showPostStopPicker = true },
-                    )
-                    Text(
-                        text = "You can change the default prompt profile from the Profiles screen.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
                 }
 
                 SettingsSectionCard(

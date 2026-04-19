@@ -73,6 +73,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.scrybeContentWidth
+import dev.scrybe.core.model.Folder
 import dev.scrybe.service.recording.RecordingForegroundService
 import dev.scrybe.service.recording.RecordingServiceActions
 
@@ -95,6 +96,9 @@ fun HistoryScreen(
     var showFilters by remember { mutableStateOf(false) }
     var showCreateFolder by remember { mutableStateOf(false) }
     var showMoveToFolder by remember { mutableStateOf(false) }
+    var renameFolderTarget by remember { mutableStateOf<Folder?>(null) }
+    var deleteFolderTarget by remember { mutableStateOf<Folder?>(null) }
+    var moveFolderTarget by remember { mutableStateOf<Folder?>(null) }
     var transformResultEvent by remember { mutableStateOf<HistoryEvent.TransformResult?>(null) }
     val requiredPermissions =
         remember {
@@ -385,6 +389,9 @@ fun HistoryScreen(
                                     FolderRow(
                                         folder = folder,
                                         onClick = { viewModel.navigateToFolder(folder.id) },
+                                        onRename = { renameFolderTarget = folder },
+                                        onDelete = { deleteFolderTarget = folder },
+                                        onMove = { moveFolderTarget = folder },
                                     )
                                 }
                                 items(state.sessions, key = { it.session.id }) { item ->
@@ -524,6 +531,53 @@ fun HistoryScreen(
         )
     }
 
+    renameFolderTarget?.let { folder ->
+        RenameFolderDialog(
+            initialName = folder.name,
+            onDismiss = { renameFolderTarget = null },
+            onConfirm = { newName ->
+                viewModel.renameFolder(folder.id, newName)
+                renameFolderTarget = null
+            },
+        )
+    }
+
+    deleteFolderTarget?.let { folder ->
+        AlertDialog(
+            onDismissRequest = { deleteFolderTarget = null },
+            title = { Text("Delete Folder") },
+            text = { Text("Delete \"${folder.name}\"? Its recordings will be moved to the root level.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteFolder(folder.id)
+                        deleteFolderTarget = null
+                    },
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteFolderTarget = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
+    }
+
+    if (moveFolderTarget != null && successState != null) {
+        val targetFolder = moveFolderTarget!!
+        val excludedIds = folderDescendantIds(targetFolder.id, successState.allFolders) + targetFolder.id
+        MoveFolderDialog(
+            folders = successState.allFolders.filter { it.id !in excludedIds },
+            onDismiss = { moveFolderTarget = null },
+            onSelect = { newParentId ->
+                viewModel.moveFolderToParent(targetFolder.id, newParentId)
+                moveFolderTarget = null
+            },
+        )
+    }
+
     transformResultEvent?.let { result ->
         val clipboardManager = LocalClipboardManager.current
         AlertDialog(
@@ -587,4 +641,21 @@ fun HistoryScreen(
             },
         )
     }
+}
+
+private fun folderDescendantIds(
+    folderId: String,
+    allFolders: List<Folder>,
+): Set<String> {
+    val result = mutableSetOf<String>()
+    val queue = ArrayDeque<String>()
+    queue.add(folderId)
+    while (queue.isNotEmpty()) {
+        val current = queue.removeFirst()
+        allFolders.filter { it.parentFolderId == current }.forEach { child ->
+            result.add(child.id)
+            queue.add(child.id)
+        }
+    }
+    return result
 }
