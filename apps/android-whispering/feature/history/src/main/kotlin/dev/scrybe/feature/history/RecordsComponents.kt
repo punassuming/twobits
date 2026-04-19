@@ -211,6 +211,34 @@ internal fun RecordRow(
                                 .fillMaxSize()
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                     )
+                    if (!selectionEnabled) {
+                        Icon(
+                            Icons.Filled.AutoFixHigh,
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(start = 4.dp)
+                                    .size(16.dp)
+                                    .graphicsLayer {
+                                        alpha = 0.22f * (1f - animatedSwipePreviewProgress.coerceIn(0f, 1f))
+                                    },
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Icon(
+                            if (item.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 4.dp)
+                                    .size(16.dp)
+                                    .graphicsLayer {
+                                        alpha = 0.22f * (1f - animatedSwipePreviewProgress.coerceIn(0f, 1f))
+                                    },
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                     Row(
                         modifier =
                             Modifier
@@ -1120,8 +1148,12 @@ internal val HISTORY_TIME_FORMATTER: DateTimeFormatter =
 internal fun FolderRow(
     folder: Folder,
     onClick: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onMove: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var menuExpanded by remember(folder.id) { mutableStateOf(false) }
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -1129,7 +1161,7 @@ internal fun FolderRow(
         tonalElevation = 1.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1141,9 +1173,76 @@ internal fun FolderRow(
             Text(
                 text = folder.name,
                 style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
             )
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Folder options")
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Rename") },
+                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onRename()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Move to\u2026") },
+                        leadingIcon = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onMove()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        },
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+internal fun RenameFolderDialog(
+    initialName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember(initialName) { mutableStateOf(initialName) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename Folder") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = { Text("Folder name") },
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
+                Text("Rename")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable

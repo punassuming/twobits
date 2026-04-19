@@ -731,6 +731,19 @@ class HistoryViewModel
             return candidate
         }
 
+        private fun isFolderDescendant(
+            ancestorId: String,
+            targetId: String,
+            allFolders: List<FolderEntity>,
+        ): Boolean {
+            var current: String? = targetId
+            while (current != null) {
+                if (current == ancestorId) return true
+                current = allFolders.find { it.id == current }?.parentFolderId
+            }
+            return false
+        }
+
         private fun restoreStatus(status: String): String {
             val current = runCatching { SessionStatus.valueOf(status) }.getOrDefault(SessionStatus.RECORDED)
             return if (current == SessionStatus.ARCHIVED) SessionStatus.RECORDED.name else current.name
@@ -787,6 +800,22 @@ class HistoryViewModel
                 )
                 folderDao.deleteFolder(folderId)
                 _events.emit(HistoryEvent.Message("Folder deleted"))
+            }
+        }
+
+        fun moveFolderToParent(
+            folderId: String,
+            newParentId: String?,
+        ) {
+            viewModelScope.launch {
+                val folder = folderDao.getFolderById(folderId) ?: return@launch
+                if (newParentId == folderId) return@launch
+                if (newParentId != null) {
+                    val allFolders = folderDao.getAllFoldersOnce()
+                    if (isFolderDescendant(ancestorId = folderId, targetId = newParentId, allFolders = allFolders)) return@launch
+                }
+                folderDao.updateFolder(folder.copy(parentFolderId = newParentId))
+                _events.emit(HistoryEvent.Message("Folder moved"))
             }
         }
 
