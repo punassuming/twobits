@@ -4,9 +4,19 @@
 
 ### Features
 
+* add folder context menu (long-press ⋮ button) with Rename, Delete, and Move to… actions; rename and delete were already implemented in the ViewModel but had no UI entry points
+* add move-folder capability with cycle-detection guard so a folder cannot be reparented into itself or any of its descendants
+
 ### Improvements
 
+* replace icon-only AppBar navigation with a persistent bottom navigation bar (Record / History / Profiles) so the current screen is always visible and switching tabs requires one tap
+* split the overloaded "Recording Behavior" settings card into "Recording Automation" (auto-transcribe, keep screen on, post-stop destination) and "Recording Feedback" (swipe confirmations, vibrate, sound, list display)
+* consolidate the standalone "Transform Model" settings card into the Provider card so all AI model configuration lives in one place
+* add faint edge-hint icons to record rows so users can discover the left-edge (Transform) and right-edge (Archive/Restore) swipe actions without prior knowledge
+
 ### Fixes
+
+* fix ColumnScope.AnimatedVisibility implicit-receiver ambiguity in ScrybeApp that caused a compile error when AnimatedVisibility was used inside a Box nested within a Column
 
 ## 0.9.0 (2026-04-18)
 
