@@ -9,6 +9,7 @@
 
 ### Improvements
 
+* Extend Android CI to run on `claude/**` branches in addition to `copilot/**`
 * Add a bottom navigation bar for faster switching between Record, History, and Profiles
 * Add folder management actions in History for rename, move, and delete
 * Add swipe edge hint icons on record rows to improve gesture discoverability
