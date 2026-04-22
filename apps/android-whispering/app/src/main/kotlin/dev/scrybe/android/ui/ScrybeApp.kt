@@ -71,7 +71,7 @@ fun ScrybeApp() {
         Box(modifier = Modifier.weight(1f)) {
             ScrybeNavHost(navController = navController)
 
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = activeRecordingState.isRecording,
                 modifier =
                     Modifier

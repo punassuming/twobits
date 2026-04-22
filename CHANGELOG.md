@@ -13,6 +13,8 @@
 
 ### Fixes
 
+* fix Android CI Kotlin compilation in `ScrybeApp` by explicitly calling the top-level `AnimatedVisibility` inside the `Box` scope
+
 ## 0.9.0 (2026-04-18)
 
 ### Features
