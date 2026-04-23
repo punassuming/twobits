@@ -734,7 +734,7 @@ class HistoryViewModel
         private fun isFolderDescendant(
             ancestorId: String,
             targetId: String,
-            allFolders: List<dev.scrybe.core.database.FolderEntity>,
+            allFolders: List<FolderEntity>,
         ): Boolean {
             var current: String? = targetId
             while (current != null) {

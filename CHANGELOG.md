@@ -9,10 +9,10 @@
 
 ### Improvements
 
-* replace icon-only AppBar navigation with a persistent bottom navigation bar (Record / History / Profiles) so the current screen is always visible and switching tabs requires one tap
-* split the overloaded "Recording Behavior" settings card into "Recording Automation" (auto-transcribe, keep screen on, post-stop destination) and "Recording Feedback" (swipe confirmations, vibrate, sound, list display)
-* consolidate the standalone "Transform Model" settings card into the Provider card so all AI model configuration lives in one place
-* add faint edge-hint icons to record rows so users can discover the left-edge (Transform) and right-edge (Archive/Restore) swipe actions without prior knowledge
+* Add a bottom navigation bar for faster switching between Record, History, and Profiles
+* Add folder management actions in History for rename, move, and delete
+* Add swipe edge hint icons on record rows to improve gesture discoverability
+* Streamline Settings by splitting recording automation/feedback sections and folding transform model controls into provider configuration
 
 ### Fixes
 
