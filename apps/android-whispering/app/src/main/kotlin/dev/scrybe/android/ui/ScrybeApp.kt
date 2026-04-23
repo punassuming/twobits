@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dev.scrybe.android.navigation.Screen
@@ -68,31 +69,11 @@ fun ScrybeApp() {
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(1f)) {
-            ScrybeNavHost(navController = navController)
-
-            AnimatedVisibility(
-                visible = activeRecordingState.isRecording,
-                modifier =
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it / 2 }) + fadeOut(),
-            ) {
-                ActiveRecordingBanner(
-                    elapsedMs = activeRecordingState.elapsedMs,
-                    amplitudeRatio = activeRecordingState.amplitudeRatio,
-                    onOpen = {
-                        navController.navigate(Screen.Capture.route) {
-                            launchSingleTop = true
-                        }
-                    },
-                )
-            }
-        }
-
+        MainContentBox(
+            navController = navController,
+            activeRecordingState = activeRecordingState,
+            modifier = Modifier.weight(1f),
+        )
         AnimatedVisibility(
             visible = showBottomBar,
             enter = slideInVertically { it } + fadeIn(),
@@ -167,7 +148,7 @@ fun ScrybeApp() {
                     )
                     whatsNewState.notes.forEach { note ->
                         Text(
-                            text = "\u2022 $note",
+                            text = "• $note",
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
@@ -183,6 +164,38 @@ fun ScrybeApp() {
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun MainContentBox(
+    navController: NavHostController,
+    activeRecordingState: ActiveRecordingUiState,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        ScrybeNavHost(navController = navController)
+
+        AnimatedVisibility(
+            visible = activeRecordingState.isRecording,
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it / 2 }) + fadeOut(),
+        ) {
+            ActiveRecordingBanner(
+                elapsedMs = activeRecordingState.elapsedMs,
+                amplitudeRatio = activeRecordingState.amplitudeRatio,
+                onOpen = {
+                    navController.navigate(Screen.Capture.route) {
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
     }
 }
 

@@ -4,6 +4,9 @@
 
 ### Features
 
+* add folder context menu (long-press ⋮ button) with Rename, Delete, and Move to… actions; rename and delete were already implemented in the ViewModel but had no UI entry points
+* add move-folder capability with cycle-detection guard so a folder cannot be reparented into itself or any of its descendants
+
 ### Improvements
 
 * Add a bottom navigation bar for faster switching between Record, History, and Profiles
@@ -12,6 +15,8 @@
 * Streamline Settings by splitting recording automation/feedback sections and folding transform model controls into provider configuration
 
 ### Fixes
+
+* fix ColumnScope.AnimatedVisibility implicit-receiver ambiguity in ScrybeApp that caused a compile error when AnimatedVisibility was used inside a Box nested within a Column
 
 ## 0.9.0 (2026-04-18)
 
