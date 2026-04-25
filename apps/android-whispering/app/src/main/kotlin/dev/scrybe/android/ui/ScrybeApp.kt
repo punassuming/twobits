@@ -62,11 +62,12 @@ fun ScrybeApp() {
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar = currentRoute in setOf(
-        Screen.Capture.route,
-        Screen.History.route,
-        Screen.Profiles.route,
-    )
+    val showBottomBar =
+        currentRoute in setOf(
+            Screen.Capture.route,
+            Screen.History.route,
+            Screen.Profiles.route,
+        )
 
     Column(modifier = Modifier.fillMaxSize()) {
         MainContentBox(

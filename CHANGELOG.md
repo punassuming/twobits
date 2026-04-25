@@ -17,6 +17,7 @@
 ### Fixes
 
 * fix ColumnScope.AnimatedVisibility implicit-receiver ambiguity in ScrybeApp that caused a compile error when AnimatedVisibility was used inside a Box nested within a Column
+* fix KtLint `multiline-expression-wrapping` violation in ScrybeApp that was breaking Android CI after the bottom nav bar addition
 
 ## 0.9.0 (2026-04-18)
 
