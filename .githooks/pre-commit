@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Scrybe pre-commit hook — lives in .githooks/ so it is tracked by git.
+#
+# Activate once per clone:
+#   git config core.hooksPath .githooks
+#
+# Requires: python3, curl, java (JRE 8+). No Android SDK needed.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+ANDROID_DIR="$REPO_ROOT/apps/android-whispering"
+KTLINT_VERSION="1.5.0"
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+fail() { echo -e "${RED}PRE-COMMIT FAIL:${NC} $*" >&2; exit 1; }
+warn() { echo -e "${YELLOW}PRE-COMMIT WARN:${NC} $*" >&2; }
+ok()   { echo -e "${GREEN}PRE-COMMIT OK:${NC}   $*"; }
+
+# ── 1. Changelog structure ────────────────────────────────────────────────────
+python3 "$ANDROID_DIR/scripts/manage-changelog.py" \
+    validate --changelog "$REPO_ROOT/CHANGELOG.md" \
+    || fail "CHANGELOG.md structure is invalid."
+ok "Changelog structure"
+
+# ── 2. AndroidManifest.xml files ─────────────────────────────────────────────
+(cd "$ANDROID_DIR" && python3 scripts/validate-manifests.py) \
+    || fail "AndroidManifest.xml validation failed."
+ok "AndroidManifest.xml files"
+
+# ── 3. Kotlin formatting via standalone ktlint ───────────────────────────────
+# Resolve ktlint: prefer system install, fall back to ~/.local/bin cache.
+# The cache persists across commits in the same environment; ephemeral runners
+# (e.g. GitHub Copilot) download once per session.
+if command -v ktlint &>/dev/null; then
+    KTLINT="$(command -v ktlint)"
+else
+    KTLINT_CACHE="${HOME}/.local/bin/ktlint"
+    if [[ ! -x "$KTLINT_CACHE" ]]; then
+        echo "Downloading ktlint ${KTLINT_VERSION}…"
+        mkdir -p "${HOME}/.local/bin"
+        curl -sSL \
+            "https://github.com/pinterest/ktlint/releases/download/${KTLINT_VERSION}/ktlint" \
+            -o "$KTLINT_CACHE" \
+            || fail "Could not download ktlint. Ensure network access and retry."
+        chmod +x "$KTLINT_CACHE"
+        ok "ktlint ${KTLINT_VERSION} downloaded to ${KTLINT_CACHE}"
+    fi
+    KTLINT="$KTLINT_CACHE"
+fi
+
+# Collect staged .kt / .kts files within the Android project.
+STAGED_KT=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E "^apps/android-whispering/.*\.kts?$" || true)
+
+if [[ -z "$STAGED_KT" ]]; then
+    ok "Kotlin formatting (no .kt/.kts files staged)"
+else
+    echo "Running ktlint --format on staged Kotlin files…"
+
+    # Auto-fix in place.
+    (cd "$REPO_ROOT" && echo "$STAGED_KT" \
+        | xargs "$KTLINT" --editorconfig="$ANDROID_DIR/.editorconfig" --format 2>&1) || true
+
+    # Re-stage any files ktlint modified so the formatted version is committed.
+    echo "$STAGED_KT" | xargs git add --
+
+    # Verify no violations remain after auto-fix.
+    KTLINT_OUT=$(cd "$REPO_ROOT" && echo "$STAGED_KT" \
+        | xargs "$KTLINT" --editorconfig="$ANDROID_DIR/.editorconfig" 2>&1 || true)
+
+    if echo "$KTLINT_OUT" | grep -qE ":\s.*\(standard:"; then
+        echo "$KTLINT_OUT" >&2
+        fail "ktlint violations remain after auto-format. Fix them and re-commit."
+    fi
+    ok "Kotlin formatting"
+fi
+
+echo ""
+echo -e "${GREEN}Pre-commit checks passed.${NC}"
+echo "CI also enforces: assembleDebug · testDebugUnitTest · lint · detekt"

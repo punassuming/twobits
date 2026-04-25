@@ -9,6 +9,9 @@
 
 ### Improvements
 
+* Extend Android CI to run on `claude/**` branches in addition to `copilot/**`
+* Strengthen pre-commit hook to run standalone ktlint on staged files without requiring an Android SDK installation; add import-ordering rule to all agent instruction files
+* Add tracked `.githooks/pre-commit` with self-installing ktlint so Copilot and other agents enforce Kotlin formatting on every commit without needing an Android SDK; document `git config core.hooksPath .githooks` session-setup step in AGENTS.md, CLAUDE.md, and copilot-instructions.md
 * Add a bottom navigation bar for faster switching between Record, History, and Profiles
 * Add folder management actions in History for rename, move, and delete
 * Add swipe edge hint icons on record rows to improve gesture discoverability
