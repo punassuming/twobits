@@ -10,6 +10,7 @@
 ### Improvements
 
 * Extend Android CI to run on `claude/**` branches in addition to `copilot/**`
+* Strengthen pre-commit hook to run standalone ktlint on staged files without requiring an Android SDK installation; add import-ordering rule to all agent instruction files
 * Add a bottom navigation bar for faster switching between Record, History, and Profiles
 * Add folder management actions in History for rename, move, and delete
 * Add swipe edge hint icons on record rows to improve gesture discoverability

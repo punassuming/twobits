@@ -48,7 +48,25 @@ python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md && \
 
 These are the exact mistakes that have repeatedly broken CI on this project.
 
-### 1. KtLint `multiline-expression-wrapping` (most frequent)
+### 1. KtLint `import-ordering` — imports must be in strict lexicographic order
+
+All imports must be sorted lexicographically with no blank lines between them. `java`, `javax`, `kotlin`, and aliases go at the end. IDEs insert new imports at the cursor, not in sorted order — always auto-fix before committing.
+
+```kotlin
+// WRONG — Notifications (N) sits between AutoAwesome (A) and CloudDone (C)
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.CloudDone
+
+// CORRECT
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Notifications
+```
+
+**Run `./gradlew ktlintFormat` to auto-fix.** The pre-commit hook also runs `ktlint --format` on staged files automatically.
+
+### 2. KtLint `multiline-expression-wrapping` (most frequent)
 
 When the right-hand side of an assignment or boolean expression spans multiple lines, the **operator must stay on the first line**; the continuation indents by one extra level.
 

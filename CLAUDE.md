@@ -27,7 +27,25 @@ The CI runs `assembleDebug testDebugUnitTest lint ktlintCheck detekt` on every p
 
 ## Kotlin / Compose rules — these are the patterns that keep breaking CI
 
-### 1. KtLint `multiline-expression-wrapping` — the most common failure
+### 1. KtLint `import-ordering` — imports must be in strict lexicographic order
+
+All imports must be sorted lexicographically with no blank lines between them. `java`, `javax`, `kotlin`, and aliases go at the end.
+
+```kotlin
+// WRONG — Notifications (N) is out of order between AutoAwesome (A) and CloudDone (C)
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.CloudDone
+
+// CORRECT — strict A–Z order
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Notifications
+```
+
+IDEs often insert new imports at the cursor position rather than in sorted order. **Always run `ktlint --format` or `./gradlew ktlintFormat` after adding imports.**
+
+### 2. KtLint `multiline-expression-wrapping` — the most common failure
 
 When the right-hand side of an assignment or condition would make the line long, the **operator stays on the first line** and the continuation indents by one extra level.
 

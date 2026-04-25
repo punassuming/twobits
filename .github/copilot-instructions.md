@@ -21,7 +21,23 @@ python3 scripts/validate-manifests.py
 
 ## Known CI failure patterns — fix before committing
 
-### 1. KtLint `multiline-expression-wrapping` (most frequent failure)
+### 1. KtLint `import-ordering`
+
+Imports must be in strict lexicographic order with no blank lines between them (`java`/`javax`/`kotlin`/aliases last). IDEs insert imports at the cursor — always run `ktlintFormat` after adding imports.
+
+```kotlin
+// WRONG
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Notifications   // N out of order
+import androidx.compose.material.icons.filled.CloudDone
+
+// CORRECT
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Notifications
+```
+
+### 2. KtLint `multiline-expression-wrapping` (most frequent failure)
 
 When the RHS of an assignment/condition spans multiple lines, the **operator stays on line 1** and the continuation indents one extra level.
 
