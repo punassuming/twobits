@@ -2,6 +2,16 @@
 
 This file contains mandatory instructions for AI coding agents (Copilot, Codex, Claude, etc.) working in this repository.
 
+## Session setup — run once after cloning
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This activates the tracked pre-commit hook in `.githooks/pre-commit`. It runs changelog validation, manifest validation, and standalone `ktlint --format` + check on every staged `.kt`/`.kts` file — **no Android SDK required**. ktlint 1.5.0 is self-installed on first run if not already on PATH or at `~/.local/bin/ktlint`.
+
+---
+
 ## Mandatory pre-commit checks
 
 **Before every `git commit`, run ALL of the following from `apps/android-whispering/` and ensure they pass. Do not commit or push code that fails any check.**

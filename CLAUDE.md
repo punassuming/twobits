@@ -8,6 +8,14 @@ Android app at `apps/android-whispering/`. All Gradle commands run from that dir
 
 Stack: Kotlin 1.9.25 · AGP 8.7.3 · Jetpack Compose · Hilt 2.51.1 · Room 2.6.1 · minSdk 26 / targetSdk 35
 
+## Session setup — run once after cloning
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This activates the tracked pre-commit hook in `.githooks/pre-commit`, which runs changelog validation, manifest validation, and standalone `ktlint --format` + check on every staged `.kt`/`.kts` file — **no Android SDK required**. The hook self-installs ktlint 1.5.0 on first run if it is not already on PATH.
+
 ## Verification — run before every commit
 
 From `apps/android-whispering/`:

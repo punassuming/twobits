@@ -1,5 +1,15 @@
 # GitHub Copilot instructions for Scrybe
 
+## Session setup — run once after cloning
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This activates the tracked pre-commit hook in `.githooks/pre-commit`. It enforces changelog and manifest validity, and runs standalone `ktlint --format` + check on staged Kotlin files — **no Android SDK required**. ktlint 1.5.0 self-installs on first run.
+
+---
+
 ## Pre-commit checks (mandatory)
 
 Before every `git commit`, run the following from `apps/android-whispering/` and ensure **all checks pass**. Do not commit code that fails any of these.
