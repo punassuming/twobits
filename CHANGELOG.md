@@ -4,7 +4,13 @@
 
 ### Features
 
+* add AI auto-rename to suggest recording titles from transcripts; available per-recording via the row menu (when a transcript exists) and in bulk via the selection toolbar
+* scope AI auto-folder clustering to selected recordings when a selection is active, leaving unselected recordings untouched
+
 ### Improvements
+
+* show a LinearProgressIndicator during AI workloads (clustering, bulk rename) and a spinner inside the AI profile draft button while generating
+* fix profile editor dialog losing typed content and save button on landscape rotation by lifting state to ViewModel and switching to a scrollable full-width Dialog
 
 ### Fixes
 

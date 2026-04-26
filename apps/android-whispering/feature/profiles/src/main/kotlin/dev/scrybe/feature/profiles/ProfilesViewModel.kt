@@ -26,9 +26,13 @@ import javax.inject.Inject
 sealed interface ProfilesUiState {
     data object Loading : ProfilesUiState
 
-    data class Success(val profiles: List<TransformProfile>) : ProfilesUiState
+    data class Success(
+        val profiles: List<TransformProfile>,
+    ) : ProfilesUiState
 
-    data class Error(val message: String) : ProfilesUiState
+    data class Error(
+        val message: String,
+    ) : ProfilesUiState
 }
 
 sealed interface ProfileSuggestionUiState {
@@ -36,10 +40,31 @@ sealed interface ProfileSuggestionUiState {
 
     data object Loading : ProfileSuggestionUiState
 
-    data class Success(val suggestion: ProfileSuggestion) : ProfileSuggestionUiState
+    data class Success(
+        val suggestion: ProfileSuggestion,
+    ) : ProfileSuggestionUiState
 
-    data class Error(val message: String) : ProfileSuggestionUiState
+    data class Error(
+        val message: String,
+    ) : ProfileSuggestionUiState
 }
+
+data class ProfileEditorDraft(
+    val existingId: String? = null,
+    val name: String = "",
+    val description: String = "",
+    val steps: List<String> = listOf(""),
+    val isDefault: Boolean = false,
+)
+
+internal fun TransformProfile.toDraft(): ProfileEditorDraft =
+    ProfileEditorDraft(
+        existingId = id,
+        name = name,
+        description = description,
+        steps = steps.ifEmpty { listOf(systemPrompt) },
+        isDefault = isDefault,
+    )
 
 @HiltViewModel
 class ProfilesViewModel
@@ -50,12 +75,12 @@ class ProfilesViewModel
         private val profileSuggestionService: OpenAiProfileSuggestionService,
     ) : ViewModel() {
         val uiState: StateFlow<ProfilesUiState> =
-            transformProfileDao.getAllProfiles()
+            transformProfileDao
+                .getAllProfiles()
                 .map { entities ->
                     val profiles = entities.map(::toModel)
                     ProfilesUiState.Success(profiles) as ProfilesUiState
-                }
-                .catch { emit(ProfilesUiState.Error(it.message ?: "Unknown error")) }
+                }.catch { emit(ProfilesUiState.Error(it.message ?: "Unknown error")) }
                 .stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(5_000),
@@ -64,6 +89,7 @@ class ProfilesViewModel
 
         private val _suggestionState = MutableStateFlow<ProfileSuggestionUiState>(ProfileSuggestionUiState.Idle)
         val suggestionState: StateFlow<ProfileSuggestionUiState> = _suggestionState.asStateFlow()
+
         val profileSuggestionModel: StateFlow<String> =
             preferencesDataStore.profileSuggestionModel
                 .stateIn(
@@ -71,6 +97,36 @@ class ProfilesViewModel
                     started = SharingStarted.WhileSubscribed(5_000),
                     initialValue = OpenAiProfileSuggestionModel.default.apiName,
                 )
+
+        private val _editorDraft = MutableStateFlow<ProfileEditorDraft?>(null)
+        val editorDraft: StateFlow<ProfileEditorDraft?> = _editorDraft.asStateFlow()
+
+        private val _aiCreatorOpen = MutableStateFlow(false)
+        val aiCreatorOpen: StateFlow<Boolean> = _aiCreatorOpen.asStateFlow()
+
+        fun openNewEditor() {
+            _editorDraft.value = ProfileEditorDraft()
+        }
+
+        fun openEditor(profile: TransformProfile) {
+            _editorDraft.value = profile.toDraft()
+        }
+
+        fun updateEditorDraft(draft: ProfileEditorDraft) {
+            _editorDraft.value = draft
+        }
+
+        fun closeEditor() {
+            _editorDraft.value = null
+        }
+
+        fun openAiCreator() {
+            _aiCreatorOpen.value = true
+        }
+
+        fun closeAiCreator() {
+            _aiCreatorOpen.value = false
+        }
 
         fun saveProfile(
             existingId: String?,
@@ -130,23 +186,24 @@ class ProfilesViewModel
         ) {
             viewModelScope.launch {
                 _suggestionState.value = ProfileSuggestionUiState.Loading
-                profileSuggestionService.suggestProfile(
-                    userRequest = userRequest,
-                    existingName = currentName,
-                    existingDescription = currentDescription,
-                    existingSteps = currentSteps,
-                    modelName = profileSuggestionModel.value,
-                ).fold(
-                    onSuccess = {
-                        _suggestionState.value = ProfileSuggestionUiState.Success(it)
-                    },
-                    onFailure = {
-                        _suggestionState.value =
-                            ProfileSuggestionUiState.Error(
-                                it.message ?: "Failed to suggest a profile",
-                            )
-                    },
-                )
+                profileSuggestionService
+                    .suggestProfile(
+                        userRequest = userRequest,
+                        existingName = currentName,
+                        existingDescription = currentDescription,
+                        existingSteps = currentSteps,
+                        modelName = profileSuggestionModel.value,
+                    ).fold(
+                        onSuccess = {
+                            _suggestionState.value = ProfileSuggestionUiState.Success(it)
+                        },
+                        onFailure = {
+                            _suggestionState.value =
+                                ProfileSuggestionUiState.Error(
+                                    it.message ?: "Failed to suggest a profile",
+                                )
+                        },
+                    )
             }
         }
 
