@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Mic
@@ -46,6 +47,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -86,6 +88,7 @@ fun HistoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState(initial = false)
+    val isAiWorking by viewModel.isAiWorking.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
@@ -238,6 +241,12 @@ fun HistoryScreen(
                         IconButton(onClick = { viewModel.transformSelectedSessions() }) {
                             Icon(Icons.Filled.AutoFixHigh, contentDescription = "Run default transform or consolidate selected records")
                         }
+                        IconButton(onClick = { viewModel.suggestAndApplyClusters(successState.selection.selectedSessionIds) }) {
+                            Icon(Icons.Filled.AutoAwesome, contentDescription = "Organize selected with AI")
+                        }
+                        IconButton(onClick = { viewModel.autoRenameSelectedSessions() }) {
+                            Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = "AI rename selected records")
+                        }
                         IconButton(
                             onClick = {
                                 viewModel.setArchivedForSelected(!successState.filters.showArchived)
@@ -312,6 +321,9 @@ fun HistoryScreen(
                                 .padding(vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
                     ) {
+                        if (isAiWorking) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
                         if (state.breadcrumb.isNotEmpty()) {
                             BreadcrumbRow(
                                 breadcrumb = state.breadcrumb,
@@ -406,6 +418,7 @@ fun HistoryScreen(
                                         onRestore = { viewModel.setArchived(item.session.id, false) },
                                         onTransform = { viewModel.transformWithDefaultProfile(item.session.id) },
                                         onRename = { renameTarget = item },
+                                        onAiRename = { viewModel.autoRenameSession(item.session.id) },
                                         onDelete = { deleteTarget = item },
                                         onInfo = { infoTarget = item.session.id to item.toRecordInfo() },
                                         onOpenWith = { openAudioWith(context, item.session) },

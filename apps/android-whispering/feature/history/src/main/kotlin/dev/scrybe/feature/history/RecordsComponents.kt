@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Circle
@@ -128,6 +129,7 @@ internal fun RecordRow(
     onRestore: () -> Unit,
     onTransform: () -> Unit,
     onRename: () -> Unit,
+    onAiRename: () -> Unit,
     onDelete: () -> Unit,
     onInfo: () -> Unit,
     onOpenWith: () -> Unit,
@@ -177,8 +179,7 @@ internal fun RecordRow(
                             scaleX = contentScale
                             scaleY = contentScale
                             alpha = 1f - (animatedSwipePreviewProgress * 0.16f)
-                        }
-                        .recordSwipePreview(
+                        }.recordSwipePreview(
                             enabled = !selectionEnabled,
                             isArchived = item.session.isArchived,
                             onPreviewChanged = { action, progress ->
@@ -186,8 +187,7 @@ internal fun RecordRow(
                                 swipePreviewProgress = progress
                             },
                             onTriggered = runSwipeAction,
-                        )
-                        .combinedClickable(
+                        ).combinedClickable(
                             onClick = {
                                 if (selectionEnabled) onToggleSelection() else onOpen()
                             },
@@ -271,7 +271,10 @@ internal fun RecordRow(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = item.session.createdAt.atZone(ZoneId.systemDefault()).format(HISTORY_TIME_FORMATTER),
+                                text =
+                                    item.session.createdAt
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(HISTORY_TIME_FORMATTER),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -365,6 +368,16 @@ internal fun RecordRow(
                                             onRename()
                                         },
                                     )
+                                    if (item.transcriptPreview != null) {
+                                        DropdownMenuItem(
+                                            text = { Text("AI Rename") },
+                                            leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null) },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onAiRename()
+                                            },
+                                        )
+                                    }
                                     DropdownMenuItem(
                                         text = { Text("Information") },
                                         leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
@@ -649,8 +662,12 @@ internal fun WaveformBackdrop(
         val baselineY = size.height * 0.76f
         drawLine(
             color = baselineColor,
-            start = androidx.compose.ui.geometry.Offset(0f, baselineY),
-            end = androidx.compose.ui.geometry.Offset(size.width, baselineY),
+            start =
+                androidx.compose.ui.geometry
+                    .Offset(0f, baselineY),
+            end =
+                androidx.compose.ui.geometry
+                    .Offset(size.width, baselineY),
             strokeWidth = 1.5.dp.toPx(),
             cap = StrokeCap.Round,
         )
@@ -666,8 +683,12 @@ internal fun WaveformBackdrop(
             val startY = baselineY - lineHeight
             drawLine(
                 color = color,
-                start = androidx.compose.ui.geometry.Offset(x, startY),
-                end = androidx.compose.ui.geometry.Offset(x, baselineY),
+                start =
+                    androidx.compose.ui.geometry
+                        .Offset(x, startY),
+                end =
+                    androidx.compose.ui.geometry
+                        .Offset(x, baselineY),
                 strokeWidth = barWidth,
                 cap = StrokeCap.Round,
             )
@@ -816,8 +837,7 @@ internal fun RecordsFilterDialog(
                 SessionStatus.entries
                     .filter {
                         it in setOf(SessionStatus.RECORDED, SessionStatus.TRANSCRIBING, SessionStatus.FAILED, SessionStatus.TRANSCRIBED, SessionStatus.EDITED)
-                    }
-                    .forEach { status ->
+                    }.forEach { status ->
                         StatusToggleRow(
                             status = status,
                             checked = status in draft.includedStatuses,
@@ -911,7 +931,13 @@ private fun StatusToggleRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = checked, onCheckedChange = { onToggle() })
-        Text(text = status.name.lowercase().replace('_', ' ').replaceFirstChar(Char::titlecase))
+        Text(
+            text =
+                status.name
+                    .lowercase()
+                    .replace('_', ' ')
+                    .replaceFirstChar(Char::titlecase),
+        )
     }
 }
 
@@ -1084,7 +1110,12 @@ internal fun buildCompactFilterSummary(filters: RecordsFilterState): String {
             if (filters.includedStatuses.isNotEmpty()) {
                 add(
                     if (filters.includedStatuses.size == 1) {
-                        filters.includedStatuses.first().name.lowercase().replace('_', ' ').replaceFirstChar(Char::titlecase)
+                        filters.includedStatuses
+                            .first()
+                            .name
+                            .lowercase()
+                            .replace('_', ' ')
+                            .replaceFirstChar(Char::titlecase)
                     } else {
                         "${filters.includedStatuses.size} statuses"
                     },
