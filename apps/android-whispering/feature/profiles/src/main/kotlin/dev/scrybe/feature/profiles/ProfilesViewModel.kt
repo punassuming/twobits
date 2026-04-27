@@ -79,7 +79,7 @@ class ProfilesViewModel
                 .getAllProfiles()
                 .map { entities ->
                     val profiles = entities.map(::toModel)
-                    ProfilesUiState.Success(profiles)
+                    ProfilesUiState.Success(profiles) as ProfilesUiState
                 }.catch { emit(ProfilesUiState.Error(it.message ?: "Unknown error")) }
                 .stateIn(
                     scope = viewModelScope,
