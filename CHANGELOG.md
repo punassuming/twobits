@@ -4,7 +4,11 @@
 
 ### Features
 
+* add on-device transcription using Whisper tiny (via Sherpa-ONNX) and on-device transforms using Gemma 2B IT (via MediaPipe); both models are optional downloads managed from Settings → Provider → Local
+
 ### Improvements
+
+* enable Local provider selection in Settings once the Whisper model is downloaded; provider card shows per-model download progress, size, and delete controls
 
 ### Fixes
 
