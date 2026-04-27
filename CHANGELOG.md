@@ -12,6 +12,7 @@
 * show a LinearProgressIndicator during AI workloads (clustering, bulk rename) and a spinner inside the AI profile draft button while generating
 * fix profile editor dialog losing typed content and save button on landscape rotation by lifting state to ViewModel and switching to a scrollable full-width Dialog
 * pre-commit hook now verifies that coroutine flow extension functions (asStateFlow, asSharedFlow, etc.) have matching imports in staged Kotlin files, catching missing-import compile errors before they reach CI
+* pre-commit hook now enforces a changelog update whenever tracked code files are staged, matching the CI changelog gate so the check fires locally before push
 
 ### Fixes
 

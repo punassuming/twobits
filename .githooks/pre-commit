@@ -26,6 +26,23 @@ python3 "$ANDROID_DIR/scripts/manage-changelog.py" \
     || fail "CHANGELOG.md structure is invalid."
 ok "Changelog structure"
 
+# ── 1b. Changelog update required for code changes ───────────────────────────
+# Mirrors the CI `check-updated` gate: if any tracked code file is staged,
+# CHANGELOG.md must also be staged.
+STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACM)
+STAGED_CODE=$(echo "$STAGED_ALL" | grep -E \
+    "^apps/android-whispering/|^Dockerfile\.dev$|^docker-compose\.yml$|^\.dockerignore$|^\.github/workflows/" \
+    || true)
+STAGED_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "CHANGELOG.md" || true)
+
+if [[ -n "$STAGED_CODE" && -z "$STAGED_CHANGELOG" ]]; then
+    echo -e "${RED}CHANGELOG.md must be updated when code files change.${NC}" >&2
+    echo "Staged code files with no changelog entry:" >&2
+    echo "$STAGED_CODE" | sed 's/^/  - /' >&2
+    fail "Stage a CHANGELOG.md update and re-commit."
+fi
+ok "Changelog update required"
+
 # ── 2. AndroidManifest.xml files ─────────────────────────────────────────────
 (cd "$ANDROID_DIR" && python3 scripts/validate-manifests.py) \
     || fail "AndroidManifest.xml validation failed."
