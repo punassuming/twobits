@@ -17,7 +17,7 @@
 ### Fixes
 
 * fix CI compile failure caused by missing `import kotlinx.coroutines.flow.asStateFlow` in HistoryViewModel
-* remove redundant `as ProfilesUiState` cast in ProfilesViewModel that generated a compiler warning
+* restore `as ProfilesUiState` cast in ProfilesViewModel; the cast is required to widen the map-block return type so the downstream `.catch { emit(ProfilesUiState.Error(...)) }` type-checks — the earlier "No cast needed" compiler warning was misleading
 
 ## 0.9.1 (2026-04-25)
 
