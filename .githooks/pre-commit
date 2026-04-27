@@ -79,6 +79,44 @@ else
     ok "Kotlin formatting"
 fi
 
+# ── 4. Kotlin import completeness (no Android SDK required) ──────────────────
+# Catch common "Unresolved reference" failures that only surface in CI:
+# verify that flow extension functions used in a file have their imports present.
+if [[ -n "$STAGED_KT" ]]; then
+    IMPORT_ERRORS=()
+    # Map of usage pattern -> required import fragment
+    declare -A FLOW_EXT_IMPORTS=(
+        [".asStateFlow()"]="kotlinx.coroutines.flow.asStateFlow"
+        [".asSharedFlow()"]="kotlinx.coroutines.flow.asSharedFlow"
+        [".filterNotNull()"]="kotlinx.coroutines.flow.filterNotNull"
+        [".mapNotNull("]="kotlinx.coroutines.flow.mapNotNull"
+        [".debounce("]="kotlinx.coroutines.flow.debounce"
+        [".distinctUntilChanged()"]="kotlinx.coroutines.flow.distinctUntilChanged"
+        [".flowOn("]="kotlinx.coroutines.flow.flowOn"
+        [".onEach("]="kotlinx.coroutines.flow.onEach"
+        [".flatMapLatest("]="kotlinx.coroutines.flow.flatMapLatest"
+        [".collectLatest("]="kotlinx.coroutines.flow.collectLatest"
+    )
+    while IFS= read -r kt_file; do
+        [[ -f "$REPO_ROOT/$kt_file" ]] || continue
+        for usage in "${!FLOW_EXT_IMPORTS[@]}"; do
+            required="${FLOW_EXT_IMPORTS[$usage]}"
+            if grep -qF "$usage" "$REPO_ROOT/$kt_file" && \
+               ! grep -qF "import $required" "$REPO_ROOT/$kt_file"; then
+                IMPORT_ERRORS+=("$kt_file: uses '$usage' but missing 'import $required'")
+            fi
+        done
+    done <<< "$STAGED_KT"
+
+    if [[ ${#IMPORT_ERRORS[@]} -gt 0 ]]; then
+        for err in "${IMPORT_ERRORS[@]}"; do
+            echo -e "${RED}MISSING IMPORT:${NC} $err" >&2
+        done
+        fail "Missing coroutine flow imports detected. Add them and re-commit."
+    fi
+    ok "Kotlin import completeness"
+fi
+
 echo ""
 echo -e "${GREEN}Pre-commit checks passed.${NC}"
 echo "CI also enforces: assembleDebug · testDebugUnitTest · lint · detekt"
