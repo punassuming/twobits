@@ -9,6 +9,7 @@
 ### Improvements
 
 * enable Local provider selection in Settings once the Whisper model is downloaded; provider card shows per-model download progress, size, and delete controls
+* bump sherpa-onnx-android to v1.12.40 (latest stable; was v1.10.41)
 
 ### Fixes
 
