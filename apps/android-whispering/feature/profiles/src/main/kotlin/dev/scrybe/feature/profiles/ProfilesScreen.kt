@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,8 +67,8 @@ fun ProfilesScreen(
     val uiState by viewModel.uiState.collectAsState()
     val suggestionState by viewModel.suggestionState.collectAsState()
     val profileSuggestionModel by viewModel.profileSuggestionModel.collectAsState()
-    var editorDraft by remember { mutableStateOf<ProfileEditorDraft?>(null) }
-    var showAiCreator by remember { mutableStateOf(false) }
+    val editorDraft by viewModel.editorDraft.collectAsState()
+    val aiCreatorOpen by viewModel.aiCreatorOpen.collectAsState()
 
     Scaffold(
         topBar = {
@@ -116,11 +115,11 @@ fun ProfilesScreen(
                         ProfileCreationCard(
                             onCreateManual = {
                                 viewModel.clearSuggestionState()
-                                editorDraft = ProfileEditorDraft()
+                                viewModel.openNewEditor()
                             },
                             onCreateWithAi = {
                                 viewModel.clearSuggestionState()
-                                showAiCreator = true
+                                viewModel.openAiCreator()
                             },
                         )
                     }
@@ -134,7 +133,7 @@ fun ProfilesScreen(
                                 profile = profile,
                                 onEdit = {
                                     viewModel.clearSuggestionState()
-                                    editorDraft = profile.toDraft()
+                                    viewModel.openEditor(profile)
                                 },
                                 onDelete = { viewModel.deleteProfile(profile.id) },
                                 onSetDefault = { viewModel.setDefaultProfile(profile.id) },
@@ -146,26 +145,25 @@ fun ProfilesScreen(
         }
     }
 
-    if (editorDraft != null) {
+    editorDraft?.let { draft ->
         ProfileEditorDialog(
-            draft = editorDraft!!,
-            onDismiss = {
-                editorDraft = null
-            },
+            draft = draft,
+            onUpdate = { viewModel.updateEditorDraft(it) },
+            onDismiss = { viewModel.closeEditor() },
             onSave = { id, name, description, steps, isDefault ->
                 viewModel.saveProfile(id, name, description, steps, isDefault)
-                editorDraft = null
+                viewModel.closeEditor()
             },
         )
     }
 
-    if (showAiCreator) {
+    if (aiCreatorOpen) {
         AiProfileDraftDialog(
             selectedModelName = profileSuggestionModel,
             suggestionState = suggestionState,
             onDismiss = {
                 viewModel.clearSuggestionState()
-                showAiCreator = false
+                viewModel.closeAiCreator()
             },
             onSuggest = viewModel::suggestProfile,
             onSuggestionConsumed = viewModel::clearSuggestionState,
@@ -178,40 +176,24 @@ fun ProfilesScreen(
                     setAsDefault = isDefault,
                 )
                 viewModel.clearSuggestionState()
-                showAiCreator = false
+                viewModel.closeAiCreator()
             },
             onEditSuggestion = { suggestion, isDefault ->
-                editorDraft =
+                viewModel.updateEditorDraft(
                     ProfileEditorDraft(
                         existingId = null,
                         name = suggestion.name,
                         description = suggestion.description,
                         steps = suggestion.steps,
                         isDefault = isDefault,
-                    )
+                    ),
+                )
                 viewModel.clearSuggestionState()
-                showAiCreator = false
+                viewModel.closeAiCreator()
             },
         )
     }
 }
-
-private data class ProfileEditorDraft(
-    val existingId: String? = null,
-    val name: String = "",
-    val description: String = "",
-    val steps: List<String> = listOf(""),
-    val isDefault: Boolean = false,
-)
-
-private fun TransformProfile.toDraft(): ProfileEditorDraft =
-    ProfileEditorDraft(
-        existingId = id,
-        name = name,
-        description = description,
-        steps = steps.ifEmpty { listOf(systemPrompt) },
-        isDefault = isDefault,
-    )
 
 @Composable
 private fun ProfileCreationCard(
@@ -345,24 +327,33 @@ private fun ProfileRow(
 @Composable
 private fun ProfileEditorDialog(
     draft: ProfileEditorDraft,
+    onUpdate: (ProfileEditorDraft) -> Unit,
     onDismiss: () -> Unit,
     onSave: (String?, String, String, List<String>, Boolean) -> Unit,
 ) {
-    var name by remember(draft) { mutableStateOf(draft.name) }
-    var description by remember(draft) { mutableStateOf(draft.description) }
-    var steps by remember(draft) {
-        mutableStateOf(draft.steps.ifEmpty { listOf("") })
-    }
-    var isDefault by remember(draft) { mutableStateOf(draft.isDefault) }
-
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (draft.existingId == null) "New Profile" else "Edit Profile") },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp,
+        ) {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Text(
+                    text = if (draft.existingId == null) "New Profile" else "Edit Profile",
+                    style = MaterialTheme.typography.headlineSmall,
+                )
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -384,23 +375,27 @@ private fun ProfileEditorDialog(
                     }
                 }
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
+                    value = draft.name,
+                    onValueChange = { onUpdate(draft.copy(name = it)) },
                     label = { Text("Name") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
                 OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
+                    value = draft.description,
+                    onValueChange = { onUpdate(draft.copy(description = it)) },
                     label = { Text("Description") },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                steps.forEachIndexed { index, step ->
+                draft.steps.forEachIndexed { index, step ->
                     OutlinedTextField(
                         value = step,
                         onValueChange = { next ->
-                            steps = steps.toMutableList().also { it[index] = next }
+                            onUpdate(
+                                draft.copy(
+                                    steps = draft.steps.toMutableList().also { it[index] = next },
+                                ),
+                            )
                         },
                         label = { Text("Step ${index + 1}") },
                         modifier = Modifier.fillMaxWidth(),
@@ -417,13 +412,13 @@ private fun ProfileEditorDialog(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     TextButton(
-                        onClick = { steps = steps + "" },
+                        onClick = { onUpdate(draft.copy(steps = draft.steps + "")) },
                     ) {
                         Text("Add Step")
                     }
-                    if (steps.size > 1) {
+                    if (draft.steps.size > 1) {
                         TextButton(
-                            onClick = { steps = steps.dropLast(1) },
+                            onClick = { onUpdate(draft.copy(steps = draft.steps.dropLast(1))) },
                         ) {
                             Text("Remove Last")
                         }
@@ -436,30 +431,33 @@ private fun ProfileEditorDialog(
                 ) {
                     Text("Use as default")
                     Switch(
-                        checked = isDefault,
-                        onCheckedChange = { isDefault = it },
+                        checked = draft.isDefault,
+                        onCheckedChange = { onUpdate(draft.copy(isDefault = it)) },
                     )
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            onSave(draft.existingId, draft.name, draft.description, draft.steps, draft.isDefault)
+                        },
+                        enabled = draft.name.isNotBlank() && draft.steps.any { it.isNotBlank() },
+                    ) {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Save")
+                    }
+                }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onSave(draft.existingId, name, description, steps, isDefault)
-                },
-                enabled = name.isNotBlank() && steps.any { it.isNotBlank() },
-            ) {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                Spacer(Modifier.size(8.dp))
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-    )
+        }
+    }
 }
 
 @Composable
@@ -510,42 +508,7 @@ private fun AiProfileDraftDialog(
                     text = "AI Profile Draft",
                     style = MaterialTheme.typography.headlineSmall,
                 )
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = MaterialTheme.shapes.medium,
-                ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Filled.Psychology, contentDescription = null)
-                            Text(
-                                text = "Drafted with OpenAI ${selectedModel.apiName}",
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        }
-                        Text(
-                            text = "The AI creates a 1-3 step starting profile. Saved steps still run through Scrybe's normal transform pipeline using {{transcript}} or {{combined_transcripts}} first, then {{current_text}} or {{prior_output}}.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = "Uses ${selectedModel.title}. Change or test this model from Settings.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = selectedModel.supportingText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+                AiDraftModelInfoCard(selectedModel)
                 OutlinedTextField(
                     value = request,
                     onValueChange = { request = it },
@@ -583,39 +546,7 @@ private fun AiProfileDraftDialog(
                     )
                 }
                 latestSuggestion?.let { suggestion ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.surfaceContainer,
-                        shape = MaterialTheme.shapes.medium,
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text = suggestion.name,
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                            Text(
-                                text = suggestion.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            suggestion.steps.forEachIndexed { index, step ->
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(
-                                        text = "Step ${index + 1}",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
-                                    Text(
-                                        text = step,
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    AiDraftSuggestionCard(suggestion)
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -628,40 +559,144 @@ private fun AiProfileDraftDialog(
                         onCheckedChange = { isDefault = it },
                     )
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
-                    latestSuggestion?.let { suggestion ->
-                        TextButton(onClick = { onEditSuggestion(suggestion, isDefault) }) {
-                            Text("Edit Draft")
-                        }
-                        Button(onClick = { onSaveSuggestion(suggestion, isDefault) }) {
-                            Text("Create Profile")
-                        }
-                    } ?: Button(
-                        onClick = {
-                            onSuggest(
-                                request,
-                                seedName,
-                                seedDescription,
-                                emptyList(),
-                            )
-                        },
-                        enabled = suggestionState !is ProfileSuggestionUiState.Loading && request.isNotBlank(),
-                    ) {
-                        Text(
-                            if (suggestionState is ProfileSuggestionUiState.Loading) {
-                                "Generating..."
-                            } else {
-                                "Generate Draft"
-                            },
-                        )
-                    }
+                AiDraftActions(
+                    suggestionState = suggestionState,
+                    latestSuggestion = latestSuggestion,
+                    isDefault = isDefault,
+                    request = request,
+                    seedName = seedName,
+                    seedDescription = seedDescription,
+                    onDismiss = onDismiss,
+                    onSuggest = onSuggest,
+                    onSaveSuggestion = onSaveSuggestion,
+                    onEditSuggestion = onEditSuggestion,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiDraftModelInfoCard(selectedModel: OpenAiProfileSuggestionModel) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Psychology, contentDescription = null)
+                Text(
+                    text = "Drafted with OpenAI ${selectedModel.apiName}",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+            Text(
+                text = "The AI creates a 1-3 step starting profile. Saved steps still run through Scrybe's normal transform pipeline using {{transcript}} or {{combined_transcripts}} first, then {{current_text}} or {{prior_output}}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Uses ${selectedModel.title}. Change or test this model from Settings.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = selectedModel.supportingText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AiDraftSuggestionCard(suggestion: dev.scrybe.core.transforms.ProfileSuggestion) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = suggestion.name,
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = suggestion.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            suggestion.steps.forEachIndexed { index, step ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Step ${index + 1}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = step,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiDraftActions(
+    suggestionState: ProfileSuggestionUiState,
+    latestSuggestion: dev.scrybe.core.transforms.ProfileSuggestion?,
+    isDefault: Boolean,
+    request: String,
+    seedName: String,
+    seedDescription: String,
+    onDismiss: () -> Unit,
+    onSuggest: (String, String, String, List<String>) -> Unit,
+    onSaveSuggestion: (dev.scrybe.core.transforms.ProfileSuggestion, Boolean) -> Unit,
+    onEditSuggestion: (dev.scrybe.core.transforms.ProfileSuggestion, Boolean) -> Unit,
+) {
+    val isLoading = suggestionState is ProfileSuggestionUiState.Loading
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onClick = onDismiss) {
+            Text("Cancel")
+        }
+        if (latestSuggestion != null) {
+            TextButton(onClick = { onEditSuggestion(latestSuggestion, isDefault) }) {
+                Text("Edit Draft")
+            }
+            Button(onClick = { onSaveSuggestion(latestSuggestion, isDefault) }) {
+                Text("Create Profile")
+            }
+        } else {
+            Button(
+                onClick = { onSuggest(request, seedName, seedDescription, emptyList()) },
+                enabled = !isLoading && request.isNotBlank(),
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Generating…")
+                } else {
+                    Text("Generate Draft")
                 }
             }
         }
