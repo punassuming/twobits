@@ -9,6 +9,7 @@
 
 ### Improvements
 
+* remove duplicate CI runs by restricting the push trigger to main only; pull_request handles feature branches, push handles post-merge verification on main
 * show a LinearProgressIndicator during AI workloads (clustering, bulk rename) and a spinner inside the AI profile draft button while generating
 * fix profile editor dialog losing typed content and save button on landscape rotation by lifting state to ViewModel and switching to a scrollable full-width Dialog
 * pre-commit hook now verifies that coroutine flow extension functions (asStateFlow, asSharedFlow, etc.) have matching imports in staged Kotlin files, catching missing-import compile errors before they reach CI

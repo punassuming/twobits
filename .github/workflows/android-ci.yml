@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ "main", "copilot/**", "claude/**" ]
+    branches: [ "main" ]
     paths:
       - 'CHANGELOG.md'
       - 'apps/android-whispering/**'
