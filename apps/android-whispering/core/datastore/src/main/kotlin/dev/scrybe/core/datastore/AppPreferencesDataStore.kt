@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
@@ -50,6 +51,7 @@ class AppPreferencesDataStore
             val TASKFORGE_ENABLED = booleanPreferencesKey("taskforge_enabled")
             val TASKFORGE_PACKAGE_NAME = stringPreferencesKey("taskforge_package_name")
             val TASKFORGE_ACTION = stringPreferencesKey("taskforge_action")
+            val LOCAL_GEMMA_MODEL = stringPreferencesKey("local_gemma_model")
         }
 
         val defaultProvider: Flow<String> =
@@ -69,16 +71,18 @@ class AppPreferencesDataStore
 
         val profileSuggestionModel: Flow<String> =
             context.dataStore.data.map { prefs ->
-                OpenAiProfileSuggestionModel.fromApiName(
-                    prefs[Keys.PROFILE_SUGGESTION_MODEL],
-                ).apiName
+                OpenAiProfileSuggestionModel
+                    .fromApiName(
+                        prefs[Keys.PROFILE_SUGGESTION_MODEL],
+                    ).apiName
             }
 
         val transformModel: Flow<String> =
             context.dataStore.data.map { prefs ->
-                OpenAiTransformModel.fromApiName(
-                    prefs[Keys.TRANSFORM_MODEL],
-                ).apiName
+                OpenAiTransformModel
+                    .fromApiName(
+                        prefs[Keys.TRANSFORM_MODEL],
+                    ).apiName
             }
 
         val audioFormat: Flow<AudioFormat> =
@@ -165,6 +169,11 @@ class AppPreferencesDataStore
         val taskForgeAction: Flow<String> =
             context.dataStore.data.map { prefs ->
                 prefs[Keys.TASKFORGE_ACTION] ?: "android.intent.action.SEND"
+            }
+
+        val localGemmaModel: Flow<LocalGemmaModel> =
+            context.dataStore.data.map { prefs ->
+                LocalGemmaModel.fromName(prefs[Keys.LOCAL_GEMMA_MODEL] ?: "")
             }
 
         suspend fun setDefaultProvider(provider: String) {
@@ -263,5 +272,9 @@ class AppPreferencesDataStore
 
         suspend fun setTaskForgeAction(action: String) {
             context.dataStore.edit { prefs -> prefs[Keys.TASKFORGE_ACTION] = action }
+        }
+
+        suspend fun setLocalGemmaModel(model: LocalGemmaModel) {
+            context.dataStore.edit { prefs -> prefs[Keys.LOCAL_GEMMA_MODEL] = model.name }
         }
     }

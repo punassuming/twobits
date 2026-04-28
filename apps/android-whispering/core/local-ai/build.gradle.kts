@@ -20,6 +20,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:transcription"))
     implementation(project(":core:transforms"))

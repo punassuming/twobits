@@ -4,7 +4,8 @@
 
 ### Features
 
-* add on-device transcription using Whisper tiny (via Sherpa-ONNX) and on-device transforms using Gemma 2B IT (via MediaPipe); both models are optional downloads managed from Settings → Provider → Local
+* add on-device transcription using Whisper tiny (via Sherpa-ONNX) and on-device transforms, rename, clustering, and tag suggestions using Gemma (via MediaPipe); all AI capabilities route to local or remote based on the active provider selection
+* add Gemma model picker in Settings → Provider → Local with GPU (INT4, ~1.3 GB) and CPU (INT8, ~2.3 GB) variants; selected model is persisted and used across all local AI operations
 
 ### Improvements
 

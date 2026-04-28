@@ -2,6 +2,7 @@ package dev.scrybe.core.localai
 
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.scrybe.core.model.LocalGemmaModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,18 +29,17 @@ class LocalModelManager
         private val _whisperState = MutableStateFlow<LocalModelState>(LocalModelState.NotDownloaded)
         val whisperState: StateFlow<LocalModelState> = _whisperState.asStateFlow()
 
-        private val _gemmaState = MutableStateFlow<LocalModelState>(LocalModelState.NotDownloaded)
-        val gemmaState: StateFlow<LocalModelState> = _gemmaState.asStateFlow()
+        private val _gemmaStates =
+            MutableStateFlow<Map<LocalGemmaModel, LocalModelState>>(
+                LocalGemmaModel.entries.associateWith { LocalModelState.NotDownloaded },
+            )
+        val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = _gemmaStates.asStateFlow()
 
         companion object {
             private const val WHISPER_ARCHIVE_URL =
                 "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/" +
                     "sherpa-onnx-whisper-tiny.tar.bz2"
             private const val WHISPER_DIR_NAME = "sherpa-onnx-whisper-tiny"
-            private const val GEMMA_URL =
-                "https://huggingface.co/litert-community/Gemma2-2B-IT/resolve/main/" +
-                    "gemma2-2b-it-gpu-int4.task"
-            private const val GEMMA_FILE_NAME = "gemma2-2b-it-gpu-int4.task"
         }
 
         init {
@@ -48,7 +48,7 @@ class LocalModelManager
 
         private fun refreshStates() {
             _whisperState.value = resolveWhisperState()
-            _gemmaState.value = resolveGemmaState()
+            _gemmaStates.value = LocalGemmaModel.entries.associateWith { resolveGemmaState(it) }
         }
 
         fun whisperModelDir(): File? {
@@ -56,28 +56,24 @@ class LocalModelManager
             return if (dir.exists() && dir.isDirectory) dir else null
         }
 
-        fun gemmaModelFile(): File? {
-            val file = File(modelsDir, GEMMA_FILE_NAME)
+        fun gemmaModelFile(model: LocalGemmaModel): File? {
+            val file = File(modelsDir, model.fileName)
             return if (file.exists() && file.length() > 0) file else null
         }
 
-        private fun resolveWhisperState(): LocalModelState {
-            val dir = whisperModelDir()
-            return if (dir != null) {
-                LocalModelState.Ready(dir.absolutePath)
-            } else {
-                LocalModelState.NotDownloaded
-            }
-        }
+        fun anyGemmaReady(): LocalGemmaModel? = LocalGemmaModel.entries.firstOrNull { gemmaModelFile(it) != null }
 
-        private fun resolveGemmaState(): LocalModelState {
-            val file = gemmaModelFile()
-            return if (file != null) {
-                LocalModelState.Ready(file.absolutePath)
+        private fun resolveWhisperState(): LocalModelState =
+            if (whisperModelDir() != null) {
+                LocalModelState.Ready(File(modelsDir, WHISPER_DIR_NAME).absolutePath)
             } else {
                 LocalModelState.NotDownloaded
             }
-        }
+
+        private fun resolveGemmaState(model: LocalGemmaModel): LocalModelState =
+            gemmaModelFile(model)
+                ?.let { LocalModelState.Ready(it.absolutePath) }
+                ?: LocalModelState.NotDownloaded
 
         suspend fun downloadWhisper() {
             if (_whisperState.value is LocalModelState.Downloading) return
@@ -97,18 +93,19 @@ class LocalModelManager
             }
         }
 
-        suspend fun downloadGemma() {
-            if (_gemmaState.value is LocalModelState.Downloading) return
+        suspend fun downloadGemma(model: LocalGemmaModel) {
+            val current = _gemmaStates.value[model]
+            if (current is LocalModelState.Downloading) return
             withContext(Dispatchers.IO) {
                 try {
-                    _gemmaState.value = LocalModelState.Downloading(0)
-                    val destFile = File(modelsDir, GEMMA_FILE_NAME)
-                    downloadFile(GEMMA_URL, destFile) { progress ->
-                        _gemmaState.value = LocalModelState.Downloading(progress)
+                    updateGemmaState(model, LocalModelState.Downloading(0))
+                    val destFile = File(modelsDir, model.fileName)
+                    downloadFile(model.downloadUrl, destFile) { progress ->
+                        updateGemmaState(model, LocalModelState.Downloading(progress))
                     }
-                    _gemmaState.value = resolveGemmaState()
+                    updateGemmaState(model, resolveGemmaState(model))
                 } catch (e: Exception) {
-                    _gemmaState.value = LocalModelState.Error(e.message ?: "Download failed")
+                    updateGemmaState(model, LocalModelState.Error(e.message ?: "Download failed"))
                 }
             }
         }
@@ -118,9 +115,16 @@ class LocalModelManager
             _whisperState.value = LocalModelState.NotDownloaded
         }
 
-        fun deleteGemma() {
-            File(modelsDir, GEMMA_FILE_NAME).delete()
-            _gemmaState.value = LocalModelState.NotDownloaded
+        fun deleteGemma(model: LocalGemmaModel) {
+            File(modelsDir, model.fileName).delete()
+            updateGemmaState(model, LocalModelState.NotDownloaded)
+        }
+
+        private fun updateGemmaState(
+            model: LocalGemmaModel,
+            state: LocalModelState,
+        ) {
+            _gemmaStates.value = _gemmaStates.value + (model to state)
         }
 
         private fun downloadFile(

@@ -16,6 +16,7 @@ import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.localai.LocalModelManager
 import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
@@ -127,7 +128,15 @@ class SettingsViewModel
         private val localModelManager: LocalModelManager,
     ) : ViewModel() {
         val whisperModelState: StateFlow<LocalModelState> = localModelManager.whisperState
-        val gemmaModelState: StateFlow<LocalModelState> = localModelManager.gemmaState
+        val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = localModelManager.gemmaStates
+
+        val selectedGemmaModel: StateFlow<LocalGemmaModel> =
+            preferencesDataStore.localGemmaModel
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = LocalGemmaModel.default,
+                )
 
         private val apiKey = MutableStateFlow("")
         private val appMetadata = MutableStateFlow(AppMetadata())
@@ -377,16 +386,20 @@ class SettingsViewModel
             viewModelScope.launch { localModelManager.downloadWhisper() }
         }
 
-        fun downloadGemmaModel() {
-            viewModelScope.launch { localModelManager.downloadGemma() }
+        fun downloadGemmaModel(model: LocalGemmaModel) {
+            viewModelScope.launch { localModelManager.downloadGemma(model) }
         }
 
         fun deleteWhisperModel() {
             localModelManager.deleteWhisper()
         }
 
-        fun deleteGemmaModel() {
-            localModelManager.deleteGemma()
+        fun deleteGemmaModel(model: LocalGemmaModel) {
+            localModelManager.deleteGemma(model)
+        }
+
+        fun selectGemmaModel(model: LocalGemmaModel) {
+            viewModelScope.launch { preferencesDataStore.setLocalGemmaModel(model) }
         }
 
         fun setThemeMode(themeMode: ThemeMode) {

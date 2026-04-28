@@ -69,6 +69,7 @@ import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
@@ -83,7 +84,8 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val whisperState by viewModel.whisperModelState.collectAsState()
-    val gemmaState by viewModel.gemmaModelState.collectAsState()
+    val gemmaStates by viewModel.gemmaStates.collectAsState()
+    val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
     var showChangelog by remember { mutableStateOf(false) }
     var showSavedFiles by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
@@ -316,17 +318,26 @@ fun SettingsScreen(
                         },
                         content = {
                             LocalModelDownloadSection(
-                                label = "Whisper tiny (~40 MB)",
+                                label = "Whisper tiny · ~40 MB",
                                 state = whisperState,
                                 onDownload = viewModel::downloadWhisperModel,
                                 onDelete = viewModel::deleteWhisperModel,
                             )
-                            LocalModelDownloadSection(
-                                label = "Gemma 2B IT (~1.3 GB, for transforms)",
-                                state = gemmaState,
-                                onDownload = viewModel::downloadGemmaModel,
-                                onDelete = viewModel::deleteGemmaModel,
+                            Text(
+                                "LLM model (transforms, rename, tags, clustering)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            LocalGemmaModel.entries.forEach { model ->
+                                GemmaModelRow(
+                                    model = model,
+                                    state = gemmaStates[model] ?: LocalModelState.NotDownloaded,
+                                    isSelected = selectedGemmaModel == model,
+                                    onSelect = { viewModel.selectGemmaModel(model) },
+                                    onDownload = { viewModel.downloadGemmaModel(model) },
+                                    onDelete = { viewModel.deleteGemmaModel(model) },
+                                )
+                            }
                         },
                     )
                     HorizontalDivider()
@@ -883,6 +894,89 @@ fun SettingsScreen(
                 showTransformModelPicker = false
             },
         )
+    }
+}
+
+@Composable
+private fun GemmaModelRow(
+    model: LocalGemmaModel,
+    state: LocalModelState,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val isReady = state is LocalModelState.Ready
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isSelected && isReady) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+            ),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(model.displayName, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "${model.description} · ${model.sizeLabel}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (isReady) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (!isSelected) {
+                            TextButton(onClick = onSelect) { Text("Use") }
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                        }
+                    }
+                }
+            }
+            when (state) {
+                is LocalModelState.NotDownloaded ->
+                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(" Download")
+                    }
+                is LocalModelState.Downloading ->
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        LinearProgressIndicator(
+                            progress = { state.progressPercent / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            "${state.progressPercent}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                is LocalModelState.Ready ->
+                    if (isSelected) {
+                        Text(
+                            "Active",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                is LocalModelState.Error ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
+                    }
+            }
+        }
     }
 }
 
