@@ -10,7 +10,7 @@
 ### Improvements
 
 * enable Local provider selection in Settings once the Whisper model is downloaded; provider card shows per-model download progress, size, and delete controls
-* bump sherpa-onnx-android to v1.13.0 (latest stable; was v1.10.41); fix JitPack resolution by using the `v`-prefixed tag format
+* switch sherpa-onnx-android to v1.13.0 prebuilt AAR downloaded from GitHub Releases at build time; the library is not published to JitPack or Maven Central
 
 ### Fixes
 
