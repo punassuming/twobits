@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -32,7 +34,7 @@ val downloadSherpaOnnx by tasks.registering {
         val url =
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/" +
                 "v$sherpaOnnxVersion/$sherpaOnnxAarName"
-        java.net.URI(url).toURL().openStream().use { input ->
+        URI(url).toURL().openStream().use { input ->
             dest.outputStream().use { input.copyTo(it) }
         }
     }
