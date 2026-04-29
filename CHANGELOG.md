@@ -4,7 +4,13 @@
 
 ### Features
 
+* add on-device transcription using Whisper tiny (via Sherpa-ONNX) and on-device transforms, rename, clustering, and tag suggestions using Gemma (via MediaPipe); all AI capabilities route to local or remote based on the active provider selection
+* add Gemma model picker in Settings → Provider → Local with GPU (INT4, ~1.3 GB) and CPU (INT8, ~2.3 GB) variants; selected model is persisted and used across all local AI operations
+
 ### Improvements
+
+* enable Local provider selection in Settings once the Whisper model is downloaded; provider card shows per-model download progress, size, and delete controls
+* bump sherpa-onnx-android to v1.12.40 (latest stable; was v1.10.41)
 
 ### Fixes
 

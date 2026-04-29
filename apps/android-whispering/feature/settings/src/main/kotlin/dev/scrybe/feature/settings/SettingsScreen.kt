@@ -17,7 +17,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
@@ -36,6 +38,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -64,7 +67,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
+import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
@@ -78,6 +83,9 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val whisperState by viewModel.whisperModelState.collectAsState()
+    val gemmaStates by viewModel.gemmaStates.collectAsState()
+    val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
     var showChangelog by remember { mutableStateOf(false) }
     var showSavedFiles by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
@@ -302,11 +310,34 @@ fun SettingsScreen(
                     ProviderOptionCard(
                         providerType = ProviderType.LOCAL,
                         selected = uiState.defaultProvider == ProviderType.LOCAL.name,
-                        enabled = false,
-                        supportingText = "On-device transcription is planned, but it is not available in this build.",
-                        onSelect = {},
+                        enabled = whisperState is LocalModelState.Ready,
+                        supportingText = "On-device transcription using Whisper (tiny). No internet required.",
+                        onSelect = { viewModel.setDefaultProvider(ProviderType.LOCAL.name) },
                         icon = {
                             Icon(Icons.Filled.Storage, contentDescription = null)
+                        },
+                        content = {
+                            LocalModelDownloadSection(
+                                label = "Whisper tiny · ~40 MB",
+                                state = whisperState,
+                                onDownload = viewModel::downloadWhisperModel,
+                                onDelete = viewModel::deleteWhisperModel,
+                            )
+                            Text(
+                                "LLM model (transforms, rename, tags, clustering)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            LocalGemmaModel.entries.forEach { model ->
+                                GemmaModelRow(
+                                    model = model,
+                                    state = gemmaStates[model] ?: LocalModelState.NotDownloaded,
+                                    isSelected = selectedGemmaModel == model,
+                                    onSelect = { viewModel.selectGemmaModel(model) },
+                                    onDownload = { viewModel.downloadGemmaModel(model) },
+                                    onDelete = { viewModel.deleteGemmaModel(model) },
+                                )
+                            }
                         },
                     )
                     HorizontalDivider()
@@ -863,6 +894,146 @@ fun SettingsScreen(
                 showTransformModelPicker = false
             },
         )
+    }
+}
+
+@Composable
+private fun GemmaModelRow(
+    model: LocalGemmaModel,
+    state: LocalModelState,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val isReady = state is LocalModelState.Ready
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isSelected && isReady) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+            ),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(model.displayName, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "${model.description} · ${model.sizeLabel}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (isReady) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (!isSelected) {
+                            TextButton(onClick = onSelect) { Text("Use") }
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                        }
+                    }
+                }
+            }
+            when (state) {
+                is LocalModelState.NotDownloaded ->
+                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(" Download")
+                    }
+                is LocalModelState.Downloading ->
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        LinearProgressIndicator(
+                            progress = { state.progressPercent / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            "${state.progressPercent}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                is LocalModelState.Ready ->
+                    if (isSelected) {
+                        Text(
+                            "Active",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                is LocalModelState.Error ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
+                    }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocalModelDownloadSection(
+    label: String,
+    state: LocalModelState,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall)
+        when (state) {
+            is LocalModelState.NotDownloaded ->
+                OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Text(" Download")
+                }
+            is LocalModelState.Downloading ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LinearProgressIndicator(
+                        progress = { state.progressPercent / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        "${state.progressPercent}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            is LocalModelState.Ready ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Ready",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete model")
+                    }
+                }
+            is LocalModelState.Error ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        state.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                        Text("Retry")
+                    }
+                }
+        }
     }
 }
 

@@ -19,14 +19,14 @@ import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.localai.AutoRenameServiceFacade
+import dev.scrybe.core.localai.ClusteringServiceFacade
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
-import dev.scrybe.core.transforms.OpenAiAutoRenameService
-import dev.scrybe.core.transforms.OpenAiClusteringService
 import dev.scrybe.core.transforms.SessionSummary
 import dev.scrybe.core.transforms.SessionTransformCoordinator
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -92,8 +92,8 @@ class HistoryViewModel
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
-        private val clusteringService: OpenAiClusteringService,
-        private val autoRenameService: OpenAiAutoRenameService,
+        private val clusteringService: ClusteringServiceFacade,
+        private val autoRenameService: AutoRenameServiceFacade,
     ) : ViewModel() {
         private val query = MutableStateFlow("")
         private val filters = MutableStateFlow(RecordsFilterState())

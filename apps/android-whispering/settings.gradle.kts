@@ -17,6 +17,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
@@ -25,6 +26,7 @@ rootProject.name = "scrybe-android"
 include(":app")
 
 // Core modules
+include(":core:local-ai")
 include(":core:common")
 include(":core:model")
 include(":core:database")

@@ -13,7 +13,10 @@ import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.localai.LocalModelManager
+import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
@@ -100,9 +103,13 @@ sealed interface ProfileSuggestionModelTestUiState {
 
     data object Loading : ProfileSuggestionModelTestUiState
 
-    data class Success(val resolvedModelName: String) : ProfileSuggestionModelTestUiState
+    data class Success(
+        val resolvedModelName: String,
+    ) : ProfileSuggestionModelTestUiState
 
-    data class Error(val message: String) : ProfileSuggestionModelTestUiState
+    data class Error(
+        val message: String,
+    ) : ProfileSuggestionModelTestUiState
 }
 
 @HiltViewModel
@@ -118,7 +125,19 @@ class SettingsViewModel
         private val apiKeyProvider: ApiKeyProvider,
         private val apiKeyValidator: OpenAiApiKeyValidator,
         private val profileSuggestionService: OpenAiProfileSuggestionService,
+        private val localModelManager: LocalModelManager,
     ) : ViewModel() {
+        val whisperModelState: StateFlow<LocalModelState> = localModelManager.whisperState
+        val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = localModelManager.gemmaStates
+
+        val selectedGemmaModel: StateFlow<LocalGemmaModel> =
+            preferencesDataStore.localGemmaModel
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = LocalGemmaModel.default,
+                )
+
         private val apiKey = MutableStateFlow("")
         private val appMetadata = MutableStateFlow(AppMetadata())
         private val savedFiles = MutableStateFlow<List<SavedFileEntry>>(emptyList())
@@ -360,8 +379,27 @@ class SettingsViewModel
         }
 
         fun setDefaultProvider(provider: String) {
-            if (provider != ProviderType.OPENAI.name) return
             viewModelScope.launch { preferencesDataStore.setDefaultProvider(provider) }
+        }
+
+        fun downloadWhisperModel() {
+            viewModelScope.launch { localModelManager.downloadWhisper() }
+        }
+
+        fun downloadGemmaModel(model: LocalGemmaModel) {
+            viewModelScope.launch { localModelManager.downloadGemma(model) }
+        }
+
+        fun deleteWhisperModel() {
+            localModelManager.deleteWhisper()
+        }
+
+        fun deleteGemmaModel(model: LocalGemmaModel) {
+            localModelManager.deleteGemma(model)
+        }
+
+        fun selectGemmaModel(model: LocalGemmaModel) {
+            viewModelScope.launch { preferencesDataStore.setLocalGemmaModel(model) }
         }
 
         fun setThemeMode(themeMode: ThemeMode) {
@@ -423,13 +461,13 @@ class SettingsViewModel
                     apiKeyValidationStatus.value = ApiKeyValidationStatus.Validating
                     apiKeyValidationMessage.value = "Checking OpenAI connection..."
                     profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
-                    apiKeyValidator.validate(trimmed)
+                    apiKeyValidator
+                        .validate(trimmed)
                         .onSuccess {
                             apiKeyProvider.setApiKey(ProviderType.OPENAI, trimmed)
                             apiKeyValidationStatus.value = ApiKeyValidationStatus.Valid
                             apiKeyValidationMessage.value = "Connected to OpenAI"
-                        }
-                        .onFailure {
+                        }.onFailure {
                             apiKeyValidationStatus.value = ApiKeyValidationStatus.Invalid
                             apiKeyValidationMessage.value = it.message ?: "Unable to validate API key"
                             return@launch
@@ -483,7 +521,8 @@ class SettingsViewModel
         fun testProfileSuggestionModel() {
             viewModelScope.launch {
                 profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Loading
-                profileSuggestionService.testModel(uiState.value.profileSuggestionModel)
+                profileSuggestionService
+                    .testModel(uiState.value.profileSuggestionModel)
                     .fold(
                         onSuccess = { resolvedModel ->
                             profileSuggestionModelTestState.value =
@@ -525,7 +564,10 @@ class SettingsViewModel
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val changelogText =
                 runCatching {
-                    context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
+                    context.assets
+                        .open("CHANGELOG.md")
+                        .bufferedReader()
+                        .use { it.readText() }
                 }.getOrElse {
                     "Changelog unavailable in this build."
                 }
@@ -646,19 +688,25 @@ class SettingsViewModel
         private fun scanSavedFiles(): List<SavedFileEntry> {
             val directories =
                 listOfNotNull(
-                    context.filesDir.resolve("recordings").takeIf { it.exists() }?.let { "Recordings" to it },
-                    context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS)
+                    context.filesDir
+                        .resolve("recordings")
+                        .takeIf { it.exists() }
+                        ?.let { "Recordings" to it },
+                    context
+                        .getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS)
                         ?.resolve("exports")
                         ?.takeIf { it.exists() }
                         ?.let { "Exports" to it },
-                    context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS)
+                    context
+                        .getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS)
                         ?.resolve("saved-recordings")
                         ?.takeIf { it.exists() }
                         ?.let { "Saved Copies" to it },
                 )
 
             return directories.flatMap { (category, dir) ->
-                dir.listFiles()
+                dir
+                    .listFiles()
                     ?.sortedByDescending { it.lastModified() }
                     ?.map { file ->
                         SavedFileEntry(
@@ -668,8 +716,7 @@ class SettingsViewModel
                             category = category,
                             lastModified = file.lastModified(),
                         )
-                    }
-                    .orEmpty()
+                    }.orEmpty()
             }
         }
     }
