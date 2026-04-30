@@ -1,9 +1,9 @@
 package dev.scrybe.core.localai
 
+import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
-import com.k2fsa.sherpa.onnx.getOfflineModelConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.Closeable
@@ -26,8 +26,8 @@ internal class WhisperEngine(
                 language = "en",
                 task = "transcribe",
             )
-        val modelConfig = getOfflineModelConfig(type = 3).copy(whisper = whisperConfig, tokens = tokensPath)
-        val config = OfflineRecognizerConfig(model = modelConfig)
+        val modelConfig = OfflineModelConfig(whisper = whisperConfig, tokens = tokensPath)
+        val config = OfflineRecognizerConfig(modelConfig = modelConfig)
         recognizer = OfflineRecognizer(config = config)
     }
 

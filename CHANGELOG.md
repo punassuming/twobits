@@ -11,8 +11,11 @@
 
 * enable Local provider selection in Settings once the Whisper model is downloaded; provider card shows per-model download progress, size, and delete controls
 * switch sherpa-onnx-android to v1.13.0 prebuilt AAR downloaded via curl from GitHub Releases at build time; the library is not published to JitPack or Maven Central
+* harden pre-commit hook: add external dependency URL reachability check, detekt on staged `.kt` sources, and Java stdlib import completeness for `.kts` build scripts
 
 ### Fixes
+
+* fix sherpa-onnx v1.13.0 API breakage: construct `OfflineModelConfig` directly instead of `getOfflineModelConfig(type=3).copy()`; rename `model` → `modelConfig` in `OfflineRecognizerConfig`
 
 ## 0.10.0 (2026-04-27)
 
