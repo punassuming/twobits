@@ -10,6 +10,7 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 ANDROID_DIR="$REPO_ROOT/apps/android-whispering"
 KTLINT_VERSION="1.5.0"
+DETEKT_VERSION="1.23.7"
 
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -98,10 +99,11 @@ fi
 
 # ── 4. Kotlin import completeness (no Android SDK required) ──────────────────
 # Catch common "Unresolved reference" failures that only surface in CI:
-# verify that flow extension functions used in a file have their imports present.
+# verify that used extension functions / classes have their imports present.
 if [[ -n "$STAGED_KT" ]]; then
     IMPORT_ERRORS=()
-    # Map of usage pattern -> required import fragment
+
+    # Flow extension functions in .kt files
     declare -A FLOW_EXT_IMPORTS=(
         [".asStateFlow()"]="kotlinx.coroutines.flow.asStateFlow"
         [".asSharedFlow()"]="kotlinx.coroutines.flow.asSharedFlow"
@@ -114,8 +116,23 @@ if [[ -n "$STAGED_KT" ]]; then
         [".flatMapLatest("]="kotlinx.coroutines.flow.flatMapLatest"
         [".collectLatest("]="kotlinx.coroutines.flow.collectLatest"
     )
+
+    # Java stdlib classes that need explicit imports in Kotlin DSL build scripts (.kts).
+    # Kotlin DSL does not resolve java.* via fully-qualified name the way plain Kotlin does.
+    declare -A KTS_JAVA_IMPORTS=(
+        [" URI("]="java.net.URI"
+        ["URL("]="java.net.URL"
+        ["HttpURLConnection"]="java.net.HttpURLConnection"
+        ["BufferedReader("]="java.io.BufferedReader"
+        ["FileInputStream("]="java.io.FileInputStream"
+        ["FileOutputStream("]="java.io.FileOutputStream"
+        ["InputStreamReader("]="java.io.InputStreamReader"
+    )
+
     while IFS= read -r kt_file; do
         [[ -f "$REPO_ROOT/$kt_file" ]] || continue
+
+        # Flow extension check (applies to all .kt / .kts files)
         for usage in "${!FLOW_EXT_IMPORTS[@]}"; do
             required="${FLOW_EXT_IMPORTS[$usage]}"
             if grep -qF "$usage" "$REPO_ROOT/$kt_file" && \
@@ -123,15 +140,78 @@ if [[ -n "$STAGED_KT" ]]; then
                 IMPORT_ERRORS+=("$kt_file: uses '$usage' but missing 'import $required'")
             fi
         done
+
+        # Java stdlib check (.kts files only)
+        if [[ "$kt_file" == *.kts ]]; then
+            for usage in "${!KTS_JAVA_IMPORTS[@]}"; do
+                required="${KTS_JAVA_IMPORTS[$usage]}"
+                if grep -qF "$usage" "$REPO_ROOT/$kt_file" && \
+                   ! grep -qF "import $required" "$REPO_ROOT/$kt_file"; then
+                    IMPORT_ERRORS+=("$kt_file: uses '$usage' in .kts but missing 'import $required'")
+                fi
+            done
+        fi
     done <<< "$STAGED_KT"
 
     if [[ ${#IMPORT_ERRORS[@]} -gt 0 ]]; then
         for err in "${IMPORT_ERRORS[@]}"; do
             echo -e "${RED}MISSING IMPORT:${NC} $err" >&2
         done
-        fail "Missing coroutine flow imports detected. Add them and re-commit."
+        fail "Missing imports detected. Add them and re-commit."
     fi
     ok "Kotlin import completeness"
+fi
+
+# ── 5. External dependency URL reachability ──────────────────────────────────
+# Verify that GitHub Release asset URLs (Exec task downloads) and any JitPack
+# artifact URLs in libs.versions.toml actually return HTTP 2xx before pushing.
+# Catches 404s from wrong version strings or missing JitPack builds early.
+STAGED_GRADLE=$(echo "$STAGED_ALL" \
+    | grep -E "build\.gradle\.kts$|libs\.versions\.toml$" || true)
+if [[ -n "$STAGED_GRADLE" ]]; then
+    echo "Checking external dependency URLs…"
+    python3 "$ANDROID_DIR/scripts/validate-external-urls.py" \
+        || fail "One or more dependency download URLs are unreachable. Fix the URL and re-commit."
+    ok "External dependency URLs"
+fi
+
+# ── 6. Detekt on staged Kotlin sources ───────────────────────────────────────
+# Runs the same detekt config used in CI (detekt.yml) on staged .kt files to
+# catch function-length, parameter-count, and return-count violations locally.
+# Build scripts (.kts) are excluded — detekt has limited support for them.
+STAGED_KT_SOURCES=$(echo "$STAGED_KT" | grep -E "\.kt$" || true)
+if [[ -n "$STAGED_KT_SOURCES" ]]; then
+    DETEKT_JAR="${HOME}/.local/bin/detekt-cli-${DETEKT_VERSION}-all.jar"
+    if [[ ! -f "$DETEKT_JAR" ]]; then
+        echo "Downloading detekt CLI ${DETEKT_VERSION}…"
+        mkdir -p "${HOME}/.local/bin"
+        curl -sSL \
+            "https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}/detekt-cli-${DETEKT_VERSION}-all.jar" \
+            -o "$DETEKT_JAR" \
+            || fail "Could not download detekt. Ensure network access and retry."
+        ok "detekt ${DETEKT_VERSION} downloaded"
+    fi
+
+    # Build comma-separated list of absolute paths for detekt --input.
+    DETEKT_INPUT=$(echo "$STAGED_KT_SOURCES" \
+        | sed "s|^|$REPO_ROOT/|" \
+        | paste -sd ',' -)
+
+    DETEKT_EXIT=0
+    java -jar "$DETEKT_JAR" \
+        --config "$ANDROID_DIR/detekt.yml" \
+        --input "$DETEKT_INPUT" \
+        --base-path "$REPO_ROOT" \
+        2>&1 || DETEKT_EXIT=$?
+
+    if [[ $DETEKT_EXIT -eq 2 ]]; then
+        fail "detekt found violations. Fix them and re-commit."
+    elif [[ $DETEKT_EXIT -ne 0 ]]; then
+        # Exit code 1 is typically a type-resolution error in standalone mode;
+        # actual violations are exit code 2. Warn but don't block.
+        warn "detekt exited with code $DETEKT_EXIT (type-resolution error in standalone mode; CI will verify)."
+    fi
+    ok "Detekt"
 fi
 
 echo ""
