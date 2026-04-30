@@ -6,6 +6,7 @@
 
 * add on-device transcription using Whisper tiny (via Sherpa-ONNX) and on-device transforms, rename, clustering, and tag suggestions using Gemma (via MediaPipe); all AI capabilities route to local or remote based on the active provider selection
 * add Gemma model picker in Settings → Provider → Local with GPU (INT4, ~1.3 GB) and CPU (INT8, ~2.3 GB) variants; selected model is persisted and used across all local AI operations
+* add dedicated File Manager screen accessible from Settings with recording inventory, orphan detection and one-tap import, per-session bundle export (audio + markdown transcript), and saved-copy/export management
 
 ### Improvements
 
@@ -16,6 +17,7 @@
 ### Fixes
 
 * fix sherpa-onnx dependency for library modules: download AAR to a local Maven directory in `settings.gradle.kts` and declare as a Maven coordinate (`com.k2fsa:sherpa-onnx-android:1.13.0`); AGP forbids direct local `.aar` file deps in library modules
+* fix exported files and saved audio copies using UUID-based machine filenames; all exports and saved copies now use the user-visible recording title via `sanitizeFileName(session.title)`
 
 ## 0.10.0 (2026-04-27)
 

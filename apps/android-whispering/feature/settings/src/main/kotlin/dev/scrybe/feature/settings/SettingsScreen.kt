@@ -80,6 +80,7 @@ import dev.scrybe.core.model.ThemeMode
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToFileManager: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -87,7 +88,6 @@ fun SettingsScreen(
     val gemmaStates by viewModel.gemmaStates.collectAsState()
     val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
     var showChangelog by remember { mutableStateOf(false) }
-    var showSavedFiles by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
     var showPostStopPicker by remember { mutableStateOf(false) }
     var showSampleRatePicker by remember { mutableStateOf(false) }
@@ -597,21 +597,18 @@ fun SettingsScreen(
                 }
 
                 SettingsSectionCard(
-                    title = "Saved Files",
+                    title = "File Manager",
                     icon = Icons.Filled.FolderOpen,
                 ) {
                     Text(
-                        text = "${uiState.savedFiles.size} files available in app storage.",
+                        text = "Browse, import, export, and manage recording files.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Button(
-                        onClick = {
-                            viewModel.refreshSavedFiles()
-                            showSavedFiles = true
-                        },
+                        onClick = onNavigateToFileManager,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Browse Saved Files")
+                        Text("Manage Files")
                     }
                 }
 
@@ -756,30 +753,6 @@ fun SettingsScreen(
                 TextButton(onClick = { showChangelog = false }) {
                     Text("Close")
                 }
-            },
-        )
-    }
-
-    if (showSavedFiles) {
-        val context = androidx.compose.ui.platform.LocalContext.current
-        SavedFilesDialog(
-            files = uiState.savedFiles,
-            onDismiss = { showSavedFiles = false },
-            onDelete = viewModel::deleteSavedFile,
-            onOpenFolder = { filePath ->
-                val parentDir = java.io.File(filePath).parentFile ?: return@SavedFilesDialog
-                val uri =
-                    androidx.core.content.FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        parentDir,
-                    )
-                val intent =
-                    android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, "resource/folder")
-                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                runCatching { context.startActivity(intent) }
             },
         )
     }

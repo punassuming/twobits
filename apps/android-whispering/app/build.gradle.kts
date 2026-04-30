@@ -105,6 +105,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:transforms"))
     implementation(project(":feature:capture"))
+    implementation(project(":feature:file-manager"))
     implementation(project(":feature:history"))
     implementation(project(":feature:session-detail"))
     implementation(project(":feature:profiles"))

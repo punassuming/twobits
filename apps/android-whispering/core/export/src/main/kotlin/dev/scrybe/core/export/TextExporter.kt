@@ -1,5 +1,6 @@
 package dev.scrybe.core.export
 
+import dev.scrybe.core.common.sanitizeFileName
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
@@ -16,7 +17,7 @@ class TextExporter
         ): Result<File> =
             runCatching {
                 outputDir.mkdirs()
-                val file = File(outputDir, "${session.id}.txt")
+                val file = File(outputDir, "${sanitizeFileName(session.title)}.txt")
                 val rawTranscripts = transcripts.filter { it.type == TranscriptType.RAW }
                 val sb = StringBuilder()
                 sb.appendLine(session.title)

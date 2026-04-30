@@ -1,5 +1,6 @@
 package dev.scrybe.core.export
 
+import dev.scrybe.core.common.sanitizeFileName
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.Transcript
 import kotlinx.serialization.Serializable
@@ -19,7 +20,7 @@ class JsonExporter
         ): Result<File> =
             runCatching {
                 outputDir.mkdirs()
-                val file = File(outputDir, "${session.id}.json")
+                val file = File(outputDir, "${sanitizeFileName(session.title)}.json")
                 val export =
                     ExportData(
                         sessionId = session.id,
