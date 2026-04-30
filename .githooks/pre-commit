@@ -120,7 +120,7 @@ if [[ -n "$STAGED_KT" ]]; then
     # Java stdlib classes that need explicit imports in Kotlin DSL build scripts (.kts).
     # Kotlin DSL does not resolve java.* via fully-qualified name the way plain Kotlin does.
     declare -A KTS_JAVA_IMPORTS=(
-        ["URI("]="java.net.URI"
+        [" URI("]="java.net.URI"
         ["URL("]="java.net.URL"
         ["HttpURLConnection"]="java.net.HttpURLConnection"
         ["BufferedReader("]="java.io.BufferedReader"

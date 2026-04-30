@@ -46,7 +46,7 @@ def head_url(url: str) -> tuple[bool, int]:
 
 
 def find_exec_task_urls() -> list[tuple[str, str]]:
-    """Extract download URLs from Exec task commandLine() blocks in build scripts."""
+    """Extract download URLs from Exec task commandLine() blocks and ProcessBuilder calls."""
     results = []
     for build_file in ANDROID_DIR.rglob("*.gradle.kts"):
         content = build_file.read_text()
@@ -54,7 +54,8 @@ def find_exec_task_urls() -> list[tuple[str, str]]:
         for line in content.splitlines():
             if "registering(Exec::class)" in line or "register(Exec::class)" in line:
                 in_exec_block = True
-            if in_exec_block:
+            # Also catch ProcessBuilder download calls in settings/build scripts
+            if "ProcessBuilder" in line or in_exec_block:
                 for url in ASSET_RE.findall(line):
                     results.append((str(build_file.relative_to(REPO_ROOT)), url))
             if in_exec_block and line.strip() == "}":

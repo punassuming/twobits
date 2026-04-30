@@ -15,7 +15,7 @@
 
 ### Fixes
 
-* fix sherpa-onnx v1.13.0 API breakage: construct `OfflineModelConfig` directly instead of `getOfflineModelConfig(type=3).copy()`; rename `model` → `modelConfig` in `OfflineRecognizerConfig`
+* fix sherpa-onnx dependency for library modules: download AAR to a local Maven directory in `settings.gradle.kts` and declare as a Maven coordinate (`com.k2fsa:sherpa-onnx-android:1.13.0`); AGP forbids direct local `.aar` file deps in library modules
 
 ## 0.10.0 (2026-04-27)
 

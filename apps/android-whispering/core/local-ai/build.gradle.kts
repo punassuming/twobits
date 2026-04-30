@@ -19,39 +19,15 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
-// Sherpa-ONNX is distributed as a prebuilt AAR on GitHub Releases only (not JitPack/Maven Central).
-val sherpaOnnxVersion = "1.13.0"
-val sherpaOnnxAarName = "sherpa-onnx-$sherpaOnnxVersion.aar"
-val sherpaOnnxDest =
-    layout.buildDirectory
-        .file("sherpa-onnx/$sherpaOnnxAarName")
-        .get()
-        .asFile
-
-val downloadSherpaOnnx by tasks.registering(Exec::class) {
-    outputs.file(sherpaOnnxDest)
-    commandLine(
-        "curl",
-        "-L",
-        "-f",
-        "--create-dirs",
-        "-o",
-        sherpaOnnxDest.absolutePath,
-        "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaOnnxVersion/$sherpaOnnxAarName",
-    )
-}
-
-afterEvaluate {
-    tasks.named("preBuild").configure { dependsOn(downloadSherpaOnnx) }
-}
-
 dependencies {
     implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:transcription"))
     implementation(project(":core:transforms"))
 
-    implementation(files(sherpaOnnxDest))
+    // Downloaded to .gradle/local-maven/ in settings.gradle.kts (library modules
+    // cannot use direct local .aar file deps per AGP restriction).
+    implementation("com.k2fsa:sherpa-onnx-android:1.13.0")
     implementation(libs.mediapipe.tasks.genai)
     implementation(libs.commons.compress)
     implementation(libs.okhttp)
