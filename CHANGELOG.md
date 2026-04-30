@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.11.0 (2026-04-30)
+
+### Features
+
 * add on-device transcription using Whisper tiny (via Sherpa-ONNX) and on-device transforms, rename, clustering, and tag suggestions using Gemma (via MediaPipe); all AI capabilities route to local or remote based on the active provider selection
 * add Gemma model picker in Settings → Provider → Local with GPU (INT4, ~1.3 GB) and CPU (INT8, ~2.3 GB) variants; selected model is persisted and used across all local AI operations
 
@@ -16,6 +24,7 @@
 ### Fixes
 
 * fix sherpa-onnx dependency for library modules: download AAR to a local Maven directory in `settings.gradle.kts` and declare as a Maven coordinate (`com.k2fsa:sherpa-onnx-android:1.13.0`); AGP forbids direct local `.aar` file deps in library modules
+
 
 ## 0.10.0 (2026-04-27)
 
@@ -36,6 +45,7 @@
 
 * fix CI compile failure caused by missing `import kotlinx.coroutines.flow.asStateFlow` in HistoryViewModel
 * restore `as ProfilesUiState` cast in ProfilesViewModel; the cast is required to widen the map-block return type so the downstream `.catch { emit(ProfilesUiState.Error(...)) }` type-checks — the earlier "No cast needed" compiler warning was misleading
+
 
 
 ## 0.9.1 (2026-04-25)
@@ -62,6 +72,7 @@
 
 
 
+
 ## 0.9.0 (2026-04-18)
 
 ### Features
@@ -82,6 +93,7 @@
 
 
 
+
 ## 0.8.3 (2026-04-12)
 
 ### Features
@@ -91,6 +103,7 @@
 * align capture, records, profiles, settings, and session review screens around a shared spacing and card layout system to reduce dead space and make navigation feel more consistent
 
 ### Fixes
+
 
 
 
@@ -109,6 +122,7 @@
 ### Fixes
 
 * make records swipe actions less sensitive with narrower edge-only gestures, one-way swipe directions, and full-card action overlays instead of sliding row content sideways
+
 
 
 
@@ -137,6 +151,7 @@
 
 
 
+
 ## 0.8.0 (2026-04-06)
 
 ### Features
@@ -147,6 +162,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -168,6 +184,7 @@
 * add Kotlin, Min SDK, Target SDK, and License badges to the README
 
 ### Fixes
+
 
 
 
@@ -206,6 +223,7 @@
 
 
 
+
 ## 0.5.1 (2026-03-29)
 
 ### Features
@@ -213,6 +231,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -251,6 +270,7 @@
 
 
 
+
 ## 0.3.1 (2026-03-26)
 
 ### Features
@@ -261,6 +281,7 @@
 ### Fixes
 
 * require confirmation before swipe-to-transform, archive, or restore actions so record gestures are harder to trigger accidentally
+
 
 
 
@@ -288,6 +309,7 @@
 
 * add retry and reset recovery actions for recordings stuck in a transcription state
 * restore the missing transcription module dependency that was breaking Android builds
+
 
 
 
@@ -328,6 +350,7 @@
 
 
 
+
 ## 0.1.0 (2026-03-25)
 
 ### Improvements
@@ -346,11 +369,13 @@
 
 
 
+
 ## 0.0.10 (2026-03-25)
 
 ### Fixes
 
 * clean up foreground recording notification refresh logic to resolve the build issues introduced after 0.0.9
+
 
 
 
@@ -381,12 +406,14 @@
 
 
 
+
 ## 0.0.8 (2026-03-25)
 
 ### Fixes
 
 * add an Android 13+ `POST_NOTIFICATIONS` runtime permission check before refreshing the foreground recording notification
 * prevent recording notification updates from failing lint or unsafe notification calls on devices that have not granted notification permission
+
 
 
 
@@ -413,6 +440,7 @@
 * enrich the foreground recording notification with live elapsed time and simple input-level feedback
 * surface session status, archive state, transcript previews, and clearer metadata across the records list and session detail screens
 * add estimated transcription cost visibility in session detail and aggregate transcription spend reporting in Settings
+
 
 
 
@@ -455,6 +483,7 @@
 
 
 
+
 ## 0.0.5 (2026-03-23)
 
 ### Features
@@ -473,6 +502,7 @@
 
 * keep auto-transcription alive after the recording service shuts down
 * send valid typed content payloads to the OpenAI responses API for transforms
+
 
 
 
