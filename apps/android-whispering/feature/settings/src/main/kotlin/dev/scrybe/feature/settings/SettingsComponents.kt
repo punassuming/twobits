@@ -22,8 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import dev.scrybe.core.model.ProviderType
 
-internal fun shouldShowOpenAiApiKey(provider: String): Boolean =
-    provider == ProviderType.OPENAI.name
+internal fun shouldShowOpenAiApiKey(provider: String): Boolean = provider == ProviderType.OPENAI.name
 
 internal fun <T> buildOptionsSummary(
     selected: T,
@@ -43,7 +42,7 @@ internal fun providerSummary(
 ): String =
     when (providerType) {
         ProviderType.OPENAI -> if (selected) "Selected provider" else "Cloud transcription and transforms"
-        ProviderType.LOCAL -> "Coming soon"
+        ProviderType.LOCAL -> if (selected) "Selected provider" else "On-device · no internet required"
     }
 
 @Composable
@@ -96,6 +95,7 @@ internal fun ProviderOptionCard(
     onSelect: () -> Unit,
     modifier: Modifier = Modifier,
     supportingText: String,
+    alwaysShowContent: Boolean = false,
     icon: @Composable () -> Unit,
     content: @Composable (() -> Unit)? = null,
 ) {
@@ -168,7 +168,7 @@ internal fun ProviderOptionCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = contentColor.copy(alpha = 0.88f),
             )
-            if (selected) {
+            if (selected || alwaysShowContent) {
                 content?.invoke()
             }
         }

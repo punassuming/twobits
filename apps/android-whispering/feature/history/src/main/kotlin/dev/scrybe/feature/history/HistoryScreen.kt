@@ -1,9 +1,6 @@
 package dev.scrybe.feature.history
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,15 +33,16 @@ import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.IosShare
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -54,15 +52,18 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,14 +71,12 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.Folder
-import dev.scrybe.service.recording.RecordingForegroundService
-import dev.scrybe.service.recording.RecordingServiceActions
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,9 +86,9 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isRecording by viewModel.isRecording.collectAsState(initial = false)
     val isAiWorking by viewModel.isAiWorking.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var renameTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
@@ -103,40 +102,7 @@ fun HistoryScreen(
     var deleteFolderTarget by remember { mutableStateOf<Folder?>(null) }
     var moveFolderTarget by remember { mutableStateOf<Folder?>(null) }
     var transformResultEvent by remember { mutableStateOf<HistoryEvent.TransformResult?>(null) }
-    val requiredPermissions =
-        remember {
-            buildList {
-                add(Manifest.permission.RECORD_AUDIO)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    add(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        }
-    val permissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestMultiplePermissions(),
-        ) { results ->
-            val granted =
-                requiredPermissions.all {
-                    results[it] == true || ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                }
-            if (granted) {
-                context.startForegroundService(
-                    Intent(context, RecordingForegroundService::class.java).apply {
-                        action = RecordingServiceActions.ACTION_START
-                    },
-                )
-                onNavigateBack()
-            }
-        }
-    val startRecordingAndReturn = {
-        context.startForegroundService(
-            Intent(context, RecordingForegroundService::class.java).apply {
-                action = RecordingServiceActions.ACTION_START
-            },
-        )
-        onNavigateBack()
-    }
+    var showOverflowMenu by remember { mutableStateOf(false) }
 
     val importLauncher =
         rememberLauncherForActivityResult(
@@ -177,33 +143,6 @@ fun HistoryScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        floatingActionButton = {
-            if (!isSelecting) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        if (isRecording) {
-                            onNavigateBack()
-                        } else {
-                            val granted =
-                                requiredPermissions.all {
-                                    ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                                }
-                            if (granted) {
-                                startRecordingAndReturn()
-                            } else {
-                                permissionLauncher.launch(requiredPermissions.toTypedArray())
-                            }
-                        }
-                    },
-                    text = {
-                        Text(if (isRecording) "Recording…" else "Record")
-                    },
-                    icon = {
-                        Icon(Icons.Filled.Mic, contentDescription = "Record")
-                    },
-                )
-            }
-        },
         topBar = {
             TopAppBar(
                 title = {
@@ -230,6 +169,14 @@ fun HistoryScreen(
                         )
                     }
                 },
+                colors =
+                    if (isSelecting) {
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        )
+                    } else {
+                        TopAppBarDefaults.topAppBarColors()
+                    },
                 actions = {
                     if (isSelecting && successState != null) {
                         IconButton(onClick = { viewModel.selectAllVisible() }) {
@@ -238,30 +185,80 @@ fun HistoryScreen(
                         IconButton(onClick = { viewModel.transcribeSelectedSessions() }) {
                             Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Transcribe selected records")
                         }
-                        IconButton(onClick = { viewModel.transformSelectedSessions() }) {
-                            Icon(Icons.Filled.AutoFixHigh, contentDescription = "Run default transform or consolidate selected records")
-                        }
-                        IconButton(onClick = { viewModel.suggestAndApplyClusters(successState.selection.selectedSessionIds) }) {
-                            Icon(Icons.Filled.AutoAwesome, contentDescription = "Organize selected with AI")
-                        }
-                        IconButton(onClick = { viewModel.autoRenameSelectedSessions() }) {
-                            Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = "AI rename selected records")
-                        }
-                        IconButton(
-                            onClick = {
-                                viewModel.setArchivedForSelected(!successState.filters.showArchived)
-                            },
-                        ) {
-                            Icon(
-                                if (successState.filters.showArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
-                                contentDescription = if (successState.filters.showArchived) "Restore selected records" else "Archive selected records",
-                            )
-                        }
-                        IconButton(onClick = { showMoveToFolder = true }) {
-                            Icon(Icons.Filled.DriveFileMove, contentDescription = "Move to folder")
-                        }
-                        IconButton(onClick = { confirmBulkDelete = true }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete selected records")
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Run transform") },
+                                    leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
+                                    onClick = {
+                                        viewModel.transformSelectedSessions()
+                                        showOverflowMenu = false
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Organize with AI") },
+                                    leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null) },
+                                    onClick = {
+                                        viewModel.suggestAndApplyClusters(
+                                            successState.selection.selectedSessionIds,
+                                        )
+                                        showOverflowMenu = false
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("AI rename") },
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        viewModel.autoRenameSelectedSessions()
+                                        showOverflowMenu = false
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (successState.filters.showArchived) "Restore" else "Archive",
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            if (successState.filters.showArchived) {
+                                                Icons.Filled.Unarchive
+                                            } else {
+                                                Icons.Filled.Archive
+                                            },
+                                            contentDescription = null,
+                                        )
+                                    },
+                                    onClick = {
+                                        viewModel.setArchivedForSelected(!successState.filters.showArchived)
+                                        showOverflowMenu = false
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Move to folder") },
+                                    leadingIcon = { Icon(Icons.Filled.DriveFileMove, contentDescription = null) },
+                                    onClick = {
+                                        showMoveToFolder = true
+                                        showOverflowMenu = false
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Delete") },
+                                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                                    onClick = {
+                                        confirmBulkDelete = true
+                                        showOverflowMenu = false
+                                    },
+                                )
+                            }
                         }
                     } else {
                         IconButton(onClick = { viewModel.suggestAndApplyClusters() }) {
@@ -270,17 +267,23 @@ fun HistoryScreen(
                         IconButton(onClick = { showCreateFolder = true }) {
                             Icon(Icons.Filled.CreateNewFolder, contentDescription = "Create folder")
                         }
-                        IconButton(
-                            onClick = {
-                                importLauncher.launch(
-                                    arrayOf("audio/*"),
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Import recording") },
+                                    leadingIcon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
+                                    onClick = {
+                                        importLauncher.launch(arrayOf("audio/*"))
+                                        showOverflowMenu = false
+                                    },
                                 )
-                            },
-                        ) {
-                            Icon(
-                                Icons.Filled.FileOpen,
-                                contentDescription = "Import recording",
-                            )
+                            }
                         }
                     }
                 },
@@ -414,8 +417,34 @@ fun HistoryScreen(
                                         selected = item.session.id in state.selection.selectedSessionIds,
                                         onLongPress = { viewModel.enterSelectionMode(item.session.id) },
                                         onToggleSelection = { viewModel.toggleSelection(item.session.id) },
-                                        onArchive = { viewModel.setArchived(item.session.id, true) },
-                                        onRestore = { viewModel.setArchived(item.session.id, false) },
+                                        onArchive = {
+                                            val id = item.session.id
+                                            scope.launch {
+                                                viewModel.setArchived(id, true)
+                                                val result =
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "Archived",
+                                                        actionLabel = "Undo",
+                                                    )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    viewModel.setArchived(id, false)
+                                                }
+                                            }
+                                        },
+                                        onRestore = {
+                                            val id = item.session.id
+                                            scope.launch {
+                                                viewModel.setArchived(id, false)
+                                                val result =
+                                                    snackbarHostState.showSnackbar(
+                                                        message = "Restored",
+                                                        actionLabel = "Undo",
+                                                    )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    viewModel.setArchived(id, true)
+                                                }
+                                            }
+                                        },
                                         onTransform = { viewModel.transformWithDefaultProfile(item.session.id) },
                                         onRename = { renameTarget = item },
                                         onAiRename = { viewModel.autoRenameSession(item.session.id) },
@@ -427,7 +456,6 @@ fun HistoryScreen(
                                         onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
                                         onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
                                         showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
-                                        confirmSwipeActions = state.interactionPreferences.confirmSwipeActions,
                                     )
                                 }
                             }

@@ -9,7 +9,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.common.sanitizeFileName
@@ -85,7 +84,6 @@ class HistoryViewModel
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        audioRecorder: AudioRecorder,
         private val recordingSessionDao: RecordingSessionDao,
         private val transcriptDao: TranscriptDao,
         private val transformRunDao: TransformRunDao,
@@ -105,7 +103,6 @@ class HistoryViewModel
         private val currentFolderId = MutableStateFlow<String?>(null)
         private val _events = MutableSharedFlow<HistoryEvent>()
         val events = _events.asSharedFlow()
-        val isRecording = audioRecorder.isRecording
 
         private val historyUiInputs =
             combine(

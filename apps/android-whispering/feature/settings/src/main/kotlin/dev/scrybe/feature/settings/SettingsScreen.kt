@@ -312,6 +312,7 @@ fun SettingsScreen(
                         selected = uiState.defaultProvider == ProviderType.LOCAL.name,
                         enabled = whisperState is LocalModelState.Ready,
                         supportingText = "On-device transcription using Whisper (tiny). No internet required.",
+                        alwaysShowContent = true,
                         onSelect = { viewModel.setDefaultProvider(ProviderType.LOCAL.name) },
                         icon = {
                             Icon(Icons.Filled.Storage, contentDescription = null)

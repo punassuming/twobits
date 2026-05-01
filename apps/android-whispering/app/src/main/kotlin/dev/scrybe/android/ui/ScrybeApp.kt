@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonChecked
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -68,6 +69,7 @@ fun ScrybeApp() {
                 Screen.Capture.route,
                 Screen.History.route,
                 Screen.Profiles.route,
+                Screen.Settings.route,
             )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -117,6 +119,18 @@ fun ScrybeApp() {
                     },
                     icon = { Icon(Icons.Filled.Tune, contentDescription = null) },
                     label = { Text("Profiles") },
+                )
+                NavigationBarItem(
+                    selected = currentRoute == Screen.Settings.route,
+                    onClick = {
+                        navController.navigate(Screen.Settings.route) {
+                            popUpTo(Screen.Capture.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                    label = { Text("Settings") },
                 )
             }
         }

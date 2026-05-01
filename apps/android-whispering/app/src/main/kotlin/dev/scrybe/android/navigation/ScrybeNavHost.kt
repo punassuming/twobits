@@ -1,5 +1,9 @@
 package dev.scrybe.android.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -53,21 +57,41 @@ fun ScrybeNavHost(navController: NavHostController) {
         }
     }
 
+    val fadeEnter = fadeIn()
+    val fadeExit = fadeOut()
+    val slideEnter = slideInHorizontally { it } + fadeIn()
+    val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
+    val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
+    val popSlideExit = slideOutHorizontally { it } + fadeOut()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Capture.route,
+        enterTransition = { slideEnter },
+        exitTransition = { slideExit },
+        popEnterTransition = { popSlideEnter },
+        popExitTransition = { popSlideExit },
     ) {
-        composable(Screen.Capture.route) {
+        composable(
+            Screen.Capture.route,
+            enterTransition = { fadeEnter },
+            exitTransition = { fadeExit },
+            popEnterTransition = { fadeEnter },
+            popExitTransition = { fadeExit },
+        ) {
             CaptureScreen(
-                onNavigateToHistory = { navController.navigate(Screen.History.route) },
-                onNavigateToProfiles = { navController.navigate(Screen.Profiles.route) },
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToSessionDetail = { sessionId ->
                     navController.navigate(Screen.SessionDetail.createRoute(sessionId))
                 },
             )
         }
-        composable(Screen.History.route) {
+        composable(
+            Screen.History.route,
+            enterTransition = { fadeEnter },
+            exitTransition = { fadeExit },
+            popEnterTransition = { fadeEnter },
+            popExitTransition = { fadeExit },
+        ) {
             HistoryScreen(
                 onSessionClick = { sessionId ->
                     navController.navigate(Screen.SessionDetail.createRoute(sessionId))
@@ -79,13 +103,25 @@ fun ScrybeNavHost(navController: NavHostController) {
             val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
             SessionDetailScreen(sessionId = sessionId, onNavigateBack = { navController.popBackStack() })
         }
-        composable(Screen.Profiles.route) {
+        composable(
+            Screen.Profiles.route,
+            enterTransition = { fadeEnter },
+            exitTransition = { fadeExit },
+            popEnterTransition = { fadeEnter },
+            popExitTransition = { fadeExit },
+        ) {
             ProfilesScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.FileManager.route) {
             FileManagerScreen(onNavigateBack = { navController.popBackStack() })
         }
-        composable(Screen.Settings.route) {
+        composable(
+            Screen.Settings.route,
+            enterTransition = { fadeEnter },
+            exitTransition = { fadeExit },
+            popEnterTransition = { fadeEnter },
+            popExitTransition = { fadeExit },
+        ) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToFileManager = { navController.navigate(Screen.FileManager.route) },
