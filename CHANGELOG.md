@@ -4,9 +4,15 @@
 
 ### Features
 
+* add dedicated File Manager screen accessible from Settings with recording inventory, orphan detection and one-tap import, per-session bundle export (audio + markdown transcript named after recording title), and saved-copy/export management
+
 ### Improvements
 
+* split release APK by ABI into arm64-v8a (modern phones) and armeabi-v7a (Android 7-era devices); both APKs are uploaded to GitHub Releases, cutting per-device download size roughly in half compared to a fat universal APK
+
 ### Fixes
+
+* fix exported files and saved audio copies using UUID-based machine filenames; all exports and saved copies now use the user-visible recording title via `sanitizeFileName(session.title)`
 
 ## 0.11.0 (2026-04-30)
 
