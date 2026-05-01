@@ -11,6 +11,7 @@
 ### Improvements
 
 * enable Local provider selection in Settings once the Whisper model is downloaded; provider card shows per-model download progress, size, and delete controls
+* split release APK by ABI into arm64-v8a (modern phones) and armeabi-v7a (Android 7-era devices); both APKs are uploaded to GitHub Releases, cutting per-device download size roughly in half compared to a fat universal APK
 * switch sherpa-onnx-android to v1.13.0 prebuilt AAR downloaded via curl from GitHub Releases at build time; the library is not published to JitPack or Maven Central
 * harden pre-commit hook: add external dependency URL reachability check, detekt on staged `.kt` sources, and Java stdlib import completeness for `.kts` build scripts
 
