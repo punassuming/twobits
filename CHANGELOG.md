@@ -28,7 +28,6 @@
 * fix sherpa-onnx dependency for library modules: download AAR to a local Maven directory in `settings.gradle.kts` and declare as a Maven coordinate (`com.k2fsa:sherpa-onnx-android:1.13.0`); AGP forbids direct local `.aar` file deps in library modules
 * fix exported files and saved audio copies using UUID-based machine filenames; all exports and saved copies now use the user-visible recording title via `sanitizeFileName(session.title)`
 
-
 ## 0.10.0 (2026-04-27)
 
 ### Features
