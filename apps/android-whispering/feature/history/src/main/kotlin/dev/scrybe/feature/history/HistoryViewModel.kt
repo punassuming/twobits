@@ -12,6 +12,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.common.sanitizeFileName
 import dev.scrybe.core.database.FolderDao
 import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.database.RecordingSessionDao
@@ -344,7 +345,7 @@ class HistoryViewModel
                         ?: context.filesDir.resolve("saved-recordings")
                 outputDir.mkdirs()
 
-                val destination = uniqueFile(outputDir, source.name)
+                val destination = uniqueFile(outputDir, "${sanitizeFileName(session.title)}.${source.extension}")
                 runCatching { source.copyTo(destination) }
                     .onSuccess {
                         _events.emit(HistoryEvent.Message("Saved copy to ${destination.absolutePath}"))

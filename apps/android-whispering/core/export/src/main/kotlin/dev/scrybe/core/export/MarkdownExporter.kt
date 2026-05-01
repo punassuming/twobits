@@ -1,5 +1,6 @@
 package dev.scrybe.core.export
 
+import dev.scrybe.core.common.sanitizeFileName
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
@@ -16,7 +17,7 @@ class MarkdownExporter
         ): Result<File> =
             runCatching {
                 outputDir.mkdirs()
-                val file = File(outputDir, "${session.id}.md")
+                val file = File(outputDir, "${sanitizeFileName(session.title)}.md")
                 val rawTranscripts = transcripts.filter { it.type == TranscriptType.RAW }
                 val transformedTranscripts = transcripts.filter { it.type == TranscriptType.TRANSFORMED }
                 val sb = StringBuilder()

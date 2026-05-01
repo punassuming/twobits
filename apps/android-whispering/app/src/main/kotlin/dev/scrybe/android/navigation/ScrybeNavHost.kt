@@ -7,12 +7,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import dev.scrybe.feature.capture.CaptureScreen
+import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.history.HistoryScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.SettingsScreen
 
-sealed class Screen(val route: String) {
+sealed class Screen(
+    val route: String,
+) {
     object Capture : Screen("capture")
 
     object History : Screen("history")
@@ -22,6 +25,8 @@ sealed class Screen(val route: String) {
     }
 
     object Profiles : Screen("profiles")
+
+    object FileManager : Screen("file_manager")
 
     object Settings : Screen("settings")
 }
@@ -77,8 +82,14 @@ fun ScrybeNavHost(navController: NavHostController) {
         composable(Screen.Profiles.route) {
             ProfilesScreen(onNavigateBack = { navController.popBackStack() })
         }
+        composable(Screen.FileManager.route) {
+            FileManagerScreen(onNavigateBack = { navController.popBackStack() })
+        }
         composable(Screen.Settings.route) {
-            SettingsScreen(onNavigateBack = { navController.popBackStack() })
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToFileManager = { navController.navigate(Screen.FileManager.route) },
+            )
         }
     }
 }

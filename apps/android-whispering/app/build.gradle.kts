@@ -84,6 +84,14 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.15"
     }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -105,6 +113,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:transforms"))
     implementation(project(":feature:capture"))
+    implementation(project(":feature:file-manager"))
     implementation(project(":feature:history"))
     implementation(project(":feature:session-detail"))
     implementation(project(":feature:profiles"))

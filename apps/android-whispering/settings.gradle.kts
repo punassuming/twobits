@@ -85,9 +85,10 @@ include(":core:export")
 
 // Feature modules
 include(":feature:capture")
+include(":feature:file-manager")
 include(":feature:history")
-include(":feature:session-detail")
 include(":feature:profiles")
+include(":feature:session-detail")
 include(":feature:settings")
 
 // Service modules
