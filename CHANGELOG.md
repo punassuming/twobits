@@ -6,7 +6,18 @@
 
 ### Improvements
 
+* move Settings from CaptureScreen top bar icon to a permanent fourth bottom NavigationBar item, making it reachable in one tap from any top-level screen
+* remove History, Profiles, and Settings icon buttons from CaptureScreen top bar; all top-level navigation is now handled exclusively by the bottom bar
+* add slide-in/slide-out page transitions for hierarchical navigation (SessionDetail, FileManager) and fade transitions for peer tab switches
+* replace edge-only swipe gestures with M3 `SwipeToDismissBox`; swipe right to transform, swipe left to archive or restore; completed swipes show a Snackbar with Undo instead of a blocking confirmation dialog
+* collapse HistoryScreen top bar actions into a three-icon layout (two primary + overflow menu) in both normal and selection mode; selection mode bar adopts the M3 contextual app bar background colour
+* remove the Record FAB from HistoryScreen; recording is initiated from the Capture tab accessible via the bottom bar
+
 ### Fixes
+
+* fix Local provider card in Settings permanently hiding the Whisper download button; the download section is now always visible so users can download Whisper before selecting the Local provider
+* fix CaptureScreen build failure caused by stale `onNavigateToHistory` reference left in `RecentRecordingsSection` after nav refactor; removed redundant View All button (History tab in bottom nav replaces it)
+* delete `RecordSwipeSafetyTest` which tested the removed swipe confirmation dialog system
 
 ## 0.12.0 (2026-05-01)
 

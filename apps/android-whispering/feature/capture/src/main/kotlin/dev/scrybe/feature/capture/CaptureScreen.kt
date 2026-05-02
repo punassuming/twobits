@@ -41,15 +41,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -104,9 +101,6 @@ private val LIVE_WAVEFORM_MAX_BAR_WIDTH = 2.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaptureScreen(
-    onNavigateToHistory: () -> Unit,
-    onNavigateToProfiles: () -> Unit,
-    onNavigateToSettings: () -> Unit,
     onNavigateToSessionDetail: (String) -> Unit,
     viewModel: CaptureViewModel = hiltViewModel(),
 ) {
@@ -165,23 +159,6 @@ fun CaptureScreen(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                },
-                actions = {
-                    TopBarAction(
-                        onClick = onNavigateToHistory,
-                        icon = Icons.Filled.History,
-                        contentDescription = "Records",
-                    )
-                    TopBarAction(
-                        onClick = onNavigateToProfiles,
-                        icon = Icons.Filled.AutoAwesome,
-                        contentDescription = "Profiles",
-                    )
-                    TopBarAction(
-                        onClick = onNavigateToSettings,
-                        icon = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                    )
                 },
             )
         },
@@ -250,7 +227,6 @@ fun CaptureScreen(
                 RecentRecordingsSection(
                     sessions = uiState.recentSessions,
                     onOpenSession = onNavigateToSessionDetail,
-                    onOpenHistory = onNavigateToHistory,
                 )
             }
             uiState.errorMessage?.let { message ->
@@ -278,17 +254,11 @@ fun CaptureScreen(
 private fun RecentRecordingsSection(
     sessions: List<RecentCaptureSession>,
     onOpenSession: (String) -> Unit,
-    onOpenHistory: () -> Unit,
 ) {
     HomeCard {
         ScrybeSectionHeader(
             title = "Recent recordings",
             subtitle = "Jump back into the latest saved sessions.",
-            trailing = {
-                FilledTonalIconButton(onClick = onOpenHistory) {
-                    Icon(Icons.Filled.History, contentDescription = "Open records")
-                }
-            },
         )
         if (sessions.isEmpty()) {
             Text(
