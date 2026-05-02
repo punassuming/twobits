@@ -17,6 +17,7 @@
 
 * fix Local provider card in Settings permanently hiding the Whisper download button; the download section is now always visible so users can download Whisper before selecting the Local provider
 * fix CaptureScreen build failure caused by stale `onNavigateToHistory` reference left in `RecentRecordingsSection` after nav refactor; removed redundant View All button (History tab in bottom nav replaces it)
+* delete `RecordSwipeSafetyTest` which tested the removed swipe confirmation dialog system
 
 ## 0.12.0 (2026-05-01)
 
