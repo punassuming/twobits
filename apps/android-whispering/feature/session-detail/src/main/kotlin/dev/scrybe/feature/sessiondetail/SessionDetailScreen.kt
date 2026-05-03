@@ -448,6 +448,10 @@ fun SessionDetailScreen(
                 viewModel.shareLatestTranscript()
                 transformResult = null
             },
+            onSave = {
+                viewModel.saveTranscriptEdit(result.text)
+                transformResult = null
+            },
         )
     }
 }
@@ -458,6 +462,7 @@ private fun TransformResultDialog(
     text: String,
     onDismiss: () -> Unit,
     onShare: () -> Unit,
+    onSave: () -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
@@ -507,6 +512,9 @@ private fun TransformResultDialog(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Share")
+                }
+                TextButton(onClick = onSave) {
+                    Text("Save to session")
                 }
             }
         },
@@ -613,8 +621,7 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
                             Toast
                                 .makeText(context, "Path copied", Toast.LENGTH_SHORT)
                                 .show()
-                        }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        }.padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {

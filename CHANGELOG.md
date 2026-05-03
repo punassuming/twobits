@@ -16,6 +16,9 @@
 * replace SwipeToDismissBox with a custom SwipeRevealRow that holds revealed action buttons until tapped (iOS-style); swipe left reveals Archive/Restore, swipe right reveals Transform; buttons snap into place with a spring animation
 * add Transform picker bottom sheet: tapping Transform (via swipe-right, row ⋮ menu, or multi-select overflow) opens a ModalBottomSheet listing all transform profiles with Run buttons, a progress indicator while running, and a result preview with Copy/Done actions
 * rename "Run Default Transform" row ⋮ menu item to "Transform…" and route it through the picker sheet
+* add "Save to session" button to the Session Detail transform result dialog; saves the transformed text as the session's edited transcript
+* add `maxLines = 1` + ellipsis overflow to Profiles screen "New Profile" and "AI Draft" buttons to prevent text wrapping on narrow screens
+* add Whisper vs Gemma explanation paragraph to the Local provider card in Settings so users understand which model handles transcription vs AI features
 
 ### Fixes
 
