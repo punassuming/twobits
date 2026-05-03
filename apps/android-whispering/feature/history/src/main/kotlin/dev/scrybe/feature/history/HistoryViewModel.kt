@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.common.TagsCodec
+import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.common.sanitizeFileName
 import dev.scrybe.core.database.FolderDao
@@ -17,15 +18,18 @@ import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.database.TranscriptDao
+import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.localai.AutoRenameServiceFacade
 import dev.scrybe.core.localai.ClusteringServiceFacade
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.Folder
+import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
+import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transforms.SessionSummary
 import dev.scrybe.core.transforms.SessionTransformCoordinator
@@ -38,6 +42,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -49,6 +54,18 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+
+data class TransformDialogResult(
+    val profileName: String,
+    val text: String,
+)
+
+data class TransformDialogState(
+    val sessionIds: List<String> = emptyList(),
+    val sessionTitles: List<String> = emptyList(),
+    val runningProfileId: String? = null,
+    val result: TransformDialogResult? = null,
+)
 
 sealed interface HistoryEvent {
     data class Message(
@@ -87,6 +104,7 @@ class HistoryViewModel
         private val recordingSessionDao: RecordingSessionDao,
         private val transcriptDao: TranscriptDao,
         private val transformRunDao: TransformRunDao,
+        private val transformProfileDao: TransformProfileDao,
         private val folderDao: FolderDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
@@ -103,6 +121,24 @@ class HistoryViewModel
         private val currentFolderId = MutableStateFlow<String?>(null)
         private val _events = MutableSharedFlow<HistoryEvent>()
         val events = _events.asSharedFlow()
+        private val _transformDialog = MutableStateFlow<TransformDialogState?>(null)
+        val transformDialog: StateFlow<TransformDialogState?> = _transformDialog.asStateFlow()
+        val profiles: StateFlow<List<TransformProfile>> =
+            transformProfileDao
+                .getAllProfiles()
+                .map { entities ->
+                    entities.map { entity ->
+                        TransformProfile(
+                            id = entity.id,
+                            name = entity.name,
+                            description = entity.description,
+                            systemPrompt = entity.systemPrompt,
+                            steps = TransformStepsCodec.decode(entity.steps, fallback = entity.systemPrompt),
+                            providerType = ProviderType.valueOf(entity.providerType),
+                            isDefault = entity.isDefault,
+                        )
+                    }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         private val historyUiInputs =
             combine(
@@ -422,6 +458,48 @@ class HistoryViewModel
                     }.onFailure { _events.emit(HistoryEvent.Message(it.message ?: "Transform failed")) }
                 transformingSessionIds.value = transformingSessionIds.value - sessionId
             }
+        }
+
+        fun openTransformDialog(sessionIds: List<String>) {
+            if (sessionIds.isEmpty()) return
+            val state = uiState.value
+            val allItems =
+                if (state is HistoryUiState.Success) {
+                    state.sessions + state.sessionsByFolderId.values.flatten()
+                } else {
+                    emptyList()
+                }
+            val titles = sessionIds.mapNotNull { id -> allItems.find { it.session.id == id }?.session?.title }
+            _transformDialog.value = TransformDialogState(sessionIds = sessionIds, sessionTitles = titles)
+        }
+
+        fun runTransformFromDialog(profile: TransformProfile) {
+            val dialog = _transformDialog.value ?: return
+            _transformDialog.value = dialog.copy(runningProfileId = profile.id, result = null)
+            viewModelScope.launch {
+                val sessionIds = dialog.sessionIds
+                val outcome =
+                    if (sessionIds.size == 1) {
+                        sessionTransformCoordinator
+                            .transformLatestRawTranscript(sessionIds.first(), profile.id)
+                            .map { it.content }
+                    } else {
+                        sessionTransformCoordinator
+                            .transformCombinedLatestTranscripts(sessionIds, profile.id)
+                            .map { it.transcript.content }
+                    }
+                val dialogResult = outcome.getOrNull()?.let { TransformDialogResult(profile.name, it) }
+                _transformDialog.value =
+                    _transformDialog.value?.copy(
+                        runningProfileId = null,
+                        result = dialogResult,
+                    )
+                outcome.onFailure { _events.emit(HistoryEvent.Message(it.message ?: "Transform failed")) }
+            }
+        }
+
+        fun closeTransformDialog() {
+            _transformDialog.value = null
         }
 
         fun retryTranscription(sessionId: String) {

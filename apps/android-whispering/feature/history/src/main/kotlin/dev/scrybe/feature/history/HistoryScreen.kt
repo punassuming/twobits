@@ -94,6 +94,8 @@ fun HistoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isAiWorking by viewModel.isAiWorking.collectAsState()
+    val transformDialog by viewModel.transformDialog.collectAsState()
+    val profiles by viewModel.profiles.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -198,7 +200,7 @@ fun HistoryScreen(
                                     text = { Text("Run transform") },
                                     leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
                                     onClick = {
-                                        viewModel.transformSelectedSessions()
+                                        viewModel.openTransformDialog(successState.selection.selectedSessionIds.toList())
                                         showOverflowMenu = false
                                     },
                                 )
@@ -447,7 +449,7 @@ fun HistoryScreen(
                                             if (result == SnackbarResult.ActionPerformed) viewModel.setArchived(id, true)
                                         }
                                     },
-                                    onTransform = { viewModel.transformWithDefaultProfile(item.session.id) },
+                                    onTransform = { viewModel.openTransformDialog(listOf(item.session.id)) },
                                     onRename = { renameTarget = item },
                                     onAiRename = { viewModel.autoRenameSession(item.session.id) },
                                     onDelete = { deleteTarget = item },
@@ -515,6 +517,15 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    transformDialog?.let { dialog ->
+        TransformPickerSheet(
+            dialogState = dialog,
+            profiles = profiles,
+            onRunProfile = { viewModel.runTransformFromDialog(it) },
+            onDismiss = { viewModel.closeTransformDialog() },
+        )
     }
 
     if (showFilters && successState != null) {
