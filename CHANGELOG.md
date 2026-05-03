@@ -6,6 +6,9 @@
 
 ### Improvements
 
+* remove swipe-right (Transform) gesture from recording rows; only swipe-left (Archive/Restore) is active — Transform is complex enough to warrant an intentional tap from the row menu
+* remove labels from bottom navigation bar and increase icon size to 28 dp for a cleaner, more compact chrome
+
 ### Fixes
 
 ## 0.13.0 (2026-05-03)

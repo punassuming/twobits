@@ -93,8 +93,7 @@ fun ScrybeApp() {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(Icons.Filled.Mic, contentDescription = null) },
-                    label = { Text("Record") },
+                    icon = { Icon(Icons.Filled.Mic, contentDescription = "Record", modifier = Modifier.size(28.dp)) },
                 )
                 NavigationBarItem(
                     selected = currentRoute == Screen.History.route,
@@ -105,8 +104,7 @@ fun ScrybeApp() {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(Icons.Filled.History, contentDescription = null) },
-                    label = { Text("History") },
+                    icon = { Icon(Icons.Filled.History, contentDescription = "History", modifier = Modifier.size(28.dp)) },
                 )
                 NavigationBarItem(
                     selected = currentRoute == Screen.Profiles.route,
@@ -117,8 +115,7 @@ fun ScrybeApp() {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(Icons.Filled.Tune, contentDescription = null) },
-                    label = { Text("Profiles") },
+                    icon = { Icon(Icons.Filled.Tune, contentDescription = "Profiles", modifier = Modifier.size(28.dp)) },
                 )
                 NavigationBarItem(
                     selected = currentRoute == Screen.Settings.route,
@@ -129,8 +126,7 @@ fun ScrybeApp() {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                    label = { Text("Settings") },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings", modifier = Modifier.size(28.dp)) },
                 )
             }
         }

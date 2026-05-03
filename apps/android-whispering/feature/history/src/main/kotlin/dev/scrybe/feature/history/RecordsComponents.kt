@@ -111,30 +111,20 @@ internal fun RecordRow(
         rememberSwipeToDismissBoxState(
             confirmValueChange = { value ->
                 if (selectionEnabled) return@rememberSwipeToDismissBoxState false
-                when (value) {
-                    SwipeToDismissBoxValue.StartToEnd -> {
-                        onTransform()
-                        false
-                    }
-                    SwipeToDismissBoxValue.EndToStart -> {
-                        if (item.session.isArchived) onRestore() else onArchive()
-                        false
-                    }
-                    SwipeToDismissBoxValue.Settled -> false
+                if (value == SwipeToDismissBoxValue.EndToStart) {
+                    if (item.session.isArchived) onRestore() else onArchive()
                 }
+                false
             },
             positionalThreshold = { totalDistance -> totalDistance * 0.4f },
         )
 
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = !selectionEnabled,
+        enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = !selectionEnabled,
         backgroundContent = {
-            RecordSwipeBackground(
-                direction = dismissState.dismissDirection,
-                isArchived = item.session.isArchived,
-            )
+            RecordSwipeBackground(isArchived = item.session.isArchived)
         },
     ) {
         Surface(
@@ -361,57 +351,27 @@ internal fun RecordRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RecordSwipeBackground(
-    direction: SwipeToDismissBoxValue,
-    isArchived: Boolean,
-) {
-    val (containerColor, contentColor, icon, label, alignment) =
-        when (direction) {
-            SwipeToDismissBoxValue.StartToEnd ->
-                SwipePresentation(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    icon = Icons.Filled.AutoFixHigh,
-                    label = "Transform",
-                    alignment = Alignment.CenterStart,
-                )
-            SwipeToDismissBoxValue.EndToStart ->
-                SwipePresentation(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    icon = if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
-                    label = if (isArchived) "Restore" else "Archive",
-                    alignment = Alignment.CenterEnd,
-                )
-            SwipeToDismissBoxValue.Settled -> return
-        }
+private fun RecordSwipeBackground(isArchived: Boolean) {
+    val icon = if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive
+    val label = if (isArchived) "Restore" else "Archive"
     Box(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(containerColor, shape = MaterialTheme.shapes.large)
+                .background(MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.large)
                 .padding(horizontal = 20.dp),
-        contentAlignment = alignment,
+        contentAlignment = Alignment.CenterEnd,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(icon, contentDescription = label, tint = contentColor)
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
+            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
         }
     }
 }
-
-private data class SwipePresentation(
-    val containerColor: Color,
-    val contentColor: Color,
-    val icon: ImageVector,
-    val label: String,
-    val alignment: Alignment,
-)
 
 @Composable
 private fun recordContainerColor(
