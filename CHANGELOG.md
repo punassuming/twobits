@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 0.14.0 (2026-05-03)
+
+### Features
+
+### Improvements
+
 * remove swipe-right (Transform) gesture from recording rows; only swipe-left (Archive/Restore) is active — Transform is complex enough to warrant an intentional tap from the row menu
 * remove labels from bottom navigation bar and increase icon size to 28 dp for a cleaner, more compact chrome
 * increase waveform visualiser height on Capture screen from 72 dp to 120 dp for better amplitude detail
@@ -22,6 +30,7 @@
 
 ### Fixes
 
+
 ## 0.13.0 (2026-05-03)
 
 ### Features
@@ -31,6 +40,7 @@
 * use minor as the default version bump so any logged CHANGELOG entry releases as a minor version rather than a patch
 
 ### Fixes
+
 
 
 ## 0.12.1 (2026-05-02)
@@ -54,6 +64,7 @@
 
 
 
+
 ## 0.12.0 (2026-05-01)
 
 ### Features
@@ -67,6 +78,7 @@
 ### Fixes
 
 * fix exported files and saved audio copies using UUID-based machine filenames; all exports and saved copies now use the user-visible recording title via `sanitizeFileName(session.title)`
+
 
 
 
@@ -94,6 +106,7 @@
 
 
 
+
 ## 0.10.0 (2026-04-27)
 
 ### Features
@@ -113,6 +126,7 @@
 
 * fix CI compile failure caused by missing `import kotlinx.coroutines.flow.asStateFlow` in HistoryViewModel
 * restore `as ProfilesUiState` cast in ProfilesViewModel; the cast is required to widen the map-block return type so the downstream `.catch { emit(ProfilesUiState.Error(...)) }` type-checks — the earlier "No cast needed" compiler warning was misleading
+
 
 
 
@@ -147,6 +161,7 @@
 
 
 
+
 ## 0.9.0 (2026-04-18)
 
 ### Features
@@ -163,6 +178,7 @@
 * restore main deployment by aligning release tags with the committed changelog and app version metadata
 * restore Android CI by fixing `CaptureScreen` coroutine launch usage and declaring vibration permission for recording feedback
 * fix a `CaptureScreen` compilation issue that affected record-button animation handling in Android CI
+
 
 
 
@@ -189,6 +205,7 @@
 
 
 
+
 ## 0.8.2 (2026-04-11)
 
 ### Features
@@ -202,6 +219,7 @@
 ### Fixes
 
 * make records swipe actions less sensitive with narrower edge-only gestures, one-way swipe directions, and full-card action overlays instead of sliding row content sideways
+
 
 
 
@@ -238,6 +256,7 @@
 
 
 
+
 ## 0.8.0 (2026-04-06)
 
 ### Features
@@ -248,6 +267,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -273,6 +293,7 @@
 * add Kotlin, Min SDK, Target SDK, and License badges to the README
 
 ### Fixes
+
 
 
 
@@ -319,6 +340,7 @@
 
 
 
+
 ## 0.5.1 (2026-03-29)
 
 ### Features
@@ -326,6 +348,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -372,6 +395,7 @@
 
 
 
+
 ## 0.3.1 (2026-03-26)
 
 ### Features
@@ -382,6 +406,7 @@
 ### Fixes
 
 * require confirmation before swipe-to-transform, archive, or restore actions so record gestures are harder to trigger accidentally
+
 
 
 
@@ -413,6 +438,7 @@
 
 * add retry and reset recovery actions for recordings stuck in a transcription state
 * restore the missing transcription module dependency that was breaking Android builds
+
 
 
 
@@ -461,6 +487,7 @@
 
 
 
+
 ## 0.1.0 (2026-03-25)
 
 ### Improvements
@@ -483,11 +510,13 @@
 
 
 
+
 ## 0.0.10 (2026-03-25)
 
 ### Fixes
 
 * clean up foreground recording notification refresh logic to resolve the build issues introduced after 0.0.9
+
 
 
 
@@ -526,12 +555,14 @@
 
 
 
+
 ## 0.0.8 (2026-03-25)
 
 ### Fixes
 
 * add an Android 13+ `POST_NOTIFICATIONS` runtime permission check before refreshing the foreground recording notification
 * prevent recording notification updates from failing lint or unsafe notification calls on devices that have not granted notification permission
+
 
 
 
@@ -562,6 +593,7 @@
 * enrich the foreground recording notification with live elapsed time and simple input-level feedback
 * surface session status, archive state, transcript previews, and clearer metadata across the records list and session detail screens
 * add estimated transcription cost visibility in session detail and aggregate transcription spend reporting in Settings
+
 
 
 
@@ -612,6 +644,7 @@
 
 
 
+
 ## 0.0.5 (2026-03-23)
 
 ### Features
@@ -630,6 +663,7 @@
 
 * keep auto-transcription alive after the recording service shuts down
 * send valid typed content payloads to the OpenAI responses API for transforms
+
 
 
 
