@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* use minor as the default version bump so any logged CHANGELOG entry releases as a minor version rather than a patch
+
 ### Fixes
 
 ## 0.12.1 (2026-05-02)
