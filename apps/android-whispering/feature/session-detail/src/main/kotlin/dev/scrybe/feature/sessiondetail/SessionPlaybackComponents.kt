@@ -125,7 +125,7 @@ private fun WaveformTimeline(
     val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
     val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
     val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-    val playheadColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f)
+    val playheadColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
     BoxWithConstraints(modifier = modifier) {
         val density = LocalDensity.current
         val waveformWidthPx = with(density) { maxWidth.toPx().coerceAtLeast(1f) }
@@ -146,8 +146,7 @@ private fun WaveformTimeline(
                                 seekToOffset(offset.x)
                             }
                         }
-                    }
-                    .pointerInput(durationMs, waveformWidthPx) {
+                    }.pointerInput(durationMs, waveformWidthPx) {
                         detectHorizontalDragGestures(
                             onHorizontalDrag = { change, _ ->
                                 if (durationMs > 0L) {

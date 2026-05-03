@@ -69,7 +69,10 @@ sealed interface HistoryUiState {
         val subfolders: List<Folder> = emptyList(),
         val breadcrumb: List<Folder> = emptyList(),
         val allFolders: List<Folder> = emptyList(),
+        val sessionsByFolderId: Map<String, List<HistorySessionItem>> = emptyMap(),
     ) : HistoryUiState
 
-    data class Error(val message: String) : HistoryUiState
+    data class Error(
+        val message: String,
+    ) : HistoryUiState
 }

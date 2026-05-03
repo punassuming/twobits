@@ -8,6 +8,11 @@
 
 * remove swipe-right (Transform) gesture from recording rows; only swipe-left (Archive/Restore) is active — Transform is complex enough to warrant an intentional tap from the row menu
 * remove labels from bottom navigation bar and increase icon size to 28 dp for a cleaner, more compact chrome
+* increase waveform visualiser height on Capture screen from 72 dp to 120 dp for better amplitude detail
+* change playback position playhead colour to a neutral `onSurface` grey so it does not compete visually with the coloured waveform bars
+* move filter and search out of the always-visible section card; filter is now a badge icon button in the TopAppBar (badge shows active filter count); search is a toggle that slides down an `OutlinedTextField` above the list
+* replace `Checkbox` widget in multi-select with an in-place icon swap (CheckCircle / RadioButtonUnchecked) so row content does not shift when selection mode activates
+* replace folder drill-in navigation with inline expand/collapse in the history list; tapping a folder row expands its sessions inline with a chevron rotation animation; no separate navigation state required
 
 ### Fixes
 

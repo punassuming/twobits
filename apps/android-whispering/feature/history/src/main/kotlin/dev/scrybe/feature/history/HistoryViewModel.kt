@@ -225,6 +225,38 @@ class HistoryViewModel
                         .sortedBy { it.name.lowercase() }
                 val breadcrumb = buildBreadcrumb(folderNav.currentFolderId, folderNav.allFolders)
 
+                val sessionsByFolderId: Map<String, List<HistorySessionItem>> =
+                    sessions
+                        .filter { session -> session.isArchived == inputs.filters.showArchived }
+                        .filter { session -> session.folderId != null }
+                        .filter { session -> matchesDateFilter(session, inputs.filters.dateRange) }
+                        .filter { session ->
+                            inputs.filters.includedStatuses.isEmpty() ||
+                                session.status in inputs.filters.includedStatuses
+                        }.filter { session ->
+                            if (inputs.query.isBlank()) {
+                                true
+                            } else {
+                                val searchTerm = inputs.query.trim().lowercase()
+                                session.title.lowercase().contains(searchTerm) ||
+                                    session.tags.any { it.lowercase().contains(searchTerm) } ||
+                                    session.status.name
+                                        .lowercase()
+                                        .contains(searchTerm) ||
+                                    latestTranscriptBySession[session.id].orEmpty().lowercase().contains(searchTerm)
+                            }
+                        }.groupBy { session -> session.folderId!! }
+                        .mapValues { (_, folderSessions) ->
+                            folderSessions
+                                .sortedWith(comparatorFor(inputs.filters.sortOption))
+                                .map { session ->
+                                    HistorySessionItem(
+                                        session = session,
+                                        transcriptPreview = latestTranscriptBySession[session.id],
+                                    )
+                                }
+                        }
+
                 HistoryUiState.Success(
                     sessions = filteredSessions,
                     filters = inputs.filters,
@@ -245,6 +277,7 @@ class HistoryViewModel
                     subfolders = subfolders,
                     breadcrumb = breadcrumb,
                     allFolders = folderNav.allFolders,
+                    sessionsByFolderId = sessionsByFolderId,
                 ) as HistoryUiState
             }.catch { emit(HistoryUiState.Error(it.message ?: "Unknown error")) }
                 .stateIn(

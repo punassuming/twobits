@@ -188,7 +188,7 @@ fun CaptureScreen(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(72.dp),
+                                .height(120.dp),
                     )
                     RecordActionButton(
                         onClick = {

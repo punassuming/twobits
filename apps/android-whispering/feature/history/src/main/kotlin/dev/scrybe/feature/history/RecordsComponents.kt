@@ -2,6 +2,7 @@ package dev.scrybe.feature.history
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -26,9 +27,11 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
@@ -36,6 +39,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
@@ -64,6 +68,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -163,18 +168,29 @@ internal fun RecordRow(
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    if (selectionEnabled) {
-                        Checkbox(
-                            checked = selected,
-                            onCheckedChange = { onToggleSelection() },
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
-                    }
                     Icon(
-                        SessionStatusPresentation.icon(item.session.status, item.session.isArchived),
-                        contentDescription = SessionStatusPresentation.label(item.session.status, item.session.isArchived),
-                        modifier = Modifier.padding(top = 2.dp),
-                        tint = SessionStatusPresentation.color(item.session.status, item.session.isArchived),
+                        imageVector =
+                            if (selectionEnabled) {
+                                if (selected) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked
+                            } else {
+                                SessionStatusPresentation.icon(item.session.status, item.session.isArchived)
+                            },
+                        contentDescription =
+                            if (selectionEnabled) {
+                                null
+                            } else {
+                                SessionStatusPresentation.label(item.session.status, item.session.isArchived)
+                            },
+                        modifier =
+                            Modifier
+                                .padding(top = 2.dp)
+                                .then(if (selectionEnabled) Modifier.clickable { onToggleSelection() } else Modifier),
+                        tint =
+                            if (selectionEnabled) {
+                                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            } else {
+                                SessionStatusPresentation.color(item.session.status, item.session.isArchived)
+                            },
                     )
                     Column(
                         modifier = Modifier.weight(1f),
@@ -915,6 +931,7 @@ internal val HISTORY_TIME_FORMATTER: DateTimeFormatter =
 @Composable
 internal fun FolderRow(
     folder: Folder,
+    expanded: Boolean,
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -922,6 +939,10 @@ internal fun FolderRow(
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember(folder.id) { mutableStateOf(false) }
+    val chevronAngle by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "folder-chevron-${folder.id}",
+    )
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -934,7 +955,7 @@ internal fun FolderRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Filled.Folder,
+                if (expanded) Icons.Filled.FolderOpen else Icons.Filled.Folder,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
             )
@@ -942,6 +963,12 @@ internal fun FolderRow(
                 text = folder.name,
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                modifier = Modifier.rotate(chevronAngle),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
