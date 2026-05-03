@@ -5,6 +5,11 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +37,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.FileOpen
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -39,6 +45,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -73,7 +81,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.Folder
 import kotlinx.coroutines.launch
@@ -87,10 +94,14 @@ fun HistoryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isAiWorking by viewModel.isAiWorking.collectAsState()
+    val transformDialog by viewModel.transformDialog.collectAsState()
+    val profiles by viewModel.profiles.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
+    var searchVisible by remember { mutableStateOf(false) }
+    var expandedFolderIds by remember { mutableStateOf(emptySet<String>()) }
     var renameTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
     var infoTarget by remember { mutableStateOf<Pair<String, RecordInfo>?>(null) }
     var deleteTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
@@ -134,11 +145,8 @@ fun HistoryScreen(
     val successState = uiState as? HistoryUiState.Success
     val isSelecting = successState?.selection?.isSelecting == true
 
-    BackHandler(enabled = isSelecting || successState?.currentFolderId != null) {
-        when {
-            isSelecting -> viewModel.clearSelection()
-            else -> viewModel.navigateUp()
-        }
+    BackHandler(enabled = isSelecting) {
+        viewModel.clearSelection()
     }
 
     Scaffold(
@@ -147,21 +155,16 @@ fun HistoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        when {
-                            isSelecting -> "${successState?.selection?.selectedSessionIds?.size ?: 0} selected"
-                            successState?.currentFolderId != null ->
-                                successState.breadcrumb.lastOrNull()?.name ?: "Records"
-                            else -> "Records"
+                        if (isSelecting) {
+                            "${successState?.selection?.selectedSessionIds?.size ?: 0} selected"
+                        } else {
+                            "Records"
                         },
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        when {
-                            isSelecting -> viewModel.clearSelection()
-                            successState?.currentFolderId != null -> viewModel.navigateUp()
-                            else -> onNavigateBack()
-                        }
+                        if (isSelecting) viewModel.clearSelection() else onNavigateBack()
                     }) {
                         Icon(
                             if (isSelecting) Icons.Filled.Close else Icons.AutoMirrored.Filled.ArrowBack,
@@ -197,7 +200,7 @@ fun HistoryScreen(
                                     text = { Text("Run transform") },
                                     leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
                                     onClick = {
-                                        viewModel.transformSelectedSessions()
+                                        viewModel.openTransformDialog(successState.selection.selectedSessionIds.toList())
                                         showOverflowMenu = false
                                     },
                                 )
@@ -261,11 +264,17 @@ fun HistoryScreen(
                             }
                         }
                     } else {
-                        IconButton(onClick = { viewModel.suggestAndApplyClusters() }) {
-                            Icon(Icons.Filled.AutoAwesome, contentDescription = "Organize with AI")
+                        IconButton(onClick = { searchVisible = !searchVisible }) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search")
                         }
-                        IconButton(onClick = { showCreateFolder = true }) {
-                            Icon(Icons.Filled.CreateNewFolder, contentDescription = "Create folder")
+                        val filterCount =
+                            (successState?.filters)?.let { activeRecordsFilterCount(it) } ?: 0
+                        BadgedBox(
+                            badge = { if (filterCount > 0) Badge { Text(filterCount.toString()) } },
+                        ) {
+                            IconButton(onClick = { showFilters = true }) {
+                                Icon(Icons.Filled.FilterList, contentDescription = "Filter")
+                            }
                         }
                         Box {
                             IconButton(onClick = { showOverflowMenu = true }) {
@@ -275,6 +284,24 @@ fun HistoryScreen(
                                 expanded = showOverflowMenu,
                                 onDismissRequest = { showOverflowMenu = false },
                             ) {
+                                DropdownMenuItem(
+                                    text = { Text("Organize with AI") },
+                                    leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null) },
+                                    onClick = {
+                                        viewModel.suggestAndApplyClusters()
+                                        showOverflowMenu = false
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("New folder") },
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.CreateNewFolder, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        showCreateFolder = true
+                                        showOverflowMenu = false
+                                    },
+                                )
                                 DropdownMenuItem(
                                     text = { Text("Import recording") },
                                     leadingIcon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
@@ -327,20 +354,11 @@ fun HistoryScreen(
                         if (isAiWorking) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         }
-                        if (state.breadcrumb.isNotEmpty()) {
-                            BreadcrumbRow(
-                                breadcrumb = state.breadcrumb,
-                                onNavigateToRoot = { viewModel.navigateToFolder(null) },
-                                onNavigateToFolder = { viewModel.navigateToFolder(it) },
-                            )
-                        }
-                        ScrybeSectionCard(
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        AnimatedVisibility(
+                            visible = searchVisible,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut(),
                         ) {
-                            RecordsFilterBar(
-                                filters = state.filters,
-                                onClick = { showFilters = true },
-                            )
                             OutlinedTextField(
                                 value = searchQuery,
                                 onValueChange = {
@@ -349,8 +367,19 @@ fun HistoryScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                                label = { Text("Search") },
+                                leadingIcon = {
+                                    Icon(Icons.Filled.Search, contentDescription = null)
+                                },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = {
+                                            searchQuery = ""
+                                            viewModel.updateQuery("")
+                                        }) {
+                                            Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                                        }
+                                    }
+                                },
                                 placeholder = { Text("Title, tags, or transcript text") },
                             )
                         }
@@ -396,67 +425,91 @@ fun HistoryScreen(
                                 }
                             }
                         } else {
+                            val sessionRow: @Composable (HistorySessionItem) -> Unit = { item ->
+                                RecordRow(
+                                    item = item,
+                                    onOpen = { onSessionClick(item.session.id) },
+                                    selectionEnabled = state.selection.isSelecting,
+                                    selected = item.session.id in state.selection.selectedSessionIds,
+                                    onLongPress = { viewModel.enterSelectionMode(item.session.id) },
+                                    onToggleSelection = { viewModel.toggleSelection(item.session.id) },
+                                    onArchive = {
+                                        val id = item.session.id
+                                        scope.launch {
+                                            viewModel.setArchived(id, true)
+                                            val result = snackbarHostState.showSnackbar("Archived", actionLabel = "Undo")
+                                            if (result == SnackbarResult.ActionPerformed) viewModel.setArchived(id, false)
+                                        }
+                                    },
+                                    onRestore = {
+                                        val id = item.session.id
+                                        scope.launch {
+                                            viewModel.setArchived(id, false)
+                                            val result = snackbarHostState.showSnackbar("Restored", actionLabel = "Undo")
+                                            if (result == SnackbarResult.ActionPerformed) viewModel.setArchived(id, true)
+                                        }
+                                    },
+                                    onTransform = { viewModel.openTransformDialog(listOf(item.session.id)) },
+                                    onRename = { renameTarget = item },
+                                    onAiRename = { viewModel.autoRenameSession(item.session.id) },
+                                    onDelete = { deleteTarget = item },
+                                    onInfo = { infoTarget = item.session.id to item.toRecordInfo() },
+                                    onOpenWith = { openAudioWith(context, item.session) },
+                                    onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
+                                    onShareTranscript = { viewModel.shareTranscript(item.session.id) },
+                                    onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
+                                    onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
+                                    showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
+                                )
+                            }
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(state.subfolders, key = { "folder-${it.id}" }) { folder ->
-                                    FolderRow(
-                                        folder = folder,
-                                        onClick = { viewModel.navigateToFolder(folder.id) },
-                                        onRename = { renameFolderTarget = folder },
-                                        onDelete = { deleteFolderTarget = folder },
-                                        onMove = { moveFolderTarget = folder },
-                                    )
+                                for (folder in state.subfolders) {
+                                    item(key = "folder-${folder.id}") {
+                                        FolderRow(
+                                            folder = folder,
+                                            expanded = folder.id in expandedFolderIds,
+                                            onClick = {
+                                                expandedFolderIds =
+                                                    if (folder.id in expandedFolderIds) {
+                                                        expandedFolderIds - folder.id
+                                                    } else {
+                                                        expandedFolderIds + folder.id
+                                                    }
+                                            },
+                                            onRename = { renameFolderTarget = folder },
+                                            onDelete = { deleteFolderTarget = folder },
+                                            onMove = { moveFolderTarget = folder },
+                                        )
+                                    }
+                                    if (folder.id in expandedFolderIds) {
+                                        val folderItems =
+                                            state.sessionsByFolderId[folder.id].orEmpty()
+                                        if (folderItems.isEmpty()) {
+                                            item(key = "folder-${folder.id}-empty") {
+                                                Text(
+                                                    "This folder is empty",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
+                                                )
+                                            }
+                                        } else {
+                                            items(
+                                                folderItems,
+                                                key = { "fi-${it.session.id}" },
+                                            ) { item ->
+                                                Box(Modifier.padding(start = 12.dp)) {
+                                                    sessionRow(item)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 items(state.sessions, key = { it.session.id }) { item ->
-                                    RecordRow(
-                                        item = item,
-                                        onOpen = { onSessionClick(item.session.id) },
-                                        selectionEnabled = state.selection.isSelecting,
-                                        selected = item.session.id in state.selection.selectedSessionIds,
-                                        onLongPress = { viewModel.enterSelectionMode(item.session.id) },
-                                        onToggleSelection = { viewModel.toggleSelection(item.session.id) },
-                                        onArchive = {
-                                            val id = item.session.id
-                                            scope.launch {
-                                                viewModel.setArchived(id, true)
-                                                val result =
-                                                    snackbarHostState.showSnackbar(
-                                                        message = "Archived",
-                                                        actionLabel = "Undo",
-                                                    )
-                                                if (result == SnackbarResult.ActionPerformed) {
-                                                    viewModel.setArchived(id, false)
-                                                }
-                                            }
-                                        },
-                                        onRestore = {
-                                            val id = item.session.id
-                                            scope.launch {
-                                                viewModel.setArchived(id, false)
-                                                val result =
-                                                    snackbarHostState.showSnackbar(
-                                                        message = "Restored",
-                                                        actionLabel = "Undo",
-                                                    )
-                                                if (result == SnackbarResult.ActionPerformed) {
-                                                    viewModel.setArchived(id, true)
-                                                }
-                                            }
-                                        },
-                                        onTransform = { viewModel.transformWithDefaultProfile(item.session.id) },
-                                        onRename = { renameTarget = item },
-                                        onAiRename = { viewModel.autoRenameSession(item.session.id) },
-                                        onDelete = { deleteTarget = item },
-                                        onInfo = { infoTarget = item.session.id to item.toRecordInfo() },
-                                        onOpenWith = { openAudioWith(context, item.session) },
-                                        onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
-                                        onShareTranscript = { viewModel.shareTranscript(item.session.id) },
-                                        onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
-                                        onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
-                                        showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
-                                    )
+                                    sessionRow(item)
                                 }
                             }
                         }
@@ -464,6 +517,15 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    transformDialog?.let { dialog ->
+        TransformPickerSheet(
+            dialogState = dialog,
+            profiles = profiles,
+            onRunProfile = { viewModel.runTransformFromDialog(it) },
+            onDismiss = { viewModel.closeTransformDialog() },
+        )
     }
 
     if (showFilters && successState != null) {

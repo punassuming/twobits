@@ -318,6 +318,11 @@ fun SettingsScreen(
                             Icon(Icons.Filled.Storage, contentDescription = null)
                         },
                         content = {
+                            Text(
+                                text = "Whisper handles transcription (speech → text). Gemma handles AI features: transforms, rename suggestions, and tag clustering. Only the tiny Whisper model is currently supported for on-device transcription.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                             LocalModelDownloadSection(
                                 label = "Whisper tiny · ~40 MB",
                                 state = whisperState,

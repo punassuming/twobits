@@ -215,7 +215,7 @@ private fun ProfileCreationCard(
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("New Profile")
+                Text("New Profile", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             OutlinedButton(
                 onClick = onCreateWithAi,
@@ -223,7 +223,7 @@ private fun ProfileCreationCard(
             ) {
                 Icon(Icons.Filled.AutoAwesome, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("AI Draft")
+                Text("AI Draft", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

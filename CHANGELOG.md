@@ -6,6 +6,20 @@
 
 ### Improvements
 
+* remove swipe-right (Transform) gesture from recording rows; only swipe-left (Archive/Restore) is active — Transform is complex enough to warrant an intentional tap from the row menu
+* remove labels from bottom navigation bar and increase icon size to 28 dp for a cleaner, more compact chrome
+* increase waveform visualiser height on Capture screen from 72 dp to 120 dp for better amplitude detail
+* change playback position playhead colour to a neutral `onSurface` grey so it does not compete visually with the coloured waveform bars
+* move filter and search out of the always-visible section card; filter is now a badge icon button in the TopAppBar (badge shows active filter count); search is a toggle that slides down an `OutlinedTextField` above the list
+* replace `Checkbox` widget in multi-select with an in-place icon swap (CheckCircle / RadioButtonUnchecked) so row content does not shift when selection mode activates
+* replace folder drill-in navigation with inline expand/collapse in the history list; tapping a folder row expands its sessions inline with a chevron rotation animation; no separate navigation state required
+* replace SwipeToDismissBox with a custom SwipeRevealRow that holds revealed action buttons until tapped (iOS-style); swipe left reveals Archive/Restore, swipe right reveals Transform; buttons snap into place with a spring animation
+* add Transform picker bottom sheet: tapping Transform (via swipe-right, row ⋮ menu, or multi-select overflow) opens a ModalBottomSheet listing all transform profiles with Run buttons, a progress indicator while running, and a result preview with Copy/Done actions
+* rename "Run Default Transform" row ⋮ menu item to "Transform…" and route it through the picker sheet
+* add "Save to session" button to the Session Detail transform result dialog; saves the transformed text as the session's edited transcript
+* add `maxLines = 1` + ellipsis overflow to Profiles screen "New Profile" and "AI Draft" buttons to prevent text wrapping on narrow screens
+* add Whisper vs Gemma explanation paragraph to the Local provider card in Settings so users understand which model handles transcription vs AI features
+
 ### Fixes
 
 ## 0.13.0 (2026-05-03)

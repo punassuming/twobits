@@ -2,11 +2,17 @@ package dev.scrybe.feature.history
 
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +21,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -26,9 +34,12 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
@@ -36,6 +47,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
@@ -43,37 +55,50 @@ import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.TransformProfile
+import kotlinx.coroutines.launch
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -107,35 +132,11 @@ internal fun RecordRow(
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
 
-    val dismissState =
-        rememberSwipeToDismissBoxState(
-            confirmValueChange = { value ->
-                if (selectionEnabled) return@rememberSwipeToDismissBoxState false
-                when (value) {
-                    SwipeToDismissBoxValue.StartToEnd -> {
-                        onTransform()
-                        false
-                    }
-                    SwipeToDismissBoxValue.EndToStart -> {
-                        if (item.session.isArchived) onRestore() else onArchive()
-                        false
-                    }
-                    SwipeToDismissBoxValue.Settled -> false
-                }
-            },
-            positionalThreshold = { totalDistance -> totalDistance * 0.4f },
-        )
-
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = !selectionEnabled,
-        enableDismissFromEndToStart = !selectionEnabled,
-        backgroundContent = {
-            RecordSwipeBackground(
-                direction = dismissState.dismissDirection,
-                isArchived = item.session.isArchived,
-            )
-        },
+    SwipeRevealRow(
+        isArchived = item.session.isArchived,
+        enabled = !selectionEnabled,
+        onArchiveOrRestore = { if (item.session.isArchived) onRestore() else onArchive() },
+        onOpenTransformPicker = onTransform,
     ) {
         Surface(
             modifier =
@@ -173,18 +174,29 @@ internal fun RecordRow(
                     verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    if (selectionEnabled) {
-                        Checkbox(
-                            checked = selected,
-                            onCheckedChange = { onToggleSelection() },
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
-                    }
                     Icon(
-                        SessionStatusPresentation.icon(item.session.status, item.session.isArchived),
-                        contentDescription = SessionStatusPresentation.label(item.session.status, item.session.isArchived),
-                        modifier = Modifier.padding(top = 2.dp),
-                        tint = SessionStatusPresentation.color(item.session.status, item.session.isArchived),
+                        imageVector =
+                            if (selectionEnabled) {
+                                if (selected) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked
+                            } else {
+                                SessionStatusPresentation.icon(item.session.status, item.session.isArchived)
+                            },
+                        contentDescription =
+                            if (selectionEnabled) {
+                                null
+                            } else {
+                                SessionStatusPresentation.label(item.session.status, item.session.isArchived)
+                            },
+                        modifier =
+                            Modifier
+                                .padding(top = 2.dp)
+                                .then(if (selectionEnabled) Modifier.clickable { onToggleSelection() } else Modifier),
+                        tint =
+                            if (selectionEnabled) {
+                                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            } else {
+                                SessionStatusPresentation.color(item.session.status, item.session.isArchived)
+                            },
                     )
                     Column(
                         modifier = Modifier.weight(1f),
@@ -268,7 +280,7 @@ internal fun RecordRow(
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Run Default Transform") },
+                                    text = { Text("Transform…") },
                                     leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
@@ -361,57 +373,233 @@ internal fun RecordRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val SWIPE_BUTTON_WIDTH = 80.dp
+
 @Composable
-private fun RecordSwipeBackground(
-    direction: SwipeToDismissBoxValue,
+internal fun SwipeRevealRow(
     isArchived: Boolean,
+    enabled: Boolean,
+    onArchiveOrRestore: () -> Unit,
+    onOpenTransformPicker: () -> Unit,
+    content: @Composable () -> Unit,
 ) {
-    val (containerColor, contentColor, icon, label, alignment) =
-        when (direction) {
-            SwipeToDismissBoxValue.StartToEnd ->
-                SwipePresentation(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    icon = Icons.Filled.AutoFixHigh,
-                    label = "Transform",
-                    alignment = Alignment.CenterStart,
-                )
-            SwipeToDismissBoxValue.EndToStart ->
-                SwipePresentation(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                    icon = if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
-                    label = if (isArchived) "Restore" else "Archive",
-                    alignment = Alignment.CenterEnd,
-                )
-            SwipeToDismissBoxValue.Settled -> return
+    val density = LocalDensity.current
+    val buttonWidthPx = with(density) { SWIPE_BUTTON_WIDTH.toPx() }
+    val threshold = buttonWidthPx * 0.35f
+    val offsetX = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(enabled) {
+        if (!enabled) offsetX.animateTo(0f)
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        SwipeActionButton(
+            icon = Icons.Filled.AutoFixHigh,
+            label = "Transform",
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            onClick = {
+                scope.launch { offsetX.animateTo(0f) }
+                onOpenTransformPicker()
+            },
+            modifier = Modifier.align(Alignment.CenterStart).width(SWIPE_BUTTON_WIDTH),
+        )
+        SwipeActionButton(
+            icon = if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+            label = if (isArchived) "Restore" else "Archive",
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+            onClick = {
+                scope.launch { offsetX.animateTo(0f) }
+                onArchiveOrRestore()
+            },
+            modifier = Modifier.align(Alignment.CenterEnd).width(SWIPE_BUTTON_WIDTH),
+        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                    .pointerInput(enabled, buttonWidthPx) {
+                        if (!enabled) return@pointerInput
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                scope.launch {
+                                    val target =
+                                        when {
+                                            offsetX.value < -threshold -> -buttonWidthPx
+                                            offsetX.value > threshold -> buttonWidthPx
+                                            else -> 0f
+                                        }
+                                    offsetX.animateTo(target, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium))
+                                }
+                            },
+                            onDragCancel = { scope.launch { offsetX.animateTo(0f) } },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                val newOffset = (offsetX.value + dragAmount).coerceIn(-buttonWidthPx, buttonWidthPx)
+                                scope.launch { offsetX.snapTo(newOffset) }
+                            },
+                        )
+                    },
+        ) {
+            content()
         }
+    }
+}
+
+@Composable
+private fun SwipeActionButton(
+    icon: ImageVector,
+    label: String,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier =
-            Modifier
+            modifier
                 .fillMaxSize()
                 .background(containerColor, shape = MaterialTheme.shapes.large)
-                .padding(horizontal = 20.dp),
-        contentAlignment = alignment,
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(icon, contentDescription = label, tint = contentColor)
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
+            Icon(icon, contentDescription = label, tint = contentColor, modifier = Modifier.size(20.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = contentColor)
         }
     }
 }
 
-private data class SwipePresentation(
-    val containerColor: Color,
-    val contentColor: Color,
-    val icon: ImageVector,
-    val label: String,
-    val alignment: Alignment,
-)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TransformPickerSheet(
+    dialogState: TransformDialogState,
+    profiles: List<TransformProfile>,
+    onRunProfile: (TransformProfile) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val title =
+        when {
+            dialogState.sessionTitles.size == 1 -> "Transform “${dialogState.sessionTitles.first()}”"
+            dialogState.sessionTitles.size > 1 -> "Transform ${dialogState.sessionIds.size} recordings"
+            else -> "Transform"
+        }
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 4.dp))
+            if (dialogState.runningProfileId != null) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+            }
+            if (dialogState.result != null) {
+                TransformSheetResult(result = dialogState.result, onDismiss = onDismiss)
+            } else {
+                if (profiles.isEmpty()) {
+                    Text(
+                        "No transform profiles found. Create one in Profiles.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    profiles.forEach { profile ->
+                        TransformProfileRow(
+                            profile = profile,
+                            isRunning = dialogState.runningProfileId == profile.id,
+                            anyRunning = dialogState.runningProfileId != null,
+                            onRun = { onRunProfile(profile) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransformProfileRow(
+    profile: TransformProfile,
+    isRunning: Boolean,
+    anyRunning: Boolean,
+    onRun: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+            Text(profile.name, style = MaterialTheme.typography.bodyMedium)
+            if (profile.description.isNotBlank()) {
+                Text(
+                    profile.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        FilledTonalButton(onClick = onRun, enabled = !anyRunning) {
+            if (isRunning) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            } else {
+                Text("Run")
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransformSheetResult(
+    result: TransformDialogResult,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "${result.profileName} result",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                result.text,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(12.dp).heightIn(max = 200.dp),
+                maxLines = 8,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = {
+                clipboardManager.setText(AnnotatedString(result.text))
+                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+            }) {
+                Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text("Copy")
+            }
+            TextButton(onClick = onDismiss) { Text("Done") }
+        }
+    }
+}
 
 @Composable
 private fun recordContainerColor(
@@ -955,6 +1143,7 @@ internal val HISTORY_TIME_FORMATTER: DateTimeFormatter =
 @Composable
 internal fun FolderRow(
     folder: Folder,
+    expanded: Boolean,
     onClick: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
@@ -962,6 +1151,10 @@ internal fun FolderRow(
     modifier: Modifier = Modifier,
 ) {
     var menuExpanded by remember(folder.id) { mutableStateOf(false) }
+    val chevronAngle by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "folder-chevron-${folder.id}",
+    )
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -974,7 +1167,7 @@ internal fun FolderRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Filled.Folder,
+                if (expanded) Icons.Filled.FolderOpen else Icons.Filled.Folder,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
             )
@@ -982,6 +1175,12 @@ internal fun FolderRow(
                 text = folder.name,
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                modifier = Modifier.rotate(chevronAngle),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
