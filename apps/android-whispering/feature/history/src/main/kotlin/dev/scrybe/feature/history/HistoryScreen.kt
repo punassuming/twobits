@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
@@ -51,6 +52,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -114,6 +116,7 @@ fun HistoryScreen(
     var moveFolderTarget by remember { mutableStateOf<Folder?>(null) }
     var transformResultEvent by remember { mutableStateOf<HistoryEvent.TransformResult?>(null) }
     var showOverflowMenu by remember { mutableStateOf(false) }
+    var showTagBrowser by remember { mutableStateOf(false) }
 
     val importLauncher =
         rememberLauncherForActivityResult(
@@ -285,6 +288,14 @@ fun HistoryScreen(
                                 onDismissRequest = { showOverflowMenu = false },
                             ) {
                                 DropdownMenuItem(
+                                    text = { Text("Browse by tag") },
+                                    leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
+                                    onClick = {
+                                        showTagBrowser = true
+                                        showOverflowMenu = false
+                                    },
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Organize with AI") },
                                     leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null) },
                                     onClick = {
@@ -381,6 +392,31 @@ fun HistoryScreen(
                                     }
                                 },
                                 placeholder = { Text("Title, tags, or transcript text") },
+                            )
+                        }
+                        AnimatedVisibility(
+                            visible = state.filters.selectedTag != null,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut(),
+                        ) {
+                            FilterChip(
+                                selected = true,
+                                onClick = { viewModel.selectTag(null) },
+                                label = { Text("Tag: ${state.filters.selectedTag.orEmpty()}") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.Label,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                },
+                                trailingIcon = {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = "Clear tag filter",
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                },
                             )
                         }
                         if (state.sessions.isEmpty() && state.subfolders.isEmpty()) {
@@ -517,6 +553,15 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    if (showTagBrowser && successState != null) {
+        TagBrowserSheet(
+            availableTags = successState.availableTags,
+            selectedTag = successState.filters.selectedTag,
+            onSelectTag = { viewModel.selectTag(it) },
+            onDismiss = { showTagBrowser = false },
+        )
     }
 
     transformDialog?.let { dialog ->
