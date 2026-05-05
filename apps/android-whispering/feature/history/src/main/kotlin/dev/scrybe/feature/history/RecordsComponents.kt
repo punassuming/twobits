@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -80,6 +81,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -393,29 +395,33 @@ internal fun SwipeRevealRow(
         if (!enabled) offsetX.animateTo(0f)
     }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
-        SwipeActionButton(
-            icon = Icons.Filled.AutoFixHigh,
-            label = "Transform",
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            onClick = {
-                scope.launch { offsetX.animateTo(0f) }
-                onOpenTransformPicker()
-            },
-            modifier = Modifier.align(Alignment.CenterStart).width(SWIPE_BUTTON_WIDTH),
-        )
-        SwipeActionButton(
-            icon = if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
-            label = if (isArchived) "Restore" else "Archive",
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            onClick = {
-                scope.launch { offsetX.animateTo(0f) }
-                onArchiveOrRestore()
-            },
-            modifier = Modifier.align(Alignment.CenterEnd).width(SWIPE_BUTTON_WIDTH),
-        )
+    Box(modifier = Modifier.fillMaxWidth().clipToBounds()) {
+        Box(modifier = Modifier.matchParentSize()) {
+            SwipeActionButton(
+                icon = Icons.Filled.AutoFixHigh,
+                label = "Transform",
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                onClick = {
+                    scope.launch { offsetX.animateTo(0f) }
+                    onOpenTransformPicker()
+                },
+                modifier = Modifier.align(Alignment.CenterStart).width(SWIPE_BUTTON_WIDTH).fillMaxHeight(),
+            )
+        }
+        Box(modifier = Modifier.matchParentSize()) {
+            SwipeActionButton(
+                icon = if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+                label = if (isArchived) "Restore" else "Archive",
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                onClick = {
+                    scope.launch { offsetX.animateTo(0f) }
+                    onArchiveOrRestore()
+                },
+                modifier = Modifier.align(Alignment.CenterEnd).width(SWIPE_BUTTON_WIDTH).fillMaxHeight(),
+            )
+        }
         Box(
             modifier =
                 Modifier
@@ -461,7 +467,6 @@ private fun SwipeActionButton(
     Box(
         modifier =
             modifier
-                .fillMaxSize()
                 .background(containerColor, shape = MaterialTheme.shapes.large)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -597,6 +602,105 @@ private fun TransformSheetResult(
                 Text("Copy")
             }
             TextButton(onClick = onDismiss) { Text("Done") }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TagBrowserSheet(
+    availableTags: List<Pair<String, Int>>,
+    selectedTag: String?,
+    onSelectTag: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 32.dp)
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Browse by tag", style = MaterialTheme.typography.titleMedium)
+                if (selectedTag != null) {
+                    TextButton(onClick = {
+                        onSelectTag(null)
+                        onDismiss()
+                    }) { Text("Clear filter") }
+                }
+            }
+            if (availableTags.isEmpty()) {
+                Text(
+                    "No tags found. Add tags to your recordings in Session Detail.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp),
+                )
+            } else {
+                availableTags.forEach { (tag, count) ->
+                    TagBrowserRow(
+                        tag = tag,
+                        count = count,
+                        selected = tag == selectedTag,
+                        onSelect = {
+                            onSelectTag(tag)
+                            onDismiss()
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagBrowserRow(
+    tag: String,
+    count: Int,
+    selected: Boolean,
+    onSelect: () -> Unit,
+) {
+    Surface(
+        onClick = onSelect,
+        modifier = Modifier.fillMaxWidth(),
+        color =
+            if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = tag,
+                style = MaterialTheme.typography.bodyMedium,
+                color =
+                    if (selected) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -1095,6 +1199,7 @@ internal fun activeRecordsFilterCount(filters: RecordsFilterState): Int =
         filters.dateRange != RecordsDateRange.ALL,
         filters.sortOption != RecordsSortOption.NEWEST,
         filters.includedStatuses.isNotEmpty(),
+        filters.selectedTag != null,
     ).count { it }
 
 internal fun openAudioWith(

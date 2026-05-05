@@ -6,6 +6,11 @@
 
 ### Improvements
 
+* fix swipe reveal buttons hidden at rest by adding `clipToBounds()` to the outer container and `matchParentSize()` wrappers, so archive/transform buttons are clipped to zero width until a swipe gesture moves the content row
+* fix swipe button tap targets: buttons now fill the full row height via `fillMaxHeight()` so the entire revealed area is tappable
+* fix long-press multi-select for recordings inside folders: selection intersection now includes folder sessions, not just root sessions, so entering selection mode from a nested recording works correctly
+* add Tag Index: "Browse by tag" in History overflow opens a bottom sheet listing all tags with session counts; tapping a tag filters the session list and shows a dismissable chip below the top bar
+
 ### Fixes
 
 ## 0.14.0 (2026-05-03)

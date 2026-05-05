@@ -29,6 +29,7 @@ data class RecordsFilterState(
     val dateRange: RecordsDateRange = RecordsDateRange.ALL,
     val includedStatuses: Set<SessionStatus> = emptySet(),
     val showArchived: Boolean = false,
+    val selectedTag: String? = null,
 )
 
 data class RecordsInteractionPreferences(
@@ -70,6 +71,7 @@ sealed interface HistoryUiState {
         val breadcrumb: List<Folder> = emptyList(),
         val allFolders: List<Folder> = emptyList(),
         val sessionsByFolderId: Map<String, List<HistorySessionItem>> = emptyMap(),
+        val availableTags: List<Pair<String, Int>> = emptyList(),
     ) : HistoryUiState
 
     data class Error(

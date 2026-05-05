@@ -236,6 +236,8 @@ class HistoryViewModel
                         .filter { session ->
                             inputs.filters.includedStatuses.isEmpty() || session.status in inputs.filters.includedStatuses
                         }.filter { session ->
+                            inputs.filters.selectedTag == null || inputs.filters.selectedTag in session.tags
+                        }.filter { session ->
                             if (inputs.query.isBlank()) {
                                 true
                             } else {
@@ -281,6 +283,8 @@ class HistoryViewModel
                                         .contains(searchTerm) ||
                                     latestTranscriptBySession[session.id].orEmpty().lowercase().contains(searchTerm)
                             }
+                        }.filter { session ->
+                            inputs.filters.selectedTag == null || inputs.filters.selectedTag in session.tags
                         }.groupBy { session -> session.folderId!! }
                         .mapValues { (_, folderSessions) ->
                             folderSessions
@@ -293,6 +297,20 @@ class HistoryViewModel
                                 }
                         }
 
+                val availableTags =
+                    sessions
+                        .filter { session -> session.isArchived == inputs.filters.showArchived }
+                        .flatMap { it.tags }
+                        .groupingBy { it }
+                        .eachCount()
+                        .entries
+                        .sortedByDescending { it.value }
+                        .map { it.key to it.value }
+
+                val allSelectableIds =
+                    (filteredSessions + sessionsByFolderId.values.flatten())
+                        .map { it.session.id }
+                        .toSet()
                 HistoryUiState.Success(
                     sessions = filteredSessions,
                     filters = inputs.filters,
@@ -304,9 +322,7 @@ class HistoryViewModel
                     selection =
                         inputs.selection.copy(
                             selectedSessionIds =
-                                inputs.selection.selectedSessionIds.intersect(
-                                    filteredSessions.map { it.session.id }.toSet(),
-                                ),
+                                inputs.selection.selectedSessionIds.intersect(allSelectableIds),
                         ),
                     transformingSessionIds = currentlyTransforming,
                     currentFolderId = folderNav.currentFolderId,
@@ -314,6 +330,7 @@ class HistoryViewModel
                     breadcrumb = breadcrumb,
                     allFolders = folderNav.allFolders,
                     sessionsByFolderId = sessionsByFolderId,
+                    availableTags = availableTags,
                 ) as HistoryUiState
             }.catch { emit(HistoryUiState.Error(it.message ?: "Unknown error")) }
                 .stateIn(
@@ -329,6 +346,10 @@ class HistoryViewModel
         fun updateFilters(next: RecordsFilterState) {
             filters.value = next
             selection.value = RecordsSelectionState()
+        }
+
+        fun selectTag(tag: String?) {
+            filters.value = filters.value.copy(selectedTag = tag)
         }
 
         fun renameSession(
