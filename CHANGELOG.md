@@ -9,7 +9,13 @@
 
 ### Improvements
 
+* replace expand/collapse text buttons in folder list header with a floating pill bubble at the bottom-right corner; the bubble shows `UnfoldMore`/`UnfoldLess` icon and a count of collapsed folders
+* increase left indentation for recordings inside expanded folders from 12 dp to 28 dp, making folder contents visually distinct from the top-level list
+* modernize app icon with a deep purple-to-navy adaptive background, vivid purple microphone disc, light violet stand arc, and three flanking sparkles for an AI-platform aesthetic
+
 ### Fixes
+
+* prevent deleted default transform profiles from being re-seeded on app update or after a destructive database migration; deletions are now persisted in DataStore and respected on every launch
 
 ## 0.16.0 (2026-05-08)
 

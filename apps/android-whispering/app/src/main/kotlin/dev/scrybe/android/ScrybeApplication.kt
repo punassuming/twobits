@@ -5,10 +5,12 @@ import dagger.hilt.android.HiltAndroidApp
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
+import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.transforms.DefaultProfiles
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -16,12 +18,16 @@ import javax.inject.Inject
 class ScrybeApplication : Application() {
     @Inject lateinit var transformProfileDao: TransformProfileDao
 
+    @Inject lateinit var preferencesDataStore: AppPreferencesDataStore
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
         applicationScope.launch {
+            val deletedIds = preferencesDataStore.deletedDefaultProfileIds.first()
             DefaultProfiles.ALL.forEach { profile ->
+                if (profile.id in deletedIds) return@forEach
                 val existingProfile = transformProfileDao.getProfileById(profile.id)
                 if (existingProfile == null) {
                     transformProfileDao.insertProfile(
