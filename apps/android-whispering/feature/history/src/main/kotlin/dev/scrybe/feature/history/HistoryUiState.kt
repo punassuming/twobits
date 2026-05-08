@@ -71,6 +71,8 @@ sealed interface HistoryUiState {
         val allFolders: List<Folder> = emptyList(),
         val sessionsByFolderId: Map<String, List<HistorySessionItem>> = emptyMap(),
         val availableTags: List<Pair<String, Int>> = emptyList(),
+        val semanticSearchLoading: Boolean = false,
+        val semanticRankedIds: List<String>? = null,
     ) : HistoryUiState
 
     data class Error(

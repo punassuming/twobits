@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.LocalGemmaModel
+import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
@@ -52,6 +53,8 @@ class AppPreferencesDataStore
             val TASKFORGE_PACKAGE_NAME = stringPreferencesKey("taskforge_package_name")
             val TASKFORGE_ACTION = stringPreferencesKey("taskforge_action")
             val LOCAL_GEMMA_MODEL = stringPreferencesKey("local_gemma_model")
+            val LOCAL_WHISPER_MODEL = stringPreferencesKey("local_whisper_model")
+            val DELETED_DEFAULT_PROFILE_IDS = stringPreferencesKey("deleted_default_profile_ids")
         }
 
         val defaultProvider: Flow<String> =
@@ -176,6 +179,20 @@ class AppPreferencesDataStore
                 LocalGemmaModel.fromName(prefs[Keys.LOCAL_GEMMA_MODEL] ?: "")
             }
 
+        val localWhisperModel: Flow<LocalWhisperModel> =
+            context.dataStore.data.map { prefs ->
+                LocalWhisperModel.fromName(prefs[Keys.LOCAL_WHISPER_MODEL] ?: "")
+            }
+
+        val deletedDefaultProfileIds: Flow<Set<String>> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.DELETED_DEFAULT_PROFILE_IDS]
+                    ?.split(",")
+                    ?.filter { it.isNotBlank() }
+                    ?.toSet()
+                    ?: emptySet()
+            }
+
         suspend fun setDefaultProvider(provider: String) {
             context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PROVIDER] = provider }
         }
@@ -276,5 +293,22 @@ class AppPreferencesDataStore
 
         suspend fun setLocalGemmaModel(model: LocalGemmaModel) {
             context.dataStore.edit { prefs -> prefs[Keys.LOCAL_GEMMA_MODEL] = model.name }
+        }
+
+        suspend fun setLocalWhisperModel(model: LocalWhisperModel) {
+            context.dataStore.edit { prefs -> prefs[Keys.LOCAL_WHISPER_MODEL] = model.name }
+        }
+
+        suspend fun addDeletedDefaultProfileId(id: String) {
+            context.dataStore.edit { prefs ->
+                val current =
+                    prefs[Keys.DELETED_DEFAULT_PROFILE_IDS]
+                        ?.split(",")
+                        ?.filter { it.isNotBlank() }
+                        ?.toMutableSet()
+                        ?: mutableSetOf()
+                current.add(id)
+                prefs[Keys.DELETED_DEFAULT_PROFILE_IDS] = current.joinToString(",")
+            }
         }
     }

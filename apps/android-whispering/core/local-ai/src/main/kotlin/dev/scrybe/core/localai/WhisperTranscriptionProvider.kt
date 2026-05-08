@@ -21,12 +21,12 @@ class WhisperTranscriptionProvider
             options: TranscriptionOptions,
         ): Result<TranscriptResult> =
             runCatching {
-                val modelDir =
-                    modelManager.whisperModelDir()
+                val (modelDir, model) =
+                    modelManager.activeWhisperDir()
                         ?: return Result.failure(IllegalStateException("Whisper model not downloaded"))
 
                 val samples = AudioDecoder.decodeToFloatArray(audioFile)
-                WhisperEngine(modelDir).use { engine ->
+                WhisperEngine(modelDir, model.filePrefix).use { engine ->
                     val text = engine.transcribe(samples)
                     TranscriptResult(
                         text = text,

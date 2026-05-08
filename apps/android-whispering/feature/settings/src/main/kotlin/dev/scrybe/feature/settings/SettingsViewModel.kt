@@ -17,6 +17,7 @@ import dev.scrybe.core.localai.LocalModelManager
 import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.LocalGemmaModel
+import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
@@ -127,7 +128,8 @@ class SettingsViewModel
         private val profileSuggestionService: OpenAiProfileSuggestionService,
         private val localModelManager: LocalModelManager,
     ) : ViewModel() {
-        val whisperModelState: StateFlow<LocalModelState> = localModelManager.whisperState
+        val whisperStates: StateFlow<Map<LocalWhisperModel, LocalModelState>> = localModelManager.whisperStates
+        val selectedWhisperModel: StateFlow<LocalWhisperModel> = localModelManager.selectedWhisperModel
         val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = localModelManager.gemmaStates
 
         val selectedGemmaModel: StateFlow<LocalGemmaModel> =
@@ -382,20 +384,24 @@ class SettingsViewModel
             viewModelScope.launch { preferencesDataStore.setDefaultProvider(provider) }
         }
 
-        fun downloadWhisperModel() {
-            viewModelScope.launch { localModelManager.downloadWhisper() }
+        fun downloadWhisperModel(model: LocalWhisperModel) {
+            viewModelScope.launch { localModelManager.downloadWhisper(model) }
         }
 
         fun downloadGemmaModel(model: LocalGemmaModel) {
             viewModelScope.launch { localModelManager.downloadGemma(model) }
         }
 
-        fun deleteWhisperModel() {
-            localModelManager.deleteWhisper()
+        fun deleteWhisperModel(model: LocalWhisperModel) {
+            localModelManager.deleteWhisper(model)
         }
 
         fun deleteGemmaModel(model: LocalGemmaModel) {
             localModelManager.deleteGemma(model)
+        }
+
+        fun selectWhisperModel(model: LocalWhisperModel) {
+            localModelManager.selectWhisperModel(model)
         }
 
         fun selectGemmaModel(model: LocalGemmaModel) {

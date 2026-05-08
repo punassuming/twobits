@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -45,6 +46,8 @@ import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Unarchive
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -63,6 +66,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -370,29 +374,72 @@ fun HistoryScreen(
                             enter = expandVertically() + fadeIn(),
                             exit = shrinkVertically() + fadeOut(),
                         ) {
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = {
-                                    searchQuery = it
-                                    viewModel.updateQuery(it)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                leadingIcon = {
-                                    Icon(Icons.Filled.Search, contentDescription = null)
-                                },
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = {
-                                            searchQuery = ""
-                                            viewModel.updateQuery("")
-                                        }) {
-                                            Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = {
+                                        searchQuery = it
+                                        viewModel.updateQuery(it)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.Search, contentDescription = null)
+                                    },
+                                    trailingIcon = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (searchQuery.isNotEmpty() && !state.semanticSearchLoading) {
+                                                IconButton(
+                                                    onClick = { viewModel.triggerSemanticSearch(searchQuery) },
+                                                ) {
+                                                    Icon(
+                                                        Icons.Filled.AutoAwesome,
+                                                        contentDescription = "AI search",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                }
+                                            }
+                                            if (searchQuery.isNotEmpty()) {
+                                                IconButton(onClick = {
+                                                    searchQuery = ""
+                                                    viewModel.updateQuery("")
+                                                    viewModel.clearSemanticSearch()
+                                                }) {
+                                                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                                                }
+                                            }
+                                        }
+                                    },
+                                    placeholder = { Text("Title, tags, or transcript text") },
+                                )
+                                if (state.semanticSearchLoading) {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                }
+                                if (state.semanticRankedIds != null && !state.semanticSearchLoading) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.AutoAwesome,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Text(
+                                            "AI results · ${state.semanticRankedIds.size} matches",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        TextButton(
+                                            onClick = { viewModel.clearSemanticSearch() },
+                                        ) {
+                                            Text("Clear", style = MaterialTheme.typography.labelSmall)
                                         }
                                     }
-                                },
-                                placeholder = { Text("Title, tags, or transcript text") },
-                            )
+                                }
+                            }
                         }
                         AnimatedVisibility(
                             visible = state.filters.selectedTag != null,
@@ -498,69 +545,95 @@ fun HistoryScreen(
                                     showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
                                 )
                             }
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                if (state.subfolders.isNotEmpty()) {
-                                    item(key = "folder-controls") {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.End,
-                                        ) {
-                                            TextButton(onClick = {
-                                                expandedFolderIds = state.subfolders.map { it.id }.toSet()
-                                            }) { Text("Expand all") }
-                                            TextButton(onClick = {
-                                                expandedFolderIds = emptySet()
-                                            }) { Text("Collapse all") }
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    for (folder in state.subfolders) {
+                                        item(key = "folder-${folder.id}") {
+                                            FolderRow(
+                                                folder = folder,
+                                                expanded = folder.id in expandedFolderIds,
+                                                onClick = {
+                                                    expandedFolderIds =
+                                                        if (folder.id in expandedFolderIds) {
+                                                            expandedFolderIds - folder.id
+                                                        } else {
+                                                            expandedFolderIds + folder.id
+                                                        }
+                                                },
+                                                onRename = { renameFolderTarget = folder },
+                                                onDelete = { deleteFolderTarget = folder },
+                                                onMove = { moveFolderTarget = folder },
+                                            )
                                         }
-                                    }
-                                }
-                                for (folder in state.subfolders) {
-                                    item(key = "folder-${folder.id}") {
-                                        FolderRow(
-                                            folder = folder,
-                                            expanded = folder.id in expandedFolderIds,
-                                            onClick = {
-                                                expandedFolderIds =
-                                                    if (folder.id in expandedFolderIds) {
-                                                        expandedFolderIds - folder.id
-                                                    } else {
-                                                        expandedFolderIds + folder.id
+                                        if (folder.id in expandedFolderIds) {
+                                            val folderItems =
+                                                state.sessionsByFolderId[folder.id].orEmpty()
+                                            if (folderItems.isEmpty()) {
+                                                item(key = "folder-${folder.id}-empty") {
+                                                    Text(
+                                                        "This folder is empty",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.padding(start = 28.dp, top = 4.dp, bottom = 4.dp),
+                                                    )
+                                                }
+                                            } else {
+                                                items(
+                                                    folderItems,
+                                                    key = { "fi-${it.session.id}" },
+                                                ) { item ->
+                                                    Box(Modifier.padding(start = 28.dp)) {
+                                                        sessionRow(item)
                                                     }
-                                            },
-                                            onRename = { renameFolderTarget = folder },
-                                            onDelete = { deleteFolderTarget = folder },
-                                            onMove = { moveFolderTarget = folder },
-                                        )
-                                    }
-                                    if (folder.id in expandedFolderIds) {
-                                        val folderItems =
-                                            state.sessionsByFolderId[folder.id].orEmpty()
-                                        if (folderItems.isEmpty()) {
-                                            item(key = "folder-${folder.id}-empty") {
-                                                Text(
-                                                    "This folder is empty",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 4.dp),
-                                                )
-                                            }
-                                        } else {
-                                            items(
-                                                folderItems,
-                                                key = { "fi-${it.session.id}" },
-                                            ) { item ->
-                                                Box(Modifier.padding(start = 12.dp)) {
-                                                    sessionRow(item)
                                                 }
                                             }
                                         }
                                     }
+                                    items(state.sessions, key = { it.session.id }) { item ->
+                                        sessionRow(item)
+                                    }
                                 }
-                                items(state.sessions, key = { it.session.id }) { item ->
-                                    sessionRow(item)
+                                if (state.subfolders.isNotEmpty()) {
+                                    val allExpanded = state.subfolders.all { it.id in expandedFolderIds }
+                                    val collapsedCount = state.subfolders.count { it.id !in expandedFolderIds }
+                                    Surface(
+                                        onClick = {
+                                            expandedFolderIds =
+                                                if (allExpanded) {
+                                                    emptySet()
+                                                } else {
+                                                    state.subfolders.map { it.id }.toSet()
+                                                }
+                                        },
+                                        modifier =
+                                            Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(bottom = 12.dp, end = 4.dp),
+                                        shape = RoundedCornerShape(999.dp),
+                                        color = MaterialTheme.colorScheme.secondaryContainer,
+                                        tonalElevation = 4.dp,
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Icon(
+                                                if (allExpanded) Icons.Filled.UnfoldLess else Icons.Filled.UnfoldMore,
+                                                contentDescription = if (allExpanded) "Collapse all" else "Expand all",
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                            if (!allExpanded && collapsedCount > 0) {
+                                                Text(
+                                                    "$collapsedCount",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

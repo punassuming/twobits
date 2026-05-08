@@ -4,9 +4,18 @@
 
 ### Features
 
+* add Whisper model picker in Settings: choose between Tiny (~150 MB), Base English (~290 MB, ~30% fewer errors), and Small English (~967 MB, ~50% fewer errors); selected model persists and is used for all on-device transcriptions
+* add AI semantic search in History: tap the sparkle icon in the search bar to let OpenAI rank recordings by relevance to a natural-language description rather than exact keyword matching
+
 ### Improvements
 
+* replace expand/collapse text buttons in folder list header with a floating pill bubble at the bottom-right corner; the bubble shows `UnfoldMore`/`UnfoldLess` icon and a count of collapsed folders
+* increase left indentation for recordings inside expanded folders from 12 dp to 28 dp, making folder contents visually distinct from the top-level list
+* modernize app icon with a deep purple-to-navy adaptive background, vivid purple microphone disc, light violet stand arc, and three flanking sparkles for an AI-platform aesthetic
+
 ### Fixes
+
+* prevent deleted default transform profiles from being re-seeded on app update or after a destructive database migration; deletions are now persisted in DataStore and respected on every launch
 
 ## 0.16.0 (2026-05-08)
 

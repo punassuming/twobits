@@ -171,6 +171,9 @@ class ProfilesViewModel
                 if (wasDefault) {
                     preferencesDataStore.setDefaultTransformProfileId(null)
                 }
+                if (profileId.startsWith("default-")) {
+                    preferencesDataStore.addDeletedDefaultProfileId(profileId)
+                }
             }
         }
 
