@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.17.0 (2026-05-08)
+
+### Features
+
 * add Whisper model picker in Settings: choose between Tiny (~150 MB), Base English (~290 MB, ~30% fewer errors), and Small English (~967 MB, ~50% fewer errors); selected model persists and is used for all on-device transcriptions
 * add AI semantic search in History: tap the sparkle icon in the search bar to let OpenAI rank recordings by relevance to a natural-language description rather than exact keyword matching
 
@@ -17,6 +25,7 @@
 
 * prevent deleted default transform profiles from being re-seeded on app update or after a destructive database migration; deletions are now persisted in DataStore and respected on every launch
 
+
 ## 0.16.0 (2026-05-08)
 
 ### Features
@@ -29,6 +38,7 @@
 * Capture screen hides recent recordings while a recording is active so the interface stays focused on the in-progress session; when idle only the three most recent sessions are shown
 
 ### Fixes
+
 
 
 ## 0.15.0 (2026-05-08)
@@ -47,6 +57,7 @@
 * replace chip pills in Session Detail overview with a compact label/value grid (Duration, Status, Format, File size, Sample rate, Bit rate, Channels)
 
 ### Fixes
+
 
 
 
@@ -77,6 +88,7 @@
 
 
 
+
 ## 0.13.0 (2026-05-03)
 
 ### Features
@@ -86,6 +98,7 @@
 * use minor as the default version bump so any logged CHANGELOG entry releases as a minor version rather than a patch
 
 ### Fixes
+
 
 
 
@@ -117,6 +130,7 @@
 
 
 
+
 ## 0.12.0 (2026-05-01)
 
 ### Features
@@ -130,6 +144,7 @@
 ### Fixes
 
 * fix exported files and saved audio copies using UUID-based machine filenames; all exports and saved copies now use the user-visible recording title via `sanitizeFileName(session.title)`
+
 
 
 
@@ -165,6 +180,7 @@
 
 
 
+
 ## 0.10.0 (2026-04-27)
 
 ### Features
@@ -184,6 +200,7 @@
 
 * fix CI compile failure caused by missing `import kotlinx.coroutines.flow.asStateFlow` in HistoryViewModel
 * restore `as ProfilesUiState` cast in ProfilesViewModel; the cast is required to widen the map-block return type so the downstream `.catch { emit(ProfilesUiState.Error(...)) }` type-checks — the earlier "No cast needed" compiler warning was misleading
+
 
 
 
@@ -226,6 +243,7 @@
 
 
 
+
 ## 0.9.0 (2026-04-18)
 
 ### Features
@@ -242,6 +260,7 @@
 * restore main deployment by aligning release tags with the committed changelog and app version metadata
 * restore Android CI by fixing `CaptureScreen` coroutine launch usage and declaring vibration permission for recording feedback
 * fix a `CaptureScreen` compilation issue that affected record-button animation handling in Android CI
+
 
 
 
@@ -276,6 +295,7 @@
 
 
 
+
 ## 0.8.2 (2026-04-11)
 
 ### Features
@@ -289,6 +309,7 @@
 ### Fixes
 
 * make records swipe actions less sensitive with narrower edge-only gestures, one-way swipe directions, and full-card action overlays instead of sliding row content sideways
+
 
 
 
@@ -333,6 +354,7 @@
 
 
 
+
 ## 0.8.0 (2026-04-06)
 
 ### Features
@@ -343,6 +365,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -372,6 +395,7 @@
 * add Kotlin, Min SDK, Target SDK, and License badges to the README
 
 ### Fixes
+
 
 
 
@@ -426,6 +450,7 @@
 
 
 
+
 ## 0.5.1 (2026-03-29)
 
 ### Features
@@ -433,6 +458,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -487,6 +513,7 @@
 
 
 
+
 ## 0.3.1 (2026-03-26)
 
 ### Features
@@ -497,6 +524,7 @@
 ### Fixes
 
 * require confirmation before swipe-to-transform, archive, or restore actions so record gestures are harder to trigger accidentally
+
 
 
 
@@ -532,6 +560,7 @@
 
 * add retry and reset recovery actions for recordings stuck in a transcription state
 * restore the missing transcription module dependency that was breaking Android builds
+
 
 
 
@@ -588,6 +617,7 @@
 
 
 
+
 ## 0.1.0 (2026-03-25)
 
 ### Improvements
@@ -614,11 +644,13 @@
 
 
 
+
 ## 0.0.10 (2026-03-25)
 
 ### Fixes
 
 * clean up foreground recording notification refresh logic to resolve the build issues introduced after 0.0.9
+
 
 
 
@@ -665,12 +697,14 @@
 
 
 
+
 ## 0.0.8 (2026-03-25)
 
 ### Fixes
 
 * add an Android 13+ `POST_NOTIFICATIONS` runtime permission check before refreshing the foreground recording notification
 * prevent recording notification updates from failing lint or unsafe notification calls on devices that have not granted notification permission
+
 
 
 
@@ -705,6 +739,7 @@
 * enrich the foreground recording notification with live elapsed time and simple input-level feedback
 * surface session status, archive state, transcript previews, and clearer metadata across the records list and session detail screens
 * add estimated transcription cost visibility in session detail and aggregate transcription spend reporting in Settings
+
 
 
 
@@ -763,6 +798,7 @@
 
 
 
+
 ## 0.0.5 (2026-03-23)
 
 ### Features
@@ -781,6 +817,7 @@
 
 * keep auto-transcription alive after the recording service shuts down
 * send valid typed content payloads to the OpenAI responses API for transforms
+
 
 
 
