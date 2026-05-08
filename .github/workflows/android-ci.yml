@@ -76,13 +76,101 @@ jobs:
       - name: Validate AndroidManifest.xml files
         run: python3 apps/android-whispering/scripts/validate-manifests.py
 
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      statuses: write
+    outputs:
+      skip_android: ${{ steps.check.outputs.skip_android }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check whether this push is version-only
+        id: check
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          before="${{ github.event.before }}"
+          current="${{ github.sha }}"
+          repo="${{ github.repository }}"
+          zero_sha="0000000000000000000000000000000000000000"
+
+          echo "skip_android=false" >> "$GITHUB_OUTPUT"
+
+          if [ "$before" = "$zero_sha" ]; then
+            echo "First push on this branch; no parent to inherit status from."
+            exit 0
+          fi
+
+          mapfile -t changed < <(git diff --name-only "$before" "$current")
+          echo "Changed files (${#changed[@]}):"; printf '  %s\n' "${changed[@]}"
+
+          if [ "${#changed[@]}" -eq 0 ]; then exit 0; fi
+
+          allowed=("CHANGELOG.md" "apps/android-whispering/app/build.gradle.kts")
+          version_only=true
+          for f in "${changed[@]}"; do
+            matched=false
+            for a in "${allowed[@]}"; do [ "$f" = "$a" ] && matched=true && break; done
+            if [ "$matched" = "false" ]; then
+              echo "Non-version file changed: $f — running full verify."
+              version_only=false; break
+            fi
+          done
+
+          [ "$version_only" = "false" ] && exit 0
+
+          parent_state="$(curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${repo}/commits/${before}/statuses" \
+            | python3 -c "
+import sys, json
+for s in json.load(sys.stdin):
+    if s.get('context') == 'android/verified':
+        print(s['state']); sys.exit(0)
+print('none')
+")"
+
+          echo "Parent android/verified state: $parent_state"
+          [ "$parent_state" != "success" ] && exit 0
+
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${repo}/statuses/${current}" \
+            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"Inherited from ${before} (version-only change)\",\"target_url\":\"https://github.com/${repo}/actions\"}"
+
+          echo "skip_android=true" >> "$GITHUB_OUTPUT"
+
   verify-android:
     name: Verify Android
     runs-on: ubuntu-latest
-    needs: [changelog, validate]
+    needs: [changelog, validate, detect-changes]
     permissions:
       contents: read
+      statuses: write
     timeout-minutes: 45
+    if: >
+      always() &&
+      needs.changelog.result == 'success' &&
+      needs.validate.result == 'success' &&
+      (
+        needs.detect-changes.result == 'skipped' ||
+        (needs.detect-changes.result == 'success' && needs.detect-changes.outputs.skip_android != 'true')
+      )
 
     steps:
       - name: Checkout
@@ -110,3 +198,17 @@ jobs:
         working-directory: apps/android-whispering
         shell: bash
         run: bash scripts/ci-gradle-retry.sh assembleDebug testDebugUnitTest lint ktlintCheck detekt
+
+      - name: Record android/verified commit status
+        if: success()
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"assembleDebug, tests, lint, ktlint, detekt all passed\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"

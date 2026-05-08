@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* skip redundant Android CI for version-only commits (CHANGELOG + build.gradle.kts bumps after a release): `detect-changes` job checks if only version files changed and the parent commit already carries `android/verified` status, then propagates the status and skips the 40-minute build+test suite
+
 ### Fixes
 
 ## 0.17.0 (2026-05-08)
