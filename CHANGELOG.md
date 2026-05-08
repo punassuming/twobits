@@ -4,20 +4,16 @@
 
 ### Features
 
-### Improvements
-
-### Fixes
-
-## 0.14.1 (2026-05-05)
-
-### Features
+* add expand/collapse all controls above the folder list in History: two text buttons let users open or close every folder at once
+* add provider selector to Transform Profile editor: OpenAI and On-device chips let users assign a specific provider to each profile
 
 ### Improvements
 
-* fix swipe reveal buttons hidden at rest by adding `clipToBounds()` to the outer container and `matchParentSize()` wrappers, so archive/transform buttons are clipped to zero width until a swipe gesture moves the content row
-* fix swipe button tap targets: buttons now fill the full row height via `fillMaxHeight()` so the entire revealed area is tappable
-* fix long-press multi-select for recordings inside folders: selection intersection now includes folder sessions, not just root sessions, so entering selection mode from a nested recording works correctly
-* add Tag Index: "Browse by tag" in History overflow opens a bottom sheet listing all tags with session counts; tapping a tag filters the session list and shows a dismissable chip below the top bar
+* reduce folder row vertical padding from 12 dp to 8 dp so folder items are visually lighter than standard recording rows
+* swipe reveal buttons in the recording list now fade in progressively as the gesture advances, hiding at rest
+* increase playback waveform height from 64 dp to 120 dp for better detail in Session Detail
+* remove file path from recording info dialog and Session Detail overview; the raw path is rarely useful and adds visual noise
+* replace chip pills in Session Detail overview with a compact label/value grid (Duration, Status, Format, File size, Sample rate, Bit rate, Channels)
 
 ### Fixes
 

@@ -83,7 +83,7 @@ internal fun PlaybackCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(64.dp),
+                    .height(120.dp),
         ) {
             WaveformTimeline(
                 samples = state.session.waveformSamples,
