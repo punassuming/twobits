@@ -12,6 +12,7 @@
 
 * fix CI failure caused by YAML folded-block `if:` condition on `verify-android` producing embedded newlines that caused GitHub Actions to skip the job; flatten condition to a single-line `>-` expression
 * fix CI failure when GitHub commit status API returns a non-2xx response: curl calls in `detect-changes` and `verify-android` are now non-fatal
+* fix Android CI workflow parse failure by replacing unindented multiline Python in `detect-changes` with a one-line parser call and using bracket notation for hyphenated `needs['detect-changes']` references
 
 ## 0.17.0 (2026-05-08)
 
