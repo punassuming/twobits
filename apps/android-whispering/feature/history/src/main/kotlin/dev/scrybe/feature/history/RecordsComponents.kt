@@ -85,6 +85,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -396,7 +397,12 @@ internal fun SwipeRevealRow(
     }
 
     Box(modifier = Modifier.fillMaxWidth().clipToBounds()) {
-        Box(modifier = Modifier.matchParentSize()) {
+        Box(
+            modifier =
+                Modifier.matchParentSize().graphicsLayer {
+                    alpha = (offsetX.value / buttonWidthPx).coerceIn(0f, 1f)
+                },
+        ) {
             SwipeActionButton(
                 icon = Icons.Filled.AutoFixHigh,
                 label = "Transform",
@@ -409,7 +415,12 @@ internal fun SwipeRevealRow(
                 modifier = Modifier.align(Alignment.CenterStart).width(SWIPE_BUTTON_WIDTH).fillMaxHeight(),
             )
         }
-        Box(modifier = Modifier.matchParentSize()) {
+        Box(
+            modifier =
+                Modifier.matchParentSize().graphicsLayer {
+                    alpha = (-offsetX.value / buttonWidthPx).coerceIn(0f, 1f)
+                },
+        ) {
             SwipeActionButton(
                 icon = if (isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
                 label = if (isArchived) "Restore" else "Archive",
@@ -1033,7 +1044,6 @@ internal fun RecordInfoDialog(
                     "Quality",
                     "${info.sampleRateHz / 1000} kHz · ${info.encodingBitRate / 1000} kbps · ${if (info.channelCount == 1) "Mono" else "Stereo"}",
                 )
-                InfoLine("Path", info.filePath)
                 info.transcriptPreview?.takeIf { it.isNotBlank() }?.let {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Text(text = it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1121,7 +1131,6 @@ internal fun HistorySessionItem.toRecordInfo(): RecordInfo =
         sampleRateHz = session.sampleRateHz,
         encodingBitRate = session.encodingBitRate,
         channelCount = session.channelCount,
-        filePath = session.audioFilePath,
         transcriptPreview = transcriptPreview,
     )
 
@@ -1267,7 +1276,7 @@ internal fun FolderRow(
         tonalElevation = 1.dp,
     ) {
         Row(
-            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

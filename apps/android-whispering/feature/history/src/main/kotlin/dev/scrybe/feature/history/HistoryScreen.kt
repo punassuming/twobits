@@ -502,6 +502,21 @@ fun HistoryScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
+                                if (state.subfolders.isNotEmpty()) {
+                                    item(key = "folder-controls") {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End,
+                                        ) {
+                                            TextButton(onClick = {
+                                                expandedFolderIds = state.subfolders.map { it.id }.toSet()
+                                            }) { Text("Expand all") }
+                                            TextButton(onClick = {
+                                                expandedFolderIds = emptySet()
+                                            }) { Text("Collapse all") }
+                                        }
+                                    }
+                                }
                                 for (folder in state.subfolders) {
                                     item(key = "folder-${folder.id}") {
                                         FolderRow(

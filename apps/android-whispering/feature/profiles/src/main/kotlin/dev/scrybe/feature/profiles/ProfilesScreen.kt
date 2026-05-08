@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +57,7 @@ import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
+import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.TransformProfile
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -150,8 +152,8 @@ fun ProfilesScreen(
             draft = draft,
             onUpdate = { viewModel.updateEditorDraft(it) },
             onDismiss = { viewModel.closeEditor() },
-            onSave = { id, name, description, steps, isDefault ->
-                viewModel.saveProfile(id, name, description, steps, isDefault)
+            onSave = { id, name, description, steps, isDefault, providerType ->
+                viewModel.saveProfile(id, name, description, steps, isDefault, providerType)
                 viewModel.closeEditor()
             },
         )
@@ -329,7 +331,7 @@ private fun ProfileEditorDialog(
     draft: ProfileEditorDraft,
     onUpdate: (ProfileEditorDraft) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (String?, String, String, List<String>, Boolean) -> Unit,
+    onSave: (String?, String, String, List<String>, Boolean, ProviderType) -> Unit,
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -424,6 +426,21 @@ private fun ProfileEditorDialog(
                         }
                     }
                 }
+                Column {
+                    Text("Provider", style = MaterialTheme.typography.labelLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = draft.providerType == ProviderType.OPENAI,
+                            onClick = { onUpdate(draft.copy(providerType = ProviderType.OPENAI)) },
+                            label = { Text("OpenAI") },
+                        )
+                        FilterChip(
+                            selected = draft.providerType == ProviderType.LOCAL,
+                            onClick = { onUpdate(draft.copy(providerType = ProviderType.LOCAL)) },
+                            label = { Text("On-device") },
+                        )
+                    }
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -446,7 +463,7 @@ private fun ProfileEditorDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            onSave(draft.existingId, draft.name, draft.description, draft.steps, draft.isDefault)
+                            onSave(draft.existingId, draft.name, draft.description, draft.steps, draft.isDefault, draft.providerType)
                         },
                         enabled = draft.name.isNotBlank() && draft.steps.any { it.isNotBlank() },
                     ) {

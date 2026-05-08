@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -523,9 +522,6 @@ private fun TransformResultDialog(
 
 @Composable
 private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
-    val audioFile = File(state.session.audioFilePath)
-    val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
     ScrybeSectionCard(
         containerColor =
             if (state.session.isArchived) {
@@ -561,86 +557,7 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
                     null
                 },
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            MetaChip(
-                value = formatDuration(state.session.durationMs),
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            StatusMetaChip(
-                status = state.session.status,
-                isArchived = state.session.isArchived,
-            )
-            MetaChip(
-                value = state.session.audioFormat.name,
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            MetaChip(
-                value = formatFileSize(state.session.fileSizeBytes),
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            MetaChip(
-                value = "${state.session.sampleRateHz / 1000} kHz",
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            )
-            MetaChip(
-                value = "${state.session.encodingBitRate / 1000} kbps",
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            )
-            MetaChip(
-                value = if (state.session.channelCount == 1) "Mono" else "Stereo",
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surface,
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            clipboardManager.setText(
-                                AnnotatedString(state.session.audioFilePath),
-                            )
-                            Toast
-                                .makeText(context, "Path copied", Toast.LENGTH_SHORT)
-                                .show()
-                        }.padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    Icons.Filled.FileOpen,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = state.session.audioFilePath,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
+        SessionMetaGrid(state = state)
         state.session.estimatedTranscriptionCostUsd?.let { cost ->
             Text(
                 text = "Estimated transcription cost ${formatUsd(cost)}",
@@ -679,56 +596,30 @@ private fun SessionTagsRow(
 }
 
 @Composable
-private fun RowScope.MetaChip(
-    value: String,
-    containerColor: androidx.compose.ui.graphics.Color,
-    contentColor: androidx.compose.ui.graphics.Color,
-) {
-    Surface(
-        modifier = Modifier.weight(1f),
-        color = containerColor,
-        contentColor = contentColor,
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Text(
-            text = value,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+private fun SessionMetaGrid(state: SessionDetailUiState.Success) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SessionMetaRow("Duration", formatDuration(state.session.durationMs))
+        SessionMetaRow("Status", SessionStatusPresentation.label(state.session.status, state.session.isArchived))
+        SessionMetaRow("Format", state.session.audioFormat.name)
+        SessionMetaRow("File size", formatFileSize(state.session.fileSizeBytes))
+        SessionMetaRow("Sample rate", "${state.session.sampleRateHz / 1000} kHz")
+        SessionMetaRow("Bit rate", "${state.session.encodingBitRate / 1000} kbps")
+        SessionMetaRow("Channels", if (state.session.channelCount == 1) "Mono" else "Stereo")
     }
 }
 
 @Composable
-private fun RowScope.StatusMetaChip(
-    status: dev.scrybe.core.model.SessionStatus,
-    isArchived: Boolean,
+private fun SessionMetaRow(
+    label: String,
+    value: String,
 ) {
-    val tint = SessionStatusPresentation.color(status, isArchived)
-    Surface(
-        modifier = Modifier.weight(1f),
-        color = tint.copy(alpha = 0.12f),
-        contentColor = tint,
-        shape = MaterialTheme.shapes.medium,
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Icon(
-                imageVector = SessionStatusPresentation.icon(status, isArchived),
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-            )
-            Text(
-                text = SessionStatusPresentation.label(status, isArchived),
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodySmall)
     }
 }
 

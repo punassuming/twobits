@@ -55,6 +55,7 @@ data class ProfileEditorDraft(
     val description: String = "",
     val steps: List<String> = listOf(""),
     val isDefault: Boolean = false,
+    val providerType: ProviderType = ProviderType.OPENAI,
 )
 
 internal fun TransformProfile.toDraft(): ProfileEditorDraft =
@@ -64,6 +65,7 @@ internal fun TransformProfile.toDraft(): ProfileEditorDraft =
         description = description,
         steps = steps.ifEmpty { listOf(systemPrompt) },
         isDefault = isDefault,
+        providerType = providerType,
     )
 
 @HiltViewModel
@@ -134,6 +136,7 @@ class ProfilesViewModel
             description: String,
             steps: List<String>,
             setAsDefault: Boolean,
+            providerType: ProviderType = ProviderType.OPENAI,
         ) {
             viewModelScope.launch {
                 val id = existingId ?: UUID.randomUUID().toString()
@@ -149,7 +152,7 @@ class ProfilesViewModel
                         description = description.trim(),
                         systemPrompt = normalizedSteps.first(),
                         steps = TransformStepsCodec.encode(normalizedSteps),
-                        providerType = ProviderType.OPENAI.name,
+                        providerType = providerType.name,
                         isDefault = setAsDefault,
                     ),
                 )

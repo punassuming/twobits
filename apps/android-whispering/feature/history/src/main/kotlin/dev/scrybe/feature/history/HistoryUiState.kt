@@ -47,7 +47,6 @@ data class RecordInfo(
     val sampleRateHz: Int,
     val encodingBitRate: Int,
     val channelCount: Int,
-    val filePath: String,
     val transcriptPreview: String?,
 )
 
