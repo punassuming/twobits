@@ -223,11 +223,13 @@ fun CaptureScreen(
                     )
                 }
             }
-            item {
-                RecentRecordingsSection(
-                    sessions = uiState.recentSessions,
-                    onOpenSession = onNavigateToSessionDetail,
-                )
+            if (uiState.phase != CapturePhase.RECORDING) {
+                item {
+                    RecentRecordingsSection(
+                        sessions = uiState.recentSessions.take(3),
+                        onOpenSession = onNavigateToSessionDetail,
+                    )
+                }
             }
             uiState.errorMessage?.let { message ->
                 item {
