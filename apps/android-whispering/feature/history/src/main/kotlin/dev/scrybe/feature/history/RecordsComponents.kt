@@ -84,6 +84,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -408,11 +409,12 @@ internal fun SwipeRevealRow(
                 label = "Transform",
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
                 onClick = {
                     scope.launch { offsetX.animateTo(0f) }
                     onOpenTransformPicker()
                 },
-                modifier = Modifier.align(Alignment.CenterStart).width(SWIPE_BUTTON_WIDTH).fillMaxHeight(),
+                modifier = Modifier.align(Alignment.CenterStart).width(SWIPE_BUTTON_WIDTH + 20.dp).fillMaxHeight(),
             )
         }
         Box(
@@ -426,11 +428,12 @@ internal fun SwipeRevealRow(
                 label = if (isArchived) "Restore" else "Archive",
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
                 onClick = {
                     scope.launch { offsetX.animateTo(0f) }
                     onArchiveOrRestore()
                 },
-                modifier = Modifier.align(Alignment.CenterEnd).width(SWIPE_BUTTON_WIDTH).fillMaxHeight(),
+                modifier = Modifier.align(Alignment.CenterEnd).width(SWIPE_BUTTON_WIDTH + 20.dp).fillMaxHeight(),
             )
         }
         Box(
@@ -473,12 +476,13 @@ private fun SwipeActionButton(
     containerColor: Color,
     contentColor: Color,
     onClick: () -> Unit,
+    shape: Shape = MaterialTheme.shapes.large,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier =
             modifier
-                .background(containerColor, shape = MaterialTheme.shapes.large)
+                .background(containerColor, shape = shape)
                 .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

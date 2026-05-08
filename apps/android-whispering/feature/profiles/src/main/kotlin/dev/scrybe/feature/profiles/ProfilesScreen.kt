@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -333,133 +335,35 @@ private fun ProfileEditorDialog(
     onDismiss: () -> Unit,
     onSave: (String?, String, String, List<String>, Boolean, ProviderType) -> Unit,
 ) {
+    val maxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.88f
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(max = maxHeight),
             shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
         ) {
             Column(
-                modifier =
-                    Modifier
-                        .padding(24.dp)
-                        .verticalScroll(rememberScrollState()),
+                modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = if (draft.existingId == null) "New Profile" else "Edit Profile",
                     style = MaterialTheme.typography.headlineSmall,
                 )
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = MaterialTheme.shapes.medium,
-                ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = "Prompt inputs",
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                        Text(
-                            text = "Step 1 should usually use {{transcript}}. Bulk consolidation transforms can also use {{combined_transcripts}}. Later steps can use {{current_text}} or {{prior_output}} to build on earlier output.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = draft.name,
-                    onValueChange = { onUpdate(draft.copy(name = it)) },
-                    label = { Text("Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
+                ProfileEditorFormBody(
+                    draft = draft,
+                    onUpdate = onUpdate,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
-                OutlinedTextField(
-                    value = draft.description,
-                    onValueChange = { onUpdate(draft.copy(description = it)) },
-                    label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                draft.steps.forEachIndexed { index, step ->
-                    OutlinedTextField(
-                        value = step,
-                        onValueChange = { next ->
-                            onUpdate(
-                                draft.copy(
-                                    steps = draft.steps.toMutableList().also { it[index] = next },
-                                ),
-                            )
-                        },
-                        label = { Text("Step ${index + 1}") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3,
-                        supportingText = {
-                            Text(
-                                "Use {{transcript}} for the original transcription, {{combined_transcripts}} for multi-recording consolidation, and {{prior_output}} or {{current_text}} for previous-step output.",
-                            )
-                        },
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    TextButton(
-                        onClick = { onUpdate(draft.copy(steps = draft.steps + "")) },
-                    ) {
-                        Text("Add Step")
-                    }
-                    if (draft.steps.size > 1) {
-                        TextButton(
-                            onClick = { onUpdate(draft.copy(steps = draft.steps.dropLast(1))) },
-                        ) {
-                            Text("Remove Last")
-                        }
-                    }
-                }
-                Column {
-                    Text("Provider", style = MaterialTheme.typography.labelLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = draft.providerType == ProviderType.OPENAI,
-                            onClick = { onUpdate(draft.copy(providerType = ProviderType.OPENAI)) },
-                            label = { Text("OpenAI") },
-                        )
-                        FilterChip(
-                            selected = draft.providerType == ProviderType.LOCAL,
-                            onClick = { onUpdate(draft.copy(providerType = ProviderType.LOCAL)) },
-                            label = { Text("On-device") },
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Use as default")
-                    Switch(
-                        checked = draft.isDefault,
-                        onCheckedChange = { onUpdate(draft.copy(isDefault = it)) },
-                    )
-                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel")
-                    }
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
@@ -473,6 +377,91 @@ private fun ProfileEditorDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileEditorFormBody(
+    draft: ProfileEditorDraft,
+    onUpdate: (ProfileEditorDraft) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Prompt inputs", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    "Step 1 should usually use {{transcript}}. Bulk consolidation transforms can also use {{combined_transcripts}}. Later steps can use {{current_text}} or {{prior_output}} to build on earlier output.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        OutlinedTextField(
+            value = draft.name,
+            onValueChange = { onUpdate(draft.copy(name = it)) },
+            label = { Text("Name") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = draft.description,
+            onValueChange = { onUpdate(draft.copy(description = it)) },
+            label = { Text("Description") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        draft.steps.forEachIndexed { index, step ->
+            OutlinedTextField(
+                value = step,
+                onValueChange = { next ->
+                    onUpdate(draft.copy(steps = draft.steps.toMutableList().also { it[index] = next }))
+                },
+                label = { Text("Step ${index + 1}") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                supportingText = {
+                    Text("Use {{transcript}} for the original transcription, {{combined_transcripts}} for multi-recording consolidation, and {{prior_output}} or {{current_text}} for previous-step output.")
+                },
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TextButton(onClick = { onUpdate(draft.copy(steps = draft.steps + "")) }) { Text("Add Step") }
+            if (draft.steps.size > 1) {
+                TextButton(onClick = { onUpdate(draft.copy(steps = draft.steps.dropLast(1))) }) {
+                    Text("Remove Last")
+                }
+            }
+        }
+        Column {
+            Text("Provider", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = draft.providerType == ProviderType.OPENAI,
+                    onClick = { onUpdate(draft.copy(providerType = ProviderType.OPENAI)) },
+                    label = { Text("OpenAI") },
+                )
+                FilterChip(
+                    selected = draft.providerType == ProviderType.LOCAL,
+                    onClick = { onUpdate(draft.copy(providerType = ProviderType.LOCAL)) },
+                    label = { Text("On-device") },
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Use as default")
+            Switch(checked = draft.isDefault, onCheckedChange = { onUpdate(draft.copy(isDefault = it)) })
         }
     }
 }

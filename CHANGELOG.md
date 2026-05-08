@@ -6,6 +6,11 @@
 
 ### Improvements
 
+* fix Profile editor Save button cut off on tall content: dialog now caps height at 88% of screen and the Save/Cancel row stays pinned below a scrollable form body
+* compact Session Detail audio quality: Duration/Status/Format kept as labeled rows; sample rate, bit rate, channels, and file size collapsed into a single summary line
+* swipe reveal buttons now blend into the content row: inner corners are squared off and the button background extends 20 dp under the row edge for a seamless connected appearance
+* Capture screen hides recent recordings while a recording is active so the interface stays focused on the in-progress session; when idle only the three most recent sessions are shown
+
 ### Fixes
 
 ## 0.15.0 (2026-05-08)

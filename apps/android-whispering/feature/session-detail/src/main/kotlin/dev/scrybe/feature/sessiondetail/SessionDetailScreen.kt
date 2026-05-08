@@ -597,14 +597,19 @@ private fun SessionTagsRow(
 
 @Composable
 private fun SessionMetaGrid(state: SessionDetailUiState.Success) {
+    val session = state.session
+    val audioQuality =
+        "${formatFileSize(session.fileSizeBytes)}  ·  ${session.sampleRateHz / 1000} kHz  ·  " +
+            "${session.encodingBitRate / 1000} kbps  ·  ${if (session.channelCount == 1) "Mono" else "Stereo"}"
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        SessionMetaRow("Duration", formatDuration(state.session.durationMs))
-        SessionMetaRow("Status", SessionStatusPresentation.label(state.session.status, state.session.isArchived))
-        SessionMetaRow("Format", state.session.audioFormat.name)
-        SessionMetaRow("File size", formatFileSize(state.session.fileSizeBytes))
-        SessionMetaRow("Sample rate", "${state.session.sampleRateHz / 1000} kHz")
-        SessionMetaRow("Bit rate", "${state.session.encodingBitRate / 1000} kbps")
-        SessionMetaRow("Channels", if (state.session.channelCount == 1) "Mono" else "Stereo")
+        SessionMetaRow("Duration", formatDuration(session.durationMs))
+        SessionMetaRow("Status", SessionStatusPresentation.label(session.status, session.isArchived))
+        SessionMetaRow("Format", session.audioFormat.name)
+        Text(
+            text = audioQuality,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
