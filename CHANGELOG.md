@@ -4,6 +4,9 @@
 
 ### Features
 
+* add Whisper model picker in Settings: choose between Tiny (~150 MB), Base English (~290 MB, ~30% fewer errors), and Small English (~967 MB, ~50% fewer errors); selected model persists and is used for all on-device transcriptions
+* add AI semantic search in History: tap the sparkle icon in the search bar to let OpenAI rank recordings by relevance to a natural-language description rather than exact keyword matching
+
 ### Improvements
 
 ### Fixes

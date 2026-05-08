@@ -11,13 +11,14 @@ import java.io.File
 
 internal class WhisperEngine(
     modelDir: File,
+    filePrefix: String = "tiny",
 ) : Closeable {
     private val recognizer: OfflineRecognizer
 
     init {
-        val encoderPath = File(modelDir, "tiny-encoder.int8.onnx").absolutePath
-        val decoderPath = File(modelDir, "tiny-decoder.int8.onnx").absolutePath
-        val tokensPath = File(modelDir, "tiny-tokens.txt").absolutePath
+        val encoderPath = File(modelDir, "$filePrefix-encoder.int8.onnx").absolutePath
+        val decoderPath = File(modelDir, "$filePrefix-decoder.int8.onnx").absolutePath
+        val tokensPath = File(modelDir, "$filePrefix-tokens.txt").absolutePath
 
         val whisperConfig =
             OfflineWhisperModelConfig(

@@ -370,29 +370,72 @@ fun HistoryScreen(
                             enter = expandVertically() + fadeIn(),
                             exit = shrinkVertically() + fadeOut(),
                         ) {
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = {
-                                    searchQuery = it
-                                    viewModel.updateQuery(it)
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                leadingIcon = {
-                                    Icon(Icons.Filled.Search, contentDescription = null)
-                                },
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = {
-                                            searchQuery = ""
-                                            viewModel.updateQuery("")
-                                        }) {
-                                            Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = {
+                                        searchQuery = it
+                                        viewModel.updateQuery(it)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.Search, contentDescription = null)
+                                    },
+                                    trailingIcon = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (searchQuery.isNotEmpty() && !state.semanticSearchLoading) {
+                                                IconButton(
+                                                    onClick = { viewModel.triggerSemanticSearch(searchQuery) },
+                                                ) {
+                                                    Icon(
+                                                        Icons.Filled.AutoAwesome,
+                                                        contentDescription = "AI search",
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                }
+                                            }
+                                            if (searchQuery.isNotEmpty()) {
+                                                IconButton(onClick = {
+                                                    searchQuery = ""
+                                                    viewModel.updateQuery("")
+                                                    viewModel.clearSemanticSearch()
+                                                }) {
+                                                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                                                }
+                                            }
+                                        }
+                                    },
+                                    placeholder = { Text("Title, tags, or transcript text") },
+                                )
+                                if (state.semanticSearchLoading) {
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                }
+                                if (state.semanticRankedIds != null && !state.semanticSearchLoading) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.AutoAwesome,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Text(
+                                            "AI results · ${state.semanticRankedIds.size} matches",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        TextButton(
+                                            onClick = { viewModel.clearSemanticSearch() },
+                                        ) {
+                                            Text("Clear", style = MaterialTheme.typography.labelSmall)
                                         }
                                     }
-                                },
-                                placeholder = { Text("Title, tags, or transcript text") },
-                            )
+                                }
+                            }
                         }
                         AnimatedVisibility(
                             visible = state.filters.selectedTag != null,

@@ -23,6 +23,7 @@ import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.localai.AutoRenameServiceFacade
 import dev.scrybe.core.localai.ClusteringServiceFacade
+import dev.scrybe.core.localai.SemanticSearchServiceFacade
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.ProviderType
@@ -111,6 +112,7 @@ class HistoryViewModel
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
         private val clusteringService: ClusteringServiceFacade,
         private val autoRenameService: AutoRenameServiceFacade,
+        private val semanticSearchService: SemanticSearchServiceFacade,
     ) : ViewModel() {
         private val query = MutableStateFlow("")
         private val filters = MutableStateFlow(RecordsFilterState())
@@ -123,6 +125,8 @@ class HistoryViewModel
         val events = _events.asSharedFlow()
         private val _transformDialog = MutableStateFlow<TransformDialogState?>(null)
         val transformDialog: StateFlow<TransformDialogState?> = _transformDialog.asStateFlow()
+        private val semanticSearchLoading = MutableStateFlow(false)
+        private val semanticRankedIds = MutableStateFlow<List<String>?>(null)
         val profiles: StateFlow<List<TransformProfile>> =
             transformProfileDao
                 .getAllProfiles()
@@ -187,7 +191,7 @@ class HistoryViewModel
             }
         }
 
-        val uiState: StateFlow<HistoryUiState> =
+        private val baseUiState =
             combine(
                 recordingSessionDao.getAllSessions(),
                 transcriptDao.getAllTranscripts(),
@@ -332,6 +336,29 @@ class HistoryViewModel
                     sessionsByFolderId = sessionsByFolderId,
                     availableTags = availableTags,
                 ) as HistoryUiState
+            }
+
+        val uiState: StateFlow<HistoryUiState> =
+            combine(
+                baseUiState,
+                semanticSearchLoading,
+                semanticRankedIds,
+            ) { base, semanticLoading, semanticIds ->
+                if (base !is HistoryUiState.Success) return@combine base
+                val rankedSessions =
+                    if (semanticIds != null) {
+                        val idIndex = semanticIds.withIndex().associate { (i, id) -> id to i }
+                        base.sessions.sortedBy { item ->
+                            idIndex[item.session.id] ?: Int.MAX_VALUE
+                        }
+                    } else {
+                        base.sessions
+                    }
+                base.copy(
+                    sessions = rankedSessions,
+                    semanticSearchLoading = semanticLoading,
+                    semanticRankedIds = semanticIds,
+                )
             }.catch { emit(HistoryUiState.Error(it.message ?: "Unknown error")) }
                 .stateIn(
                     scope = viewModelScope,
@@ -341,6 +368,7 @@ class HistoryViewModel
 
         fun updateQuery(value: String) {
             query.value = value
+            if (semanticRankedIds.value != null) semanticRankedIds.value = null
         }
 
         fun updateFilters(next: RecordsFilterState) {
@@ -350,6 +378,23 @@ class HistoryViewModel
 
         fun selectTag(tag: String?) {
             filters.value = filters.value.copy(selectedTag = tag)
+        }
+
+        fun triggerSemanticSearch(query: String) {
+            if (query.isBlank()) return
+            viewModelScope.launch {
+                semanticSearchLoading.value = true
+                val summaries = buildSessionSummaries(filterIds = null)
+                semanticSearchService
+                    .rankByRelevance(query, summaries)
+                    .onSuccess { rankedIds -> semanticRankedIds.value = rankedIds }
+                    .onFailure { _events.emit(HistoryEvent.Message(it.message ?: "AI search failed")) }
+                semanticSearchLoading.value = false
+            }
+        }
+
+        fun clearSemanticSearch() {
+            semanticRankedIds.value = null
         }
 
         fun renameSession(

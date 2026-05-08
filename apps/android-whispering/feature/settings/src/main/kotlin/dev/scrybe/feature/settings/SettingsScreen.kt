@@ -70,6 +70,7 @@ import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.LocalGemmaModel
+import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
@@ -84,7 +85,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val whisperState by viewModel.whisperModelState.collectAsState()
+    val whisperStates by viewModel.whisperStates.collectAsState()
+    val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
     val gemmaStates by viewModel.gemmaStates.collectAsState()
     val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
     var showChangelog by remember { mutableStateOf(false) }
@@ -310,8 +312,8 @@ fun SettingsScreen(
                     ProviderOptionCard(
                         providerType = ProviderType.LOCAL,
                         selected = uiState.defaultProvider == ProviderType.LOCAL.name,
-                        enabled = whisperState is LocalModelState.Ready,
-                        supportingText = "On-device transcription using Whisper (tiny). No internet required.",
+                        enabled = whisperStates.values.any { it is LocalModelState.Ready },
+                        supportingText = "On-device transcription using Whisper. No internet required.",
                         alwaysShowContent = true,
                         onSelect = { viewModel.setDefaultProvider(ProviderType.LOCAL.name) },
                         icon = {
@@ -319,16 +321,25 @@ fun SettingsScreen(
                         },
                         content = {
                             Text(
-                                text = "Whisper handles transcription (speech → text). Gemma handles AI features: transforms, rename suggestions, and tag clustering. Only the tiny Whisper model is currently supported for on-device transcription.",
+                                text = "Whisper handles transcription (speech → text). Gemma handles AI features: transforms, rename suggestions, and tag clustering.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            LocalModelDownloadSection(
-                                label = "Whisper tiny · ~40 MB",
-                                state = whisperState,
-                                onDownload = viewModel::downloadWhisperModel,
-                                onDelete = viewModel::deleteWhisperModel,
+                            Text(
+                                "Speech-to-text model (Whisper)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            LocalWhisperModel.entries.forEach { model ->
+                                WhisperModelRow(
+                                    model = model,
+                                    state = whisperStates[model] ?: LocalModelState.NotDownloaded,
+                                    isSelected = selectedWhisperModel == model,
+                                    onSelect = { viewModel.selectWhisperModel(model) },
+                                    onDownload = { viewModel.downloadWhisperModel(model) },
+                                    onDelete = { viewModel.deleteWhisperModel(model) },
+                                )
+                            }
                             Text(
                                 "LLM model (transforms, rename, tags, clustering)",
                                 style = MaterialTheme.typography.labelMedium,
@@ -873,6 +884,89 @@ fun SettingsScreen(
                 showTransformModelPicker = false
             },
         )
+    }
+}
+
+@Composable
+private fun WhisperModelRow(
+    model: LocalWhisperModel,
+    state: LocalModelState,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val isReady = state is LocalModelState.Ready
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isSelected && isReady) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+            ),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(model.displayName, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "${model.description} · ${model.sizeLabel}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (isReady) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (!isSelected) {
+                            TextButton(onClick = onSelect) { Text("Use") }
+                        }
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                        }
+                    }
+                }
+            }
+            when (state) {
+                is LocalModelState.NotDownloaded ->
+                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(" Download")
+                    }
+                is LocalModelState.Downloading ->
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        LinearProgressIndicator(
+                            progress = { state.progressPercent / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            "${state.progressPercent}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                is LocalModelState.Ready ->
+                    if (isSelected) {
+                        Text(
+                            "Active",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                is LocalModelState.Error ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
+                    }
+            }
+        }
     }
 }
 
