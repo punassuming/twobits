@@ -130,28 +130,34 @@ jobs:
 
           [ "$version_only" = "false" ] && exit 0
 
-          parent_state="$(curl -fsSL \
+          parent_state="$(curl -sSL \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${repo}/commits/${before}/statuses" \
-            | python3 -c "
+            2>/dev/null | python3 -c "
 import sys, json
-for s in json.load(sys.stdin):
-    if s.get('context') == 'android/verified':
-        print(s['state']); sys.exit(0)
+try:
+    data = json.load(sys.stdin)
+    if isinstance(data, list):
+        for s in data:
+            if s.get('context') == 'android/verified':
+                print(s['state']); sys.exit(0)
+except Exception:
+    pass
 print('none')
-")"
+" 2>/dev/null)" || parent_state="none"
 
           echo "Parent android/verified state: $parent_state"
           [ "$parent_state" != "success" ] && exit 0
 
-          curl -fsSL -X POST \
+          curl -sSL -X POST \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${repo}/statuses/${current}" \
-            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"Inherited from ${before} (version-only change)\",\"target_url\":\"https://github.com/${repo}/actions\"}"
+            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"Inherited from ${before} (version-only change)\",\"target_url\":\"https://github.com/${repo}/actions\"}" \
+            > /dev/null || echo "::warning::Could not propagate android/verified status (non-fatal)"
 
           echo "skip_android=true" >> "$GITHUB_OUTPUT"
 
@@ -163,14 +169,12 @@ print('none')
       contents: read
       statuses: write
     timeout-minutes: 45
-    if: >
+    if: >-
       always() &&
       needs.changelog.result == 'success' &&
       needs.validate.result == 'success' &&
-      (
-        needs.detect-changes.result == 'skipped' ||
-        (needs.detect-changes.result == 'success' && needs.detect-changes.outputs.skip_android != 'true')
-      )
+      (needs.detect-changes.result == 'success' || needs.detect-changes.result == 'skipped') &&
+      needs.detect-changes.outputs.skip_android != 'true'
 
     steps:
       - name: Checkout
@@ -201,6 +205,7 @@ print('none')
 
       - name: Record android/verified commit status
         if: success()
+        continue-on-error: true
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
