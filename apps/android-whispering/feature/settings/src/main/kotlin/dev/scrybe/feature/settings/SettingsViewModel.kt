@@ -36,7 +36,8 @@ import java.io.File
 import javax.inject.Inject
 
 data class SettingsUiState(
-    val defaultProvider: String = "OPENAI",
+    val transcriptionProvider: String = "OPENAI",
+    val aiFeaturesProvider: String = "OPENAI",
     val autoTranscribe: Boolean = false,
     val defaultTransformProfileId: String? = null,
     val defaultTransformProfileName: String? = null,
@@ -164,16 +165,24 @@ class SettingsViewModel
                     message = message,
                 )
             }
+        private val providersData =
+            combine(
+                preferencesDataStore.transcriptionProvider,
+                preferencesDataStore.aiFeaturesProvider,
+            ) { transcription, aiFeatures ->
+                ProvidersData(transcriptionProvider = transcription, aiFeaturesProvider = aiFeatures)
+            }
         private val profileSettings =
             combine(
-                preferencesDataStore.defaultProvider,
+                providersData,
                 preferencesDataStore.autoTranscribe,
                 preferencesDataStore.defaultTransformProfileId,
                 preferencesDataStore.profileSuggestionModel,
                 transformProfileDao.getAllProfiles(),
-            ) { provider, autoTranscribe, profileId, profileSuggestionModel, profiles ->
+            ) { providers, autoTranscribe, profileId, profileSuggestionModel, profiles ->
                 ProfileSettings(
-                    defaultProvider = provider,
+                    transcriptionProvider = providers.transcriptionProvider,
+                    aiFeaturesProvider = providers.aiFeaturesProvider,
                     autoTranscribe = autoTranscribe,
                     defaultTransformProfileId = profileId,
                     defaultTransformProfileName = profiles.firstOrNull { it.id == profileId }?.name,
@@ -283,7 +292,8 @@ class SettingsViewModel
                 preferencesDataStore.transformModel,
             ) { profileSettings, recordingPreferences, metadata, usageData, transformModel ->
                 SettingsData(
-                    defaultProvider = profileSettings.defaultProvider,
+                    transcriptionProvider = profileSettings.transcriptionProvider,
+                    aiFeaturesProvider = profileSettings.aiFeaturesProvider,
                     autoTranscribe = profileSettings.autoTranscribe,
                     defaultTransformProfileId = profileSettings.defaultTransformProfileId,
                     defaultTransformProfileName = profileSettings.defaultTransformProfileName,
@@ -327,7 +337,8 @@ class SettingsViewModel
                 profileSuggestionModelTestState,
             ) { settingsData, validation, modelTestState ->
                 SettingsUiState(
-                    defaultProvider = settingsData.defaultProvider,
+                    transcriptionProvider = settingsData.transcriptionProvider,
+                    aiFeaturesProvider = settingsData.aiFeaturesProvider,
                     autoTranscribe = settingsData.autoTranscribe,
                     defaultTransformProfileId = settingsData.defaultTransformProfileId,
                     defaultTransformProfileName = settingsData.defaultTransformProfileName,
@@ -380,8 +391,12 @@ class SettingsViewModel
             viewModelScope.launch { preferencesDataStore.setAutoTranscribe(enabled) }
         }
 
-        fun setDefaultProvider(provider: String) {
-            viewModelScope.launch { preferencesDataStore.setDefaultProvider(provider) }
+        fun setTranscriptionProvider(provider: String) {
+            viewModelScope.launch { preferencesDataStore.setTranscriptionProvider(provider) }
+        }
+
+        fun setAiFeaturesProvider(provider: String) {
+            viewModelScope.launch { preferencesDataStore.setAiFeaturesProvider(provider) }
         }
 
         fun downloadWhisperModel(model: LocalWhisperModel) {
@@ -606,7 +621,8 @@ class SettingsViewModel
         )
 
         private data class SettingsData(
-            val defaultProvider: String = "OPENAI",
+            val transcriptionProvider: String = "OPENAI",
+            val aiFeaturesProvider: String = "OPENAI",
             val autoTranscribe: Boolean = false,
             val defaultTransformProfileId: String? = null,
             val defaultTransformProfileName: String? = null,
@@ -638,7 +654,8 @@ class SettingsViewModel
         )
 
         private data class ProfileSettings(
-            val defaultProvider: String = "OPENAI",
+            val transcriptionProvider: String = "OPENAI",
+            val aiFeaturesProvider: String = "OPENAI",
             val autoTranscribe: Boolean = false,
             val defaultTransformProfileId: String? = null,
             val defaultTransformProfileName: String? = null,
@@ -684,6 +701,11 @@ class SettingsViewModel
             val enabled: Boolean = false,
             val packageName: String = "",
             val action: String = "android.intent.action.SEND",
+        )
+
+        private data class ProvidersData(
+            val transcriptionProvider: String = "OPENAI",
+            val aiFeaturesProvider: String = "OPENAI",
         )
 
         private data class UsageData(

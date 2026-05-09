@@ -154,8 +154,8 @@ fun ProfilesScreen(
             draft = draft,
             onUpdate = { viewModel.updateEditorDraft(it) },
             onDismiss = { viewModel.closeEditor() },
-            onSave = { id, name, description, steps, isDefault, providerType ->
-                viewModel.saveProfile(id, name, description, steps, isDefault, providerType)
+            onSave = { id, name, description, steps, isDefault, providerType, modelName ->
+                viewModel.saveProfile(id, name, description, steps, isDefault, providerType, modelName)
                 viewModel.closeEditor()
             },
         )
@@ -333,7 +333,7 @@ private fun ProfileEditorDialog(
     draft: ProfileEditorDraft,
     onUpdate: (ProfileEditorDraft) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (String?, String, String, List<String>, Boolean, ProviderType) -> Unit,
+    onSave: (String?, String, String, List<String>, Boolean, ProviderType, String?) -> Unit,
 ) {
     val maxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.88f
     Dialog(
@@ -367,7 +367,15 @@ private fun ProfileEditorDialog(
                     Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            onSave(draft.existingId, draft.name, draft.description, draft.steps, draft.isDefault, draft.providerType)
+                            onSave(
+                                draft.existingId,
+                                draft.name,
+                                draft.description,
+                                draft.steps,
+                                draft.isDefault,
+                                draft.providerType,
+                                draft.modelName,
+                            )
                         },
                         enabled = draft.name.isNotBlank() && draft.steps.any { it.isNotBlank() },
                     ) {
@@ -454,6 +462,16 @@ private fun ProfileEditorFormBody(
                     label = { Text("On-device") },
                 )
             }
+        }
+        if (draft.providerType == ProviderType.OPENAI) {
+            OutlinedTextField(
+                value = draft.modelName ?: "",
+                onValueChange = { onUpdate(draft.copy(modelName = it.ifBlank { null })) },
+                label = { Text("Model override (optional)") },
+                supportingText = { Text("Leave blank to use the global AI features model") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),

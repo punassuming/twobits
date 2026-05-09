@@ -20,6 +20,7 @@ import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.export.ExportCoordinator
 import dev.scrybe.core.export.ExportFormat
+import dev.scrybe.core.localai.AutoRenameServiceFacade
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingSession
@@ -56,6 +57,7 @@ class SessionDetailViewModel
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
+        private val autoRenameService: AutoRenameServiceFacade,
         private val tagSuggestionService: OpenAiTagSuggestionService,
         private val exportCoordinator: ExportCoordinator,
         private val audioPlayer: AudioPlayer,
@@ -151,6 +153,7 @@ class SessionDetailViewModel
                                     steps = TransformStepsCodec.decode(entity.steps, fallback = entity.systemPrompt),
                                     providerType = ProviderType.valueOf(entity.providerType),
                                     isDefault = entity.isDefault,
+                                    modelName = entity.modelName,
                                 )
                             }
                         val originalTranscript =
@@ -193,8 +196,7 @@ class SessionDetailViewModel
                             tagSuggestionState = tagSuggestionState,
                         )
                     }
-                }
-                    .catch { emit(SessionDetailUiState.Error(it.message ?: "Unknown error")) }
+                }.catch { emit(SessionDetailUiState.Error(it.message ?: "Unknown error")) }
                     .collect { _uiState.value = it }
             }
         }
@@ -208,7 +210,8 @@ class SessionDetailViewModel
                         ?.firstOrNull { it.id == profileId }
                         ?.name
                         ?: "Transform"
-                sessionTransformCoordinator.transformLatestRawTranscript(sessionId, profileId)
+                sessionTransformCoordinator
+                    .transformLatestRawTranscript(sessionId, profileId)
                     .onSuccess { transcript ->
                         _events.emit(
                             SessionDetailEvent.TransformResult(
@@ -216,8 +219,7 @@ class SessionDetailViewModel
                                 text = transcript.content,
                             ),
                         )
-                    }
-                    .onFailure {
+                    }.onFailure {
                         Log.e(TAG, "Transform failed for session $sessionId", it)
                         _events.emit(SessionDetailEvent.Message(it.message ?: "Transform failed"))
                     }
@@ -241,11 +243,11 @@ class SessionDetailViewModel
 
         fun transcribe() {
             viewModelScope.launch {
-                sessionTranscriptionCoordinator.transcribeSession(sessionId)
+                sessionTranscriptionCoordinator
+                    .transcribeSession(sessionId)
                     .onSuccess {
                         _events.emit(SessionDetailEvent.Message("Transcript created."))
-                    }
-                    .onFailure {
+                    }.onFailure {
                         Log.e(TAG, "Transcription failed for session $sessionId", it)
                         _events.emit(SessionDetailEvent.Message(it.message ?: "Transcription failed"))
                     }
@@ -377,7 +379,8 @@ class SessionDetailViewModel
                 if (state.isPlaying) {
                     audioPlayer.pause()
                 } else {
-                    audioPlayer.play(state.session.audioFilePath)
+                    audioPlayer
+                        .play(state.session.audioFilePath)
                         .onFailure {
                             _events.emit(SessionDetailEvent.Message(it.message ?: "Playback failed"))
                         }
@@ -440,19 +443,20 @@ class SessionDetailViewModel
 
             viewModelScope.launch {
                 tagSuggestionState.value = TagSuggestionUiState.Loading
-                tagSuggestionService.suggestTags(
-                    title = state.session.title,
-                    transcriptText = transcriptText,
-                    existingTags = state.session.tags,
-                ).fold(
-                    onSuccess = { suggestedTags ->
-                        tagSuggestionState.value = TagSuggestionUiState.Success(suggestedTags)
-                    },
-                    onFailure = { error ->
-                        tagSuggestionState.value =
-                            TagSuggestionUiState.Error(error.message ?: "Failed to suggest tags")
-                    },
-                )
+                tagSuggestionService
+                    .suggestTags(
+                        title = state.session.title,
+                        transcriptText = transcriptText,
+                        existingTags = state.session.tags,
+                    ).fold(
+                        onSuccess = { suggestedTags ->
+                            tagSuggestionState.value = TagSuggestionUiState.Success(suggestedTags)
+                        },
+                        onFailure = { error ->
+                            tagSuggestionState.value =
+                                TagSuggestionUiState.Error(error.message ?: "Failed to suggest tags")
+                        },
+                    )
             }
         }
 
@@ -473,7 +477,10 @@ class SessionDetailViewModel
 
                 transcriptDao.insertTranscript(
                     TranscriptEntity(
-                        id = existingEdited?.id ?: java.util.UUID.randomUUID().toString(),
+                        id =
+                            existingEdited?.id ?: java.util.UUID
+                                .randomUUID()
+                                .toString(),
                         sessionId = sessionId,
                         content = trimmed,
                         type = TranscriptType.EDITED.name,
@@ -553,6 +560,51 @@ class SessionDetailViewModel
 
         fun dismissRenamePrompt() {
             renamePromptDismissed.value = true
+        }
+
+        fun deleteSession() {
+            viewModelScope.launch {
+                val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+                runCatching {
+                    File(session.audioFilePath).takeIf { it.exists() }?.delete()
+                    transcriptDao.deleteTranscriptsForSession(sessionId)
+                    transformRunDao.deleteRunsForSession(sessionId)
+                    sessionDao.deleteSession(sessionId)
+                }.onSuccess {
+                    _events.emit(SessionDetailEvent.NavigateBack)
+                }.onFailure {
+                    _events.emit(SessionDetailEvent.Message(it.message ?: "Unable to delete record"))
+                }
+            }
+        }
+
+        fun aiRename() {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            val transcriptText =
+                state.currentTranscript?.content ?: state.originalTranscript?.content
+            if (transcriptText.isNullOrBlank()) {
+                viewModelScope.launch {
+                    _events.emit(SessionDetailEvent.Message("Transcribe this recording before AI renaming"))
+                }
+                return
+            }
+            viewModelScope.launch {
+                autoRenameService.suggestTitle(transcriptText, state.session.title).fold(
+                    onSuccess = { newTitle ->
+                        val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+                        sessionDao.updateSession(
+                            session.copy(
+                                title = newTitle,
+                                updatedAt = System.currentTimeMillis(),
+                            ),
+                        )
+                        _events.emit(SessionDetailEvent.Message("Recording renamed to \"$newTitle\""))
+                    },
+                    onFailure = {
+                        _events.emit(SessionDetailEvent.Message(it.message ?: "AI rename failed"))
+                    },
+                )
+            }
         }
 
         override fun onCleared() {

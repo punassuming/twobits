@@ -10,6 +10,7 @@ import dagger.hilt.components.SingletonComponent
 import dev.scrybe.core.database.AppDatabase
 import dev.scrybe.core.database.MIGRATION_4_5
 import dev.scrybe.core.database.MIGRATION_5_6
+import dev.scrybe.core.database.MIGRATION_6_7
 import javax.inject.Singleton
 
 @Module
@@ -20,12 +21,12 @@ object DatabaseModule {
     fun providesAppDatabase(
         @ApplicationContext context: Context,
     ): AppDatabase =
-        Room.databaseBuilder(
-            context,
-            AppDatabase::class.java,
-            "scrybe-db",
-        )
-            .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
+        Room
+            .databaseBuilder(
+                context,
+                AppDatabase::class.java,
+                "scrybe-db",
+            ).addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .fallbackToDestructiveMigrationFrom(1, 2, 3)
             .build()
 

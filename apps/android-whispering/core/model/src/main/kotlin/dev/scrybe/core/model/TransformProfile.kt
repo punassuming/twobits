@@ -8,4 +8,5 @@ data class TransformProfile(
     val steps: List<String>,
     val providerType: ProviderType,
     val isDefault: Boolean,
+    val modelName: String? = null,
 )

@@ -46,6 +46,9 @@ interface RecordingSessionDao {
     @Query("SELECT audioFilePath FROM recording_sessions")
     suspend fun getAllAudioFilePaths(): List<String>
 
+    @Query("SELECT * FROM recording_sessions WHERE audioFilePath = :path LIMIT 1")
+    suspend fun getSessionByAudioFilePath(path: String): RecordingSessionEntity?
+
     @Query("SELECT * FROM recording_sessions WHERE folderId = :folderId ORDER BY createdAt DESC")
     fun getSessionsByFolder(folderId: String): Flow<List<RecordingSessionEntity>>
 

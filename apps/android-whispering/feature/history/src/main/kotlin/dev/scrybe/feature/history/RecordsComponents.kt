@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterList
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
@@ -130,6 +132,7 @@ internal fun RecordRow(
     onOpenWith: () -> Unit,
     onSaveCopy: () -> Unit,
     onShareTranscript: () -> Unit,
+    onMoveToFolder: () -> Unit,
     onRetryTranscription: () -> Unit,
     onResetTranscriptionState: () -> Unit,
     showRecordingInfo: Boolean,
@@ -275,6 +278,59 @@ internal fun RecordRow(
                                         onOpenWith()
                                     },
                                 )
+                                val hasAiItems =
+                                    item.session.status == SessionStatus.RECORDED ||
+                                        item.transcriptPreview != null
+                                if (hasAiItems) {
+                                    DropdownSectionHeader("AI")
+                                    if (item.session.status == SessionStatus.RECORDED) {
+                                        DropdownMenuItem(
+                                            text = { Text("Transcribe") },
+                                            leadingIcon = {
+                                                Icon(Icons.Filled.RecordVoiceOver, contentDescription = null)
+                                            },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onRetryTranscription()
+                                            },
+                                        )
+                                    }
+                                    if (item.transcriptPreview != null) {
+                                        DropdownMenuItem(
+                                            text = { Text("Transform…") },
+                                            leadingIcon = {
+                                                Icon(Icons.Filled.AutoFixHigh, contentDescription = null)
+                                            },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onTransform()
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("AI Rename") },
+                                            leadingIcon = {
+                                                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+                                            },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onAiRename()
+                                            },
+                                        )
+                                    }
+                                }
+                                DropdownSectionHeader("Export")
+                                if (item.transcriptPreview != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("Share Transcript") },
+                                        leadingIcon = {
+                                            Icon(Icons.Filled.Share, contentDescription = null)
+                                        },
+                                        onClick = {
+                                            menuExpanded = false
+                                            onShareTranscript()
+                                        },
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text("Save Copy") },
                                     leadingIcon = { Icon(Icons.Filled.SaveAlt, contentDescription = null) },
@@ -283,19 +339,36 @@ internal fun RecordRow(
                                         onSaveCopy()
                                     },
                                 )
+                                DropdownSectionHeader("Manage")
                                 DropdownMenuItem(
-                                    text = { Text("Transform…") },
-                                    leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
+                                    text = { Text("Rename") },
+                                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
-                                        onTransform()
+                                        onRename()
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(if (item.session.isArchived) "Restore" else "Archive") },
+                                    text = { Text("Move to Folder") },
+                                    leadingIcon = {
+                                        Icon(Icons.Filled.DriveFileMove, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onMoveToFolder()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(if (item.session.isArchived) "Restore" else "Archive")
+                                    },
                                     leadingIcon = {
                                         Icon(
-                                            if (item.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+                                            if (item.session.isArchived) {
+                                                Icons.Filled.Unarchive
+                                            } else {
+                                                Icons.Filled.Archive
+                                            },
                                             contentDescription = null,
                                         )
                                     },
@@ -305,23 +378,14 @@ internal fun RecordRow(
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Rename") },
-                                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                    text = { Text("Delete") },
+                                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
                                     onClick = {
                                         menuExpanded = false
-                                        onRename()
+                                        onDelete()
                                     },
                                 )
-                                if (item.transcriptPreview != null) {
-                                    DropdownMenuItem(
-                                        text = { Text("AI Rename") },
-                                        leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onAiRename()
-                                        },
-                                    )
-                                }
+                                DropdownSectionHeader("Info")
                                 DropdownMenuItem(
                                     text = { Text("Information") },
                                     leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
@@ -330,44 +394,36 @@ internal fun RecordRow(
                                         onInfo()
                                     },
                                 )
-                                if (item.transcriptPreview != null) {
-                                    DropdownMenuItem(
-                                        text = { Text("Share Transcript") },
-                                        leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onShareTranscript()
-                                        },
-                                    )
+                                val hasStatusItems =
+                                    item.session.status == SessionStatus.FAILED ||
+                                        item.session.status == SessionStatus.TRANSCRIBING
+                                if (hasStatusItems) {
+                                    DropdownSectionHeader("Status")
+                                    if (item.session.status == SessionStatus.FAILED) {
+                                        DropdownMenuItem(
+                                            text = { Text("Retry Transcription") },
+                                            leadingIcon = {
+                                                Icon(Icons.Filled.Refresh, contentDescription = null)
+                                            },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onRetryTranscription()
+                                            },
+                                        )
+                                    }
+                                    if (item.session.status == SessionStatus.TRANSCRIBING) {
+                                        DropdownMenuItem(
+                                            text = { Text("Clear Stuck State") },
+                                            leadingIcon = {
+                                                Icon(Icons.Filled.Refresh, contentDescription = null)
+                                            },
+                                            onClick = {
+                                                menuExpanded = false
+                                                onResetTranscriptionState()
+                                            },
+                                        )
+                                    }
                                 }
-                                if (item.session.status == SessionStatus.FAILED) {
-                                    DropdownMenuItem(
-                                        text = { Text("Retry Transcription") },
-                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onRetryTranscription()
-                                        },
-                                    )
-                                }
-                                if (item.session.status == SessionStatus.TRANSCRIBING) {
-                                    DropdownMenuItem(
-                                        text = { Text("Clear Stuck State") },
-                                        leadingIcon = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onResetTranscriptionState()
-                                        },
-                                    )
-                                }
-                                DropdownMenuItem(
-                                    text = { Text("Delete") },
-                                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onDelete()
-                                    },
-                                )
                             }
                         }
                     }
@@ -735,13 +791,24 @@ private fun recordContainerColor(
     }
 
 @Composable
+private fun DropdownSectionHeader(title: String) {
+    HorizontalDivider()
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+    )
+}
+
+@Composable
 internal fun WaveformBackdrop(
     samples: List<Float>,
     modifier: Modifier = Modifier,
 ) {
     val bars = normalizeBackdropSamples(samples, targetCount = RECORD_WAVEFORM_TARGET_BAR_COUNT)
-    val color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-    val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.20f)
+    val baselineColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)
     Canvas(modifier = modifier) {
         val baselineY = size.height * 0.76f
         drawLine(

@@ -849,6 +849,9 @@ class HistoryViewModel
 
                 val audioFormat = audioFormatFromExtension(file.extension)
                 val createdAt = file.lastModified()
+
+                if (recordingSessionDao.getSessionByAudioFilePath(file.absolutePath) != null) return
+
                 val formattedTimestamp =
                     TITLE_FORMAT.format(Date(createdAt))
                 val sessionId = UUID.randomUUID().toString()
