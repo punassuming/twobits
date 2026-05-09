@@ -17,6 +17,7 @@
 ### Fixes
 
 * fix compilation error: capture `locationLabel` in a local val before null-check to satisfy Kotlin smart cast across module boundary
+* fix lint error: suppress `MissingPermission` on `getLastKnownLocation` — the manual permission check guard preceding the FusedLocation call is not visible to lint
 
 ## 0.18.0 (2026-05-09)
 

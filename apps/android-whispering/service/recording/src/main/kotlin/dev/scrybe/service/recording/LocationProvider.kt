@@ -1,6 +1,7 @@
 package dev.scrybe.service.recording
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Geocoder
@@ -32,6 +33,7 @@ class LocationProvider
                 Triple(location.latitude, location.longitude, label)
             }
 
+        @SuppressLint("MissingPermission")
         private suspend fun getLastKnownLocation(): Location? {
             val hasPermission =
                 ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
