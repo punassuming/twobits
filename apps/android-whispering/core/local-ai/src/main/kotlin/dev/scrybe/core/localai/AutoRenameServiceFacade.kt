@@ -19,7 +19,7 @@ class AutoRenameServiceFacade
             transcriptText: String,
             currentTitle: String,
         ): Result<String> =
-            if (preferencesDataStore.defaultProvider.first() == ProviderType.LOCAL.name) {
+            if (preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name) {
                 localLlmService.suggestTitle(transcriptText, currentTitle)
             } else {
                 openAiService.suggestTitle(transcriptText, currentTitle)

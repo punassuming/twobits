@@ -4,9 +4,21 @@
 
 ### Features
 
+* split provider settings into two independent controls: "Transcription" (OpenAI Whisper vs on-device Whisper) and "AI Features" (OpenAI models vs on-device Gemma); each can be set independently
+* add per-profile model override in transform profiles: add an optional model name to any OpenAI profile; when set it overrides the global AI features transform model for that profile only
+
 ### Improvements
 
+* redesign row dropdown menu into categorized sections (AI, Export, Manage, Info, Status) with section dividers and headers; add Transcribe item for unprocessed recordings
+* redesign bulk-selection overflow menu with AI and Manage sections
+* redesign session detail overflow menu with AI, Export, Manage, and Status sections; add Rename, Delete, AI Rename, and Retry Transcription actions
+* add Move to Folder action to individual recording row menu
+* improve waveform bar visibility in dark theme: inactive bars now use `onSurfaceVariant` at 38% alpha (was `onSurface` at 8–12%), baseline lines at 20% alpha
+
 ### Fixes
+
+* fix 0-second duplicate recording created on app restart when a recording was in progress: guard in `createSessionFromFile` now checks for an existing DB row by file path before inserting
+
 
 ## 0.17.1 (2026-05-08)
 

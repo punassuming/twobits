@@ -20,7 +20,7 @@ class TagSuggestionServiceFacade
             transcriptText: String,
             existingTags: List<String>,
         ): Result<List<String>> =
-            if (preferencesDataStore.defaultProvider.first() == ProviderType.LOCAL.name) {
+            if (preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name) {
                 localLlmService.suggestTags(title, transcriptText, existingTags)
             } else {
                 openAiService.suggestTags(title, transcriptText, existingTags)

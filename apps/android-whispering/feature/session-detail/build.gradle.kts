@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
     implementation(project(":core:export"))
+    implementation(project(":core:local-ai"))
     implementation(project(":core:transcription"))
     implementation(project(":core:transforms"))
     implementation(libs.androidx.core.ktx)

@@ -117,10 +117,9 @@ class SessionTransformCoordinator
             )
         }
 
-        private suspend fun loadProfile(profileId: String): TransformProfileEntity {
-            return transformProfileDao.getProfileById(profileId)
+        private suspend fun loadProfile(profileId: String): TransformProfileEntity =
+            transformProfileDao.getProfileById(profileId)
                 ?: throw IllegalStateException("Profile not found")
-        }
 
         private suspend fun runProfileTransform(
             anchorSessionId: String,
@@ -154,28 +153,31 @@ class SessionTransformCoordinator
 
             val providerType = ProviderType.valueOf(profile.providerType)
             val configuredModelName =
-                OpenAiTransformModel.fromApiName(
-                    appPreferencesDataStore.transformModel.first(),
-                ).apiName
+                profile.modelName?.takeIf { it.isNotBlank() }
+                    ?: OpenAiTransformModel
+                        .fromApiName(
+                            appPreferencesDataStore.transformModel.first(),
+                        ).apiName
             val transformResult =
                 runCatching {
                     var intermediateText = currentText
                     steps.forEach { stepPrompt ->
                         val stepResult =
-                            transformationPipeline.execute(
-                                input =
-                                    TransformInput(
-                                        sessionId = anchorSessionId,
-                                        transcriptId = inputTranscriptId,
-                                        transcriptText = transcriptText,
-                                        currentText = intermediateText,
-                                        profileId = profile.id,
-                                        systemPrompt = stepPrompt,
-                                        combinedTranscriptText = combinedTranscriptText,
-                                        modelName = configuredModelName,
-                                    ),
-                                providerType = providerType,
-                            ).getOrThrow()
+                            transformationPipeline
+                                .execute(
+                                    input =
+                                        TransformInput(
+                                            sessionId = anchorSessionId,
+                                            transcriptId = inputTranscriptId,
+                                            transcriptText = transcriptText,
+                                            currentText = intermediateText,
+                                            profileId = profile.id,
+                                            systemPrompt = stepPrompt,
+                                            combinedTranscriptText = combinedTranscriptText,
+                                            modelName = configuredModelName,
+                                        ),
+                                    providerType = providerType,
+                                ).getOrThrow()
                         intermediateText = stepResult.transformedText
                     }
                     intermediateText
@@ -281,7 +283,8 @@ class SessionTransformCoordinator
             }
 
         private fun formatCombinedTranscriptTime(createdAt: Long): String =
-            Instant.ofEpochMilli(createdAt)
+            Instant
+                .ofEpochMilli(createdAt)
                 .atZone(ZoneId.systemDefault())
                 .format(COMBINED_TIME_FORMATTER)
 

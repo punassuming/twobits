@@ -122,9 +122,9 @@ private fun WaveformTimeline(
     modifier: Modifier = Modifier,
 ) {
     val bars = normalizePlaybackSamples(samples, targetCount = PLAYBACK_WAVEFORM_TARGET_BAR_COUNT)
-    val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+    val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
     val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
-    val baselineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val baselineColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.20f)
     val playheadColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
     BoxWithConstraints(modifier = modifier) {
         val density = LocalDensity.current

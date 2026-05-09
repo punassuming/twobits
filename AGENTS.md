@@ -178,6 +178,20 @@ Column {
 
 ---
 
+## Branch management — always rebase onto origin/main before pushing
+
+Always fetch `origin/main` and rebase the working branch onto it before pushing:
+
+```bash
+git fetch origin main
+git rebase origin/main
+git push -u origin <branch-name> --force-with-lease
+```
+
+Never push a branch that diverged from a stale base. If the rebase produces a conflict, resolve it, `git add` the affected files, and run `git rebase --continue` before pushing.
+
+---
+
 ## Mandatory changelog updates
 
 Update `CHANGELOG.md` `## Unreleased` → `### Features`, `### Improvements`, or `### Fixes` before any commit destined for `main`. The CI `changelog` job blocks merges when `CHANGELOG.md` was not updated alongside other tracked changes. Do not invent version numbers — the release workflow promotes `Unreleased` automatically.

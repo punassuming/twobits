@@ -31,6 +31,8 @@ class AppPreferencesDataStore
     ) {
         private object Keys {
             val DEFAULT_PROVIDER = stringPreferencesKey("default_provider")
+            val TRANSCRIPTION_PROVIDER = stringPreferencesKey("transcription_provider")
+            val AI_FEATURES_PROVIDER = stringPreferencesKey("ai_features_provider")
             val DEFAULT_TRANSFORM_PROFILE_ID = stringPreferencesKey("default_transform_profile_id")
             val PROFILE_SUGGESTION_MODEL = stringPreferencesKey("profile_suggestion_model")
             val TRANSFORM_MODEL = stringPreferencesKey("transform_model")
@@ -59,7 +61,17 @@ class AppPreferencesDataStore
 
         val defaultProvider: Flow<String> =
             context.dataStore.data.map { prefs ->
-                prefs[Keys.DEFAULT_PROVIDER] ?: "OPENAI"
+                prefs[Keys.TRANSCRIPTION_PROVIDER] ?: prefs[Keys.DEFAULT_PROVIDER] ?: "OPENAI"
+            }
+
+        val transcriptionProvider: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.TRANSCRIPTION_PROVIDER] ?: prefs[Keys.DEFAULT_PROVIDER] ?: "OPENAI"
+            }
+
+        val aiFeaturesProvider: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.AI_FEATURES_PROVIDER] ?: prefs[Keys.DEFAULT_PROVIDER] ?: "OPENAI"
             }
 
         val autoTranscribe: Flow<Boolean> =
@@ -195,6 +207,14 @@ class AppPreferencesDataStore
 
         suspend fun setDefaultProvider(provider: String) {
             context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PROVIDER] = provider }
+        }
+
+        suspend fun setTranscriptionProvider(provider: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.TRANSCRIPTION_PROVIDER] = provider }
+        }
+
+        suspend fun setAiFeaturesProvider(provider: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.AI_FEATURES_PROVIDER] = provider }
         }
 
         suspend fun setAutoTranscribe(enabled: Boolean) {

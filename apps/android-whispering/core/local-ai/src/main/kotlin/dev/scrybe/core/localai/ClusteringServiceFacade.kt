@@ -22,7 +22,7 @@ class ClusteringServiceFacade
             existingFolderNames: List<String>,
             commonTags: List<String>,
         ): Result<List<ClusterSuggestion>> =
-            if (preferencesDataStore.defaultProvider.first() == ProviderType.LOCAL.name) {
+            if (preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name) {
                 localLlmService.suggestClusters(sessions, existingFolderNames, commonTags)
             } else {
                 openAiService.suggestClusters(sessions, existingFolderNames, commonTags)

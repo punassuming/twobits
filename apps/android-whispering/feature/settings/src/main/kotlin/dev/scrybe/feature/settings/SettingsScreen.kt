@@ -148,24 +148,24 @@ fun SettingsScreen(
                 }
 
                 SettingsSectionCard(
-                    title = "Provider",
+                    title = "Transcription",
                     icon = Icons.Filled.SettingsSuggest,
                 ) {
                     Text(
-                        text = "Choose where transcription runs. Provider-specific credentials live inside the active provider section.",
+                        text = "Choose where speech-to-text runs.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     ProviderOptionCard(
                         providerType = ProviderType.OPENAI,
-                        selected = uiState.defaultProvider == ProviderType.OPENAI.name,
+                        selected = uiState.transcriptionProvider == ProviderType.OPENAI.name,
                         enabled = true,
-                        supportingText = "Cloud transcription, profile suggestions, and AI transforms.",
-                        onSelect = { viewModel.setDefaultProvider(ProviderType.OPENAI.name) },
+                        supportingText = "Cloud transcription via OpenAI Whisper API.",
+                        onSelect = { viewModel.setTranscriptionProvider(ProviderType.OPENAI.name) },
                         icon = {
                             Icon(Icons.Filled.CloudDone, contentDescription = null)
                         },
                         content = {
-                            if (shouldShowOpenAiApiKey(uiState.defaultProvider)) {
+                            if (shouldShowOpenAiApiKey(uiState.transcriptionProvider)) {
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     OutlinedTextField(
                                         value = uiState.apiKey,
@@ -204,8 +204,10 @@ fun SettingsScreen(
                                                     text = message,
                                                     color =
                                                         when (uiState.apiKeyValidationStatus) {
-                                                            ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
-                                                            ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
+                                                            ApiKeyValidationStatus.Invalid ->
+                                                                MaterialTheme.colorScheme.error
+                                                            ApiKeyValidationStatus.Valid ->
+                                                                MaterialTheme.colorScheme.primary
                                                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                                                         },
                                                 )
@@ -229,6 +231,60 @@ fun SettingsScreen(
                                             Text("Clear Key")
                                         }
                                     }
+                                }
+                            }
+                        },
+                    )
+                    ProviderOptionCard(
+                        providerType = ProviderType.LOCAL,
+                        selected = uiState.transcriptionProvider == ProviderType.LOCAL.name,
+                        enabled = whisperStates.values.any { it is LocalModelState.Ready },
+                        supportingText = "On-device transcription using Whisper. No internet required.",
+                        alwaysShowContent = true,
+                        onSelect = { viewModel.setTranscriptionProvider(ProviderType.LOCAL.name) },
+                        icon = {
+                            Icon(Icons.Filled.Storage, contentDescription = null)
+                        },
+                        content = {
+                            Text(
+                                "Speech-to-text model (Whisper)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            LocalWhisperModel.entries.forEach { model ->
+                                WhisperModelRow(
+                                    model = model,
+                                    state = whisperStates[model] ?: LocalModelState.NotDownloaded,
+                                    isSelected = selectedWhisperModel == model,
+                                    onSelect = { viewModel.selectWhisperModel(model) },
+                                    onDownload = { viewModel.downloadWhisperModel(model) },
+                                    onDelete = { viewModel.deleteWhisperModel(model) },
+                                )
+                            }
+                        },
+                    )
+                }
+
+                SettingsSectionCard(
+                    title = "AI Features",
+                    icon = Icons.Filled.AutoAwesome,
+                ) {
+                    Text(
+                        text = "Choose where AI transforms, rename suggestions, and tag clustering run.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    ProviderOptionCard(
+                        providerType = ProviderType.OPENAI,
+                        selected = uiState.aiFeaturesProvider == ProviderType.OPENAI.name,
+                        enabled = true,
+                        supportingText = "Cloud AI via OpenAI models.",
+                        onSelect = { viewModel.setAiFeaturesProvider(ProviderType.OPENAI.name) },
+                        icon = {
+                            Icon(Icons.Filled.CloudDone, contentDescription = null)
+                        },
+                        content = {
+                            if (uiState.aiFeaturesProvider == ProviderType.OPENAI.name) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Surface(
                                         modifier = Modifier.fillMaxWidth(),
                                         color = MaterialTheme.colorScheme.surface,
@@ -278,7 +334,9 @@ fun SettingsScreen(
                                                             ProfileSuggestionModelTestUiState.Loading,
                                                 ) {
                                                     Text(
-                                                        if (uiState.profileSuggestionModelTestState is ProfileSuggestionModelTestUiState.Loading) {
+                                                        if (uiState.profileSuggestionModelTestState is
+                                                                ProfileSuggestionModelTestUiState.Loading
+                                                        ) {
                                                             "Testing..."
                                                         } else {
                                                             "Test Model"
@@ -305,41 +363,61 @@ fun SettingsScreen(
                                             }
                                         }
                                     }
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.AutoAwesome,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp),
+                                                tint = MaterialTheme.colorScheme.primary,
+                                            )
+                                            Text("Transform Model", style = MaterialTheme.typography.titleSmall)
+                                        }
+                                        Text(
+                                            text = "Model used to run transform profiles against your transcripts.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text = selectedTransformModel.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Text(
+                                            text = selectedTransformModel.supportingText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text = selectedTransformModel.costSummary,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        OutlinedButton(
+                                            onClick = { showTransformModelPicker = true },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text("Choose Transform Model")
+                                        }
+                                    }
                                 }
                             }
                         },
                     )
                     ProviderOptionCard(
                         providerType = ProviderType.LOCAL,
-                        selected = uiState.defaultProvider == ProviderType.LOCAL.name,
-                        enabled = whisperStates.values.any { it is LocalModelState.Ready },
-                        supportingText = "On-device transcription using Whisper. No internet required.",
+                        selected = uiState.aiFeaturesProvider == ProviderType.LOCAL.name,
+                        enabled = gemmaStates.values.any { it is LocalModelState.Ready },
+                        supportingText = "On-device AI using Gemma. No internet required.",
                         alwaysShowContent = true,
-                        onSelect = { viewModel.setDefaultProvider(ProviderType.LOCAL.name) },
+                        onSelect = { viewModel.setAiFeaturesProvider(ProviderType.LOCAL.name) },
                         icon = {
                             Icon(Icons.Filled.Storage, contentDescription = null)
                         },
                         content = {
-                            Text(
-                                text = "Whisper handles transcription (speech → text). Gemma handles AI features: transforms, rename suggestions, and tag clustering.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                "Speech-to-text model (Whisper)",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            LocalWhisperModel.entries.forEach { model ->
-                                WhisperModelRow(
-                                    model = model,
-                                    state = whisperStates[model] ?: LocalModelState.NotDownloaded,
-                                    isSelected = selectedWhisperModel == model,
-                                    onSelect = { viewModel.selectWhisperModel(model) },
-                                    onDownload = { viewModel.downloadWhisperModel(model) },
-                                    onDelete = { viewModel.deleteWhisperModel(model) },
-                                )
-                            }
                             Text(
                                 "LLM model (transforms, rename, tags, clustering)",
                                 style = MaterialTheme.typography.labelMedium,
@@ -357,47 +435,6 @@ fun SettingsScreen(
                             }
                         },
                     )
-                    HorizontalDivider()
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.AutoAwesome,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Text("Transform Model", style = MaterialTheme.typography.titleSmall)
-                        }
-                        Text(
-                            text = "Model used to run transform profiles against your transcripts.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = selectedTransformModel.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = selectedTransformModel.supportingText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = selectedTransformModel.costSummary,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        OutlinedButton(
-                            onClick = { showTransformModelPicker = true },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Choose Transform Model")
-                        }
-                    }
                 }
 
                 SettingsSectionCard(

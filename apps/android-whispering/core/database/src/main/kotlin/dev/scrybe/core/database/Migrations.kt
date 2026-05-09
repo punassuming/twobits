@@ -37,3 +37,12 @@ val MIGRATION_5_6: Migration =
             )
         }
     }
+
+val MIGRATION_6_7: Migration =
+    object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE transform_profiles ADD COLUMN modelName TEXT",
+            )
+        }
+    }

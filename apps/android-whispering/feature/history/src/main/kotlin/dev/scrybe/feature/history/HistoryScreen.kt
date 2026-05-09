@@ -56,6 +56,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -115,6 +116,7 @@ fun HistoryScreen(
     var showFilters by remember { mutableStateOf(false) }
     var showCreateFolder by remember { mutableStateOf(false) }
     var showMoveToFolder by remember { mutableStateOf(false) }
+    var moveSessionTarget by remember { mutableStateOf<String?>(null) }
     var renameFolderTarget by remember { mutableStateOf<Folder?>(null) }
     var deleteFolderTarget by remember { mutableStateOf<Folder?>(null) }
     var moveFolderTarget by remember { mutableStateOf<Folder?>(null) }
@@ -203,11 +205,20 @@ fun HistoryScreen(
                                 expanded = showOverflowMenu,
                                 onDismissRequest = { showOverflowMenu = false },
                             ) {
+                                HorizontalDivider()
+                                Text(
+                                    text = "AI",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                )
                                 DropdownMenuItem(
-                                    text = { Text("Run transform") },
+                                    text = { Text("Run Transform") },
                                     leadingIcon = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
                                     onClick = {
-                                        viewModel.openTransformDialog(successState.selection.selectedSessionIds.toList())
+                                        viewModel.openTransformDialog(
+                                            successState.selection.selectedSessionIds.toList(),
+                                        )
                                         showOverflowMenu = false
                                     },
                                 )
@@ -222,12 +233,27 @@ fun HistoryScreen(
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("AI rename") },
+                                    text = { Text("AI Rename") },
                                     leadingIcon = {
                                         Icon(Icons.Filled.DriveFileRenameOutline, contentDescription = null)
                                     },
                                     onClick = {
                                         viewModel.autoRenameSelectedSessions()
+                                        showOverflowMenu = false
+                                    },
+                                )
+                                HorizontalDivider()
+                                Text(
+                                    text = "Manage",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Move to Folder") },
+                                    leadingIcon = { Icon(Icons.Filled.DriveFileMove, contentDescription = null) },
+                                    onClick = {
+                                        showMoveToFolder = true
                                         showOverflowMenu = false
                                     },
                                 )
@@ -248,15 +274,9 @@ fun HistoryScreen(
                                         )
                                     },
                                     onClick = {
-                                        viewModel.setArchivedForSelected(!successState.filters.showArchived)
-                                        showOverflowMenu = false
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Move to folder") },
-                                    leadingIcon = { Icon(Icons.Filled.DriveFileMove, contentDescription = null) },
-                                    onClick = {
-                                        showMoveToFolder = true
+                                        viewModel.setArchivedForSelected(
+                                            !successState.filters.showArchived,
+                                        )
                                         showOverflowMenu = false
                                     },
                                 )
@@ -540,6 +560,7 @@ fun HistoryScreen(
                                     onOpenWith = { openAudioWith(context, item.session) },
                                     onSaveCopy = { viewModel.saveAudioCopy(item.session.id) },
                                     onShareTranscript = { viewModel.shareTranscript(item.session.id) },
+                                    onMoveToFolder = { moveSessionTarget = item.session.id },
                                     onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
                                     onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
                                     showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
@@ -765,6 +786,22 @@ fun HistoryScreen(
                 showMoveToFolder = false
             },
         )
+    }
+
+    moveSessionTarget?.let { sessionId ->
+        if (successState != null) {
+            MoveFolderDialog(
+                folders = successState.allFolders,
+                onDismiss = { moveSessionTarget = null },
+                onSelect = { folderId ->
+                    viewModel.moveSessionsToFolder(
+                        sessionIds = listOf(sessionId),
+                        folderId = folderId,
+                    )
+                    moveSessionTarget = null
+                },
+            )
+        }
     }
 
     renameFolderTarget?.let { folder ->

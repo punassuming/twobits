@@ -12,4 +12,5 @@ data class TransformProfileEntity(
     val steps: String,
     val providerType: String,
     val isDefault: Boolean,
+    val modelName: String? = null,
 )
