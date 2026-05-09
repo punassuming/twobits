@@ -741,8 +741,9 @@ private fun SessionMetaGrid(state: SessionDetailUiState.Success) {
         SessionMetaRow("Duration", formatDuration(session.durationMs))
         SessionMetaRow("Status", SessionStatusPresentation.label(session.status, session.isArchived))
         SessionMetaRow("Format", session.audioFormat.name)
-        if (session.locationLabel != null) {
-            SessionMetaRow("Location", session.locationLabel)
+        val locationLabel = session.locationLabel
+        if (locationLabel != null) {
+            SessionMetaRow("Location", locationLabel)
         }
         Text(
             text = audioQuality,

@@ -16,6 +16,8 @@
 
 ### Fixes
 
+* fix compilation error: capture `locationLabel` in a local val before null-check to satisfy Kotlin smart cast across module boundary
+
 ## 0.18.0 (2026-05-09)
 
 ### Features
