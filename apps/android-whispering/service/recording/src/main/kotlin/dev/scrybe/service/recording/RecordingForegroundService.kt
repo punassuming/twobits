@@ -54,10 +54,13 @@ class RecordingForegroundService : Service() {
 
     @Inject lateinit var preferencesDataStore: AppPreferencesDataStore
 
+    @Inject lateinit var locationProvider: LocationProvider
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var lastNotifiedSecond: Long = -1L
     private var telemetryJob: Job? = null
+    private var capturedLocation: Triple<Double, Double, String?>? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -78,11 +81,15 @@ class RecordingForegroundService : Service() {
     }
 
     private fun handleStart() {
+        capturedLocation = null
         startForeground(
             RecordingNotificationFactory.NOTIFICATION_ID,
             notificationFactory.buildNotification(this),
         )
         serviceScope.launch { playRecordingFeedback() }
+        serviceScope.launch {
+            capturedLocation = locationProvider.captureCoarseLocationWithLabel()
+        }
         telemetryJob?.cancel()
         telemetryJob =
             serviceScope.launch {
@@ -107,7 +114,8 @@ class RecordingForegroundService : Service() {
                     encodingBitRate = preferencesDataStore.encodingBitRate.first(),
                     channelCount = preferencesDataStore.channelCount.first(),
                 )
-            audioRecorder.startRecording(config)
+            audioRecorder
+                .startRecording(config)
                 .onFailure { error ->
                     android.util.Log.e(TAG, "Failed to start recording", error)
                     recordingSessionEvents.onRecordingError(error.message ?: "Failed to start recording")
@@ -119,7 +127,8 @@ class RecordingForegroundService : Service() {
     private fun handleStop() {
         serviceScope.launch {
             playRecordingFeedback()
-            audioRecorder.stopRecording()
+            audioRecorder
+                .stopRecording()
                 .onSuccess { recordedAudio ->
                     val sessionId = withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
                     recordingSessionEvents.onSessionCompleted(sessionId)
@@ -131,7 +140,8 @@ class RecordingForegroundService : Service() {
                             recordingSessionEvents.onRecordingError(SHORT_AUTO_TRANSCRIBE_MESSAGE)
                             return@launch
                         }
-                        sessionTranscriptionCoordinator.autoTranscribeIfEnabled(sessionId)
+                        sessionTranscriptionCoordinator
+                            .autoTranscribeIfEnabled(sessionId)
                             .onFailure {
                                 android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
                                 recordingSessionEvents.onRecordingError(
@@ -139,8 +149,7 @@ class RecordingForegroundService : Service() {
                                 )
                             }
                     }
-                }
-                .onFailure { error ->
+                }.onFailure { error ->
                     android.util.Log.e(TAG, "Failed to stop recording", error)
                     recordingSessionEvents.onRecordingError(error.message ?: "Failed to stop recording")
                 }
@@ -176,6 +185,7 @@ class RecordingForegroundService : Service() {
         val title = "Recording ${TITLE_FORMAT.format(Date(createdAt))}"
         val sessionId = UUID.randomUUID().toString()
 
+        val location = capturedLocation
         recordingSessionDao.insertSession(
             RecordingSessionEntity(
                 id = sessionId,
@@ -192,6 +202,9 @@ class RecordingForegroundService : Service() {
                 status = SessionStatus.RECORDED.name,
                 isArchived = false,
                 estimatedTranscriptionCostUsd = null,
+                locationLat = location?.first,
+                locationLng = location?.second,
+                locationLabel = location?.third,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
             ),
@@ -199,20 +212,20 @@ class RecordingForegroundService : Service() {
         return sessionId
     }
 
-    private fun hasNotificationPermission(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+    private fun hasNotificationPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.POST_NOTIFICATIONS,
             ) == PackageManager.PERMISSION_GRANTED
-    }
 
     @SuppressLint("MissingPermission")
     private fun updateRecordingNotification(
         elapsedMs: Long,
         amplitudeRatio: Float,
     ) {
-        NotificationManagerCompat.from(this)
+        NotificationManagerCompat
+            .from(this)
             .notify(
                 RecordingNotificationFactory.NOTIFICATION_ID,
                 notificationFactory.buildNotification(

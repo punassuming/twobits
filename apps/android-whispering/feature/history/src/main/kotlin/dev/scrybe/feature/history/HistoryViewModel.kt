@@ -15,8 +15,10 @@ import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.common.sanitizeFileName
 import dev.scrybe.core.database.FolderDao
 import dev.scrybe.core.database.FolderEntity
+import dev.scrybe.core.database.PersonDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
+import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformRunDao
@@ -95,6 +97,7 @@ private data class HistoryUiInputs(
 private data class FolderNavState(
     val currentFolderId: String?,
     val allFolders: List<Folder>,
+    val speakerPersonNames: Map<String, List<String>> = emptyMap(),
 )
 
 @HiltViewModel
@@ -107,6 +110,8 @@ class HistoryViewModel
         private val transformRunDao: TransformRunDao,
         private val transformProfileDao: TransformProfileDao,
         private val folderDao: FolderDao,
+        private val speakerSegmentDao: SpeakerSegmentDao,
+        private val personDao: PersonDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
@@ -165,7 +170,16 @@ class HistoryViewModel
             combine(
                 currentFolderId,
                 folderDao.getAllFolders(),
-            ) { folderId, entities ->
+                combine(
+                    speakerSegmentDao.getAllSegmentsWithPerson(),
+                    personDao.getAllPersons(),
+                ) { segments, persons ->
+                    val personMap = persons.associate { it.id to it.name }
+                    segments
+                        .groupBy({ it.sessionId }) { seg -> personMap[seg.personId].orEmpty() }
+                        .mapValues { (_, names) -> names.filter { it.isNotBlank() }.distinct() }
+                },
+            ) { folderId, entities, speakerPersonNames ->
                 FolderNavState(
                     currentFolderId = folderId,
                     allFolders =
@@ -177,6 +191,7 @@ class HistoryViewModel
                                 createdAt = Instant.ofEpochMilli(entity.createdAt),
                             )
                         },
+                    speakerPersonNames = speakerPersonNames,
                 )
             }
 
@@ -199,6 +214,7 @@ class HistoryViewModel
                 transformingSessionIds,
                 folderNavState,
             ) { entities, transcripts, inputs, currentlyTransforming, folderNav ->
+                val speakerPersonNames = folderNav.speakerPersonNames
                 val sessions =
                     entities.map { entity ->
                         RecordingSession(
@@ -217,6 +233,11 @@ class HistoryViewModel
                             isArchived = entity.isArchived,
                             estimatedTranscriptionCostUsd = entity.estimatedTranscriptionCostUsd,
                             folderId = entity.folderId,
+                            locationLat = entity.locationLat,
+                            locationLng = entity.locationLng,
+                            locationLabel = entity.locationLabel,
+                            sentimentJson = entity.sentimentJson,
+                            topicsJson = entity.topicsJson,
                             createdAt = Instant.ofEpochMilli(entity.createdAt),
                             updatedAt = Instant.ofEpochMilli(entity.updatedAt),
                         )
@@ -251,7 +272,14 @@ class HistoryViewModel
                                     session.status.name
                                         .lowercase()
                                         .contains(searchTerm) ||
-                                    latestTranscriptBySession[session.id].orEmpty().lowercase().contains(searchTerm)
+                                    latestTranscriptBySession[session.id]
+                                        .orEmpty()
+                                        .lowercase()
+                                        .contains(searchTerm) ||
+                                    session.locationLabel?.lowercase()?.contains(searchTerm) == true ||
+                                    speakerPersonNames[session.id]
+                                        .orEmpty()
+                                        .any { it.lowercase().contains(searchTerm) }
                             }
                         }.sortedWith(comparatorFor(inputs.filters.sortOption))
                         .map { session ->
@@ -285,7 +313,14 @@ class HistoryViewModel
                                     session.status.name
                                         .lowercase()
                                         .contains(searchTerm) ||
-                                    latestTranscriptBySession[session.id].orEmpty().lowercase().contains(searchTerm)
+                                    latestTranscriptBySession[session.id]
+                                        .orEmpty()
+                                        .lowercase()
+                                        .contains(searchTerm) ||
+                                    session.locationLabel?.lowercase()?.contains(searchTerm) == true ||
+                                    speakerPersonNames[session.id]
+                                        .orEmpty()
+                                        .any { it.lowercase().contains(searchTerm) }
                             }
                         }.filter { session ->
                             inputs.filters.selectedTag == null || inputs.filters.selectedTag in session.tags

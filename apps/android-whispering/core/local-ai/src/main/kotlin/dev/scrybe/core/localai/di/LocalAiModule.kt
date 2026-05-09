@@ -5,9 +5,13 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoMap
+import dev.scrybe.core.localai.DiarizationServiceFacade
+import dev.scrybe.core.localai.InsightServiceFacade
 import dev.scrybe.core.localai.LocalTransformationProvider
 import dev.scrybe.core.localai.WhisperTranscriptionProvider
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.transcription.DiarizationService
+import dev.scrybe.core.transcription.InsightService
 import dev.scrybe.core.transcription.TranscriptionProvider
 import dev.scrybe.core.transcription.di.ProviderTypeKey
 import dev.scrybe.core.transforms.TransformationProvider
@@ -25,4 +29,10 @@ abstract class LocalAiModule {
     @IntoMap
     @TransformProviderTypeKey(ProviderType.LOCAL)
     abstract fun bindsLocalTransformationProvider(impl: LocalTransformationProvider): TransformationProvider
+
+    @Binds
+    abstract fun bindsDiarizationService(impl: DiarizationServiceFacade): DiarizationService
+
+    @Binds
+    abstract fun bindsInsightService(impl: InsightServiceFacade): InsightService
 }

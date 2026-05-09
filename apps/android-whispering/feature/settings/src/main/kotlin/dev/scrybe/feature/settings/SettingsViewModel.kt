@@ -69,6 +69,8 @@ data class SettingsUiState(
     val taskForgeEnabled: Boolean = false,
     val taskForgePackageName: String = "",
     val taskForgeAction: String = "android.intent.action.SEND",
+    val enableSpeakerIdentification: Boolean = false,
+    val enableInsightAnalysis: Boolean = false,
 )
 
 data class SavedFileEntry(
@@ -172,18 +174,32 @@ class SettingsViewModel
             ) { transcription, aiFeatures ->
                 ProvidersData(transcriptionProvider = transcription, aiFeaturesProvider = aiFeatures)
             }
+        private val aiFeatureToggles =
+            combine(
+                preferencesDataStore.enableSpeakerIdentification,
+                preferencesDataStore.enableInsightAnalysis,
+            ) { speakerIdEnabled, insightEnabled ->
+                speakerIdEnabled to insightEnabled
+            }
         private val profileSettings =
             combine(
                 providersData,
                 preferencesDataStore.autoTranscribe,
                 preferencesDataStore.defaultTransformProfileId,
                 preferencesDataStore.profileSuggestionModel,
-                transformProfileDao.getAllProfiles(),
-            ) { providers, autoTranscribe, profileId, profileSuggestionModel, profiles ->
+                combine(
+                    transformProfileDao.getAllProfiles(),
+                    aiFeatureToggles,
+                ) { profiles, (speakerIdEnabled, insightEnabled) ->
+                    Triple(profiles, speakerIdEnabled, insightEnabled)
+                },
+            ) { providers, autoTranscribe, profileId, profileSuggestionModel, (profiles, speakerIdEnabled, insightEnabled) ->
                 ProfileSettings(
                     transcriptionProvider = providers.transcriptionProvider,
                     aiFeaturesProvider = providers.aiFeaturesProvider,
                     autoTranscribe = autoTranscribe,
+                    enableSpeakerIdentification = speakerIdEnabled,
+                    enableInsightAnalysis = insightEnabled,
                     defaultTransformProfileId = profileId,
                     defaultTransformProfileName = profiles.firstOrNull { it.id == profileId }?.name,
                     profileSuggestionModel = profileSuggestionModel,
@@ -295,6 +311,8 @@ class SettingsViewModel
                     transcriptionProvider = profileSettings.transcriptionProvider,
                     aiFeaturesProvider = profileSettings.aiFeaturesProvider,
                     autoTranscribe = profileSettings.autoTranscribe,
+                    enableSpeakerIdentification = profileSettings.enableSpeakerIdentification,
+                    enableInsightAnalysis = profileSettings.enableInsightAnalysis,
                     defaultTransformProfileId = profileSettings.defaultTransformProfileId,
                     defaultTransformProfileName = profileSettings.defaultTransformProfileName,
                     profileSuggestionModel = profileSettings.profileSuggestionModel,
@@ -370,6 +388,8 @@ class SettingsViewModel
                     taskForgeEnabled = settingsData.taskForgeEnabled,
                     taskForgePackageName = settingsData.taskForgePackageName,
                     taskForgeAction = settingsData.taskForgeAction,
+                    enableSpeakerIdentification = settingsData.enableSpeakerIdentification,
+                    enableInsightAnalysis = settingsData.enableInsightAnalysis,
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -389,6 +409,14 @@ class SettingsViewModel
 
         fun setAutoTranscribe(enabled: Boolean) {
             viewModelScope.launch { preferencesDataStore.setAutoTranscribe(enabled) }
+        }
+
+        fun setEnableSpeakerIdentification(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setEnableSpeakerIdentification(enabled) }
+        }
+
+        fun setEnableInsightAnalysis(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setEnableInsightAnalysis(enabled) }
         }
 
         fun setTranscriptionProvider(provider: String) {
@@ -624,6 +652,8 @@ class SettingsViewModel
             val transcriptionProvider: String = "OPENAI",
             val aiFeaturesProvider: String = "OPENAI",
             val autoTranscribe: Boolean = false,
+            val enableSpeakerIdentification: Boolean = false,
+            val enableInsightAnalysis: Boolean = false,
             val defaultTransformProfileId: String? = null,
             val defaultTransformProfileName: String? = null,
             val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -657,6 +687,8 @@ class SettingsViewModel
             val transcriptionProvider: String = "OPENAI",
             val aiFeaturesProvider: String = "OPENAI",
             val autoTranscribe: Boolean = false,
+            val enableSpeakerIdentification: Boolean = false,
+            val enableInsightAnalysis: Boolean = false,
             val defaultTransformProfileId: String? = null,
             val defaultTransformProfileName: String? = null,
             val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,

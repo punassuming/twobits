@@ -30,12 +30,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
+import dev.scrybe.core.model.SentimentSegment
+import dev.scrybe.core.model.SpeakerSegment
+import dev.scrybe.core.model.TopicMarker
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -110,6 +116,26 @@ internal fun PlaybackCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        if (state.speakerSegments.isNotEmpty()) {
+            SpeakerSegmentBar(
+                segments = state.speakerSegments,
+                durationMs = state.session.durationMs,
+                playbackPositionMs = state.playbackPositionMs,
+                onSeek = onSeek,
+            )
+        }
+        if (state.sentimentSegments.isNotEmpty()) {
+            SentimentBar(
+                segments = state.sentimentSegments,
+                durationMs = state.session.durationMs,
+            )
+        }
+        if (state.topicMarkers.isNotEmpty()) {
+            TopicMarkerBar(
+                markers = state.topicMarkers,
+                durationMs = state.session.durationMs,
+            )
+        }
     }
 }
 
@@ -172,6 +198,20 @@ private fun WaveformTimeline(
             val spacing = (size.width - (barWidth * bars.size)) / bars.size.coerceAtLeast(1)
             val progressIndex = (bars.size * progress.coerceIn(0f, 1f)).toInt()
             bars.forEachIndexed { index, sample ->
+                val smoothed = densitySmoothed(bars, index, windowRadius = 2)
+                if (smoothed > 0.02f) {
+                    val x = (index * (barWidth + spacing)) + (barWidth / 2f)
+                    val lh = (size.height * 0.34f) * smoothed
+                    drawLine(
+                        color = activeColor.copy(alpha = smoothed * 0.18f),
+                        start = Offset(x, centerY - lh * 1.6f),
+                        end = Offset(x, centerY + lh * 1.6f),
+                        strokeWidth = barWidth * 4f,
+                        cap = StrokeCap.Round,
+                    )
+                }
+            }
+            bars.forEachIndexed { index, sample ->
                 val shapedAmplitude = playbackAmplitude(sample)
                 val lineHeight = (size.height * 0.34f) * shapedAmplitude
                 val x = (index * (barWidth + spacing)) + (barWidth / 2f)
@@ -217,6 +257,138 @@ private fun normalizePlaybackSamples(
         normalized[bucket] = maxOf(normalized[bucket], sample)
     }
     return normalized
+}
+
+private fun densitySmoothed(
+    bars: List<Float>,
+    index: Int,
+    windowRadius: Int,
+): Float {
+    val from = (index - windowRadius).coerceAtLeast(0)
+    val to = (index + windowRadius).coerceAtMost(bars.lastIndex)
+    return bars.subList(from, to + 1).average().toFloat()
+}
+
+internal val speakerColorPalette =
+    listOf(
+        Color(0xFF4CAF50),
+        Color(0xFF2196F3),
+        Color(0xFFF44336),
+        Color(0xFFFF9800),
+        Color(0xFF9C27B0),
+    )
+
+@Composable
+internal fun SpeakerSegmentBar(
+    segments: List<SpeakerSegment>,
+    durationMs: Long,
+    playbackPositionMs: Long,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (segments.isEmpty() || durationMs <= 0L) return
+    BoxWithConstraints(modifier = modifier.fillMaxWidth().height(14.dp)) {
+        val density = LocalDensity.current
+        val widthPx = with(density) { maxWidth.toPx() }
+        Canvas(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(durationMs, widthPx) {
+                        detectTapGestures { offset ->
+                            onSeek(((offset.x / widthPx) * durationMs).toLong().coerceIn(0L, durationMs))
+                        }
+                    },
+        ) {
+            segments.forEach { seg ->
+                val startX = (seg.startMs.toFloat() / durationMs) * size.width
+                val endX = (seg.endMs.toFloat() / durationMs) * size.width
+                val colorIdx =
+                    seg.speakerId
+                        .lastOrNull { it.isDigit() }
+                        ?.digitToInt()
+                        ?.rem(speakerColorPalette.size) ?: 0
+                val alpha = if (seg.endMs <= playbackPositionMs) 0.9f else 0.45f
+                drawLine(
+                    color = speakerColorPalette[colorIdx].copy(alpha = alpha),
+                    start = Offset(startX, size.height / 2f),
+                    end = Offset((endX).coerceAtLeast(startX + 2f), size.height / 2f),
+                    strokeWidth = size.height,
+                    cap = StrokeCap.Round,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SentimentBar(
+    segments: List<SentimentSegment>,
+    durationMs: Long,
+    modifier: Modifier = Modifier,
+) {
+    if (segments.isEmpty() || durationMs <= 0L) return
+    Canvas(modifier = modifier.fillMaxWidth().height(10.dp)) {
+        segments.forEach { seg ->
+            val startX = (seg.startMs.toFloat() / durationMs) * size.width
+            val segWidth = ((seg.endMs - seg.startMs).toFloat() / durationMs) * size.width
+            val color =
+                when (seg.sentiment.uppercase()) {
+                    "POSITIVE" -> Color(0xFF4CAF50)
+                    "NEGATIVE" -> Color(0xFFF44336)
+                    else -> Color(0xFF9E9E9E)
+                }
+            drawRect(
+                color = color.copy(alpha = 0.65f),
+                topLeft = Offset(startX, 0f),
+                size = Size(segWidth.coerceAtLeast(1f), size.height),
+            )
+        }
+    }
+}
+
+@Composable
+internal fun TopicMarkerBar(
+    markers: List<TopicMarker>,
+    durationMs: Long,
+    modifier: Modifier = Modifier,
+) {
+    if (markers.isEmpty() || durationMs <= 0L) return
+    var selectedMarker by remember { mutableStateOf<TopicMarker?>(null) }
+    BoxWithConstraints(modifier = modifier.fillMaxWidth().height(18.dp)) {
+        val density = LocalDensity.current
+        val widthPx = with(density) { maxWidth.toPx() }
+        Canvas(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(markers, durationMs, widthPx) {
+                        detectTapGestures { offset ->
+                            val tapMs = (offset.x / widthPx) * durationMs
+                            selectedMarker = markers.minByOrNull { abs(it.timeMs - tapMs.toLong()) }
+                        }
+                    },
+        ) {
+            markers.forEach { marker ->
+                val x = (marker.timeMs.toFloat() / durationMs) * size.width
+                drawLine(
+                    color = Color(0xFFFF9800).copy(alpha = 0.8f),
+                    start = Offset(x, 0f),
+                    end = Offset(x, size.height),
+                    strokeWidth = 2.dp.toPx(),
+                    cap = StrokeCap.Round,
+                )
+            }
+        }
+        selectedMarker?.let { marker ->
+            AlertDialog(
+                onDismissRequest = { selectedMarker = null },
+                title = { Text("Topic") },
+                text = { Text(marker.label) },
+                confirmButton = { TextButton(onClick = { selectedMarker = null }) { Text("OK") } },
+            )
+        }
+    }
 }
 
 @Composable

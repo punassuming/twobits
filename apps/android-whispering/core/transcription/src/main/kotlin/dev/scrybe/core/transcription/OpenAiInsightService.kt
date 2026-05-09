@@ -1,0 +1,165 @@
+package dev.scrybe.core.transcription
+
+import dev.scrybe.core.model.ProviderType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class OpenAiInsightService
+    @Inject
+    constructor(
+        private val okHttpClient: OkHttpClient,
+        private val json: Json,
+        private val apiKeyProvider: ApiKeyProvider,
+    ) : InsightService {
+        override suspend fun analyzeSentiment(
+            transcriptText: String,
+            durationMs: Long,
+            providerType: ProviderType,
+        ): Result<String> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val apiKey =
+                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
+                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val prompt =
+                        """
+                        Analyze the sentiment of this transcript over time. Duration: ${durationMs}ms.
+                        Return ONLY a JSON array: [{"startMs":0,"endMs":$durationMs,"sentiment":"NEUTRAL"}]
+                        Use POSITIVE, NEGATIVE, or NEUTRAL. Cover the entire duration without gaps.
+                        Transcript: ${transcriptText.take(800)}
+                        """.trimIndent()
+                    val raw = callOpenAi(apiKey, prompt)
+                    unwrapJson(raw).ifBlank { """[{"startMs":0,"endMs":$durationMs,"sentiment":"NEUTRAL"}]""" }
+                }
+            }
+
+        override suspend fun extractTopics(
+            transcriptText: String,
+            durationMs: Long,
+            providerType: ProviderType,
+        ): Result<String> =
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val apiKey =
+                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
+                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val prompt =
+                        """
+                        Extract key topics from this transcript. Estimate when each topic is discussed within ${durationMs}ms.
+                        Return ONLY a JSON array: [{"timeMs":1000,"label":"topic name"}]
+                        Keep labels short (2-4 words). Return 3-8 topics.
+                        Transcript: ${transcriptText.take(800)}
+                        """.trimIndent()
+                    val raw = callOpenAi(apiKey, prompt)
+                    unwrapJson(raw).ifBlank { "[]" }
+                }
+            }
+
+        private fun callOpenAi(
+            apiKey: String,
+            userPrompt: String,
+        ): String {
+            val requestBody =
+                InsightRequest(
+                    model = MODEL_NAME,
+                    input =
+                        listOf(
+                            InsightInputMessage(
+                                type = "message",
+                                role = "user",
+                                content = listOf(InsightInputText(type = "input_text", text = userPrompt)),
+                            ),
+                        ),
+                )
+            val request =
+                Request
+                    .Builder()
+                    .url("https://api.openai.com/v1/responses")
+                    .header("Authorization", "Bearer $apiKey")
+                    .header("Content-Type", "application/json")
+                    .post(
+                        json
+                            .encodeToString(InsightRequest.serializer(), requestBody)
+                            .toRequestBody(JSON_MEDIA_TYPE),
+                    ).build()
+            okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val err =
+                        response.body
+                            ?.string()
+                            .orEmpty()
+                            .take(400)
+                    throw IOException("OpenAI insight error: ${response.code} - $err")
+                }
+                val body = response.body?.string() ?: throw IOException("Empty response")
+                val parsed = json.decodeFromString(InsightResponse.serializer(), body)
+                return parsed.outputText
+                    ?: parsed.output
+                        .orEmpty()
+                        .flatMap { it.content.orEmpty() }
+                        .filter { it.type == "output_text" }
+                        .joinToString("\n") { it.text.orEmpty() }
+                        .trim()
+            }
+        }
+
+        private fun unwrapJson(value: String): String =
+            value
+                .trim()
+                .removePrefix("```json")
+                .removePrefix("```")
+                .removeSuffix("```")
+                .trim()
+
+        @Serializable
+        private data class InsightRequest(
+            val model: String,
+            val input: List<InsightInputMessage>,
+        )
+
+        @Serializable
+        private data class InsightInputMessage(
+            val type: String,
+            val role: String,
+            val content: List<InsightInputText>,
+        )
+
+        @Serializable
+        private data class InsightInputText(
+            val type: String,
+            val text: String,
+        )
+
+        @Serializable
+        private data class InsightResponse(
+            @SerialName("output_text") val outputText: String? = null,
+            val output: List<InsightOutputItem>? = null,
+        )
+
+        @Serializable
+        private data class InsightOutputItem(
+            val content: List<InsightOutputContent>? = null,
+        )
+
+        @Serializable
+        private data class InsightOutputContent(
+            val type: String? = null,
+            val text: String? = null,
+        )
+
+        private companion object {
+            const val MODEL_NAME = "gpt-5-mini"
+            val JSON_MEDIA_TYPE = "application/json".toMediaType()
+        }
+    }

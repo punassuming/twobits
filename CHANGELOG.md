@@ -4,7 +4,15 @@
 
 ### Features
 
+* add location tracking: GPS coordinates (coarse) are captured when a recording starts and reverse-geocoded to a "City, State" label; location is displayed in session detail and searchable from History
+* add speaker diarization: after transcription, the audio is attributed to distinct speakers (SPEAKER_1, SPEAKER_2, …) via an LLM pass; a YouTube-style colored segment bar appears on the playback timeline; speakers can be assigned to named person profiles
+* add person profiles: create named contacts (e.g. "Alice") and assign detected speaker slots to them; person names are indexed in History search so recordings can be found by participant name
+* add insight visualizations: a sentiment timeline (green/red/gray bar), topic-marker ticks, and a speech-density heatmap overlay appear on the playback view after transcription; gated behind a new Settings toggle
+* add profile model picker: the free-text model override in the profile editor is replaced with a searchable dropdown for OpenAI profiles and an informational row for Local AI profiles
+
 ### Improvements
+
+* add "Speaker identification" and "Insight analysis" toggles in Settings → AI Features; both default off to avoid silent API cost increases
 
 ### Fixes
 
