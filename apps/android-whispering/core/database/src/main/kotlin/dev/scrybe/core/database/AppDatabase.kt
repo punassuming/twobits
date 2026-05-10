@@ -11,8 +11,10 @@ import androidx.room.RoomDatabase
         TransformRunEntity::class,
         ProviderConfigEntity::class,
         FolderEntity::class,
+        SpeakerSegmentEntity::class,
+        PersonEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,4 +29,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun providerConfigDao(): ProviderConfigDao
 
     abstract fun folderDao(): FolderDao
+
+    abstract fun speakerSegmentDao(): SpeakerSegmentDao
+
+    abstract fun personDao(): PersonDao
 }

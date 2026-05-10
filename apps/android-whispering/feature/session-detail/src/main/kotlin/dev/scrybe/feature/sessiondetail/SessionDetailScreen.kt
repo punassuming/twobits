@@ -2,6 +2,7 @@ package dev.scrybe.feature.sessiondetail
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -76,6 +78,7 @@ import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.scrybeContentWidth
+import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
@@ -439,6 +442,13 @@ fun SessionDetailScreen(
                             onStopPlayback = viewModel::stopPlayback,
                             onSeek = viewModel::seekPlayback,
                         )
+                        if (state.speakerSegments.isNotEmpty()) {
+                            SpeakerSlotsCard(
+                                state = state,
+                                onAssignPerson = viewModel::assignPersonToSpeaker,
+                                onCreatePerson = viewModel::createPersonAndAssign,
+                            )
+                        }
                         TranscriptSection(
                             state = state,
                             onEditTranscript = { isEditingTranscript = true },
@@ -731,6 +741,10 @@ private fun SessionMetaGrid(state: SessionDetailUiState.Success) {
         SessionMetaRow("Duration", formatDuration(session.durationMs))
         SessionMetaRow("Status", SessionStatusPresentation.label(session.status, session.isArchived))
         SessionMetaRow("Format", session.audioFormat.name)
+        val locationLabel = session.locationLabel
+        if (locationLabel != null) {
+            SessionMetaRow("Location", locationLabel)
+        }
         Text(
             text = audioQuality,
             style = MaterialTheme.typography.bodySmall,
@@ -1144,6 +1158,125 @@ private fun TagEditorDialog(
         dismissButton = {
             androidx.compose.material3.TextButton(onClick = onDismiss) {
                 Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+private fun SpeakerSlotsCard(
+    state: SessionDetailUiState.Success,
+    onAssignPerson: (speakerId: String, personId: String?) -> Unit,
+    onCreatePerson: (speakerId: String, name: String) -> Unit,
+) {
+    val distinctSpeakers =
+        state.speakerSegments
+            .map { it.speakerId }
+            .distinct()
+            .sorted()
+    if (distinctSpeakers.isEmpty()) return
+    var pickerTargetSpeakerId by remember { mutableStateOf<String?>(null) }
+    ScrybeSectionCard {
+        ScrybeSectionHeader(title = "Speakers")
+        distinctSpeakers.forEachIndexed { idx, speakerId ->
+            val segment = state.speakerSegments.first { it.speakerId == speakerId }
+            val label =
+                segment.speakerLabel ?: run {
+                    val n = speakerId.filter { it.isDigit() }.takeIf { it.isNotBlank() } ?: "${idx + 1}"
+                    "Speaker $n"
+                }
+            val personName =
+                segment.personId?.let { pid -> state.persons.find { it.id == pid }?.name }
+            val dotColor = speakerColorPalette[idx % speakerColorPalette.size]
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(modifier = Modifier.size(10.dp).background(dotColor, CircleShape))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(label, style = MaterialTheme.typography.bodyMedium)
+                    if (personName != null) {
+                        Text(
+                            personName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                TextButton(onClick = { pickerTargetSpeakerId = speakerId }) {
+                    Text(if (personName != null) "Reassign" else "Assign")
+                }
+            }
+        }
+    }
+    pickerTargetSpeakerId?.let { speakerId ->
+        PersonPickerDialog(
+            persons = state.persons,
+            currentPersonId = state.speakerSegments.find { it.speakerId == speakerId }?.personId,
+            onDismiss = { pickerTargetSpeakerId = null },
+            onAssign = { personId ->
+                onAssignPerson(speakerId, personId)
+                pickerTargetSpeakerId = null
+            },
+            onCreateNew = { name ->
+                onCreatePerson(speakerId, name)
+                pickerTargetSpeakerId = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun PersonPickerDialog(
+    persons: List<Person>,
+    currentPersonId: String?,
+    onDismiss: () -> Unit,
+    onAssign: (String?) -> Unit,
+    onCreateNew: (String) -> Unit,
+) {
+    var newPersonName by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Assign to Person") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                persons.forEach { person ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onAssign(person.id) }
+                                .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(person.name, modifier = Modifier.weight(1f))
+                        if (person.id == currentPersonId) {
+                            Text("✓", color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = newPersonName,
+                    onValueChange = { newPersonName = it },
+                    label = { Text("New person name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (newPersonName.isNotBlank()) onCreateNew(newPersonName) else onDismiss() },
+                enabled = newPersonName.isNotBlank() || persons.isNotEmpty(),
+            ) {
+                Text(if (newPersonName.isNotBlank()) "Create & Assign" else "Cancel")
+            }
+        },
+        dismissButton = {
+            if (currentPersonId != null) {
+                TextButton(onClick = { onAssign(null) }) { Text("Unassign") }
             }
         },
     )

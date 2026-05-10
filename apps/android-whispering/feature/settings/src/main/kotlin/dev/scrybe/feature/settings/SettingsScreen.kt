@@ -435,6 +435,41 @@ fun SettingsScreen(
                             }
                         },
                     )
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Speaker identification", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Attribute transcript segments to speakers after transcription. May increase API costs.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = uiState.enableSpeakerIdentification,
+                            onCheckedChange = { viewModel.setEnableSpeakerIdentification(it) },
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Insight analysis", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Generate sentiment timeline and topic markers after transcription. May increase API costs.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = uiState.enableInsightAnalysis,
+                            onCheckedChange = { viewModel.setEnableInsightAnalysis(it) },
+                        )
+                    }
                 }
 
                 SettingsSectionCard(

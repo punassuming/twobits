@@ -231,6 +231,11 @@ class FileManagerViewModel
                 isArchived = isArchived,
                 estimatedTranscriptionCostUsd = estimatedTranscriptionCostUsd,
                 folderId = folderId,
+                locationLat = locationLat,
+                locationLng = locationLng,
+                locationLabel = locationLabel,
+                sentimentJson = sentimentJson,
+                topicsJson = topicsJson,
                 createdAt = Instant.ofEpochMilli(createdAt),
                 updatedAt = Instant.ofEpochMilli(updatedAt),
             )

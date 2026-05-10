@@ -102,5 +102,68 @@ class LocalLlmService
                     .take(6)
             }
 
+        suspend fun identifySpeakerTurns(transcriptText: String): Result<List<String>> =
+            runCatching {
+                require(transcriptText.isNotBlank()) { "Transcript is required" }
+                val prompt =
+                    """
+                    Identify speaker turns in this transcript. Assign consistent speaker IDs like SPEAKER_1, SPEAKER_2, etc.
+                    Return ONLY a comma-separated list of speaker IDs, one per detected turn, in order.
+                    Example: SPEAKER_1,SPEAKER_2,SPEAKER_1,SPEAKER_2
+                    Transcript: ${transcriptText.take(800)}
+                    """.trimIndent()
+                generate(prompt)
+                    .split(",")
+                    .map { it.trim().uppercase() }
+                    .filter { it.startsWith("SPEAKER_") }
+                    .ifEmpty { listOf("SPEAKER_1") }
+            }
+
+        suspend fun analyzeSentiment(
+            transcriptText: String,
+            durationMs: Long,
+        ): Result<String> =
+            runCatching {
+                require(transcriptText.isNotBlank()) { "Transcript is required" }
+                val prompt =
+                    """
+                    Analyze the sentiment of this transcript. The recording is ${durationMs}ms long.
+                    Return ONLY JSON array: [{"startMs":0,"endMs":$durationMs,"sentiment":"NEUTRAL"}]
+                    Use POSITIVE, NEGATIVE, or NEUTRAL. Cover the entire duration without gaps.
+                    Transcript: ${transcriptText.take(600)}
+                    """.trimIndent()
+                val raw =
+                    generate(prompt)
+                        .trim()
+                        .removePrefix("```json")
+                        .removePrefix("```")
+                        .removeSuffix("```")
+                        .trim()
+                raw.ifBlank { """[{"startMs":0,"endMs":$durationMs,"sentiment":"NEUTRAL"}]""" }
+            }
+
+        suspend fun extractTopics(
+            transcriptText: String,
+            durationMs: Long,
+        ): Result<String> =
+            runCatching {
+                require(transcriptText.isNotBlank()) { "Transcript is required" }
+                val prompt =
+                    """
+                    Extract key topics from this transcript. Estimate when each topic is discussed within ${durationMs}ms.
+                    Return ONLY JSON array: [{"timeMs":1000,"label":"topic name"}]
+                    Keep labels short (2–4 words). Return 3–8 topics.
+                    Transcript: ${transcriptText.take(600)}
+                    """.trimIndent()
+                val raw =
+                    generate(prompt)
+                        .trim()
+                        .removePrefix("```json")
+                        .removePrefix("```")
+                        .removeSuffix("```")
+                        .trim()
+                raw.ifBlank { "[]" }
+            }
+
         private fun formatPrompt(userText: String): String = "<start_of_turn>user\n$userText<end_of_turn>\n<start_of_turn>model\n"
     }

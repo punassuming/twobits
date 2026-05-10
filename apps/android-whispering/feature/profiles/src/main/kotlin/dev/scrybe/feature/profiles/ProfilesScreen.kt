@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +60,7 @@ import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
+import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.TransformProfile
 
@@ -463,16 +465,10 @@ private fun ProfileEditorFormBody(
                 )
             }
         }
-        if (draft.providerType == ProviderType.OPENAI) {
-            OutlinedTextField(
-                value = draft.modelName ?: "",
-                onValueChange = { onUpdate(draft.copy(modelName = it.ifBlank { null })) },
-                label = { Text("Model override (optional)") },
-                supportingText = { Text("Leave blank to use the global AI features model") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-        }
+        ModelPickerRow(
+            draft = draft,
+            onUpdate = onUpdate,
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -723,6 +719,128 @@ private fun AiDraftActions(
                     Text("Generate Draft")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ModelPickerRow(
+    draft: ProfileEditorDraft,
+    onUpdate: (ProfileEditorDraft) -> Unit,
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    when (draft.providerType) {
+        ProviderType.OPENAI -> {
+            val currentModel = OpenAiTransformModel.entries.firstOrNull { it.apiName == draft.modelName }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { showPicker = true },
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    Text("Model override", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        currentModel?.title ?: "Global default",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        "Leave blank to use the global AI features model",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            if (showPicker) {
+                OpenAiModelPickerDialog(
+                    currentApiName = draft.modelName,
+                    onDismiss = { showPicker = false },
+                    onSelect = { apiName ->
+                        onUpdate(draft.copy(modelName = apiName))
+                        showPicker = false
+                    },
+                )
+            }
+        }
+        ProviderType.LOCAL -> {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                    Text("Model", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "On-device model (managed in Settings → Provider → Local)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpenAiModelPickerDialog(
+    currentApiName: String?,
+    onDismiss: () -> Unit,
+    onSelect: (String?) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Choose Model") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                ModelOptionRow(
+                    title = "Global default",
+                    subtitle = "Use the model set in AI Features settings",
+                    selected = currentApiName == null,
+                    onClick = { onSelect(null) },
+                )
+                OpenAiTransformModel.entries.forEach { model ->
+                    ModelOptionRow(
+                        title = model.title,
+                        subtitle = model.supportingText,
+                        selected = currentApiName == model.apiName,
+                        onClick = { onSelect(model.apiName) },
+                    )
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}
+
+@Composable
+private fun ModelOptionRow(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        color =
+            if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

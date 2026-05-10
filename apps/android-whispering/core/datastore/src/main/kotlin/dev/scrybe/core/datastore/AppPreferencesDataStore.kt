@@ -57,6 +57,8 @@ class AppPreferencesDataStore
             val LOCAL_GEMMA_MODEL = stringPreferencesKey("local_gemma_model")
             val LOCAL_WHISPER_MODEL = stringPreferencesKey("local_whisper_model")
             val DELETED_DEFAULT_PROFILE_IDS = stringPreferencesKey("deleted_default_profile_ids")
+            val ENABLE_SPEAKER_IDENTIFICATION = booleanPreferencesKey("enable_speaker_identification")
+            val ENABLE_INSIGHT_ANALYSIS = booleanPreferencesKey("enable_insight_analysis")
         }
 
         val defaultProvider: Flow<String> =
@@ -196,6 +198,16 @@ class AppPreferencesDataStore
                 LocalWhisperModel.fromName(prefs[Keys.LOCAL_WHISPER_MODEL] ?: "")
             }
 
+        val enableSpeakerIdentification: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.ENABLE_SPEAKER_IDENTIFICATION] ?: false
+            }
+
+        val enableInsightAnalysis: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.ENABLE_INSIGHT_ANALYSIS] ?: false
+            }
+
         val deletedDefaultProfileIds: Flow<Set<String>> =
             context.dataStore.data.map { prefs ->
                 prefs[Keys.DELETED_DEFAULT_PROFILE_IDS]
@@ -317,6 +329,14 @@ class AppPreferencesDataStore
 
         suspend fun setLocalWhisperModel(model: LocalWhisperModel) {
             context.dataStore.edit { prefs -> prefs[Keys.LOCAL_WHISPER_MODEL] = model.name }
+        }
+
+        suspend fun setEnableSpeakerIdentification(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.ENABLE_SPEAKER_IDENTIFICATION] = enabled }
+        }
+
+        suspend fun setEnableInsightAnalysis(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.ENABLE_INSIGHT_ANALYSIS] = enabled }
         }
 
         suspend fun addDeletedDefaultProfileId(id: String) {

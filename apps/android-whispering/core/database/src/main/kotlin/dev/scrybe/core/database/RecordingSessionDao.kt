@@ -61,4 +61,21 @@ interface RecordingSessionDao {
         folderId: String?,
         updatedAt: Long,
     )
+
+    @Query("UPDATE recording_sessions SET locationLat = :lat, locationLng = :lng, locationLabel = :label, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateLocation(
+        id: String,
+        lat: Double?,
+        lng: Double?,
+        label: String?,
+        updatedAt: Long,
+    )
+
+    @Query("UPDATE recording_sessions SET sentimentJson = :sentimentJson, topicsJson = :topicsJson, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateInsights(
+        id: String,
+        sentimentJson: String?,
+        topicsJson: String?,
+        updatedAt: Long,
+    )
 }

@@ -18,6 +18,11 @@ data class RecordingSession(
     val isArchived: Boolean,
     val estimatedTranscriptionCostUsd: Double?,
     val folderId: String? = null,
+    val locationLat: Double? = null,
+    val locationLng: Double? = null,
+    val locationLabel: String? = null,
+    val sentimentJson: String? = null,
+    val topicsJson: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

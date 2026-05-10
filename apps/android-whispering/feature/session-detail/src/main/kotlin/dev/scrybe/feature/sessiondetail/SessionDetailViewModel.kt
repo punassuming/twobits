@@ -12,7 +12,9 @@ import dev.scrybe.core.audio.AudioPlayer
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.database.PersonDao
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TranscriptEntity
 import dev.scrybe.core.database.TransformProfileDao
@@ -22,9 +24,13 @@ import dev.scrybe.core.export.ExportCoordinator
 import dev.scrybe.core.export.ExportFormat
 import dev.scrybe.core.localai.AutoRenameServiceFacade
 import dev.scrybe.core.model.AudioFormat
+import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingSession
+import dev.scrybe.core.model.SentimentSegment
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.SpeakerSegment
+import dev.scrybe.core.model.TopicMarker
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
@@ -39,7 +45,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.Duration
 import java.time.Instant
@@ -54,6 +62,8 @@ class SessionDetailViewModel
         private val transcriptDao: TranscriptDao,
         private val transformProfileDao: TransformProfileDao,
         private val transformRunDao: TransformRunDao,
+        private val speakerSegmentDao: SpeakerSegmentDao,
+        private val personDao: PersonDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
@@ -72,6 +82,12 @@ class SessionDetailViewModel
         private val tagSuggestionState = MutableStateFlow<TagSuggestionUiState>(TagSuggestionUiState.Idle)
         private val _events = MutableSharedFlow<SessionDetailEvent>()
         val events = _events.asSharedFlow()
+
+        private data class SideData(
+            val tagSuggestion: TagSuggestionUiState,
+            val speakerSegments: List<SpeakerSegment>,
+            val persons: List<Person>,
+        )
 
         init {
             viewModelScope.launch {
@@ -92,6 +108,33 @@ class SessionDetailViewModel
                     ) { playbackState, showRenameAfterRecording, renamePromptDismissed ->
                         Triple(playbackState, showRenameAfterRecording, renamePromptDismissed)
                     }
+                val sideData =
+                    combine(
+                        tagSuggestionState,
+                        speakerSegmentDao.getSegmentsForSession(sessionId).map { entities ->
+                            entities.map { e ->
+                                SpeakerSegment(
+                                    id = e.id,
+                                    sessionId = e.sessionId,
+                                    speakerId = e.speakerId,
+                                    speakerLabel = e.speakerLabel,
+                                    personId = e.personId,
+                                    startMs = e.startMs,
+                                    endMs = e.endMs,
+                                )
+                            }
+                        },
+                        personDao.getAllPersons().map { entities ->
+                            entities.map { e ->
+                                Person(
+                                    id = e.id,
+                                    name = e.name,
+                                    voiceEmbeddingJson = e.voiceEmbeddingJson,
+                                    createdAt = Instant.ofEpochMilli(e.createdAt),
+                                )
+                            }
+                        },
+                    ) { tag, speakers, persons -> SideData(tag, speakers, persons) }
                 combine(
                     combine(
                         sessionDao.getSessionById(sessionId),
@@ -103,14 +146,15 @@ class SessionDetailViewModel
                     preferencesDataStore.defaultTransformProfileId,
                     isTransforming,
                     playbackBundle,
-                    tagSuggestionState,
-                ) { sessionBundle, defaultProfileId, isTransforming, playbackBundle, tagSuggestionState ->
+                    sideData,
+                ) { sessionBundle, defaultProfileId, isTransforming, playbackBundle, sideData ->
                     val (sessionEntity, transcriptEntities, profileEntities) = sessionBundle
                     val (playbackState, showRenameAfterRecording, renamePromptDismissed) = playbackBundle
+                    val (tagSuggestion, speakerSegments, persons) = sideData
                     if (sessionEntity == null) {
                         SessionDetailUiState.Error("Session not found")
                     } else {
-                        val session =
+                        val recordingSession =
                             RecordingSession(
                                 id = sessionEntity.id,
                                 title = sessionEntity.title,
@@ -126,6 +170,11 @@ class SessionDetailViewModel
                                 status = SessionStatus.valueOf(sessionEntity.status),
                                 isArchived = sessionEntity.isArchived,
                                 estimatedTranscriptionCostUsd = sessionEntity.estimatedTranscriptionCostUsd,
+                                locationLat = sessionEntity.locationLat,
+                                locationLng = sessionEntity.locationLng,
+                                locationLabel = sessionEntity.locationLabel,
+                                sentimentJson = sessionEntity.sentimentJson,
+                                topicsJson = sessionEntity.topicsJson,
                                 createdAt = Instant.ofEpochMilli(sessionEntity.createdAt),
                                 updatedAt = Instant.ofEpochMilli(sessionEntity.updatedAt),
                             )
@@ -165,35 +214,53 @@ class SessionDetailViewModel
                                 .filter { it.type == TranscriptType.EDITED }
                                 .maxByOrNull { it.createdAt }
                                 ?: originalTranscript
+                        val sentimentSegments =
+                            runCatching {
+                                json.decodeFromString<List<SentimentSegment>>(
+                                    sessionEntity.sentimentJson ?: "[]",
+                                )
+                            }.getOrElse { emptyList() }
+                        val topicMarkers =
+                            runCatching {
+                                json.decodeFromString<List<TopicMarker>>(
+                                    sessionEntity.topicsJson ?: "[]",
+                                )
+                            }.getOrElse { emptyList() }
                         SessionDetailUiState.Success(
-                            session = session,
+                            session = recordingSession,
                             transcripts = transcripts,
                             originalTranscript = originalTranscript,
                             currentTranscript = currentTranscript,
                             profiles = profiles,
                             defaultProfileId = defaultProfileId,
-                            isTranscribing = session.status == SessionStatus.TRANSCRIBING,
+                            isTranscribing = recordingSession.status == SessionStatus.TRANSCRIBING,
                             isTransforming = isTransforming,
-                            isPlaying = playbackState.filePath == session.audioFilePath && playbackState.isPlaying,
+                            isPlaying =
+                                playbackState.filePath == recordingSession.audioFilePath &&
+                                    playbackState.isPlaying,
                             playbackPositionMs =
-                                if (playbackState.filePath == session.audioFilePath) {
+                                if (playbackState.filePath == recordingSession.audioFilePath) {
                                     playbackState.currentPositionMs
                                 } else {
                                     0L
                                 },
                             playbackDurationMs =
-                                if (playbackState.filePath == session.audioFilePath) {
+                                if (playbackState.filePath == recordingSession.audioFilePath) {
                                     playbackState.durationMs
                                 } else {
-                                    session.durationMs
+                                    recordingSession.durationMs
                                 },
                             shouldPromptForRename =
                                 shouldPromptForRename(
-                                    session = session,
+                                    session = recordingSession,
                                     showRenameAfterRecording = showRenameAfterRecording,
                                     renamePromptDismissed = renamePromptDismissed,
                                 ),
-                            tagSuggestionState = tagSuggestionState,
+                            tagSuggestionState = tagSuggestion,
+                            speakerSegments = speakerSegments,
+                            persons = persons,
+                            sentimentSegments = sentimentSegments,
+                            topicMarkers = topicMarkers,
                         )
                     }
                 }.catch { emit(SessionDetailUiState.Error(it.message ?: "Unknown error")) }
@@ -464,6 +531,37 @@ class SessionDetailViewModel
             tagSuggestionState.value = TagSuggestionUiState.Idle
         }
 
+        fun assignPersonToSpeaker(
+            speakerId: String,
+            personId: String?,
+        ) {
+            viewModelScope.launch {
+                speakerSegmentDao.updatePersonId(sessionId, speakerId, personId)
+            }
+        }
+
+        fun createPersonAndAssign(
+            speakerId: String,
+            name: String,
+        ) {
+            val trimmed = name.trim()
+            if (trimmed.isBlank()) return
+            viewModelScope.launch {
+                val person =
+                    dev.scrybe.core.database.PersonEntity(
+                        id =
+                            java.util.UUID
+                                .randomUUID()
+                                .toString(),
+                        name = trimmed,
+                        voiceEmbeddingJson = null,
+                        createdAt = System.currentTimeMillis(),
+                    )
+                personDao.insertPerson(person)
+                speakerSegmentDao.updatePersonId(sessionId, speakerId, person.id)
+            }
+        }
+
         fun saveTranscriptEdit(content: String) {
             val trimmed = content.trim()
             if (trimmed.isBlank()) return
@@ -611,6 +709,8 @@ class SessionDetailViewModel
             audioPlayer.stop()
             super.onCleared()
         }
+
+        private val json = Json { ignoreUnknownKeys = true }
 
         private companion object {
             const val TAG = "SessionDetailViewModel"
