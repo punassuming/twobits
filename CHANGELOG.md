@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* fix startup crash after 0.19.0 update: Room migration 7→8 SQL for `speaker_segments` used non-canonical syntax — missing `ON UPDATE NO ACTION` in the FOREIGN KEY clause and a wrong index name (`idx_speaker_segments_session` instead of `index_speaker_segments_sessionId`); Room's schema validator compared the stored CREATE TABLE SQL against its entity-derived expectation and threw `IllegalStateException`, crashing the app at first database access while the What's New dialog was visible
+
 ## 0.19.0 (2026-05-10)
 
 ### Features
