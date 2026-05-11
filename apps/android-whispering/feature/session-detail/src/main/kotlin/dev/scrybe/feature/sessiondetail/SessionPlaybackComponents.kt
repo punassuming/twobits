@@ -6,10 +6,12 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -121,7 +123,7 @@ internal fun PlaybackCard(
             )
         }
         if (state.speakerSegments.isNotEmpty()) {
-            SpeakerSegmentBar(
+            PerSpeakerTimelineSection(
                 segments = state.speakerSegments,
                 durationMs = state.session.durationMs,
                 playbackPositionMs = state.playbackPositionMs,
@@ -319,6 +321,70 @@ internal fun SpeakerSegmentBar(
                     end = Offset((endX).coerceAtLeast(startX + 2f), size.height / 2f),
                     strokeWidth = size.height,
                     cap = StrokeCap.Round,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun PerSpeakerTimelineSection(
+    segments: List<SpeakerSegment>,
+    durationMs: Long,
+    playbackPositionMs: Long,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (segments.isEmpty() || durationMs <= 0L) return
+    val speakerIds =
+        segments
+            .map { it.speakerId }
+            .distinct()
+            .sorted()
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        speakerIds.forEachIndexed { idx, speakerId ->
+            val colorIdx =
+                speakerId
+                    .lastOrNull { it.isDigit() }
+                    ?.digitToInt()
+                    ?.rem(speakerColorPalette.size) ?: (idx % speakerColorPalette.size)
+            val color = speakerColorPalette[colorIdx]
+            val label =
+                speakerId
+                    .removePrefix("SPEAKER_")
+                    .let { "Speaker $it" }
+            val speakerSegs = segments.filter { it.speakerId == speakerId }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(8.dp)
+                            .padding(0.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Canvas(modifier = Modifier.size(8.dp)) {
+                        drawCircle(color = color)
+                    }
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 4.dp),
+                )
+                SpeakerSegmentBar(
+                    segments = speakerSegs,
+                    durationMs = durationMs,
+                    playbackPositionMs = playbackPositionMs,
+                    onSeek = onSeek,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }

@@ -58,8 +58,8 @@ class OpenAiInsightService
                         """
                         Extract key topics from this transcript. Estimate when each topic is discussed within ${durationMs}ms.
                         Return ONLY a JSON array: [{"timeMs":1000,"label":"topic name"}]
-                        Keep labels short (2-4 words). Return 3-8 topics.
-                        Transcript: ${transcriptText.take(800)}
+                        Keep labels short (2-4 words). Return 5-15 topics.
+                        Transcript: ${transcriptText.take(1200)}
                         """.trimIndent()
                     val raw = callOpenAi(apiKey, prompt)
                     unwrapJson(raw).ifBlank { "[]" }

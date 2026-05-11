@@ -231,6 +231,23 @@ fun SettingsScreen(
                                             Text("Clear Key")
                                         }
                                     }
+                                    OutlinedButton(
+                                        onClick = viewModel::testApiConnection,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        enabled =
+                                            uiState.apiKeyValidationStatus !=
+                                                ApiKeyValidationStatus.Validating,
+                                    ) {
+                                        Text(
+                                            if (uiState.apiKeyValidationStatus ==
+                                                ApiKeyValidationStatus.Validating
+                                            ) {
+                                                "Testing…"
+                                            } else {
+                                                "Test Connection"
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         },
@@ -284,123 +301,42 @@ fun SettingsScreen(
                         },
                         content = {
                             if (uiState.aiFeaturesProvider == ProviderType.OPENAI.name) {
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Surface(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        color = MaterialTheme.colorScheme.surface,
-                                        shape = MaterialTheme.shapes.medium,
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.surface,
+                                    shape = MaterialTheme.shapes.medium,
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
                                     ) {
-                                        Column(
-                                            modifier = Modifier.padding(12.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            Text(
-                                                text = "AI profile draft model",
-                                                style = MaterialTheme.typography.labelLarge,
-                                            )
-                                            Text(
-                                                text = selectedProfileModel.title,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.primary,
-                                            )
-                                            Text(
-                                                text = selectedProfileModel.supportingText,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                            Text(
-                                                text = "Profiles uses this model whenever you generate an AI draft.",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            ) {
-                                                OutlinedButton(
-                                                    onClick = {
-                                                        viewModel.clearProfileSuggestionModelTestState()
-                                                        showProfileModelPicker = true
-                                                    },
-                                                    modifier = Modifier.weight(1f),
-                                                ) {
-                                                    Text("Choose Model")
-                                                }
-                                                OutlinedButton(
-                                                    onClick = viewModel::testProfileSuggestionModel,
-                                                    modifier = Modifier.weight(1f),
-                                                    enabled =
-                                                        uiState.profileSuggestionModelTestState !is
-                                                            ProfileSuggestionModelTestUiState.Loading,
-                                                ) {
-                                                    Text(
-                                                        if (uiState.profileSuggestionModelTestState is
-                                                                ProfileSuggestionModelTestUiState.Loading
-                                                        ) {
-                                                            "Testing..."
-                                                        } else {
-                                                            "Test Model"
-                                                        },
-                                                    )
-                                                }
-                                            }
-                                            when (val modelTestState = uiState.profileSuggestionModelTestState) {
-                                                is ProfileSuggestionModelTestUiState.Success ->
-                                                    Text(
-                                                        text = "Connected. OpenAI accepted ${modelTestState.resolvedModelName}.",
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.primary,
-                                                    )
-                                                is ProfileSuggestionModelTestUiState.Error ->
-                                                    Text(
-                                                        text = modelTestState.message,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.error,
-                                                    )
-                                                ProfileSuggestionModelTestUiState.Idle,
-                                                ProfileSuggestionModelTestUiState.Loading,
-                                                -> Unit
-                                            }
-                                        }
-                                    }
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.AutoAwesome,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp),
-                                                tint = MaterialTheme.colorScheme.primary,
-                                            )
-                                            Text("Transform Model", style = MaterialTheme.typography.titleSmall)
-                                        }
                                         Text(
-                                            text = "Model used to run transform profiles against your transcripts.",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            text = "AI profile draft model",
+                                            style = MaterialTheme.typography.labelLarge,
                                         )
                                         Text(
-                                            text = selectedTransformModel.title,
+                                            text = selectedProfileModel.title,
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.primary,
                                         )
                                         Text(
-                                            text = selectedTransformModel.supportingText,
+                                            text = selectedProfileModel.supportingText,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                         Text(
-                                            text = selectedTransformModel.costSummary,
+                                            text = "Profiles uses this model whenever you generate an AI draft.",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                         OutlinedButton(
-                                            onClick = { showTransformModelPicker = true },
+                                            onClick = {
+                                                viewModel.clearProfileSuggestionModelTestState()
+                                                showProfileModelPicker = true
+                                            },
                                             modifier = Modifier.fillMaxWidth(),
                                         ) {
-                                            Text("Choose Transform Model")
+                                            Text("Choose Model")
                                         }
                                     }
                                 }
@@ -435,6 +371,49 @@ fun SettingsScreen(
                             }
                         },
                     )
+                    HorizontalDivider()
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.AutoAwesome,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Text("Transform Model", style = MaterialTheme.typography.titleSmall)
+                        }
+                        Text(
+                            text =
+                                "Model used to run transform profiles against your transcripts. " +
+                                    "When using on-device AI, this selection applies to profiles pinned to OpenAI.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = selectedTransformModel.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = selectedTransformModel.supportingText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = selectedTransformModel.costSummary,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedButton(
+                            onClick = { showTransformModelPicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Choose Transform Model")
+                        }
+                    }
                     HorizontalDivider()
                     Row(
                         modifier = Modifier.fillMaxWidth(),

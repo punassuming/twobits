@@ -19,6 +19,7 @@ data class RecentCaptureSession(
     val status: SessionStatus,
     val transcriptPreview: String?,
     val isArchived: Boolean,
+    val speakerCount: Int = 0,
 )
 
 enum class CapturePhase {

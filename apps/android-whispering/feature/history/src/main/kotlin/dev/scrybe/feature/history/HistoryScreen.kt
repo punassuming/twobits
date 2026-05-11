@@ -10,6 +10,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +68,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -304,6 +306,9 @@ fun HistoryScreen(
                                 Icon(Icons.Filled.FilterList, contentDescription = "Filter")
                             }
                         }
+                        IconButton(onClick = { showCreateFolder = true }) {
+                            Icon(Icons.Filled.CreateNewFolder, contentDescription = "New folder")
+                        }
                         Box {
                             IconButton(onClick = { showOverflowMenu = true }) {
                                 Icon(Icons.Filled.MoreVert, contentDescription = "More options")
@@ -312,32 +317,6 @@ fun HistoryScreen(
                                 expanded = showOverflowMenu,
                                 onDismissRequest = { showOverflowMenu = false },
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("Browse by tag") },
-                                    leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
-                                    onClick = {
-                                        showTagBrowser = true
-                                        showOverflowMenu = false
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Organize with AI") },
-                                    leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null) },
-                                    onClick = {
-                                        viewModel.suggestAndApplyClusters()
-                                        showOverflowMenu = false
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("New folder") },
-                                    leadingIcon = {
-                                        Icon(Icons.Filled.CreateNewFolder, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        showCreateFolder = true
-                                        showOverflowMenu = false
-                                    },
-                                )
                                 DropdownMenuItem(
                                     text = { Text("Import recording") },
                                     leadingIcon = { Icon(Icons.Filled.FileOpen, contentDescription = null) },
@@ -389,6 +368,20 @@ fun HistoryScreen(
                     ) {
                         if (isAiWorking) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        FolderNavigationRow(
+                            breadcrumb = state.breadcrumb,
+                            subfolders = state.subfolders,
+                            currentFolderId = state.currentFolderId,
+                            onNavigate = { viewModel.navigateToFolder(it) },
+                            onCreateFolder = { showCreateFolder = true },
+                        )
+                        if (state.availableTags.isNotEmpty()) {
+                            TagFilterRow(
+                                availableTags = state.availableTags,
+                                selectedTag = state.filters.selectedTag,
+                                onSelectTag = { viewModel.selectTag(it) },
+                            )
                         }
                         AnimatedVisibility(
                             visible = searchVisible,
@@ -487,6 +480,28 @@ fun HistoryScreen(
                                 },
                             )
                         }
+                        AnimatedVisibility(
+                            visible =
+                                !isSelecting &&
+                                    state.subfolders.isEmpty() &&
+                                    state.currentFolderId == null &&
+                                    state.sessions.size >= 3,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut(),
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewModel.suggestAndApplyClusters() },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Icon(
+                                    Icons.Filled.AutoAwesome,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Organize with AI")
+                            }
+                        }
                         if (state.sessions.isEmpty() && state.subfolders.isEmpty()) {
                             Box(
                                 modifier =
@@ -565,6 +580,7 @@ fun HistoryScreen(
                                     onRetryTranscription = { viewModel.retryTranscription(item.session.id) },
                                     onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
                                     showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
+                                    onTagClick = { tag -> viewModel.selectTag(tag) },
                                 )
                             }
                             Box(modifier = Modifier.fillMaxSize()) {
@@ -983,4 +999,104 @@ private fun folderDescendantIds(
         }
     }
     return result
+}
+
+@Composable
+private fun FolderNavigationRow(
+    breadcrumb: List<Folder>,
+    subfolders: List<Folder>,
+    currentFolderId: String?,
+    onNavigate: (String?) -> Unit,
+    onCreateFolder: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FilterChip(
+            selected = currentFolderId == null,
+            onClick = { onNavigate(null) },
+            label = { Text("Home") },
+        )
+        breadcrumb.forEach { folder ->
+            Text(
+                "›",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FilterChip(
+                selected = folder.id == currentFolderId,
+                onClick = { onNavigate(folder.id) },
+                label = { Text(folder.name, maxLines = 1) },
+            )
+        }
+        subfolders
+            .filter { sf -> breadcrumb.none { it.id == sf.id } && sf.id != currentFolderId }
+            .forEach { subfolder ->
+                Text(
+                    "›",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                SuggestionChip(
+                    onClick = { onNavigate(subfolder.id) },
+                    label = { Text(subfolder.name, maxLines = 1) },
+                )
+            }
+        SuggestionChip(
+            onClick = onCreateFolder,
+            label = { Text("New folder") },
+            icon = {
+                Icon(
+                    Icons.Filled.CreateNewFolder,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun TagFilterRow(
+    availableTags: List<Pair<String, Int>>,
+    selectedTag: String?,
+    onSelectTag: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        availableTags.forEach { (tag, count) ->
+            FilterChip(
+                selected = tag == selectedTag,
+                onClick = { if (tag == selectedTag) onSelectTag(null) else onSelectTag(tag) },
+                label = { Text("$tag ($count)", maxLines = 1) },
+                trailingIcon =
+                    if (tag == selectedTag) {
+                        {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Clear",
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    } else {
+                        null
+                    },
+            )
+        }
+    }
 }

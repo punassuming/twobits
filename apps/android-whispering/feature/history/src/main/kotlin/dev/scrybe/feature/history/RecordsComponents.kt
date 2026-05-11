@@ -71,6 +71,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -137,6 +138,7 @@ internal fun RecordRow(
     onRetryTranscription: () -> Unit,
     onResetTranscriptionState: () -> Unit,
     showRecordingInfo: Boolean,
+    onTagClick: ((String) -> Unit)? = null,
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
 
@@ -234,13 +236,26 @@ internal fun RecordRow(
                             )
                         }
                         if (item.session.tags.isNotEmpty()) {
-                            Text(
-                                text = item.session.tags.joinToString("  •  "),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            val visibleTags = item.session.tags.take(3)
+                            val scrollState = rememberScrollState()
+                            Row(
+                                modifier = Modifier.horizontalScroll(scrollState),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                visibleTags.forEach { tag ->
+                                    SuggestionChip(
+                                        onClick = { onTagClick?.invoke(tag) },
+                                        label = {
+                                            Text(
+                                                text = tag,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                maxLines = 1,
+                                            )
+                                        },
+                                        modifier = Modifier.padding(0.dp),
+                                    )
+                                }
+                            }
                         }
                         item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
                             Text(
