@@ -12,6 +12,7 @@ import dev.scrybe.core.database.MIGRATION_4_5
 import dev.scrybe.core.database.MIGRATION_5_6
 import dev.scrybe.core.database.MIGRATION_6_7
 import dev.scrybe.core.database.MIGRATION_7_8
+import dev.scrybe.core.database.MIGRATION_8_9
 import javax.inject.Singleton
 
 @Module
@@ -27,7 +28,7 @@ object DatabaseModule {
                 context,
                 AppDatabase::class.java,
                 "scrybe-db",
-            ).addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            ).addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
             .fallbackToDestructiveMigrationFrom(1, 2, 3)
             .build()
 
@@ -54,4 +55,7 @@ object DatabaseModule {
 
     @Provides
     fun providesPersonDao(database: AppDatabase) = database.personDao()
+
+    @Provides
+    fun providesTranscriptChunkDao(database: AppDatabase) = database.transcriptChunkDao()
 }

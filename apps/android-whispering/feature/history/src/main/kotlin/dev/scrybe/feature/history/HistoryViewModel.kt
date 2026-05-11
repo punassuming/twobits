@@ -1247,4 +1247,7 @@ private fun buildBreadcrumb(
     return trail
 }
 
-internal fun isEligibleForTranscription(status: SessionStatus): Boolean = status == SessionStatus.RECORDED || status == SessionStatus.FAILED
+internal fun isEligibleForTranscription(status: SessionStatus): Boolean =
+    status == SessionStatus.RECORDED ||
+        status == SessionStatus.FAILED ||
+        status == SessionStatus.PARTIAL_TRANSCRIPTION

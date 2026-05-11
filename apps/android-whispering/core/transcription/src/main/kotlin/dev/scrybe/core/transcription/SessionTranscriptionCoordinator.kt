@@ -27,7 +27,7 @@ class SessionTranscriptionCoordinator
         private val transcriptDao: TranscriptDao,
         private val speakerSegmentDao: SpeakerSegmentDao,
         private val preferencesDataStore: AppPreferencesDataStore,
-        private val transcriptionOrchestrator: TranscriptionOrchestrator,
+        private val batchTranscriptionService: BatchTranscriptionService,
         private val diarizationService: DiarizationService,
         private val insightService: InsightService,
     ) {
@@ -60,14 +60,14 @@ class SessionTranscriptionCoordinator
             updateSessionStatus(sessionId, SessionStatus.TRANSCRIBING)
 
             val result =
-                transcriptionOrchestrator.transcribe(
+                batchTranscriptionService.transcribe(
                     sessionId = sessionId,
                     audioFile = audioFile,
                     providerType = providerType,
                 )
 
             return result.fold(
-                onSuccess = { transcript ->
+                onSuccess = { batchResult ->
                     transcriptDao.deleteTranscriptsForSessionAndType(
                         sessionId = sessionId,
                         type = TranscriptType.RAW.name,
@@ -76,7 +76,7 @@ class SessionTranscriptionCoordinator
                         TranscriptEntity(
                             id = UUID.randomUUID().toString(),
                             sessionId = sessionId,
-                            content = transcript.text,
+                            content = batchResult.text,
                             type = TranscriptType.RAW.name,
                             sourceTranscriptId = null,
                             providerType = providerType.name,
@@ -85,16 +85,27 @@ class SessionTranscriptionCoordinator
                             createdAt = System.currentTimeMillis(),
                         )
                     transcriptDao.insertTranscript(transcriptEntity)
+
+                    if (batchResult.isPartial) {
+                        updateSessionStatus(sessionId, SessionStatus.PARTIAL_TRANSCRIPTION)
+                        Log.w(
+                            TAG,
+                            "Session $sessionId partially transcribed: " +
+                                "${batchResult.completedChunks}/${batchResult.totalChunks} chunks",
+                        )
+                        return Result.success(transcriptEntity)
+                    }
+
                     updateSessionStatus(
                         sessionId = sessionId,
                         status = SessionStatus.TRANSCRIBED,
                         estimatedCostUsd = TranscriptionPricing.estimateUsd(session.durationMs),
                     )
                     if (preferencesDataStore.enableSpeakerIdentification.first()) {
-                        launchDiarization(sessionId, audioFile, transcript.text, providerType)
+                        launchDiarization(sessionId, audioFile, batchResult.text, providerType)
                     }
                     if (preferencesDataStore.enableInsightAnalysis.first()) {
-                        launchInsights(sessionId, transcript.text, session.durationMs, providerType)
+                        launchInsights(sessionId, batchResult.text, session.durationMs, providerType)
                     }
                     Result.success(transcriptEntity)
                 },
@@ -105,6 +116,8 @@ class SessionTranscriptionCoordinator
                 },
             )
         }
+
+        suspend fun retranscribePartial(sessionId: String): Result<TranscriptEntity> = transcribeSession(sessionId)
 
         private fun launchDiarization(
             sessionId: String,

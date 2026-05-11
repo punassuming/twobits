@@ -4,6 +4,8 @@
 
 ### Features
 
+* add batch transcription with resume: long recordings are split into chunks (up to ~16 min each, staying under Whisper's 25 MB file limit); each chunk's transcript is saved to the database immediately after it completes; if a chunk fails (e.g. network timeout), the completed portions are preserved as a `Partial` transcript and the remaining chunks can be retried from where they left off via "Resume Transcription" in the ⋮ menu or the inline banner in the transcript section
+
 ### Improvements
 
 * move post-process profiles out of the session detail scroll view into a swipe-up bottom sheet; access via "Post-process transcript" button or the ⋮ menu → keeps content visible without clutter
@@ -11,6 +13,7 @@
 * when speaker identification is enabled, transcript text is colored by speaker — matching the segment bar colors on the playback timeline
 * update speaker identification toggle description to mention the colored timeline and inline text coloring where results appear
 * update insight analysis toggle description to mention the AI Analysis timeline in recording detail
+* sessions with a partial transcript now show a "Partial" status chip in History and an inline banner with a "Resume" button in session detail
 
 ### Fixes
 

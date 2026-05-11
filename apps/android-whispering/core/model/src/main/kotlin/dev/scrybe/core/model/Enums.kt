@@ -8,6 +8,7 @@ enum class SessionStatus {
     QUEUED,
     TRANSCRIBING,
     TRANSCRIBED,
+    PARTIAL_TRANSCRIPTION,
     EDITED,
     ARCHIVED,
     FAILED,

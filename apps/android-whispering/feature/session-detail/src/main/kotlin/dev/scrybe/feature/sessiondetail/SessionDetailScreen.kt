@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
@@ -362,7 +363,8 @@ fun SessionDetailScreen(
                                 val sessionStatus = successState.session.status
                                 val hasStatusItems =
                                     sessionStatus == SessionStatus.FAILED ||
-                                        sessionStatus == SessionStatus.TRANSCRIBING
+                                        sessionStatus == SessionStatus.TRANSCRIBING ||
+                                        sessionStatus == SessionStatus.PARTIAL_TRANSCRIPTION
                                 if (hasStatusItems) {
                                     HorizontalDivider()
                                     Text(
@@ -375,6 +377,18 @@ fun SessionDetailScreen(
                                     if (sessionStatus == SessionStatus.FAILED) {
                                         DropdownMenuItem(
                                             text = { Text("Retry Transcription") },
+                                            leadingIcon = {
+                                                Icon(Icons.Filled.Refresh, contentDescription = null)
+                                            },
+                                            onClick = {
+                                                actionMenuExpanded = false
+                                                viewModel.transcribe()
+                                            },
+                                        )
+                                    }
+                                    if (sessionStatus == SessionStatus.PARTIAL_TRANSCRIPTION) {
+                                        DropdownMenuItem(
+                                            text = { Text("Resume Transcription") },
                                             leadingIcon = {
                                                 Icon(Icons.Filled.Refresh, contentDescription = null)
                                             },
@@ -463,6 +477,7 @@ fun SessionDetailScreen(
                             state = state,
                             onEditTranscript = { isEditingTranscript = true },
                             onDeleteTranscript = { deleteTranscriptTarget = it },
+                            onResumeTranscription = viewModel::transcribe,
                         )
                         if (state.profiles.isNotEmpty() && state.currentTranscript != null) {
                             OutlinedButton(
@@ -904,6 +919,7 @@ private fun TranscriptSection(
     state: SessionDetailUiState.Success,
     onEditTranscript: () -> Unit,
     onDeleteTranscript: (Transcript) -> Unit,
+    onResumeTranscription: () -> Unit = {},
 ) {
     val transcripts = state.transcripts
     if (state.currentTranscript == null && transcripts.isEmpty()) {
@@ -914,6 +930,38 @@ private fun TranscriptSection(
             )
         }
         return
+    }
+
+    if (state.session.status == SessionStatus.PARTIAL_TRANSCRIPTION) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ),
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.HourglassEmpty,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = "Partial transcript — some audio segments failed. Tap to resume.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onResumeTranscription) {
+                    Text("Resume")
+                }
+            }
+        }
     }
 
     val rawTranscripts = listOfNotNull(state.currentTranscript)
