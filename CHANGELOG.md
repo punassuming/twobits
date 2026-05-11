@@ -19,6 +19,7 @@
 
 ### Fixes
 
+* fix unit tests for bulk transcription eligibility: `BulkTranscriptionEligibilityTest` was not updated when `PARTIAL_TRANSCRIPTION` was added to the eligible set, causing CI to fail
 * fix location never captured: `ACCESS_COARSE_LOCATION` was declared in the manifest but never requested at runtime; Android 6+ requires an explicit runtime grant — the permission dialog now appears on the first recording attempt and location capture is treated as optional (recording proceeds regardless of the grant decision)
 * fix long recordings failing transcription: OkHttp call timeout increased from 15 → 35 minutes (write: 5 → 15 min, read: 10 → 20 min) to accommodate Whisper API server-side processing time for recordings over 30 minutes
 

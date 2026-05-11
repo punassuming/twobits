@@ -44,15 +44,25 @@ class BulkTranscriptionEligibilityTest {
     }
 
     @Test
-    fun `eligible statuses are exactly RECORDED and FAILED`() {
+    fun `PARTIAL_TRANSCRIPTION status is eligible for resume`() {
+        assertTrue(isEligibleForTranscription(SessionStatus.PARTIAL_TRANSCRIPTION))
+    }
+
+    @Test
+    fun `eligible statuses are exactly RECORDED, FAILED, and PARTIAL_TRANSCRIPTION`() {
         val allStatuses = SessionStatus.entries
-        val expectedEligible = setOf(SessionStatus.RECORDED, SessionStatus.FAILED)
+        val expectedEligible =
+            setOf(
+                SessionStatus.RECORDED,
+                SessionStatus.FAILED,
+                SessionStatus.PARTIAL_TRANSCRIPTION,
+            )
         val actualEligible = allStatuses.filter { isEligibleForTranscription(it) }.toSet()
         assertEquals(expectedEligible, actualEligible)
     }
 
     @Test
-    fun `bulk eligibility filter keeps only RECORDED and FAILED from a mixed list`() {
+    fun `bulk eligibility filter keeps only RECORDED, FAILED, and PARTIAL_TRANSCRIPTION from a mixed list`() {
         val statuses =
             listOf(
                 SessionStatus.RECORDED,
@@ -60,9 +70,13 @@ class BulkTranscriptionEligibilityTest {
                 SessionStatus.TRANSCRIBED,
                 SessionStatus.FAILED,
                 SessionStatus.EDITED,
+                SessionStatus.PARTIAL_TRANSCRIPTION,
             )
         val eligible = statuses.filter { isEligibleForTranscription(it) }
-        assertEquals(listOf(SessionStatus.RECORDED, SessionStatus.FAILED), eligible)
+        assertEquals(
+            listOf(SessionStatus.RECORDED, SessionStatus.FAILED, SessionStatus.PARTIAL_TRANSCRIPTION),
+            eligible,
+        )
     }
 
     @Test
@@ -71,6 +85,7 @@ class BulkTranscriptionEligibilityTest {
             listOf(
                 SessionStatus.RECORDED,
                 SessionStatus.FAILED,
+                SessionStatus.PARTIAL_TRANSCRIPTION,
                 SessionStatus.TRANSCRIBING,
                 SessionStatus.TRANSCRIBED,
                 SessionStatus.EDITED,
@@ -80,7 +95,7 @@ class BulkTranscriptionEligibilityTest {
         statuses.forEach { status ->
             if (isEligibleForTranscription(status)) queued++ else skipped++
         }
-        assertEquals(2, queued)
+        assertEquals(3, queued)
         assertEquals(3, skipped)
     }
 
