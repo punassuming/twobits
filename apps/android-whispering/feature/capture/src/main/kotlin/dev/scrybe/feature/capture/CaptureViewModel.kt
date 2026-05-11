@@ -111,13 +111,16 @@ class CaptureViewModel
                                     ?: values.maxByOrNull { it.createdAt }?.content
                             }
                     val recentSessions = sessions.take(3)
+                    val speakerCounts =
+                        recentSessions.associate { session ->
+                            session.id to
+                                speakerSegmentDao
+                                    .getSegmentsOnce(session.id)
+                                    .map { it.speakerId }
+                                    .distinct()
+                                    .size
+                        }
                     recentSessions.map { session ->
-                        val speakerCount =
-                            speakerSegmentDao
-                                .getSegmentsOnce(session.id)
-                                .map { it.speakerId }
-                                .distinct()
-                                .size
                         RecentCaptureSession(
                             id = session.id,
                             title = session.title,
@@ -131,7 +134,7 @@ class CaptureViewModel
                                     .valueOf(session.status),
                             transcriptPreview = transcriptLookup[session.id],
                             isArchived = session.isArchived,
-                            speakerCount = speakerCount,
+                            speakerCount = speakerCounts[session.id] ?: 0,
                         )
                     }
                 }.collectLatest { recentSessions ->

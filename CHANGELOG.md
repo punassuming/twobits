@@ -21,6 +21,8 @@
 
 ### Fixes
 
+* batch speaker segment queries when loading recent capture cards instead of issuing one query per card
+
 ## 0.20.0 (2026-05-11)
 
 ### Features

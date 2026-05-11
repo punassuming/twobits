@@ -231,22 +231,15 @@ fun SettingsScreen(
                                             Text("Clear Key")
                                         }
                                     }
+                                    val isValidating =
+                                        uiState.apiKeyValidationStatus ==
+                                            ApiKeyValidationStatus.Validating
                                     OutlinedButton(
                                         onClick = viewModel::testApiConnection,
                                         modifier = Modifier.fillMaxWidth(),
-                                        enabled =
-                                            uiState.apiKeyValidationStatus !=
-                                                ApiKeyValidationStatus.Validating,
+                                        enabled = !isValidating,
                                     ) {
-                                        Text(
-                                            if (uiState.apiKeyValidationStatus ==
-                                                ApiKeyValidationStatus.Validating
-                                            ) {
-                                                "Testing…"
-                                            } else {
-                                                "Test Connection"
-                                            },
-                                        )
+                                        Text(if (isValidating) "Testing…" else "Test Connection")
                                     }
                                 }
                             }
