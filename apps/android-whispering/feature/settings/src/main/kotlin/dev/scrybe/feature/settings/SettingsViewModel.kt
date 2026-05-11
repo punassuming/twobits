@@ -567,6 +567,28 @@ class SettingsViewModel
             viewModelScope.launch { preferencesDataStore.setTaskForgeAction(action) }
         }
 
+        fun testApiConnection() {
+            viewModelScope.launch {
+                val trimmed = apiKey.value.trim()
+                if (trimmed.isEmpty()) {
+                    apiKeyValidationStatus.value = ApiKeyValidationStatus.Unknown
+                    apiKeyValidationMessage.value = "Enter an API key first"
+                    return@launch
+                }
+                apiKeyValidationStatus.value = ApiKeyValidationStatus.Validating
+                apiKeyValidationMessage.value = "Testing connection…"
+                apiKeyValidator
+                    .validate(trimmed)
+                    .onSuccess {
+                        apiKeyValidationStatus.value = ApiKeyValidationStatus.Valid
+                        apiKeyValidationMessage.value = "Connected to OpenAI"
+                    }.onFailure {
+                        apiKeyValidationStatus.value = ApiKeyValidationStatus.Invalid
+                        apiKeyValidationMessage.value = it.message ?: "Connection test failed"
+                    }
+            }
+        }
+
         fun testProfileSuggestionModel() {
             viewModelScope.launch {
                 profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Loading

@@ -4,9 +4,24 @@
 
 ### Features
 
+* per-speaker timeline rows in session playback: the single shared segment bar is replaced with one labeled row per distinct speaker, each with a colored dot, speaker name, and its own timeline bar
+* speaker labels in paragraphized transcript: when speaker identification is enabled, a bold inline "Speaker N:" prefix is inserted at each turn boundary in the transcript view
+* speaker count badge on recent-session cards in the capture tab: sessions with more than one identified speaker show a "X speakers" label below the timestamp
+* folder navigation row in History: a persistent horizontally scrollable breadcrumb + subfolder chip row appears above the search bar; tapping a chip navigates directly into that folder or back up the hierarchy; a "New folder" chip at the end opens the create-folder dialog inline
+* tag filter bar in History: a persistent scrollable row of tag chips (with record counts) lets users apply or clear tag filters without opening the tag browser sheet; the selected tag chip shows an ✕ to clear; tags on each session row card are now shown as small tappable chip badges that apply the tag filter immediately
+* "Organize with AI" clustering is now surfaced as an inline button above the session list when the library has 3+ recordings and no folders have been created yet, making it easier to discover
+* "New folder" action is now a dedicated icon button in the History top app bar (alongside Filter and Search), reducing menu depth for common folder management
+* expand AI topic markers from 3–8 to 5–15 per session, with a larger transcript input budget (1 200 chars) for more complete coverage of long recordings
+
 ### Improvements
 
+* standardized AI model choices for profile drafting: GPT-5, GPT-5.1, GPT-5.4, and GPT-5.4 mini are now available in the "AI profile draft model" picker alongside the existing GPT-5 mini, GPT-5 nano, GPT-4.1 mini, and GPT-4.1 nano options
+* moved the OpenAI connection test out of the "AI profile draft model" card and into the Transcription → OpenAI key section as a dedicated "Test Connection" button; the test result is displayed inline below the Save Key / Clear Key row
+* the "Transform Model" picker is now always visible in the AI Features section regardless of whether OpenAI or on-device AI is the active provider; when on-device AI is selected a note explains that the selection applies to profiles pinned to OpenAI
+
 ### Fixes
+
+* batch speaker segment queries when loading recent capture cards instead of issuing one query per card
 
 ## 0.20.0 (2026-05-11)
 

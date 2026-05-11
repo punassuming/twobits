@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.service.recording.RecordingForegroundService
@@ -31,6 +32,7 @@ class CaptureViewModel
         private val audioRecorder: AudioRecorder,
         private val recordingSessionDao: RecordingSessionDao,
         private val transcriptDao: TranscriptDao,
+        private val speakerSegmentDao: SpeakerSegmentDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val recordingSessionEvents: RecordingSessionEvents,
     ) : ViewModel() {
@@ -108,17 +110,31 @@ class CaptureViewModel
                                     ?.content
                                     ?: values.maxByOrNull { it.createdAt }?.content
                             }
-                    sessions.take(3).map { session ->
+                    val recentSessions = sessions.take(3)
+                    val speakerCounts =
+                        recentSessions.associate { session ->
+                            session.id to
+                                speakerSegmentDao
+                                    .getSegmentsOnce(session.id)
+                                    .map { it.speakerId }
+                                    .distinct()
+                                    .size
+                        }
+                    recentSessions.map { session ->
                         RecentCaptureSession(
                             id = session.id,
                             title = session.title,
                             createdAtLabel =
-                                java.time.Instant.ofEpochMilli(session.createdAt)
+                                java.time.Instant
+                                    .ofEpochMilli(session.createdAt)
                                     .atZone(ZoneId.systemDefault())
                                     .format(RECENT_TIME_FORMATTER),
-                            status = dev.scrybe.core.model.SessionStatus.valueOf(session.status),
+                            status =
+                                dev.scrybe.core.model.SessionStatus
+                                    .valueOf(session.status),
                             transcriptPreview = transcriptLookup[session.id],
                             isArchived = session.isArchived,
+                            speakerCount = speakerCounts[session.id] ?: 0,
                         )
                     }
                 }.collectLatest { recentSessions ->

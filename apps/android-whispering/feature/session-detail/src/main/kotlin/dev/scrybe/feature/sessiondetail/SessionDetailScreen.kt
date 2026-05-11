@@ -76,6 +76,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -1146,6 +1147,7 @@ private fun buildSpeakerAnnotatedString(
         return AnnotatedString(paragraphed)
     }
     val len = paragraphed.length
+    var lastSpeakerId: String? = null
     return buildAnnotatedString {
         var pos = 0
         for (segment in speakerSegments.sortedBy { it.startMs }) {
@@ -1161,6 +1163,14 @@ private fun buildSpeakerAnnotatedString(
                         .toIntOrNull()
                         ?.minus(1) ?: 0
                 val color = speakerColorPalette[speakerIndex % speakerColorPalette.size]
+                if (segment.speakerId != lastSpeakerId) {
+                    val speakerNum = segment.speakerId.filter { it.isDigit() }.ifEmpty { "1" }
+                    val prefix = if (pos > 0) "\n\n" else ""
+                    withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
+                        append("${prefix}Speaker $speakerNum: ")
+                    }
+                    lastSpeakerId = segment.speakerId
+                }
                 withStyle(SpanStyle(color = color)) {
                     append(paragraphed.substring(start, end))
                 }

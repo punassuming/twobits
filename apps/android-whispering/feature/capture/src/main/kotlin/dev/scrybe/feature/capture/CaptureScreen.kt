@@ -308,6 +308,13 @@ private fun RecentRecordingsSection(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        if (session.speakerCount > 1) {
+                            Text(
+                                text = "${session.speakerCount} speakers",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
                         session.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
                             Text(
                                 text = preview,
