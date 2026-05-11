@@ -110,6 +110,7 @@ fun HistoryScreen(
     var searchVisible by remember { mutableStateOf(false) }
     var expandedFolderIds by remember { mutableStateOf(emptySet<String>()) }
     var renameTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
+    var tagsTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
     var infoTarget by remember { mutableStateOf<Pair<String, RecordInfo>?>(null) }
     var deleteTarget by remember { mutableStateOf<HistorySessionItem?>(null) }
     var confirmBulkDelete by remember { mutableStateOf(false) }
@@ -554,7 +555,7 @@ fun HistoryScreen(
                                     },
                                     onTransform = { viewModel.openTransformDialog(listOf(item.session.id)) },
                                     onRename = { renameTarget = item },
-                                    onAiRename = { viewModel.autoRenameSession(item.session.id) },
+                                    onManageTags = { tagsTarget = item },
                                     onDelete = { deleteTarget = item },
                                     onInfo = { infoTarget = item.session.id to item.toRecordInfo() },
                                     onOpenWith = { openAudioWith(context, item.session) },
@@ -727,6 +728,18 @@ fun HistoryScreen(
             onConfirm = { newTitle ->
                 viewModel.renameSession(item.session.id, newTitle)
                 renameTarget = null
+            },
+            onSuggestAiTitle = { viewModel.suggestTitleForSession(item.session.id) },
+        )
+    }
+
+    tagsTarget?.let { item ->
+        HistoryTagsDialog(
+            initialTags = item.session.tags,
+            onDismiss = { tagsTarget = null },
+            onSave = { tagsInput ->
+                viewModel.saveTags(item.session.id, tagsInput)
+                tagsTarget = null
             },
         )
     }
@@ -919,6 +932,40 @@ fun HistoryScreen(
             },
         )
     }
+}
+
+@Composable
+private fun HistoryTagsDialog(
+    initialTags: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var value by remember(initialTags) { mutableStateOf(initialTags.joinToString(", ")) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Manage Tags") },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                label = { Text("Tags") },
+                supportingText = { Text("Use commas or new lines. Tags are searchable from Records.") },
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(value) }) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 private fun folderDescendantIds(

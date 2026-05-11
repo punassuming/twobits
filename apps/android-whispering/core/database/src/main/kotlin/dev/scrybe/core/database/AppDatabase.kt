@@ -13,8 +13,9 @@ import androidx.room.RoomDatabase
         FolderEntity::class,
         SpeakerSegmentEntity::class,
         PersonEntity::class,
+        TranscriptChunkEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,4 +34,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun speakerSegmentDao(): SpeakerSegmentDao
 
     abstract fun personDao(): PersonDao
+
+    abstract fun transcriptChunkDao(): TranscriptChunkDao
 }

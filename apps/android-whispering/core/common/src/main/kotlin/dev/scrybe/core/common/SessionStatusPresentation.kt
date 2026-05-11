@@ -27,6 +27,7 @@ object SessionStatusPresentation {
             isArchived -> "Archived"
             status == SessionStatus.TRANSCRIBING -> "Transcribing"
             status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> "Transcribed"
+            status == SessionStatus.PARTIAL_TRANSCRIPTION -> "Partial"
             status == SessionStatus.FAILED -> "Failed"
             else -> "Recorded"
         }
@@ -37,7 +38,8 @@ object SessionStatusPresentation {
     ): ImageVector =
         when {
             isArchived -> Icons.Filled.Archive
-            status == SessionStatus.TRANSCRIBING -> Icons.Filled.HourglassEmpty
+            status == SessionStatus.TRANSCRIBING ||
+                status == SessionStatus.PARTIAL_TRANSCRIPTION -> Icons.Filled.HourglassEmpty
             status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> Icons.Filled.CheckCircle
             status == SessionStatus.FAILED -> Icons.Filled.Error
             // Covers RECORDED, IDLE, RECORDING, STOPPING, QUEUED and any future pre-transcription states
@@ -53,6 +55,7 @@ object SessionStatusPresentation {
         when {
             isArchived -> MaterialTheme.colorScheme.tertiary
             status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.secondary
+            status == SessionStatus.PARTIAL_TRANSCRIPTION -> MaterialTheme.colorScheme.secondary
             status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> MaterialTheme.colorScheme.primary
             status == SessionStatus.FAILED -> MaterialTheme.colorScheme.error
             else -> MaterialTheme.colorScheme.onSurfaceVariant

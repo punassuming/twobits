@@ -4,9 +4,24 @@
 
 ### Features
 
+* add batch transcription with resume: long recordings are split into chunks (up to ~16 min each, staying under Whisper's 25 MB file limit); each chunk's transcript is saved to the database immediately after it completes; if a chunk fails (e.g. network timeout), the completed portions are preserved as a `Partial` transcript and the remaining chunks can be retried from where they left off via "Resume Transcription" in the ⋮ menu or the inline banner in the transcript section
+
 ### Improvements
 
+* combine "Rename" and "AI Rename" into a single rename dialog with an inline sparkle button: tap the ✨ icon in the title field to get an AI-suggested name, review it, then save or adjust — the standalone "AI Rename" menu item is removed from both the session detail and history menus
+* tag management is now accessible from the history ⋮ menu (Manage Tags) in addition to session detail, so tags can be added or edited without opening a recording
+* move post-process profiles out of the session detail scroll view into a swipe-up bottom sheet; access via "Post-process transcript" button or the ⋮ menu → keeps content visible without clutter
+* transcripts now display with paragraph breaks at sentence boundaries, making long recordings significantly easier to read
+* when speaker identification is enabled, transcript text is colored by speaker — matching the segment bar colors on the playback timeline
+* update speaker identification toggle description to mention the colored timeline and inline text coloring where results appear
+* update insight analysis toggle description to mention the AI Analysis timeline in recording detail
+* sessions with a partial transcript now show a "Partial" status chip in History and an inline banner with a "Resume" button in session detail
+
 ### Fixes
+
+* fix unit tests for bulk transcription eligibility: `BulkTranscriptionEligibilityTest` was not updated when `PARTIAL_TRANSCRIPTION` was added to the eligible set, causing CI to fail
+* fix location never captured: `ACCESS_COARSE_LOCATION` was declared in the manifest but never requested at runtime; Android 6+ requires an explicit runtime grant — the permission dialog now appears on the first recording attempt and location capture is treated as optional (recording proceeds regardless of the grant decision)
+* fix long recordings failing transcription: OkHttp call timeout increased from 15 → 35 minutes (write: 5 → 15 min, read: 10 → 20 min) to accommodate Whisper API server-side processing time for recordings over 30 minutes
 
 ## 0.19.1 (2026-05-10)
 

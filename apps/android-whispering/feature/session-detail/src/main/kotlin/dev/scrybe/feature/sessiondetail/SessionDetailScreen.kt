@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
@@ -37,6 +39,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +50,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -56,6 +60,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -69,7 +74,10 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -80,6 +88,7 @@ import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
@@ -104,6 +113,8 @@ fun SessionDetailScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var transformResult by remember { mutableStateOf<SessionDetailEvent.TransformResult?>(null) }
+    var showTransformSheet by remember { mutableStateOf(false) }
+    val transformSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -232,23 +243,13 @@ fun SessionDetailScreen(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Transform…") },
+                                        text = { Text("Post-process…") },
                                         leadingIcon = {
                                             Icon(Icons.Filled.AutoFixHigh, contentDescription = null)
                                         },
                                         onClick = {
                                             actionMenuExpanded = false
-                                            viewModel.transformDefaultProfile()
-                                        },
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("AI Rename") },
-                                        leadingIcon = {
-                                            Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                                        },
-                                        onClick = {
-                                            actionMenuExpanded = false
-                                            viewModel.aiRename()
+                                            showTransformSheet = true
                                         },
                                     )
                                 }
@@ -352,7 +353,8 @@ fun SessionDetailScreen(
                                 val sessionStatus = successState.session.status
                                 val hasStatusItems =
                                     sessionStatus == SessionStatus.FAILED ||
-                                        sessionStatus == SessionStatus.TRANSCRIBING
+                                        sessionStatus == SessionStatus.TRANSCRIBING ||
+                                        sessionStatus == SessionStatus.PARTIAL_TRANSCRIPTION
                                 if (hasStatusItems) {
                                     HorizontalDivider()
                                     Text(
@@ -365,6 +367,18 @@ fun SessionDetailScreen(
                                     if (sessionStatus == SessionStatus.FAILED) {
                                         DropdownMenuItem(
                                             text = { Text("Retry Transcription") },
+                                            leadingIcon = {
+                                                Icon(Icons.Filled.Refresh, contentDescription = null)
+                                            },
+                                            onClick = {
+                                                actionMenuExpanded = false
+                                                viewModel.transcribe()
+                                            },
+                                        )
+                                    }
+                                    if (sessionStatus == SessionStatus.PARTIAL_TRANSCRIPTION) {
+                                        DropdownMenuItem(
+                                            text = { Text("Resume Transcription") },
                                             leadingIcon = {
                                                 Icon(Icons.Filled.Refresh, contentDescription = null)
                                             },
@@ -453,12 +467,22 @@ fun SessionDetailScreen(
                             state = state,
                             onEditTranscript = { isEditingTranscript = true },
                             onDeleteTranscript = { deleteTranscriptTarget = it },
+                            onResumeTranscription = viewModel::transcribe,
                         )
-                        TransformSection(
-                            state = state,
-                            onTransformDefault = viewModel::transformDefaultProfile,
-                            onTransformProfile = viewModel::transform,
-                        )
+                        if (state.profiles.isNotEmpty() && state.currentTranscript != null) {
+                            OutlinedButton(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = { showTransformSheet = true },
+                            ) {
+                                Icon(
+                                    Icons.Filled.AutoFixHigh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Post-process transcript")
+                            }
+                        }
                     }
                 }
             }
@@ -466,11 +490,27 @@ fun SessionDetailScreen(
     }
 
     val successState = uiState as? SessionDetailUiState.Success
+
+    if (showTransformSheet && successState != null) {
+        ModalBottomSheet(
+            onDismissRequest = { showTransformSheet = false },
+            sheetState = transformSheetState,
+        ) {
+            TransformSection(
+                state = successState,
+                onTransformDefault = viewModel::transformDefaultProfile,
+                onTransformProfile = viewModel::transform,
+                onDismiss = { showTransformSheet = false },
+            )
+        }
+    }
+
     if (successState?.shouldPromptForRename == true) {
         RenamePromptDialog(
             initialTitle = successState.session.title,
             onDismiss = viewModel::dismissRenamePrompt,
             onConfirm = viewModel::renameSession,
+            onSuggestAiTitle = viewModel::suggestTitle,
         )
     }
 
@@ -482,6 +522,7 @@ fun SessionDetailScreen(
                 viewModel.renameSession(newTitle)
                 showRenameDialog = false
             },
+            onSuggestAiTitle = viewModel::suggestTitle,
         )
     }
 
@@ -773,20 +814,25 @@ private fun TransformSection(
     state: SessionDetailUiState.Success,
     onTransformDefault: () -> Unit,
     onTransformProfile: (String) -> Unit,
+    onDismiss: () -> Unit = {},
 ) {
     if (state.profiles.isEmpty()) {
         return
     }
-    ScrybeSectionCard(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    Column(
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         ScrybeSectionHeader(
             title = "Post-process",
             subtitle = "Run a saved prompt against the latest transcription.",
         )
-        OutlinedButton(
+        Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = onTransformDefault,
+            onClick = {
+                onTransformDefault()
+                onDismiss()
+            },
             enabled = state.transcripts.any { it.type.name == "RAW" } && !state.isTransforming,
         ) {
             Icon(Icons.Filled.AutoAwesome, contentDescription = null)
@@ -797,9 +843,13 @@ private fun TransformSection(
             TransformProfileRow(
                 profile = profile,
                 isDefault = profile.id == state.defaultProfileId || profile.isDefault,
-                onRun = { onTransformProfile(profile.id) },
+                onRun = {
+                    onTransformProfile(profile.id)
+                    onDismiss()
+                },
             )
         }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -861,6 +911,7 @@ private fun TranscriptSection(
     state: SessionDetailUiState.Success,
     onEditTranscript: () -> Unit,
     onDeleteTranscript: (Transcript) -> Unit,
+    onResumeTranscription: () -> Unit = {},
 ) {
     val transcripts = state.transcripts
     if (state.currentTranscript == null && transcripts.isEmpty()) {
@@ -871,6 +922,38 @@ private fun TranscriptSection(
             )
         }
         return
+    }
+
+    if (state.session.status == SessionStatus.PARTIAL_TRANSCRIPTION) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ),
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.HourglassEmpty,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = "Partial transcript — some audio segments failed. Tap to resume.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onResumeTranscription) {
+                    Text("Resume")
+                }
+            }
+        }
     }
 
     val rawTranscripts = listOfNotNull(state.currentTranscript)
@@ -886,6 +969,8 @@ private fun TranscriptSection(
                 TranscriptCard(
                     transcript = transcript,
                     titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited" else null,
+                    speakerSegments = state.speakerSegments,
+                    durationMs = state.session.durationMs,
                     onDelete = { onDeleteTranscript(transcript) },
                     onEdit = onEditTranscript,
                 )
@@ -896,6 +981,8 @@ private fun TranscriptSection(
                     TranscriptCard(
                         transcript = original,
                         titleOverride = "Original",
+                        speakerSegments = emptyList(),
+                        durationMs = state.session.durationMs,
                         onDelete = { onDeleteTranscript(original) },
                         onEdit = onEditTranscript,
                     )
@@ -907,6 +994,8 @@ private fun TranscriptSection(
                 TranscriptCard(
                     transcript = transcript,
                     titleOverride = transcript.type.name,
+                    speakerSegments = emptyList(),
+                    durationMs = state.session.durationMs,
                     onDelete = { onDeleteTranscript(transcript) },
                     onEdit = onEditTranscript,
                 )
@@ -920,6 +1009,8 @@ private fun TranscriptCard(transcript: Transcript) {
     TranscriptCard(
         transcript = transcript,
         titleOverride = transcript.type.name,
+        speakerSegments = emptyList(),
+        durationMs = 0L,
         onDelete = null,
         onEdit = null,
     )
@@ -970,12 +1061,19 @@ private fun TranscriptCardActions(
 private fun TranscriptCard(
     transcript: Transcript,
     titleOverride: String?,
+    speakerSegments: List<SpeakerSegment>,
+    durationMs: Long,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
 ) {
     var expanded by remember(transcript.id) { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+
+    val formattedText =
+        remember(transcript.content, speakerSegments.size, durationMs) {
+            buildSpeakerAnnotatedString(transcript.content, speakerSegments, durationMs)
+        }
 
     Card(
         modifier =
@@ -1029,12 +1127,47 @@ private fun TranscriptCard(
                 )
             }
             Text(
-                text = transcript.content,
+                text = formattedText,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = if (expanded) Int.MAX_VALUE else 4,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+private fun buildSpeakerAnnotatedString(
+    content: String,
+    speakerSegments: List<SpeakerSegment>,
+    durationMs: Long,
+): AnnotatedString {
+    val paragraphed = content.replace(Regex("([.?!])\\s+([A-Z])"), "$1\n\n$2")
+    if (speakerSegments.isEmpty() || durationMs <= 0L) {
+        return AnnotatedString(paragraphed)
+    }
+    val len = paragraphed.length
+    return buildAnnotatedString {
+        var pos = 0
+        for (segment in speakerSegments.sortedBy { it.startMs }) {
+            val start = ((segment.startMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
+            val end = ((segment.endMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
+            if (start > pos) {
+                append(paragraphed.substring(pos, start))
+            }
+            if (start < end) {
+                val speakerIndex =
+                    segment.speakerId
+                        .filter { it.isDigit() }
+                        .toIntOrNull()
+                        ?.minus(1) ?: 0
+                val color = speakerColorPalette[speakerIndex % speakerColorPalette.size]
+                withStyle(SpanStyle(color = color)) {
+                    append(paragraphed.substring(start, end))
+                }
+                pos = end
+            }
+        }
+        if (pos < len) append(paragraphed.substring(pos))
     }
 }
 

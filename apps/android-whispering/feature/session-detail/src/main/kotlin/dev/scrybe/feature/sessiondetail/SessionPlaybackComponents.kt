@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +44,7 @@ import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.model.SentimentSegment
 import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.TopicMarker
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -396,8 +400,11 @@ internal fun RenamePromptDialog(
     initialTitle: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
+    onSuggestAiTitle: (suspend () -> String?)? = null,
 ) {
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
+    var isSuggesting by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -409,6 +416,35 @@ internal fun RenamePromptDialog(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text("Title") },
+                trailingIcon =
+                    if (onSuggestAiTitle != null) {
+                        {
+                            if (isSuggesting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                IconButton(
+                                    onClick = {
+                                        scope.launch {
+                                            isSuggesting = true
+                                            onSuggestAiTitle()?.let { title = it }
+                                            isSuggesting = false
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Filled.AutoAwesome,
+                                        contentDescription = "Suggest title with AI",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        null
+                    },
             )
         },
         confirmButton = {

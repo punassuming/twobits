@@ -47,6 +47,21 @@ val MIGRATION_6_7: Migration =
         }
     }
 
+val MIGRATION_8_9: Migration =
+    object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `transcript_chunks` (`id` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `chunkIndex` INTEGER NOT NULL, `totalChunks` INTEGER NOT NULL, `status` TEXT NOT NULL, `text` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`sessionId`) REFERENCES `recording_sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_transcript_chunks_sessionId` ON `transcript_chunks` (`sessionId`)",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_transcript_chunks_sessionId_chunkIndex` ON `transcript_chunks` (`sessionId`, `chunkIndex`)",
+            )
+        }
+    }
+
 val MIGRATION_7_8: Migration =
     object : Migration(7, 8) {
         override fun migrate(db: SupportSQLiteDatabase) {
