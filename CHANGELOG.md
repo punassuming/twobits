@@ -8,6 +8,8 @@
 
 ### Improvements
 
+* combine "Rename" and "AI Rename" into a single rename dialog with an inline sparkle button: tap the ✨ icon in the title field to get an AI-suggested name, review it, then save or adjust — the standalone "AI Rename" menu item is removed from both the session detail and history menus
+* tag management is now accessible from the history ⋮ menu (Manage Tags) in addition to session detail, so tags can be added or edited without opening a recording
 * move post-process profiles out of the session detail scroll view into a swipe-up bottom sheet; access via "Post-process transcript" button or the ⋮ menu → keeps content visible without clutter
 * transcripts now display with paragraph breaks at sentence boundaries, making long recordings significantly easier to read
 * when speaker identification is enabled, transcript text is colored by speaker — matching the segment bar colors on the playback timeline

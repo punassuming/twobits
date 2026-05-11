@@ -676,6 +676,13 @@ class SessionDetailViewModel
             }
         }
 
+        suspend fun suggestTitle(): String? {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return null
+            val transcriptText = state.currentTranscript?.content ?: state.originalTranscript?.content
+            if (transcriptText.isNullOrBlank()) return null
+            return autoRenameService.suggestTitle(transcriptText, state.session.title).getOrNull()
+        }
+
         fun aiRename() {
             val state = _uiState.value as? SessionDetailUiState.Success ?: return
             val transcriptText =

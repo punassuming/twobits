@@ -1158,6 +1158,29 @@ class HistoryViewModel
             )
         }
 
+        fun saveTags(
+            sessionId: String,
+            tagsInput: String,
+        ) {
+            val normalizedTags = TagsCodec.normalizeInput(tagsInput)
+            viewModelScope.launch {
+                val session = recordingSessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+                recordingSessionDao.updateSession(
+                    session.copy(
+                        tags = TagsCodec.encode(normalizedTags),
+                        updatedAt = System.currentTimeMillis(),
+                    ),
+                )
+            }
+        }
+
+        suspend fun suggestTitleForSession(sessionId: String): String? {
+            val session = recordingSessionDao.getSessionByIdOnce(sessionId) ?: return null
+            val transcripts = transcriptDao.getTranscriptsForSession(sessionId).first()
+            val transcriptText = transcripts.maxByOrNull { it.createdAt }?.content ?: return null
+            return autoRenameService.suggestTitle(transcriptText, session.title).getOrNull()
+        }
+
         fun autoRenameSession(sessionId: String) {
             viewModelScope.launch {
                 transformingSessionIds.value = transformingSessionIds.value + sessionId

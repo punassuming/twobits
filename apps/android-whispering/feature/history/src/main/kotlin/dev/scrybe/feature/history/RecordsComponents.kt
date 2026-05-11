@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -126,7 +127,7 @@ internal fun RecordRow(
     onRestore: () -> Unit,
     onTransform: () -> Unit,
     onRename: () -> Unit,
-    onAiRename: () -> Unit,
+    onManageTags: () -> Unit,
     onDelete: () -> Unit,
     onInfo: () -> Unit,
     onOpenWith: () -> Unit,
@@ -306,16 +307,6 @@ internal fun RecordRow(
                                                 onTransform()
                                             },
                                         )
-                                        DropdownMenuItem(
-                                            text = { Text("AI Rename") },
-                                            leadingIcon = {
-                                                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                                            },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onAiRename()
-                                            },
-                                        )
                                     }
                                 }
                                 DropdownSectionHeader("Export")
@@ -346,6 +337,14 @@ internal fun RecordRow(
                                     onClick = {
                                         menuExpanded = false
                                         onRename()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Manage Tags") },
+                                    leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onManageTags()
                                     },
                                 )
                                 DropdownMenuItem(
@@ -1163,8 +1162,11 @@ internal fun RenameSessionDialog(
     initialTitle: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
+    onSuggestAiTitle: (suspend () -> String?)? = null,
 ) {
     var title by remember(initialTitle) { mutableStateOf(initialTitle) }
+    var isSuggesting by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1176,6 +1178,35 @@ internal fun RenameSessionDialog(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 label = { Text("Title") },
+                trailingIcon =
+                    if (onSuggestAiTitle != null) {
+                        {
+                            if (isSuggesting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                IconButton(
+                                    onClick = {
+                                        scope.launch {
+                                            isSuggesting = true
+                                            onSuggestAiTitle()?.let { title = it }
+                                            isSuggesting = false
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Filled.AutoAwesome,
+                                        contentDescription = "Suggest title with AI",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        null
+                    },
             )
         },
         confirmButton = {

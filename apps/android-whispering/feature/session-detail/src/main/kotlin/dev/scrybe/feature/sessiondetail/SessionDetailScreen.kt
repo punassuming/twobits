@@ -252,16 +252,6 @@ fun SessionDetailScreen(
                                             showTransformSheet = true
                                         },
                                     )
-                                    DropdownMenuItem(
-                                        text = { Text("AI Rename") },
-                                        leadingIcon = {
-                                            Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                                        },
-                                        onClick = {
-                                            actionMenuExpanded = false
-                                            viewModel.aiRename()
-                                        },
-                                    )
                                 }
                                 HorizontalDivider()
                                 Text(
@@ -520,6 +510,7 @@ fun SessionDetailScreen(
             initialTitle = successState.session.title,
             onDismiss = viewModel::dismissRenamePrompt,
             onConfirm = viewModel::renameSession,
+            onSuggestAiTitle = viewModel::suggestTitle,
         )
     }
 
@@ -531,6 +522,7 @@ fun SessionDetailScreen(
                 viewModel.renameSession(newTitle)
                 showRenameDialog = false
             },
+            onSuggestAiTitle = viewModel::suggestTitle,
         )
     }
 
