@@ -443,7 +443,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Speaker identification", style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "Attribute transcript segments to speakers after transcription. May increase API costs.",
+                                "Identify who is speaking after transcription. Colored speaker timeline and inline text coloring appear on the recording detail. May increase API costs.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -460,7 +460,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Insight analysis", style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "Generate sentiment timeline and topic markers after transcription. May increase API costs.",
+                                "Generate sentiment and topic markers after transcription. Results appear in the recording detail AI Analysis timeline. May increase API costs.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

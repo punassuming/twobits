@@ -33,7 +33,8 @@ object NetworkModule {
                         HttpLoggingInterceptor.Level.NONE
                     }
             }
-        return OkHttpClient.Builder()
+        return OkHttpClient
+            .Builder()
             .addInterceptor(loggingInterceptor)
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .writeTimeout(UPLOAD_TIMEOUT_MINUTES, TimeUnit.MINUTES)
@@ -43,7 +44,7 @@ object NetworkModule {
     }
 
     private const val CONNECT_TIMEOUT_SECONDS = 30L
-    private const val UPLOAD_TIMEOUT_MINUTES = 5L
-    private const val RESPONSE_TIMEOUT_MINUTES = 10L
-    private const val CALL_TIMEOUT_MINUTES = 15L
+    private const val UPLOAD_TIMEOUT_MINUTES = 15L
+    private const val RESPONSE_TIMEOUT_MINUTES = 20L
+    private const val CALL_TIMEOUT_MINUTES = 35L
 }
