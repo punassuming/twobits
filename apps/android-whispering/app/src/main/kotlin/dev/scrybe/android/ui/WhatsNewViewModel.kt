@@ -18,9 +18,12 @@ import javax.inject.Inject
 
 data class WhatsNewUiState(
     val isVisible: Boolean = false,
+    val isFirstRun: Boolean = false,
     val title: String = "",
+    val summary: String = "",
     val versionName: String = "",
     val notes: List<String> = emptyList(),
+    val confirmLabel: String = "Close",
 )
 
 @HiltViewModel
@@ -40,15 +43,30 @@ class WhatsNewViewModel
                 val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                 currentVersionCode = PackageInfoCompat.getLongVersionCode(packageInfo)
                 val seenVersionCode = preferencesDataStore.lastSeenWhatsNewVersionCode.first()
-                val releaseNotes = loadReleaseNotes() ?: return@launch
+                val releaseNotes = loadReleaseNotes()
 
-                if (currentVersionCode > seenVersionCode && releaseNotes.summaryItems.isNotEmpty()) {
+                if (currentVersionCode > seenVersionCode && seenVersionCode == 0L) {
                     _uiState.value =
                         WhatsNewUiState(
                             isVisible = true,
-                            title = releaseNotes.title,
+                            isFirstRun = true,
+                            title = "Your first recording, made simple",
+                            summary =
+                                "Scrybe captures the full recording first, then helps you review speakers, " +
+                                    "transcripts, insights, and follow-up tags without losing the original audio.",
                             versionName = packageInfo.versionName.orEmpty(),
+                            notes = firstRunNotes(),
+                            confirmLabel = "Get started",
+                        )
+                } else if (currentVersionCode > seenVersionCode && releaseNotes?.summaryItems?.isNotEmpty() == true) {
+                    _uiState.value =
+                        WhatsNewUiState(
+                            isVisible = true,
+                            versionName = packageInfo.versionName.orEmpty(),
+                            title = releaseNotes.title,
+                            summary = "Here are the latest improvements in this build.",
                             notes = releaseNotes.summaryItems,
+                            confirmLabel = "Close",
                         )
                 }
             }
@@ -64,8 +82,21 @@ class WhatsNewViewModel
         private fun loadReleaseNotes(): ReleaseNotes? {
             val changelogText =
                 runCatching {
-                    context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
+                    context.assets
+                        .open("CHANGELOG.md")
+                        .bufferedReader()
+                        .use { it.readText() }
                 }.getOrNull() ?: return null
             return ReleaseNotesParser.parseLatestReleaseNotes(changelogText)
         }
+
+        private fun firstRunNotes(): List<String> =
+            listOf(
+                "Start recording from the home screen and Scrybe saves the raw audio before any AI step runs.",
+                "Open a saved session to scrub the waveform, review transcript text, and jump directly to speaker turns.",
+                "Speaker identification and insight analysis can be turned on independently in Settings when you want richer review data.",
+                "Suggested tags turn recordings into searchable buckets for calls, meetings, interviews, and follow-up work.",
+                "Use post-processing profiles to transform raw transcripts into cleaner summaries, action items, or custom outputs.",
+                "Recent recordings stay one tap away, and archived sessions remain available without cluttering your active list.",
+            )
     }

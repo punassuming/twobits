@@ -39,6 +39,7 @@ sealed interface SessionDetailUiState {
         val playbackDurationMs: Long = 0L,
         val shouldPromptForRename: Boolean = false,
         val tagSuggestionState: TagSuggestionUiState = TagSuggestionUiState.Idle,
+        val isFetchingSpeakerInfo: Boolean = false,
         val speakerSegments: List<SpeakerSegment> = emptyList(),
         val persons: List<Person> = emptyList(),
         val sentimentSegments: List<SentimentSegment> = emptyList(),

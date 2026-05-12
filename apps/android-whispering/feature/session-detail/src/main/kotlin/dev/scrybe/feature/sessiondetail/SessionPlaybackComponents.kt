@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -99,6 +99,7 @@ internal fun PlaybackCard(
         ) {
             WaveformTimeline(
                 samples = state.session.waveformSamples,
+                playbackPositionMs = state.playbackPositionMs,
                 progress =
                     if (state.playbackDurationMs > 0L) {
                         state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
@@ -106,6 +107,8 @@ internal fun PlaybackCard(
                         0f
                     },
                 durationMs = state.playbackDurationMs,
+                sentimentSegments = state.sentimentSegments,
+                topicMarkers = state.topicMarkers,
                 onSeek = onSeek,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -130,26 +133,17 @@ internal fun PlaybackCard(
                 onSeek = onSeek,
             )
         }
-        if (state.sentimentSegments.isNotEmpty()) {
-            SentimentBar(
-                segments = state.sentimentSegments,
-                durationMs = state.session.durationMs,
-            )
-        }
-        if (state.topicMarkers.isNotEmpty()) {
-            TopicMarkerBar(
-                markers = state.topicMarkers,
-                durationMs = state.session.durationMs,
-            )
-        }
     }
 }
 
 @Composable
 private fun WaveformTimeline(
     samples: List<Float>,
+    playbackPositionMs: Long,
     progress: Float,
     durationMs: Long,
+    sentimentSegments: List<SentimentSegment>,
+    topicMarkers: List<TopicMarker>,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -161,11 +155,35 @@ private fun WaveformTimeline(
     BoxWithConstraints(modifier = modifier) {
         val density = LocalDensity.current
         val waveformWidthPx = with(density) { maxWidth.toPx().coerceAtLeast(1f) }
+        val activeIntent = nearestIntentMarker(topicMarkers, playbackPositionMs, durationMs)
 
         fun seekToOffset(offsetX: Float) {
             if (durationMs <= 0L) return
             val clampedProgress = (offsetX / waveformWidthPx).coerceIn(0f, 1f)
             onSeek((durationMs * clampedProgress).roundToLong().coerceIn(0L, durationMs))
+        }
+
+        activeIntent?.let { marker ->
+            val markerProgress = marker.timeMs.toFloat() / durationMs.coerceAtLeast(1L).toFloat()
+            val tooltipStart =
+                with(density) {
+                    ((maxWidth * markerProgress).toPx() - 72.dp.toPx())
+                        .coerceIn(0f, (waveformWidthPx - 144.dp.toPx()).coerceAtLeast(0f))
+                        .toDp()
+                }
+            Surface(
+                modifier = Modifier.align(Alignment.TopStart).padding(start = tooltipStart, top = 2.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = MaterialTheme.shapes.small,
+                tonalElevation = 2.dp,
+            ) {
+                Text(
+                    text = marker.label,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
 
         Canvas(
@@ -229,6 +247,19 @@ private fun WaveformTimeline(
                     cap = StrokeCap.Round,
                 )
             }
+            drawSentimentDots(
+                segments = sentimentSegments,
+                durationMs = durationMs,
+                canvasWidth = size.width,
+                centerY = centerY,
+            )
+            drawIntentDots(
+                markers = topicMarkers,
+                durationMs = durationMs,
+                canvasWidth = size.width,
+                centerY = centerY,
+                activeMarker = activeIntent,
+            )
             val playheadX = size.width * progress.coerceIn(0f, 1f)
             drawLine(
                 color = playheadColor,
@@ -277,16 +308,18 @@ private fun densitySmoothed(
 
 internal val speakerColorPalette =
     listOf(
-        Color(0xFF4CAF50),
         Color(0xFF2196F3),
         Color(0xFFF44336),
         Color(0xFFFF9800),
         Color(0xFF9C27B0),
     )
 
+internal fun speakerColorForIndex(index: Int): Color = speakerColorPalette[index.mod(speakerColorPalette.size)]
+
 @Composable
 internal fun SpeakerSegmentBar(
     segments: List<SpeakerSegment>,
+    color: Color,
     durationMs: Long,
     playbackPositionMs: Long,
     onSeek: (Long) -> Unit,
@@ -309,14 +342,9 @@ internal fun SpeakerSegmentBar(
             segments.forEach { seg ->
                 val startX = (seg.startMs.toFloat() / durationMs) * size.width
                 val endX = (seg.endMs.toFloat() / durationMs) * size.width
-                val colorIdx =
-                    seg.speakerId
-                        .lastOrNull { it.isDigit() }
-                        ?.digitToInt()
-                        ?.rem(speakerColorPalette.size) ?: 0
                 val alpha = if (seg.endMs <= playbackPositionMs) 0.9f else 0.45f
                 drawLine(
-                    color = speakerColorPalette[colorIdx].copy(alpha = alpha),
+                    color = color.copy(alpha = alpha),
                     start = Offset(startX, size.height / 2f),
                     end = Offset((endX).coerceAtLeast(startX + 2f), size.height / 2f),
                     strokeWidth = size.height,
@@ -346,12 +374,7 @@ internal fun PerSpeakerTimelineSection(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         speakerIds.forEachIndexed { idx, speakerId ->
-            val colorIdx =
-                speakerId
-                    .lastOrNull { it.isDigit() }
-                    ?.digitToInt()
-                    ?.rem(speakerColorPalette.size) ?: (idx % speakerColorPalette.size)
-            val color = speakerColorPalette[colorIdx]
+            val color = speakerColorForIndex(idx)
             val label =
                 speakerId
                     .removePrefix("SPEAKER_")
@@ -381,6 +404,7 @@ internal fun PerSpeakerTimelineSection(
                 )
                 SpeakerSegmentBar(
                     segments = speakerSegs,
+                    color = color,
                     durationMs = durationMs,
                     playbackPositionMs = playbackPositionMs,
                     onSeek = onSeek,
@@ -391,74 +415,63 @@ internal fun PerSpeakerTimelineSection(
     }
 }
 
-@Composable
-internal fun SentimentBar(
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSentimentDots(
     segments: List<SentimentSegment>,
     durationMs: Long,
-    modifier: Modifier = Modifier,
+    canvasWidth: Float,
+    centerY: Float,
 ) {
     if (segments.isEmpty() || durationMs <= 0L) return
-    Canvas(modifier = modifier.fillMaxWidth().height(10.dp)) {
-        segments.forEach { seg ->
-            val startX = (seg.startMs.toFloat() / durationMs) * size.width
-            val segWidth = ((seg.endMs - seg.startMs).toFloat() / durationMs) * size.width
-            val color =
-                when (seg.sentiment.uppercase()) {
-                    "POSITIVE" -> Color(0xFF4CAF50)
-                    "NEGATIVE" -> Color(0xFFF44336)
-                    else -> Color(0xFF9E9E9E)
-                }
-            drawRect(
-                color = color.copy(alpha = 0.65f),
-                topLeft = Offset(startX, 0f),
-                size = Size(segWidth.coerceAtLeast(1f), size.height),
-            )
-        }
+    segments.forEach { segment ->
+        val midpointMs = (segment.startMs + segment.endMs) / 2L
+        val x = (midpointMs.toFloat() / durationMs) * canvasWidth
+        drawCircle(
+            color = sentimentColor(segment.sentiment).copy(alpha = 0.88f),
+            radius = 4.dp.toPx(),
+            center = Offset(x, centerY + 22.dp.toPx()),
+        )
     }
 }
 
-@Composable
-internal fun TopicMarkerBar(
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawIntentDots(
     markers: List<TopicMarker>,
     durationMs: Long,
-    modifier: Modifier = Modifier,
+    canvasWidth: Float,
+    centerY: Float,
+    activeMarker: TopicMarker?,
 ) {
     if (markers.isEmpty() || durationMs <= 0L) return
-    var selectedMarker by remember { mutableStateOf<TopicMarker?>(null) }
-    BoxWithConstraints(modifier = modifier.fillMaxWidth().height(18.dp)) {
-        val density = LocalDensity.current
-        val widthPx = with(density) { maxWidth.toPx() }
-        Canvas(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .pointerInput(markers, durationMs, widthPx) {
-                        detectTapGestures { offset ->
-                            val tapMs = (offset.x / widthPx) * durationMs
-                            selectedMarker = markers.minByOrNull { abs(it.timeMs - tapMs.toLong()) }
-                        }
-                    },
-        ) {
-            markers.forEach { marker ->
-                val x = (marker.timeMs.toFloat() / durationMs) * size.width
-                drawLine(
-                    color = Color(0xFFFF9800).copy(alpha = 0.8f),
-                    start = Offset(x, 0f),
-                    end = Offset(x, size.height),
-                    strokeWidth = 2.dp.toPx(),
-                    cap = StrokeCap.Round,
-                )
-            }
-        }
-        selectedMarker?.let { marker ->
-            AlertDialog(
-                onDismissRequest = { selectedMarker = null },
-                title = { Text("Topic") },
-                text = { Text(marker.label) },
-                confirmButton = { TextButton(onClick = { selectedMarker = null }) { Text("OK") } },
-            )
-        }
+    markers.forEach { marker ->
+        val x = (marker.timeMs.toFloat() / durationMs) * canvasWidth
+        drawCircle(
+            color =
+                if (marker == activeMarker) {
+                    Color(0xFFFFB74D)
+                } else {
+                    Color(0xFFFF9800).copy(alpha = 0.88f)
+                },
+            radius = if (marker == activeMarker) 5.dp.toPx() else 4.dp.toPx(),
+            center = Offset(x, centerY - 22.dp.toPx()),
+        )
     }
+}
+
+private fun sentimentColor(sentiment: String): Color =
+    when (sentiment.uppercase()) {
+        "POSITIVE" -> Color(0xFF4CAF50)
+        "NEGATIVE" -> Color(0xFFF44336)
+        else -> Color(0xFF9E9E9E)
+    }
+
+private fun nearestIntentMarker(
+    markers: List<TopicMarker>,
+    playbackPositionMs: Long,
+    durationMs: Long,
+): TopicMarker? {
+    if (markers.isEmpty() || durationMs <= 0L) return null
+    val thresholdMs = (durationMs * 0.015f).roundToLong().coerceIn(900L, 4_000L)
+    val nearest = markers.minByOrNull { marker -> abs(marker.timeMs - playbackPositionMs) }
+    return nearest?.takeIf { marker -> abs(marker.timeMs - playbackPositionMs) <= thresholdMs }
 }
 
 @Composable

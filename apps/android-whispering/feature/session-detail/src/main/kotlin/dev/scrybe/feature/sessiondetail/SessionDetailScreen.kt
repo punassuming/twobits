@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -70,6 +73,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -77,6 +84,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -457,11 +466,12 @@ fun SessionDetailScreen(
                             onStopPlayback = viewModel::stopPlayback,
                             onSeek = viewModel::seekPlayback,
                         )
-                        if (state.speakerSegments.isNotEmpty()) {
+                        if (state.speakerSegments.isNotEmpty() || state.currentTranscript != null || state.originalTranscript != null) {
                             SpeakerSlotsCard(
                                 state = state,
                                 onAssignPerson = viewModel::assignPersonToSpeaker,
                                 onCreatePerson = viewModel::createPersonAndAssign,
+                                onFetchSpeakerInfo = viewModel::fetchSpeakerInfo,
                             )
                         }
                         TranscriptSection(
@@ -570,8 +580,8 @@ fun SessionDetailScreen(
                 isEditingTags = false
             },
             onSuggest = viewModel::suggestTags,
-            onSave = { tagsInput ->
-                viewModel.saveTags(tagsInput)
+            onSave = { tags ->
+                viewModel.saveTags(tags)
                 isEditingTags = false
             },
         )
@@ -749,27 +759,49 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SessionTagsRow(
     tags: List<String>,
 ) {
-    Row(
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(
-            imageVector = Icons.Filled.Label,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text = tags.joinToString("  •  "),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        tags.forEach { tag ->
+            TagPill(tag = tag)
+        }
+    }
+}
+
+@Composable
+private fun TagPill(
+    tag: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Label,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                text = tag,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
@@ -1146,6 +1178,11 @@ private fun buildSpeakerAnnotatedString(
     if (speakerSegments.isEmpty() || durationMs <= 0L) {
         return AnnotatedString(paragraphed)
     }
+    val speakerIds =
+        speakerSegments
+            .map { it.speakerId }
+            .distinct()
+            .sorted()
     val len = paragraphed.length
     var lastSpeakerId: String? = null
     return buildAnnotatedString {
@@ -1157,12 +1194,7 @@ private fun buildSpeakerAnnotatedString(
                 append(paragraphed.substring(pos, start))
             }
             if (start < end) {
-                val speakerIndex =
-                    segment.speakerId
-                        .filter { it.isDigit() }
-                        .toIntOrNull()
-                        ?.minus(1) ?: 0
-                val color = speakerColorPalette[speakerIndex % speakerColorPalette.size]
+                val color = speakerColorForIndex(speakerIds.indexOf(segment.speakerId).coerceAtLeast(0))
                 if (segment.speakerId != lastSpeakerId) {
                     val speakerNum = segment.speakerId.filter { it.isDigit() }.ifEmpty { "1" }
                     val prefix = if (pos > 0) "\n\n" else ""
@@ -1217,15 +1249,27 @@ private fun EditTranscriptDialog(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TagEditorDialog(
     initialTags: List<String>,
     tagSuggestionState: TagSuggestionUiState,
     onDismiss: () -> Unit,
     onSuggest: () -> Unit,
-    onSave: (String) -> Unit,
+    onSave: (List<String>) -> Unit,
 ) {
-    var value by remember(initialTags) { mutableStateOf(initialTags.joinToString(", ")) }
+    var tags by remember(initialTags) { mutableStateOf(initialTags.distinct()) }
+    var draftTag by remember(initialTags) { mutableStateOf("") }
+
+    fun addDraftTag() {
+        val normalizedTag = normalizeEditableTag(draftTag)
+        if (normalizedTag.isBlank()) {
+            draftTag = ""
+            return
+        }
+        tags = (tags + normalizedTag).distinct()
+        draftTag = ""
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1235,13 +1279,54 @@ private fun TagEditorDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                if (tags.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        tags.forEach { tag ->
+                            EditableTagPill(
+                                tag = tag,
+                                onRemove = { tags = tags - tag },
+                            )
+                        }
+                    }
+                }
                 OutlinedTextField(
-                    value = value,
-                    onValueChange = { value = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    label = { Text("Tags") },
-                    supportingText = { Text("Use commas or new lines. Tags are searchable from Records.") },
+                    value = draftTag,
+                    onValueChange = { draftTag = it },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown) {
+                                    return@onPreviewKeyEvent false
+                                }
+                                when (event.key) {
+                                    Key.Enter -> {
+                                        addDraftTag()
+                                        true
+                                    }
+
+                                    Key.Backspace -> {
+                                        if (draftTag.isBlank() && tags.isNotEmpty()) {
+                                            tags = tags.dropLast(1)
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+
+                                    else -> false
+                                }
+                            },
+                    singleLine = true,
+                    label = { Text("Add a tag") },
+                    supportingText = {
+                        Text("Press Enter to add a tag. Press Backspace on an empty field to remove the last tag.")
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { addDraftTag() }),
                 )
                 OutlinedButton(
                     onClick = onSuggest,
@@ -1267,17 +1352,30 @@ private fun TagEditorDialog(
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Text("Suggested tags", style = MaterialTheme.typography.labelLarge)
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    tagSuggestionState.tags.forEach { suggestedTag ->
+                                        SuggestedTagPill(
+                                            tag = suggestedTag,
+                                            selected = suggestedTag in tags,
+                                            onToggle = {
+                                                tags =
+                                                    if (suggestedTag in tags) {
+                                                        tags - suggestedTag
+                                                    } else {
+                                                        (tags + suggestedTag).distinct()
+                                                    }
+                                            },
+                                        )
+                                    }
+                                }
                                 Text(
-                                    text = tagSuggestionState.tags.joinToString(", "),
+                                    text = "Tap any suggestion to add or remove it from this recording.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                OutlinedButton(
-                                    onClick = { value = tagSuggestionState.tags.joinToString(", ") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text("Use suggestions")
-                                }
                             }
                         }
                     }
@@ -1294,7 +1392,14 @@ private fun TagEditorDialog(
             }
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(onClick = { onSave(value) }) {
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    if (draftTag.isNotBlank()) {
+                        addDraftTag()
+                    }
+                    onSave(tags)
+                },
+            ) {
                 Text("Save")
             }
         },
@@ -1307,20 +1412,110 @@ private fun TagEditorDialog(
 }
 
 @Composable
+private fun EditableTagPill(
+    tag: String,
+    onRemove: () -> Unit,
+) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+        modifier = Modifier.clickable(onClick = onRemove),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = tag,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "×",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SuggestedTagPill(
+    tag: String,
+    selected: Boolean,
+    onToggle: () -> Unit,
+) {
+    Surface(
+        shape = CircleShape,
+        color =
+            if (selected) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        tonalElevation = if (selected) 1.dp else 0.dp,
+        modifier = Modifier.clickable(onClick = onToggle),
+    ) {
+        Text(
+            text = tag,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color =
+                if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+        )
+    }
+}
+
+private fun normalizeEditableTag(value: String): String =
+    value
+        .trim()
+        .replace(Regex("\\s+"), " ")
+
+@Composable
 private fun SpeakerSlotsCard(
     state: SessionDetailUiState.Success,
     onAssignPerson: (speakerId: String, personId: String?) -> Unit,
     onCreatePerson: (speakerId: String, name: String) -> Unit,
+    onFetchSpeakerInfo: () -> Unit,
 ) {
     val distinctSpeakers =
         state.speakerSegments
             .map { it.speakerId }
             .distinct()
             .sorted()
-    if (distinctSpeakers.isEmpty()) return
     var pickerTargetSpeakerId by remember { mutableStateOf<String?>(null) }
     ScrybeSectionCard {
-        ScrybeSectionHeader(title = "Speakers")
+        ScrybeSectionHeader(
+            title = "Speakers",
+            subtitle =
+                if (distinctSpeakers.isEmpty()) {
+                    "Retrieve speaker turns from the existing transcript without running a full retranscription."
+                } else {
+                    null
+                },
+        )
+        if (distinctSpeakers.isEmpty()) {
+            OutlinedButton(
+                onClick = onFetchSpeakerInfo,
+                enabled = !state.isFetchingSpeakerInfo,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (state.isFetchingSpeakerInfo) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(if (state.isFetchingSpeakerInfo) "Retrieving speakers..." else "Retrieve speaker info")
+            }
+            return@ScrybeSectionCard
+        }
         distinctSpeakers.forEachIndexed { idx, speakerId ->
             val segment = state.speakerSegments.first { it.speakerId == speakerId }
             val label =
@@ -1330,7 +1525,7 @@ private fun SpeakerSlotsCard(
                 }
             val personName =
                 segment.personId?.let { pid -> state.persons.find { it.id == pid }?.name }
-            val dotColor = speakerColorPalette[idx % speakerColorPalette.size]
+            val dotColor = speakerColorForIndex(idx)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,

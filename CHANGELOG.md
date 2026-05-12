@@ -4,10 +4,17 @@
 
 ### Features
 
+* add a richer first-run walkthrough and a more guided capture home experience, including clearer guidance about recording safety, review tools, and organization benefits
+* let session detail fetch speaker information from an existing transcript without forcing a full retranscription
+
 ### Improvements
+
+* move playback intents and sentiment into the waveform as inline dots, show intent tooltips while scrubbing, standardize speaker colors to blue then red, and allow seeking before playback starts
+* redesign session tags into pill-style chips with suggestion pills and keyboard-friendly tag entry actions
 
 ### Fixes
 
+* prevent broken zero-byte recordings from being persisted or recovered, and avoid deleting shared audio files when duplicate session records point at the same path
 ## 0.21.0 (2026-05-11)
 
 ### Features

@@ -226,6 +226,11 @@ fun CaptureScreen(
                     )
                 }
             }
+            if (uiState.phase == CapturePhase.IDLE) {
+                item {
+                    IntroGuidanceSection(hasRecentSessions = uiState.recentSessions.isNotEmpty())
+                }
+            }
             if (uiState.phase != CapturePhase.RECORDING) {
                 item {
                     RecentRecordingsSection(
@@ -370,7 +375,7 @@ private fun CaptureHeroHeader(
                             Text(
                                 text =
                                     if (hasRequiredPermissions) {
-                                        "Tap the button below to start a capture. Recent sessions stay available underneath."
+                                        "Tap below to capture the full conversation. Scrybe keeps the original audio safe, then helps you review transcripts, speakers, and follow-up details."
                                     } else {
                                         "Microphone permission is required before Scrybe can start recording."
                                     },
@@ -420,6 +425,73 @@ private fun CaptureHeroHeader(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun IntroGuidanceSection(hasRecentSessions: Boolean) {
+    HomeCard {
+        ScrybeSectionHeader(
+            title = if (hasRecentSessions) "Make each recording easier to review" else "Start with a confident first recording",
+            subtitle =
+                "Scrybe saves the raw audio first, then layers review tools on top so you can revisit the important moments later.",
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            IntroGuidanceRow(
+                icon = Icons.Filled.CheckCircle,
+                title = "Capture first, process after",
+                body = "Recordings are saved before transcription, speaker analysis, or tagging workflows begin.",
+            )
+            IntroGuidanceRow(
+                icon = Icons.Filled.Description,
+                title = "Review the details quickly",
+                body = "Open a session to scrub the waveform, inspect transcripts, and jump between speakers or intent markers.",
+            )
+            IntroGuidanceRow(
+                icon = Icons.Filled.Archive,
+                title = "Keep your library organized",
+                body = "Rename, tag, archive, and revisit sessions without losing track of the original audio.",
+            )
+        }
+    }
+}
+
+@Composable
+private fun IntroGuidanceRow(
+    icon: ImageVector,
+    title: String,
+    body: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Surface(
+            modifier = Modifier.size(34.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

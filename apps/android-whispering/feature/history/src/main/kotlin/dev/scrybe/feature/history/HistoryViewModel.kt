@@ -454,7 +454,7 @@ class HistoryViewModel
             viewModelScope.launch {
                 val session = recordingSessionDao.getSessionByIdOnce(sessionId) ?: return@launch
                 runCatching {
-                    File(session.audioFilePath).takeIf { it.exists() }?.delete()
+                    deleteAudioFileIfSafe(session.audioFilePath)
                     transcriptDao.deleteTranscriptsForSession(sessionId)
                     transformRunDao.deleteRunsForSession(sessionId)
                     recordingSessionDao.deleteSession(sessionId)
@@ -685,7 +685,7 @@ class HistoryViewModel
                 selectedIds.forEach { sessionId ->
                     val session = recordingSessionDao.getSessionByIdOnce(sessionId) ?: return@forEach
                     runCatching {
-                        File(session.audioFilePath).takeIf { it.exists() }?.delete()
+                        deleteAudioFileIfSafe(session.audioFilePath)
                         transcriptDao.deleteTranscriptsForSession(sessionId)
                         transformRunDao.deleteRunsForSession(sessionId)
                         recordingSessionDao.deleteSession(sessionId)
@@ -802,6 +802,7 @@ class HistoryViewModel
         private suspend fun recoverOrphanedRecordings() {
             val recordingsDir = context.filesDir.resolve("recordings")
             if (!recordingsDir.exists()) return
+            cleanupBrokenRecordingFiles(recordingsDir)
 
             val knownPaths =
                 recordingSessionDao.getAllAudioFilePaths().toSet()
@@ -812,6 +813,7 @@ class HistoryViewModel
                     ?.filter { file ->
                         file.isFile &&
                             file.extension.lowercase() in audioExtensions &&
+                            file.length() > 0L &&
                             file.absolutePath !in knownPaths
                     }.orEmpty()
 
@@ -838,6 +840,10 @@ class HistoryViewModel
         }
 
         private suspend fun createSessionFromFile(file: File) {
+            if (file.length() <= 0L) {
+                runCatching { file.delete() }
+                return
+            }
             val retriever = MediaMetadataRetriever()
             try {
                 retriever.setDataSource(file.absolutePath)
@@ -914,6 +920,29 @@ class HistoryViewModel
             } finally {
                 retriever.release()
             }
+        }
+
+        private suspend fun deleteAudioFileIfSafe(audioFilePath: String) {
+            if (recordingSessionDao.countSessionsByAudioFilePath(audioFilePath) > 1) {
+                return
+            }
+            File(audioFilePath).takeIf { it.exists() }?.delete()
+        }
+
+        private fun cleanupBrokenRecordingFiles(recordingsDir: File) {
+            recordingsDir
+                .listFiles()
+                ?.filter { it.isFile && it.length() <= 0L }
+                .orEmpty()
+                .forEach { file ->
+                    runCatching { file.delete() }
+                        .onFailure { error ->
+                            android.util.Log.w(
+                                TAG,
+                                "Failed to delete zero-byte recording ${file.name}: ${error.message}",
+                            )
+                        }
+                }
         }
 
         private fun comparatorFor(sortOption: RecordsSortOption): Comparator<RecordingSession> =

@@ -50,6 +50,10 @@ class SessionTranscriptionCoordinator
                 runCatching {
                     ProviderType.valueOf(preferencesDataStore.defaultProvider.first())
                 }.getOrDefault(ProviderType.OPENAI)
+            val aiFeaturesProviderType =
+                runCatching {
+                    ProviderType.valueOf(preferencesDataStore.aiFeaturesProvider.first())
+                }.getOrDefault(ProviderType.OPENAI)
 
             val audioFile = File(session.audioFilePath)
             if (!audioFile.exists()) {
@@ -102,10 +106,10 @@ class SessionTranscriptionCoordinator
                         estimatedCostUsd = TranscriptionPricing.estimateUsd(session.durationMs),
                     )
                     if (preferencesDataStore.enableSpeakerIdentification.first()) {
-                        launchDiarization(sessionId, audioFile, batchResult.text, providerType)
+                        launchDiarization(sessionId, audioFile, batchResult.text, aiFeaturesProviderType)
                     }
                     if (preferencesDataStore.enableInsightAnalysis.first()) {
-                        launchInsights(sessionId, batchResult.text, session.durationMs, providerType)
+                        launchInsights(sessionId, batchResult.text, session.durationMs, aiFeaturesProviderType)
                     }
                     Result.success(transcriptEntity)
                 },
@@ -118,6 +122,49 @@ class SessionTranscriptionCoordinator
         }
 
         suspend fun retranscribePartial(sessionId: String): Result<TranscriptEntity> = transcribeSession(sessionId)
+
+        suspend fun fetchSpeakerInfo(sessionId: String): Result<Int> =
+            runCatching {
+                val session =
+                    sessionDao.getSessionByIdOnce(sessionId)
+                        ?: error("Session $sessionId not found")
+                val transcriptText =
+                    transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.EDITED.name)?.content
+                        ?: transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.RAW.name)?.content
+                        ?: error("Transcribe this recording before retrieving speakers")
+                require(transcriptText.isNotBlank()) { "Transcribe this recording before retrieving speakers" }
+
+                val audioFile = File(session.audioFilePath)
+                require(audioFile.exists()) { "Audio file not found for session $sessionId" }
+
+                val providerType =
+                    runCatching {
+                        ProviderType.valueOf(preferencesDataStore.aiFeaturesProvider.first())
+                    }.getOrDefault(ProviderType.OPENAI)
+
+                val segments =
+                    diarizationService
+                        .diarize(sessionId, audioFile, transcriptText, providerType)
+                        .getOrThrow()
+                speakerSegmentDao.deleteForSession(sessionId)
+                speakerSegmentDao.insertSegments(
+                    segments.map { segment ->
+                        dev.scrybe.core.database.SpeakerSegmentEntity(
+                            id = segment.id,
+                            sessionId = segment.sessionId,
+                            speakerId = segment.speakerId,
+                            speakerLabel = segment.speakerLabel,
+                            personId = segment.personId,
+                            startMs = segment.startMs,
+                            endMs = segment.endMs,
+                        )
+                    },
+                )
+                segments
+                    .map { it.speakerId }
+                    .distinct()
+                    .size
+            }
 
         private fun launchDiarization(
             sessionId: String,
