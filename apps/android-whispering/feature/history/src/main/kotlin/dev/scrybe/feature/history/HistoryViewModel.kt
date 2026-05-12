@@ -813,7 +813,7 @@ class HistoryViewModel
                     ?.filter { file ->
                         file.isFile &&
                             file.extension.lowercase() in audioExtensions &&
-                            file.length() > 0L &&
+                            hasAudioPayload(file) &&
                             file.absolutePath !in knownPaths
                     }.orEmpty()
 
@@ -840,7 +840,7 @@ class HistoryViewModel
         }
 
         private suspend fun createSessionFromFile(file: File) {
-            if (file.length() <= 0L) {
+            if (!hasAudioPayload(file)) {
                 runCatching { file.delete() }
                 return
             }
@@ -932,7 +932,7 @@ class HistoryViewModel
         private fun cleanupBrokenRecordingFiles(recordingsDir: File) {
             recordingsDir
                 .listFiles()
-                ?.filter { it.isFile && it.length() <= 0L }
+                ?.filter { it.isFile && !hasAudioPayload(it) }
                 .orEmpty()
                 .forEach { file ->
                     runCatching { file.delete() }
@@ -944,6 +944,8 @@ class HistoryViewModel
                         }
                 }
         }
+
+        private fun hasAudioPayload(file: File): Boolean = file.isFile && file.length() > 0L
 
         private fun comparatorFor(sortOption: RecordsSortOption): Comparator<RecordingSession> =
             when (sortOption) {

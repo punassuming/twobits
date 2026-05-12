@@ -155,7 +155,10 @@ private fun WaveformTimeline(
     BoxWithConstraints(modifier = modifier) {
         val density = LocalDensity.current
         val waveformWidthPx = with(density) { maxWidth.toPx().coerceAtLeast(1f) }
-        val activeIntent = nearestIntentMarker(topicMarkers, playbackPositionMs, durationMs)
+        val activeIntent =
+            remember(topicMarkers, playbackPositionMs, durationMs) {
+                nearestIntentMarker(topicMarkers, playbackPositionMs, durationMs)
+            }
 
         fun seekToOffset(offsetX: Float) {
             if (durationMs <= 0L) return

@@ -15,6 +15,7 @@
 ### Fixes
 
 * prevent broken zero-byte recordings from being persisted or recovered, and avoid deleting shared audio files when duplicate session records point at the same path
+* refine the walkthrough, speaker retrieval, and playback marker follow-up so the latest recording-review polish stays accessible and consistent
 ## 0.21.0 (2026-05-11)
 
 ### Features

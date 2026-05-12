@@ -129,10 +129,15 @@ class SessionTranscriptionCoordinator
                     sessionDao.getSessionByIdOnce(sessionId)
                         ?: error("Session $sessionId not found")
                 val transcriptText =
-                    transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.EDITED.name)?.content
-                        ?: transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.RAW.name)?.content
+                    transcriptDao
+                        .getLatestTranscriptByType(sessionId, TranscriptType.EDITED.name)
+                        ?.content
+                        ?.takeIf { it.isNotBlank() }
+                        ?: transcriptDao
+                            .getLatestTranscriptByType(sessionId, TranscriptType.RAW.name)
+                            ?.content
+                            ?.takeIf { it.isNotBlank() }
                         ?: error("Transcribe this recording before retrieving speakers")
-                require(transcriptText.isNotBlank()) { "Transcribe this recording before retrieving speakers" }
 
                 val audioFile = File(session.audioFilePath)
                 require(audioFile.exists()) { "Audio file not found for session $sessionId" }

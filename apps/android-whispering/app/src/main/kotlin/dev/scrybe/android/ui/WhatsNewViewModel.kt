@@ -44,8 +44,9 @@ class WhatsNewViewModel
                 currentVersionCode = PackageInfoCompat.getLongVersionCode(packageInfo)
                 val seenVersionCode = preferencesDataStore.lastSeenWhatsNewVersionCode.first()
                 val releaseNotes = loadReleaseNotes()
+                val isFirstRun = seenVersionCode == 0L
 
-                if (currentVersionCode > seenVersionCode && seenVersionCode == 0L) {
+                if (currentVersionCode > seenVersionCode && isFirstRun) {
                     _uiState.value =
                         WhatsNewUiState(
                             isVisible = true,

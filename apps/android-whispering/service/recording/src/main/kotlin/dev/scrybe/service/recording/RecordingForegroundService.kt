@@ -191,9 +191,9 @@ class RecordingForegroundService : Service() {
         val audioFile = File(recordedAudio.filePath)
         require(audioFile.exists()) { "Recording file was not found after saving" }
         val actualFileSize = audioFile.length()
-        require(actualFileSize > 0L && recordedAudio.fileSizeBytes > 0L) {
+        if (actualFileSize <= 0L || recordedAudio.fileSizeBytes <= 0L) {
             runCatching { audioFile.delete() }
-            "Recording did not save correctly. Please try again."
+            error("Recording did not save correctly. Please try again.")
         }
 
         recordingSessionDao.getSessionByAudioFilePath(audioFile.absolutePath)?.let { existing ->
