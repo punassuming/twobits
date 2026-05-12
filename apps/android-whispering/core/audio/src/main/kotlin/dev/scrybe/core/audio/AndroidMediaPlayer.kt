@@ -43,7 +43,7 @@ class AndroidMediaPlayer
                 }
             }
 
-        override suspend fun prepare(
+        override fun prepare(
             filePath: String,
             startPositionMs: Long,
         ): Result<Unit> =
