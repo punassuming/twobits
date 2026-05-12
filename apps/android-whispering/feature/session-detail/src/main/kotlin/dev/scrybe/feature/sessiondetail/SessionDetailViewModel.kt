@@ -47,6 +47,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.Duration
@@ -79,6 +81,7 @@ class SessionDetailViewModel
         val uiState: StateFlow<SessionDetailUiState> = _uiState.asStateFlow()
         private val isTransforming = MutableStateFlow(false)
         private val isFetchingSpeakerInfo = MutableStateFlow(false)
+        private val playbackSeekMutex = Mutex()
         private val renamePromptDismissed = MutableStateFlow(false)
         private val tagSuggestionState = MutableStateFlow<TagSuggestionUiState>(TagSuggestionUiState.Idle)
         private val _events = MutableSharedFlow<SessionDetailEvent>()
@@ -461,15 +464,17 @@ class SessionDetailViewModel
         fun seekPlayback(positionMs: Long) {
             val state = _uiState.value as? SessionDetailUiState.Success ?: return
             viewModelScope.launch {
-                val currentPlayback = audioPlayer.playbackState.value
-                if (currentPlayback.filePath == state.session.audioFilePath) {
-                    audioPlayer.seekTo(positionMs)
-                } else {
-                    audioPlayer
-                        .prepare(state.session.audioFilePath, positionMs)
-                        .onFailure {
-                            _events.emit(SessionDetailEvent.Message(it.message ?: "Playback failed"))
-                        }
+                playbackSeekMutex.withLock {
+                    val currentPlayback = audioPlayer.playbackState.value
+                    if (currentPlayback.filePath == state.session.audioFilePath) {
+                        audioPlayer.seekTo(positionMs)
+                    } else {
+                        audioPlayer
+                            .prepare(state.session.audioFilePath, positionMs)
+                            .onFailure {
+                                _events.emit(SessionDetailEvent.Message(it.message ?: "Playback failed"))
+                            }
+                    }
                 }
             }
         }

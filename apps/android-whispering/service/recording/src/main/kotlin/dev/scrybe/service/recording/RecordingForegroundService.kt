@@ -191,7 +191,13 @@ class RecordingForegroundService : Service() {
         val audioFile = File(recordedAudio.filePath)
         require(audioFile.exists()) { "Recording file was not found after saving" }
         val actualFileSize = audioFile.length()
-        if (actualFileSize <= 0L || recordedAudio.fileSizeBytes <= 0L) {
+        if (recordedAudio.fileSizeBytes != actualFileSize) {
+            android.util.Log.w(
+                TAG,
+                "Recorded file size mismatch for ${audioFile.name}: recorder=${recordedAudio.fileSizeBytes}, disk=$actualFileSize",
+            )
+        }
+        if (actualFileSize <= 0L) {
             runCatching { audioFile.delete() }
             error("Recording did not save correctly. Please try again.")
         }
