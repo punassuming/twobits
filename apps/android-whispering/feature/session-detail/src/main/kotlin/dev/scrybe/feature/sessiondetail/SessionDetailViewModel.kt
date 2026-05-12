@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioPlayer
+import dev.scrybe.core.audio.PlaybackState
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
@@ -93,6 +94,14 @@ class SessionDetailViewModel
             val persons: List<Person>,
         )
 
+        private data class DetailContext(
+            val defaultProfileId: String?,
+            val isTransforming: Boolean,
+            val isFetchingSpeakerInfo: Boolean,
+            val playbackBundle: Triple<PlaybackState, Boolean, Boolean>,
+            val sideData: SideData,
+        )
+
         init {
             viewModelScope.launch {
                 val session = sessionDao.getSessionByIdOnce(sessionId)
@@ -139,6 +148,22 @@ class SessionDetailViewModel
                             }
                         },
                     ) { tag, speakers, persons -> SideData(tag, speakers, persons) }
+                val detailContext =
+                    combine(
+                        preferencesDataStore.defaultTransformProfileId,
+                        isTransforming,
+                        isFetchingSpeakerInfo,
+                        playbackBundle,
+                        sideData,
+                    ) { defaultProfileId, isTransforming, isFetchingSpeakerInfo, playbackBundle, sideData ->
+                        DetailContext(
+                            defaultProfileId = defaultProfileId,
+                            isTransforming = isTransforming,
+                            isFetchingSpeakerInfo = isFetchingSpeakerInfo,
+                            playbackBundle = playbackBundle,
+                            sideData = sideData,
+                        )
+                    }
                 combine(
                     combine(
                         sessionDao.getSessionById(sessionId),
@@ -147,13 +172,10 @@ class SessionDetailViewModel
                     ) { sessionEntity, transcriptEntities, profileEntities ->
                         Triple(sessionEntity, transcriptEntities, profileEntities)
                     },
-                    preferencesDataStore.defaultTransformProfileId,
-                    isTransforming,
-                    isFetchingSpeakerInfo,
-                    playbackBundle,
-                    sideData,
-                ) { sessionBundle, defaultProfileId, isTransforming, isFetchingSpeakerInfo, playbackBundle, sideData ->
+                    detailContext,
+                ) { sessionBundle, detailContext ->
                     val (sessionEntity, transcriptEntities, profileEntities) = sessionBundle
+                    val (defaultProfileId, isTransforming, isFetchingSpeakerInfo, playbackBundle, sideData) = detailContext
                     val (playbackState, showRenameAfterRecording, renamePromptDismissed) = playbackBundle
                     val (tagSuggestion, speakerSegments, persons) = sideData
                     if (sessionEntity == null) {
