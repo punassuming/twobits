@@ -4,7 +4,13 @@
 
 ### Features
 
+* add speaker merge capability in session detail — tap "Merge" next to any speaker to combine duplicate speakers that diarization created for the same voice
+
 ### Improvements
+
+* simplify the recording page — replace the large description card above the record button with a compact status line; show first-run guidance only for new users with no recordings
+* improve diarized transcript display — color only the "Speaker N:" label and leave body text in the default theme color; snap speaker-change markers to the nearest word boundary to avoid mid-word breaks
+* improve speaker diarization accuracy — request per-word timestamps from Whisper to give the LLM precise turn-boundary evidence, rewrite the GPT prompt with conservative rules (re-entrant speaker IDs, ≥0.8s gap required, micro-segment inheritance), and post-process by merging adjacent same-speaker segments to eliminate spurious mid-sentence speaker changes
 
 ### Fixes
 

@@ -39,4 +39,11 @@ interface SpeakerSegmentDao {
 
     @Query("SELECT * FROM speaker_segments WHERE personId IS NOT NULL")
     fun getAllSegmentsWithPerson(): Flow<List<SpeakerSegmentEntity>>
+
+    @Query("UPDATE speaker_segments SET speakerId = :targetId WHERE sessionId = :sessionId AND speakerId = :sourceId")
+    suspend fun mergeSpeakerId(
+        sessionId: String,
+        sourceId: String,
+        targetId: String,
+    )
 }

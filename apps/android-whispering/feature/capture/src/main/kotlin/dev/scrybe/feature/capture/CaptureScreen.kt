@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -226,9 +225,9 @@ fun CaptureScreen(
                     )
                 }
             }
-            if (uiState.phase == CapturePhase.IDLE) {
+            if (uiState.phase == CapturePhase.IDLE && uiState.recentSessions.isEmpty()) {
                 item {
-                    IntroGuidanceSection(hasRecentSessions = uiState.recentSessions.isNotEmpty())
+                    IntroGuidanceSection()
                 }
             }
             if (uiState.phase != CapturePhase.RECORDING) {
@@ -341,99 +340,31 @@ private fun CaptureHeroHeader(
     hasRequiredPermissions: Boolean,
     elapsedMs: Long,
 ) {
-    Surface(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 92.dp),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(18.dp),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            AnimatedContent(
-                targetState = phase,
-                transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
-                label = "capture-phase",
-            ) { currentPhase ->
+    AnimatedContent(
+        targetState = phase,
+        transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
+        label = "capture-phase",
+    ) { currentPhase ->
+        Text(
+            text =
                 when (currentPhase) {
-                    CapturePhase.IDLE -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text = "Ready to record",
-                                style = MaterialTheme.typography.titleLarge,
-                                textAlign = TextAlign.Center,
-                            )
-                            Text(
-                                text =
-                                    if (hasRequiredPermissions) {
-                                        "Tap below to capture the full conversation. Scrybe keeps the original audio safe, then helps you review transcripts, speakers, and follow-up details."
-                                    } else {
-                                        "Microphone permission is required before Scrybe can start recording."
-                                    },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    }
-
-                    CapturePhase.RECORDING -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text = "Recording ${formatElapsedTime(elapsedMs)}",
-                                style = MaterialTheme.typography.titleLarge,
-                                textAlign = TextAlign.Center,
-                            )
-                            Text(
-                                text = "The waveform stays live above the record button while this session builds.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    }
-
-                    CapturePhase.STOPPING -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Text(
-                                text = "Saving recording",
-                                style = MaterialTheme.typography.titleLarge,
-                                textAlign = TextAlign.Center,
-                            )
-                            Text(
-                                text = "Scrybe is finishing the file and handing it off to your post-stop flow.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                            )
-                        }
-                    }
-                }
-            }
-        }
+                    CapturePhase.IDLE ->
+                        if (hasRequiredPermissions) "Ready to record" else "Microphone permission required"
+                    CapturePhase.RECORDING -> "Recording ${formatElapsedTime(elapsedMs)}"
+                    CapturePhase.STOPPING -> "Saving recording…"
+                },
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        )
     }
 }
 
 @Composable
-private fun IntroGuidanceSection(hasRecentSessions: Boolean) {
+private fun IntroGuidanceSection() {
     HomeCard {
         ScrybeSectionHeader(
-            title = if (hasRecentSessions) "Make each recording easier to review" else "Start with a confident first recording",
+            title = "Start with a confident first recording",
             subtitle =
                 "Scrybe saves the raw audio first, then layers review tools on top so you can revisit the important moments later.",
         )

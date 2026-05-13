@@ -45,18 +45,20 @@ class OpenAiDiarizationService
 
                     val speakerAssignments = assignSpeakers(verboseSegments, apiKey)
 
-                    verboseSegments.mapIndexed { index, segment ->
-                        val speakerId = speakerAssignments.getOrNull(index) ?: "SPEAKER_1"
-                        SpeakerSegment(
-                            id = UUID.randomUUID().toString(),
-                            sessionId = sessionId,
-                            speakerId = speakerId,
-                            speakerLabel = null,
-                            personId = null,
-                            startMs = (segment.start * 1000.0).roundToLong(),
-                            endMs = (segment.end * 1000.0).roundToLong(),
-                        )
-                    }
+                    val rawSegments =
+                        verboseSegments.mapIndexed { index, segment ->
+                            val speakerId = speakerAssignments.getOrNull(index) ?: "SPEAKER_1"
+                            SpeakerSegment(
+                                id = UUID.randomUUID().toString(),
+                                sessionId = sessionId,
+                                speakerId = speakerId,
+                                speakerLabel = null,
+                                personId = null,
+                                startMs = (segment.start * 1000.0).roundToLong(),
+                                endMs = (segment.end * 1000.0).roundToLong(),
+                            )
+                        }
+                    mergeAdjacentSegments(rawSegments)
                 }
             }
 
@@ -79,6 +81,8 @@ class OpenAiDiarizationService
                     .setType(MultipartBody.FORM)
                     .addFormDataPart("model", "whisper-1")
                     .addFormDataPart("response_format", "verbose_json")
+                    .addFormDataPart("timestamp_granularities[]", "segment")
+                    .addFormDataPart("timestamp_granularities[]", "word")
                     .addFormDataPart("file", audioFile.name, audioFile.asRequestBody(mediaType.toMediaType()))
                     .build()
 
@@ -104,63 +108,84 @@ class OpenAiDiarizationService
             }
         }
 
-        private fun assignSpeakers(
-            segments: List<VerboseSegment>,
+        private fun buildWordsJson(words: List<WordTimestamp>?): String =
+            words?.joinToString(",", "[", "]") { w ->
+                val ew = w.word.replace("\"", "\\\"")
+                """{"word":"$ew","start":${w.start},"end":${w.end}}"""
+            } ?: "[]"
+
+        private fun buildSegmentsJson(segments: List<VerboseSegment>): String =
+            segments
+                .mapIndexed { i, s ->
+                    val escapedText = s.text.replace("\"", "\\\"")
+                    val wordsJson = buildWordsJson(s.words)
+                    """{"index":$i,"start":${s.start},"end":${s.end},"text":"$escapedText","words":$wordsJson}"""
+                }.joinToString(",", "[", "]")
+
+        @Suppress("MaxLineLength")
+        private fun buildDiarizationPrompt(segmentsJson: String): String =
+            """
+            You are a speaker diarization expert. Analyze the transcript segments below and assign a speaker ID to each.
+
+            Rules:
+            - Use SPEAKER_1, SPEAKER_2, etc. A speaker who reappears later MUST reuse their original ID.
+            - Default to the fewest speakers that explain the data. Assume 2 speakers unless the evidence strongly indicates more.
+            - Do NOT change speakers within a continuous word run. Only assign a new speaker when the gap between the last word of a segment and the first word of the next is at least $MIN_SPEAKER_CHANGE_GAP_SECONDS seconds.
+            - If a segment is shorter than $MIN_SPEAKER_CHANGE_GAP_SECONDS seconds and surrounded by segments of the same speaker, assign it to that speaker regardless of content.
+            - Return ONLY a JSON array with no extra text: [{"index":0,"speakerId":"SPEAKER_1"},{"index":1,"speakerId":"SPEAKER_2"},...]
+
+            Transcript segments (JSON):
+            $segmentsJson
+            """.trimIndent()
+
+        private fun callDiarizationLlm(
+            prompt: String,
             apiKey: String,
-        ): List<String> {
-            val segmentsJson =
-                segments
-                    .mapIndexed { i, s ->
-                        """{"index":$i,"start":${s.start},"end":${s.end},"text":"${s.text.replace("\"", "\\\"")}"}"""
-                    }.joinToString(",", "[", "]")
-
-            val userMessage =
-                """
-                Transcript segments (JSON):
-                $segmentsJson
-
-                Assign each segment a speaker ID. Use SPEAKER_1, SPEAKER_2, etc. consistently for the same speaker.
-                Return only JSON: [{"index":0,"speakerId":"SPEAKER_1"},{"index":1,"speakerId":"SPEAKER_2"},...]
-                """.trimIndent()
-
+        ): String? {
             val requestPayload =
                 OpenAiResponseRequest(
                     model = MODEL,
-                    instructions = "You are a speaker diarization assistant. Identify speaker turns from transcript segments.",
+                    instructions = "You are a speaker diarization assistant.",
                     input =
                         listOf(
                             ResponseInputMessage(
                                 type = "message",
                                 role = "user",
-                                content = listOf(InputText(type = "input_text", text = userMessage)),
+                                content = listOf(InputText(type = "input_text", text = prompt)),
                             ),
                         ),
                 )
-
             val request =
                 Request
                     .Builder()
                     .url("https://api.openai.com/v1/responses")
                     .header("Authorization", "Bearer $apiKey")
                     .header("Content-Type", "application/json")
-                    .post(json.encodeToString(OpenAiResponseRequest.serializer(), requestPayload).toRequestBody(JSON_MEDIA_TYPE))
-                    .build()
+                    .post(
+                        json
+                            .encodeToString(OpenAiResponseRequest.serializer(), requestPayload)
+                            .toRequestBody(JSON_MEDIA_TYPE),
+                    ).build()
+            return okHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val body = response.body?.string() ?: return@use null
+                val parsed =
+                    runCatching { json.decodeFromString<OpenAiResponseResponse>(body) }.getOrNull()
+                        ?: return@use null
+                parsed.outputText
+                    ?: parsed.output
+                        .orEmpty()
+                        .flatMap { it.content.orEmpty() }
+                        .filter { it.type == "output_text" }
+                        .joinToString("") { it.text.orEmpty() }
+            }
+        }
 
-            val outputText =
-                okHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return List(segments.size) { "SPEAKER_1" }
-                    val body = response.body?.string() ?: return List(segments.size) { "SPEAKER_1" }
-                    val parsed =
-                        runCatching { json.decodeFromString<OpenAiResponseResponse>(body) }.getOrNull()
-                            ?: return List(segments.size) { "SPEAKER_1" }
-                    parsed.outputText
-                        ?: parsed.output
-                            .orEmpty()
-                            .flatMap { it.content.orEmpty() }
-                            .filter { it.type == "output_text" }
-                            .joinToString("") { it.text.orEmpty() }
-                } ?: return List(segments.size) { "SPEAKER_1" }
-
+        private fun parseAssignments(
+            outputText: String?,
+            size: Int,
+        ): List<String> {
+            if (outputText == null) return List(size) { "SPEAKER_1" }
             val cleaned =
                 outputText
                     .trim()
@@ -168,13 +193,38 @@ class OpenAiDiarizationService
                     .removePrefix("```")
                     .removeSuffix("```")
                     .trim()
-
             return runCatching {
                 json
                     .decodeFromString<List<SpeakerAssignment>>(cleaned)
                     .sortedBy { it.index }
                     .map { it.speakerId }
-            }.getOrElse { List(segments.size) { "SPEAKER_1" } }
+            }.getOrElse { List(size) { "SPEAKER_1" } }
+        }
+
+        private fun assignSpeakers(
+            segments: List<VerboseSegment>,
+            apiKey: String,
+        ): List<String> {
+            val prompt = buildDiarizationPrompt(buildSegmentsJson(segments))
+            val outputText = callDiarizationLlm(prompt, apiKey)
+            return parseAssignments(outputText, segments.size)
+        }
+
+        private fun mergeAdjacentSegments(segments: List<SpeakerSegment>): List<SpeakerSegment> {
+            if (segments.isEmpty()) return emptyList()
+            val merged = mutableListOf<SpeakerSegment>()
+            var current = segments.first()
+            for (next in segments.drop(1)) {
+                current =
+                    if (next.speakerId == current.speakerId) {
+                        current.copy(endMs = next.endMs)
+                    } else {
+                        merged.add(current)
+                        next
+                    }
+            }
+            merged.add(current)
+            return merged
         }
 
         @Serializable
@@ -183,11 +233,19 @@ class OpenAiDiarizationService
         )
 
         @Serializable
+        private data class WordTimestamp(
+            val word: String,
+            val start: Double,
+            val end: Double,
+        )
+
+        @Serializable
         private data class VerboseSegment(
             val id: Int = 0,
             val start: Double,
             val end: Double,
             val text: String,
+            val words: List<WordTimestamp>? = null,
         )
 
         @Serializable
@@ -235,6 +293,12 @@ class OpenAiDiarizationService
 
         private companion object {
             const val MODEL = "gpt-5-mini"
+
+            /** Minimum gap between the last word of one segment and the first word of the next
+             *  before the model is allowed to assign a different speaker. Below this threshold
+             *  the two segments are treated as a continuous utterance from a single speaker. */
+            const val MIN_SPEAKER_CHANGE_GAP_SECONDS = 0.8
+
             val JSON_MEDIA_TYPE = "application/json".toMediaType()
         }
     }
