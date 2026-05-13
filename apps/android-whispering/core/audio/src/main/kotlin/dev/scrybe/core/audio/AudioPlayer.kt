@@ -7,6 +7,11 @@ interface AudioPlayer {
 
     suspend fun play(filePath: String): Result<Unit>
 
+    fun prepare(
+        filePath: String,
+        startPositionMs: Long = 0L,
+    ): Result<Unit>
+
     fun pause()
 
     fun seekTo(positionMs: Long)

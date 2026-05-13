@@ -138,7 +138,9 @@ fun ScrybeApp() {
             title = {
                 Text(
                     text =
-                        if (whatsNewState.versionName.isBlank()) {
+                        if (whatsNewState.isFirstRun) {
+                            "Welcome to Scrybe"
+                        } else if (whatsNewState.versionName.isBlank()) {
                             "What's New"
                         } else {
                             "What's New in ${whatsNewState.versionName}"
@@ -153,6 +155,13 @@ fun ScrybeApp() {
                             .heightIn(max = 400.dp)
                             .verticalScroll(rememberScrollState()),
                 ) {
+                    if (whatsNewState.summary.isNotBlank()) {
+                        Text(
+                            text = whatsNewState.summary,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Text(
                         text = whatsNewState.title,
                         style = MaterialTheme.typography.titleSmall,
@@ -172,7 +181,7 @@ fun ScrybeApp() {
             },
             confirmButton = {
                 TextButton(onClick = whatsNewViewModel::dismiss) {
-                    Text("Close")
+                    Text(whatsNewState.confirmLabel)
                 }
             },
         )

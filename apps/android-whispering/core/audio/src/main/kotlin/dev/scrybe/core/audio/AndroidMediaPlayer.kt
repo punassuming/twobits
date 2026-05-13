@@ -24,80 +24,119 @@ class AndroidMediaPlayer
         private var mediaPlayer: MediaPlayer? = null
         private var progressJob: Job? = null
         private var currentFilePath: String? = null
+        private val playerLock = Any()
 
         override suspend fun play(filePath: String): Result<Unit> =
             runCatching {
-                val file = File(filePath)
-                require(file.exists()) { "Recorded audio file not found" }
-
-                val currentPlayer = mediaPlayer
-                if (currentPlayer != null && currentFilePath == file.absolutePath) {
-                    currentPlayer.start()
-                    _playbackState.value = _playbackState.value.copy(isPlaying = true)
-                    startProgressUpdates(currentPlayer, file.absolutePath)
-                    return@runCatching
-                }
-
-                stop()
-
-                val player =
-                    MediaPlayer().apply {
-                        setDataSource(file.absolutePath)
-                        setOnCompletionListener {
-                            progressJob?.cancel()
-                            _playbackState.value =
-                                _playbackState.value.copy(
-                                    isPlaying = false,
-                                    currentPositionMs = _playbackState.value.durationMs,
-                                )
-                            release()
-                            mediaPlayer = null
-                            currentFilePath = null
+                synchronized(playerLock) {
+                    val resumePosition =
+                        if (currentFilePath == File(filePath).absolutePath) {
+                            _playbackState.value.currentPositionMs
+                        } else {
+                            0L
                         }
-                        prepare()
-                        start()
+                    prepare(filePath, resumePosition).getOrThrow()
+                    val player = requireNotNull(mediaPlayer)
+                    player.start()
+                    _playbackState.value = _playbackState.value.copy(isPlaying = true)
+                    startProgressUpdates(player, requireNotNull(currentFilePath))
+                }
+            }
+
+        override fun prepare(
+            filePath: String,
+            startPositionMs: Long,
+        ): Result<Unit> =
+            runCatching {
+                synchronized(playerLock) {
+                    val file = File(filePath)
+                    require(file.exists()) { "Recorded audio file not found" }
+
+                    val currentPlayer = mediaPlayer
+                    if (currentPlayer != null && currentFilePath == file.absolutePath) {
+                        primeExistingPlayer(currentPlayer, file.absolutePath, startPositionMs)
+                        return@runCatching
                     }
 
-                mediaPlayer = player
-                currentFilePath = file.absolutePath
-                _playbackState.value =
-                    PlaybackState(
-                        filePath = file.absolutePath,
-                        isPlaying = true,
-                        currentPositionMs = 0L,
-                        durationMs = player.duration.toLong(),
-                    )
-                startProgressUpdates(player, file.absolutePath)
+                    stop()
+                    val player = buildPlayer(file.absolutePath)
+                    mediaPlayer = player
+                    currentFilePath = file.absolutePath
+                    primeExistingPlayer(player, file.absolutePath, startPositionMs)
+                }
             }
 
         override fun pause() {
-            mediaPlayer?.takeIf { it.isPlaying }?.pause()
-            progressJob?.cancel()
-            _playbackState.value =
-                _playbackState.value.copy(
-                    isPlaying = false,
-                    currentPositionMs = mediaPlayer?.currentPosition?.toLong() ?: _playbackState.value.currentPositionMs,
-                )
+            synchronized(playerLock) {
+                mediaPlayer?.takeIf { it.isPlaying }?.pause()
+                progressJob?.cancel()
+                _playbackState.value =
+                    _playbackState.value.copy(
+                        isPlaying = false,
+                        currentPositionMs = mediaPlayer?.currentPosition?.toLong() ?: _playbackState.value.currentPositionMs,
+                    )
+            }
         }
 
         override fun seekTo(positionMs: Long) {
-            val player = mediaPlayer ?: return
-            val target = positionMs.coerceIn(0L, player.duration.toLong())
-            player.seekTo(target.toInt())
-            _playbackState.value = _playbackState.value.copy(currentPositionMs = target)
+            synchronized(playerLock) {
+                val player = mediaPlayer ?: return
+                val target = positionMs.coerceIn(0L, player.duration.toLong())
+                player.seekTo(target.toInt())
+                _playbackState.value = _playbackState.value.copy(currentPositionMs = target)
+            }
         }
 
         override fun stop() {
-            progressJob?.cancel()
-            mediaPlayer?.runCatching {
-                if (isPlaying) {
-                    stop()
+            synchronized(playerLock) {
+                progressJob?.cancel()
+                mediaPlayer?.runCatching {
+                    if (isPlaying) {
+                        stop()
+                    }
+                    release()
                 }
-                release()
+                mediaPlayer = null
+                currentFilePath = null
+                _playbackState.value = PlaybackState()
             }
-            mediaPlayer = null
-            currentFilePath = null
-            _playbackState.value = PlaybackState()
+        }
+
+        private fun buildPlayer(filePath: String): MediaPlayer =
+            MediaPlayer().apply {
+                setDataSource(filePath)
+                setOnCompletionListener {
+                    progressJob?.cancel()
+                    _playbackState.value =
+                        _playbackState.value.copy(
+                            isPlaying = false,
+                            currentPositionMs = _playbackState.value.durationMs,
+                        )
+                    release()
+                    mediaPlayer = null
+                    currentFilePath = null
+                }
+                prepare()
+            }
+
+        private fun primeExistingPlayer(
+            player: MediaPlayer,
+            filePath: String,
+            startPositionMs: Long,
+        ) {
+            if (player.isPlaying) {
+                player.pause()
+            }
+            progressJob?.cancel()
+            val target = startPositionMs.coerceIn(0L, player.duration.toLong())
+            player.seekTo(target.toInt())
+            _playbackState.value =
+                PlaybackState(
+                    filePath = filePath,
+                    isPlaying = false,
+                    currentPositionMs = target,
+                    durationMs = player.duration.toLong(),
+                )
         }
 
         private fun startProgressUpdates(

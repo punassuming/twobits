@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioPlayer
+import dev.scrybe.core.audio.PlaybackState
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
@@ -47,6 +48,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.Duration
@@ -78,6 +81,8 @@ class SessionDetailViewModel
         private val _uiState = MutableStateFlow<SessionDetailUiState>(SessionDetailUiState.Loading)
         val uiState: StateFlow<SessionDetailUiState> = _uiState.asStateFlow()
         private val isTransforming = MutableStateFlow(false)
+        private val isFetchingSpeakerInfo = MutableStateFlow(false)
+        private val playbackSeekMutex = Mutex()
         private val renamePromptDismissed = MutableStateFlow(false)
         private val tagSuggestionState = MutableStateFlow<TagSuggestionUiState>(TagSuggestionUiState.Idle)
         private val _events = MutableSharedFlow<SessionDetailEvent>()
@@ -87,6 +92,14 @@ class SessionDetailViewModel
             val tagSuggestion: TagSuggestionUiState,
             val speakerSegments: List<SpeakerSegment>,
             val persons: List<Person>,
+        )
+
+        private data class DetailContext(
+            val defaultProfileId: String?,
+            val isTransforming: Boolean,
+            val isFetchingSpeakerInfo: Boolean,
+            val playbackBundle: Triple<PlaybackState, Boolean, Boolean>,
+            val sideData: SideData,
         )
 
         init {
@@ -135,6 +148,22 @@ class SessionDetailViewModel
                             }
                         },
                     ) { tag, speakers, persons -> SideData(tag, speakers, persons) }
+                val detailContext =
+                    combine(
+                        preferencesDataStore.defaultTransformProfileId,
+                        isTransforming,
+                        isFetchingSpeakerInfo,
+                        playbackBundle,
+                        sideData,
+                    ) { defaultProfileId, isTransforming, isFetchingSpeakerInfo, playbackBundle, sideData ->
+                        DetailContext(
+                            defaultProfileId = defaultProfileId,
+                            isTransforming = isTransforming,
+                            isFetchingSpeakerInfo = isFetchingSpeakerInfo,
+                            playbackBundle = playbackBundle,
+                            sideData = sideData,
+                        )
+                    }
                 combine(
                     combine(
                         sessionDao.getSessionById(sessionId),
@@ -143,12 +172,10 @@ class SessionDetailViewModel
                     ) { sessionEntity, transcriptEntities, profileEntities ->
                         Triple(sessionEntity, transcriptEntities, profileEntities)
                     },
-                    preferencesDataStore.defaultTransformProfileId,
-                    isTransforming,
-                    playbackBundle,
-                    sideData,
-                ) { sessionBundle, defaultProfileId, isTransforming, playbackBundle, sideData ->
+                    detailContext,
+                ) { sessionBundle, detailContext ->
                     val (sessionEntity, transcriptEntities, profileEntities) = sessionBundle
+                    val (defaultProfileId, isTransforming, isFetchingSpeakerInfo, playbackBundle, sideData) = detailContext
                     val (playbackState, showRenameAfterRecording, renamePromptDismissed) = playbackBundle
                     val (tagSuggestion, speakerSegments, persons) = sideData
                     if (sessionEntity == null) {
@@ -257,6 +284,7 @@ class SessionDetailViewModel
                                     renamePromptDismissed = renamePromptDismissed,
                                 ),
                             tagSuggestionState = tagSuggestion,
+                            isFetchingSpeakerInfo = isFetchingSpeakerInfo,
                             speakerSegments = speakerSegments,
                             persons = persons,
                             sentimentSegments = sentimentSegments,
@@ -456,7 +484,21 @@ class SessionDetailViewModel
         }
 
         fun seekPlayback(positionMs: Long) {
-            audioPlayer.seekTo(positionMs)
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            viewModelScope.launch {
+                playbackSeekMutex.withLock {
+                    val currentPlayback = audioPlayer.playbackState.value
+                    if (currentPlayback.filePath == state.session.audioFilePath) {
+                        audioPlayer.seekTo(positionMs)
+                    } else {
+                        audioPlayer
+                            .prepare(state.session.audioFilePath, positionMs)
+                            .onFailure {
+                                _events.emit(SessionDetailEvent.Message(it.message ?: "Playback failed"))
+                            }
+                    }
+                }
+            }
         }
 
         fun stopPlayback() {
@@ -479,8 +521,8 @@ class SessionDetailViewModel
             }
         }
 
-        fun saveTags(tagsInput: String) {
-            val normalizedTags = TagsCodec.normalizeInput(tagsInput)
+        fun saveTags(tags: List<String>) {
+            val normalizedTags = tags.map(String::trim).filter(String::isNotBlank).distinct()
             viewModelScope.launch {
                 val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
                 sessionDao.updateSession(
@@ -529,6 +571,28 @@ class SessionDetailViewModel
 
         fun clearTagSuggestionState() {
             tagSuggestionState.value = TagSuggestionUiState.Idle
+        }
+
+        fun fetchSpeakerInfo() {
+            viewModelScope.launch {
+                isFetchingSpeakerInfo.value = true
+                sessionTranscriptionCoordinator
+                    .fetchSpeakerInfo(sessionId)
+                    .onSuccess { speakerCount ->
+                        _events.emit(
+                            SessionDetailEvent.Message(
+                                if (speakerCount > 0) {
+                                    "Retrieved speaker info for $speakerCount speaker${if (speakerCount == 1) "" else "s"}"
+                                } else {
+                                    "No distinct speakers were detected"
+                                },
+                            ),
+                        )
+                    }.onFailure {
+                        _events.emit(SessionDetailEvent.Message(it.message ?: "Unable to retrieve speaker info"))
+                    }
+                isFetchingSpeakerInfo.value = false
+            }
         }
 
         fun assignPersonToSpeaker(
@@ -664,7 +728,7 @@ class SessionDetailViewModel
             viewModelScope.launch {
                 val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
                 runCatching {
-                    File(session.audioFilePath).takeIf { it.exists() }?.delete()
+                    deleteAudioFileIfSafe(session.audioFilePath)
                     transcriptDao.deleteTranscriptsForSession(sessionId)
                     transformRunDao.deleteRunsForSession(sessionId)
                     sessionDao.deleteSession(sessionId)
@@ -741,5 +805,12 @@ class SessionDetailViewModel
                 if (!session.title.startsWith(DEFAULT_TITLE_PREFIX)) return false
                 return Duration.between(session.createdAt, Instant.now()) <= RENAME_PROMPT_WINDOW
             }
+        }
+
+        private suspend fun deleteAudioFileIfSafe(audioFilePath: String) {
+            if (sessionDao.countSessionsByAudioFilePath(audioFilePath) > 1) {
+                return
+            }
+            File(audioFilePath).takeIf { it.exists() }?.delete()
         }
     }

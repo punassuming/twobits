@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -130,24 +131,31 @@ class RecordingForegroundService : Service() {
             audioRecorder
                 .stopRecording()
                 .onSuccess { recordedAudio ->
-                    val sessionId = withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
-                    recordingSessionEvents.onSessionCompleted(sessionId)
-                    transcriptionScope.launch {
-                        if (!preferencesDataStore.autoTranscribe.first()) {
-                            return@launch
-                        }
-                        if (recordedAudio.durationMs < MIN_AUTO_TRANSCRIBE_DURATION_MS) {
-                            recordingSessionEvents.onRecordingError(SHORT_AUTO_TRANSCRIBE_MESSAGE)
-                            return@launch
-                        }
-                        sessionTranscriptionCoordinator
-                            .autoTranscribeIfEnabled(sessionId)
-                            .onFailure {
-                                android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
-                                recordingSessionEvents.onRecordingError(
-                                    it.message ?: "Auto-transcription failed",
-                                )
+                    runCatching {
+                        withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
+                    }.onSuccess { sessionId ->
+                        recordingSessionEvents.onSessionCompleted(sessionId)
+                        transcriptionScope.launch {
+                            if (!preferencesDataStore.autoTranscribe.first()) {
+                                return@launch
                             }
+                            if (recordedAudio.durationMs < MIN_AUTO_TRANSCRIBE_DURATION_MS) {
+                                recordingSessionEvents.onRecordingError(SHORT_AUTO_TRANSCRIBE_MESSAGE)
+                                return@launch
+                            }
+                            sessionTranscriptionCoordinator
+                                .autoTranscribeIfEnabled(sessionId)
+                                .onFailure {
+                                    android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
+                                    recordingSessionEvents.onRecordingError(
+                                        it.message ?: "Auto-transcription failed",
+                                    )
+                                }
+                        }
+                    }.onFailure { error ->
+                        android.util.Log.e(TAG, "Failed to save recording", error)
+                        recordingSessionEvents.onRecordingError(error.message ?: "Failed to save recording")
+                        runCatching { File(recordedAudio.filePath).takeIf { it.exists() }?.delete() }
                     }
                 }.onFailure { error ->
                     android.util.Log.e(TAG, "Failed to stop recording", error)
@@ -180,6 +188,24 @@ class RecordingForegroundService : Service() {
     }
 
     private suspend fun persistRecording(recordedAudio: RecordedAudio): String {
+        val audioFile = File(recordedAudio.filePath)
+        require(audioFile.exists()) { "Recording file was not found after saving" }
+        val actualFileSize = audioFile.length()
+        if (recordedAudio.fileSizeBytes != actualFileSize) {
+            android.util.Log.w(
+                TAG,
+                "Recorded file size mismatch for ${audioFile.name}: recorder=${recordedAudio.fileSizeBytes}, disk=$actualFileSize",
+            )
+        }
+        if (actualFileSize <= 0L) {
+            runCatching { audioFile.delete() }
+            error("Recording did not save correctly. Please try again.")
+        }
+
+        recordingSessionDao.getSessionByAudioFilePath(audioFile.absolutePath)?.let { existing ->
+            return existing.id
+        }
+
         val finishedAt = System.currentTimeMillis()
         val createdAt = finishedAt - recordedAudio.durationMs
         val title = "Recording ${TITLE_FORMAT.format(Date(createdAt))}"
@@ -191,9 +217,9 @@ class RecordingForegroundService : Service() {
                 id = sessionId,
                 title = title,
                 tags = "",
-                audioFilePath = recordedAudio.filePath,
+                audioFilePath = audioFile.absolutePath,
                 durationMs = recordedAudio.durationMs,
-                fileSizeBytes = recordedAudio.fileSizeBytes,
+                fileSizeBytes = actualFileSize,
                 audioFormat = recordedAudio.audioFormat.name,
                 sampleRateHz = recordedAudio.sampleRateHz,
                 encodingBitRate = recordedAudio.encodingBitRate,
