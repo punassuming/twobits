@@ -1204,10 +1204,10 @@ private fun buildSpeakerAnnotatedString(
             if (segStart > pos) append(paragraphed.substring(pos, segStart))
             if (segment.speakerId != lastSpeakerId) {
                 val color = speakerColorForIndex(speakerIds.indexOf(segment.speakerId).coerceAtLeast(0))
-                val speakerNum = segment.speakerId.filter { it.isDigit() }.ifEmpty { "1" }
+                val speakerLabel = defaultSpeakerLabel(segment.speakerId, speakerIds.indexOf(segment.speakerId))
                 if (length > 0) append("\n\n")
                 withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
-                    append("Speaker $speakerNum: ")
+                    append("$speakerLabel: ")
                 }
                 lastSpeakerId = segment.speakerId
             }
@@ -1224,9 +1224,18 @@ private fun snapToWordBoundary(
 ): Int {
     if (pos <= 0) return 0
     if (pos >= text.length) return text.length
+    val limit = (pos - 100).coerceAtLeast(0)
     var i = pos
-    while (i > 0 && !text[i - 1].isWhitespace()) i--
+    while (i > limit && !text[i - 1].isWhitespace()) i--
     return i
+}
+
+private fun defaultSpeakerLabel(
+    speakerId: String,
+    fallbackIndex: Int = 0,
+): String {
+    val num = speakerId.filter { it.isDigit() }.takeIf { it.isNotBlank() } ?: "${fallbackIndex + 1}"
+    return "Speaker $num"
 }
 
 @Composable
@@ -1508,9 +1517,7 @@ private fun SpeakerSlotsCard(
     val speakerEntries =
         distinctSpeakers.mapIndexed { idx, speakerId ->
             val seg = state.speakerSegments.first { it.speakerId == speakerId }
-            val label =
-                seg.speakerLabel
-                    ?: "Speaker ${speakerId.filter { it.isDigit() }.takeIf { it.isNotBlank() } ?: "${idx + 1}"}"
+            val label = seg.speakerLabel ?: defaultSpeakerLabel(speakerId, idx)
             val personName = seg.personId?.let { pid -> state.persons.find { it.id == pid }?.name }
             Triple(speakerId, label, personName)
         }

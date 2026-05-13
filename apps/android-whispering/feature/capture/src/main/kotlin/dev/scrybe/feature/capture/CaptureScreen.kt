@@ -227,7 +227,7 @@ fun CaptureScreen(
             }
             if (uiState.phase == CapturePhase.IDLE && uiState.recentSessions.isEmpty()) {
                 item {
-                    IntroGuidanceSection(hasRecentSessions = false)
+                    IntroGuidanceSection()
                 }
             }
             if (uiState.phase != CapturePhase.RECORDING) {
@@ -361,10 +361,10 @@ private fun CaptureHeroHeader(
 }
 
 @Composable
-private fun IntroGuidanceSection(hasRecentSessions: Boolean) {
+private fun IntroGuidanceSection() {
     HomeCard {
         ScrybeSectionHeader(
-            title = if (hasRecentSessions) "Make each recording easier to review" else "Start with a confident first recording",
+            title = "Start with a confident first recording",
             subtitle =
                 "Scrybe saves the raw audio first, then layers review tools on top so you can revisit the important moments later.",
         )

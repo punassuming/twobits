@@ -631,13 +631,14 @@ class SessionDetailViewModel
             targetSpeakerId: String,
         ) {
             viewModelScope.launch {
-                val targetSegment =
-                    speakerSegmentDao
-                        .getSegmentsOnce(sessionId)
-                        .firstOrNull { it.speakerId == targetSpeakerId }
+                val segments = speakerSegmentDao.getSegmentsOnce(sessionId)
+                val sourceSegment = segments.firstOrNull { it.speakerId == sourceSpeakerId }
+                val targetSegment = segments.firstOrNull { it.speakerId == targetSpeakerId }
                 speakerSegmentDao.mergeSpeakerId(sessionId, sourceSpeakerId, targetSpeakerId)
-                speakerSegmentDao.updateSpeakerLabel(sessionId, targetSpeakerId, targetSegment?.speakerLabel)
-                speakerSegmentDao.updatePersonId(sessionId, targetSpeakerId, targetSegment?.personId)
+                val finalLabel = targetSegment?.speakerLabel ?: sourceSegment?.speakerLabel
+                val finalPersonId = targetSegment?.personId ?: sourceSegment?.personId
+                speakerSegmentDao.updateSpeakerLabel(sessionId, targetSpeakerId, finalLabel)
+                speakerSegmentDao.updatePersonId(sessionId, targetSpeakerId, finalPersonId)
             }
         }
 
