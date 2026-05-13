@@ -74,6 +74,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -473,6 +474,7 @@ fun SessionDetailScreen(
                                 onAssignPerson = viewModel::assignPersonToSpeaker,
                                 onCreatePerson = viewModel::createPersonAndAssign,
                                 onFetchSpeakerInfo = viewModel::fetchSpeakerInfo,
+                                onMergeSpeakers = viewModel::mergeSpeakers,
                             )
                         }
                         TranscriptSection(
@@ -1189,29 +1191,42 @@ private fun buildSpeakerAnnotatedString(
     return buildAnnotatedString {
         var pos = 0
         for (segment in speakerSegments.sortedBy { it.startMs }) {
-            val start = ((segment.startMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
-            val end = ((segment.endMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
-            if (start > pos) {
-                append(paragraphed.substring(pos, start))
-            }
-            if (start < end) {
-                val color = speakerColorForIndex(speakerIds.indexOf(segment.speakerId).coerceAtLeast(0))
+            val rawStart = ((segment.startMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
+            val rawEnd = ((segment.endMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
+            val segEnd = rawEnd.coerceAtLeast(pos)
+            if (segEnd <= pos) continue
+            val segStart =
                 if (segment.speakerId != lastSpeakerId) {
-                    val speakerNum = segment.speakerId.filter { it.isDigit() }.ifEmpty { "1" }
-                    val prefix = if (pos > 0) "\n\n" else ""
-                    withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
-                        append("${prefix}Speaker $speakerNum: ")
-                    }
-                    lastSpeakerId = segment.speakerId
+                    snapToWordBoundary(paragraphed, rawStart).coerceAtLeast(pos)
+                } else {
+                    rawStart.coerceAtLeast(pos)
                 }
-                withStyle(SpanStyle(color = color)) {
-                    append(paragraphed.substring(start, end))
+            if (segStart > pos) append(paragraphed.substring(pos, segStart))
+            if (segment.speakerId != lastSpeakerId) {
+                val color = speakerColorForIndex(speakerIds.indexOf(segment.speakerId).coerceAtLeast(0))
+                val speakerNum = segment.speakerId.filter { it.isDigit() }.ifEmpty { "1" }
+                if (length > 0) append("\n\n")
+                withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
+                    append("Speaker $speakerNum: ")
                 }
-                pos = end
+                lastSpeakerId = segment.speakerId
             }
+            if (segStart < segEnd) append(paragraphed.substring(segStart, segEnd))
+            pos = segEnd
         }
         if (pos < len) append(paragraphed.substring(pos))
     }
+}
+
+private fun snapToWordBoundary(
+    text: String,
+    pos: Int,
+): Int {
+    if (pos <= 0) return 0
+    if (pos >= text.length) return text.length
+    var i = pos
+    while (i > 0 && !text[i - 1].isWhitespace()) i--
+    return i
 }
 
 @Composable
@@ -1483,13 +1498,24 @@ private fun SpeakerSlotsCard(
     onAssignPerson: (speakerId: String, personId: String?) -> Unit,
     onCreatePerson: (speakerId: String, name: String) -> Unit,
     onFetchSpeakerInfo: () -> Unit,
+    onMergeSpeakers: (sourceSpeakerId: String, targetSpeakerId: String) -> Unit,
 ) {
     val distinctSpeakers =
         state.speakerSegments
             .map { it.speakerId }
             .distinct()
             .sorted()
+    val speakerEntries =
+        distinctSpeakers.mapIndexed { idx, speakerId ->
+            val seg = state.speakerSegments.first { it.speakerId == speakerId }
+            val label =
+                seg.speakerLabel
+                    ?: "Speaker ${speakerId.filter { it.isDigit() }.takeIf { it.isNotBlank() } ?: "${idx + 1}"}"
+            val personName = seg.personId?.let { pid -> state.persons.find { it.id == pid }?.name }
+            Triple(speakerId, label, personName)
+        }
     var pickerTargetSpeakerId by remember { mutableStateOf<String?>(null) }
+    var mergeSourceSpeakerId by remember { mutableStateOf<String?>(null) }
     ScrybeSectionCard {
         ScrybeSectionHeader(
             title = "Speakers",
@@ -1517,36 +1543,15 @@ private fun SpeakerSlotsCard(
             }
             return@ScrybeSectionCard
         }
-        distinctSpeakers.forEachIndexed { idx, speakerId ->
-            val segment = state.speakerSegments.first { it.speakerId == speakerId }
-            val label =
-                segment.speakerLabel ?: run {
-                    val n = speakerId.filter { it.isDigit() }.takeIf { it.isNotBlank() } ?: "${idx + 1}"
-                    "Speaker $n"
-                }
-            val personName =
-                segment.personId?.let { pid -> state.persons.find { it.id == pid }?.name }
-            val dotColor = speakerColorForIndex(idx)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(modifier = Modifier.size(10.dp).background(dotColor, CircleShape))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(label, style = MaterialTheme.typography.bodyMedium)
-                    if (personName != null) {
-                        Text(
-                            personName,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-                TextButton(onClick = { pickerTargetSpeakerId = speakerId }) {
-                    Text(if (personName != null) "Reassign" else "Assign")
-                }
-            }
+        speakerEntries.forEachIndexed { idx, (speakerId, label, personName) ->
+            SpeakerSlotRow(
+                dotColor = speakerColorForIndex(idx),
+                label = label,
+                personName = personName,
+                showMergeButton = distinctSpeakers.size > 1,
+                onAssign = { pickerTargetSpeakerId = speakerId },
+                onMerge = { mergeSourceSpeakerId = speakerId },
+            )
         }
     }
     pickerTargetSpeakerId?.let { speakerId ->
@@ -1564,6 +1569,93 @@ private fun SpeakerSlotsCard(
             },
         )
     }
+    mergeSourceSpeakerId?.let { sourceId ->
+        val sourceLabel = speakerEntries.firstOrNull { it.first == sourceId }?.second ?: sourceId
+        val others = speakerEntries.filter { it.first != sourceId }.map { it.first to it.second }
+        MergeSpeakerDialog(
+            sourceLabel = sourceLabel,
+            otherSpeakers = others,
+            onDismiss = { mergeSourceSpeakerId = null },
+            onMerge = { targetId ->
+                onMergeSpeakers(sourceId, targetId)
+                mergeSourceSpeakerId = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun SpeakerSlotRow(
+    dotColor: Color,
+    label: String,
+    personName: String?,
+    showMergeButton: Boolean,
+    onAssign: () -> Unit,
+    onMerge: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(modifier = Modifier.size(10.dp).background(dotColor, CircleShape))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium)
+            if (personName != null) {
+                Text(
+                    personName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        TextButton(onClick = onAssign) {
+            Text(if (personName != null) "Reassign" else "Assign")
+        }
+        if (showMergeButton) {
+            TextButton(onClick = onMerge) {
+                Text("Merge")
+            }
+        }
+    }
+}
+
+@Composable
+private fun MergeSpeakerDialog(
+    sourceLabel: String,
+    otherSpeakers: List<Pair<String, String>>,
+    onDismiss: () -> Unit,
+    onMerge: (targetSpeakerId: String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Merge Speaker") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Combine \"$sourceLabel\" into:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                otherSpeakers.forEach { (targetId, targetLabel) ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onMerge(targetId) }
+                                .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(targetLabel, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable

@@ -626,6 +626,21 @@ class SessionDetailViewModel
             }
         }
 
+        fun mergeSpeakers(
+            sourceSpeakerId: String,
+            targetSpeakerId: String,
+        ) {
+            viewModelScope.launch {
+                val targetSegment =
+                    speakerSegmentDao
+                        .getSegmentsOnce(sessionId)
+                        .firstOrNull { it.speakerId == targetSpeakerId }
+                speakerSegmentDao.mergeSpeakerId(sessionId, sourceSpeakerId, targetSpeakerId)
+                speakerSegmentDao.updateSpeakerLabel(sessionId, targetSpeakerId, targetSegment?.speakerLabel)
+                speakerSegmentDao.updatePersonId(sessionId, targetSpeakerId, targetSegment?.personId)
+            }
+        }
+
         fun saveTranscriptEdit(content: String) {
             val trimmed = content.trim()
             if (trimmed.isBlank()) return
