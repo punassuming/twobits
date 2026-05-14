@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
@@ -62,18 +64,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -84,6 +87,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -126,6 +130,7 @@ fun HistoryScreen(
     var transformResultEvent by remember { mutableStateOf<HistoryEvent.TransformResult?>(null) }
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showTagBrowser by remember { mutableStateOf(false) }
+    var showFolderSheet by remember { mutableStateOf(false) }
 
     val importLauncher =
         rememberLauncherForActivityResult(
@@ -369,12 +374,10 @@ fun HistoryScreen(
                         if (isAiWorking) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         }
-                        FolderNavigationRow(
-                            breadcrumb = state.breadcrumb,
-                            subfolders = state.subfolders,
+                        FolderPickerChip(
                             currentFolderId = state.currentFolderId,
-                            onNavigate = { viewModel.navigateToFolder(it) },
-                            onCreateFolder = { showCreateFolder = true },
+                            breadcrumb = state.breadcrumb,
+                            onClick = { showFolderSheet = true },
                         )
                         if (state.availableTags.isNotEmpty()) {
                             TagFilterRow(
@@ -948,6 +951,21 @@ fun HistoryScreen(
             },
         )
     }
+    if (showFolderSheet && successState != null) {
+        FolderPickerBottomSheet(
+            allFolders = successState.allFolders,
+            currentFolderId = successState.currentFolderId,
+            onNavigate = { folderId ->
+                viewModel.navigateToFolder(folderId)
+                showFolderSheet = false
+            },
+            onCreateFolder = {
+                showFolderSheet = false
+                showCreateFolder = true
+            },
+            onDismiss = { showFolderSheet = false },
+        )
+    }
 }
 
 @Composable
@@ -1002,64 +1020,155 @@ private fun folderDescendantIds(
 }
 
 @Composable
-private fun FolderNavigationRow(
+private fun FolderPickerChip(
+    currentFolderId: String?,
     breadcrumb: List<Folder>,
-    subfolders: List<Folder>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val label = breadcrumb.lastOrNull()?.name ?: "All Records"
+    FilterChip(
+        selected = currentFolderId != null,
+        onClick = onClick,
+        modifier = modifier,
+        label = { Text(label, maxLines = 1) },
+        leadingIcon = {
+            Icon(
+                if (currentFolderId != null) Icons.Filled.FolderOpen else Icons.Filled.Folder,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FolderPickerBottomSheet(
+    allFolders: List<Folder>,
     currentFolderId: String?,
     onNavigate: (String?) -> Unit,
     onCreateFolder: () -> Unit,
-    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
 ) {
-    val scrollState = rememberScrollState()
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .horizontalScroll(scrollState),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
     ) {
-        FilterChip(
-            selected = currentFolderId == null,
-            onClick = { onNavigate(null) },
-            label = { Text("Home") },
-        )
-        breadcrumb.forEach { folder ->
-            Text(
-                "›",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FilterChip(
-                selected = folder.id == currentFolderId,
-                onClick = { onNavigate(folder.id) },
-                label = { Text(folder.name, maxLines = 1) },
-            )
-        }
-        subfolders
-            .filter { sf -> breadcrumb.none { it.id == sf.id } && sf.id != currentFolderId }
-            .forEach { subfolder ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    "›",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    text = "Browse Folders",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
                 )
-                SuggestionChip(
-                    onClick = { onNavigate(subfolder.id) },
-                    label = { Text(subfolder.name, maxLines = 1) },
-                )
+                TextButton(onClick = onCreateFolder) {
+                    Icon(
+                        Icons.Filled.CreateNewFolder,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("New")
+                }
             }
-        SuggestionChip(
-            onClick = onCreateFolder,
-            label = { Text("New folder") },
-            icon = {
-                Icon(
-                    Icons.Filled.CreateNewFolder,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-            },
-        )
+            HorizontalDivider()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 480.dp)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Surface(
+                    onClick = { onNavigate(null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = if (currentFolderId == null) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        Color.Transparent
+                    },
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Filled.Folder,
+                            contentDescription = null,
+                            tint = if (currentFolderId == null) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                        Text(
+                            text = "All Records",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (currentFolderId == null) {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                    }
+                }
+                allFolders
+                    .sortedWith(compareBy({ it.parentFolderId ?: "" }, { it.name }))
+                    .forEach { folder ->
+                        val isSelected = folder.id == currentFolderId
+                        Surface(
+                            onClick = { onNavigate(folder.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = if (isSelected) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                Color.Transparent
+                            },
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(
+                                    start = if (folder.parentFolderId != null) 48.dp else 24.dp,
+                                    end = 24.dp,
+                                    top = 14.dp,
+                                    bottom = 14.dp,
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    if (isSelected) Icons.Filled.FolderOpen else Icons.Filled.Folder,
+                                    contentDescription = null,
+                                    tint = if (isSelected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                )
+                                Text(
+                                    text = folder.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            }
+                        }
+                    }
+            }
+        }
     }
 }
 

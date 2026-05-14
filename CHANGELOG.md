@@ -6,6 +6,9 @@
 
 ### Improvements
 
+* replace folder pillbox navigation in Records with a "Browse Folders" modal bottom sheet — tap the folder chip to open all folders in a scrollable sheet with a New Folder shortcut; tag pillbox remains unchanged
+* improve speaker diarization — upgrade analysis model to `gpt-5.4-mini`, remove the fixed 2-speaker default so recordings with 1 or 3+ speakers are handled correctly, and remove the minimum-gap rule so speakers who talk right after each other are detected reliably
+
 ### Fixes
 
 ## 0.23.0 (2026-05-13)

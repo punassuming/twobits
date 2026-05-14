@@ -122,16 +122,14 @@ class OpenAiDiarizationService
                     """{"index":$i,"start":${s.start},"end":${s.end},"text":"$escapedText","words":$wordsJson}"""
                 }.joinToString(",", "[", "]")
 
-        @Suppress("MaxLineLength")
         private fun buildDiarizationPrompt(segmentsJson: String): String =
             """
             You are a speaker diarization expert. Analyze the transcript segments below and assign a speaker ID to each.
 
             Rules:
             - Use SPEAKER_1, SPEAKER_2, etc. A speaker who reappears later MUST reuse their original ID.
-            - Default to the fewest speakers that explain the data. Assume 2 speakers unless the evidence strongly indicates more.
-            - Do NOT change speakers within a continuous word run. Only assign a new speaker when the gap between the last word of a segment and the first word of the next is at least $MIN_SPEAKER_CHANGE_GAP_SECONDS seconds.
-            - If a segment is shorter than $MIN_SPEAKER_CHANGE_GAP_SECONDS seconds and surrounded by segments of the same speaker, assign it to that speaker regardless of content.
+            - Use the fewest distinct speakers that accurately explain the data. Do not default to any fixed number; let the content and voice changes dictate how many speakers there are.
+            - Speaker changes can happen immediately — people often speak right after each other with no gap. Rely on content, conversational flow, and context rather than timing gaps.
             - Return ONLY a JSON array with no extra text: [{"index":0,"speakerId":"SPEAKER_1"},{"index":1,"speakerId":"SPEAKER_2"},...]
 
             Transcript segments (JSON):
@@ -292,12 +290,7 @@ class OpenAiDiarizationService
         )
 
         private companion object {
-            const val MODEL = "gpt-5-mini"
-
-            /** Minimum gap between the last word of one segment and the first word of the next
-             *  before the model is allowed to assign a different speaker. Below this threshold
-             *  the two segments are treated as a continuous utterance from a single speaker. */
-            const val MIN_SPEAKER_CHANGE_GAP_SECONDS = 0.8
+            const val MODEL = "gpt-5.4-mini"
 
             val JSON_MEDIA_TYPE = "application/json".toMediaType()
         }
