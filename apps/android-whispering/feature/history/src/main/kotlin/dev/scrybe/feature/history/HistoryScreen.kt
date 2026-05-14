@@ -1052,6 +1052,9 @@ private fun FolderPickerBottomSheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sortedFolders = remember(allFolders) {
+        allFolders.sortedWith(compareBy({ it.parentFolderId ?: "" }, { it.name }))
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -1123,8 +1126,7 @@ private fun FolderPickerBottomSheet(
                         )
                     }
                 }
-                allFolders
-                    .sortedWith(compareBy({ it.parentFolderId ?: "" }, { it.name }))
+                sortedFolders
                     .forEach { folder ->
                         val isSelected = folder.id == currentFolderId
                         Surface(
