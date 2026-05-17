@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
+import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.SessionTaskDao
 import dev.scrybe.core.database.SpeakerSegmentDao
@@ -71,7 +72,8 @@ class CaptureViewModel
             }
             viewModelScope.launch {
                 audioRecorder.isRecording.collectLatest { isRecording ->
-                    if (!isRecording && _uiState.value.phase == CapturePhase.RECORDING) {
+                    val phase = _uiState.value.phase
+                    if (!isRecording && (phase == CapturePhase.RECORDING || phase == CapturePhase.PAUSED)) {
                         _uiState.value =
                             _uiState.value.copy(
                                 phase = CapturePhase.IDLE,
@@ -145,6 +147,7 @@ class CaptureViewModel
                             isArchived = session.isArchived,
                             speakerCount = speakerCounts[session.id] ?: 0,
                             openTaskCount = taskCountMap[session.id] ?: 0,
+                            waveformSamples = WaveformCodec.decode(session.waveformSamples).take(40),
                         )
                     }
                 }.collectLatest { recentSessions ->
@@ -182,6 +185,24 @@ class CaptureViewModel
                     }
                 context.startForegroundService(intent)
             }
+        }
+
+        fun pauseRecording() {
+            _uiState.value = _uiState.value.copy(phase = CapturePhase.PAUSED)
+            val intent =
+                Intent(context, RecordingForegroundService::class.java).apply {
+                    action = RecordingServiceActions.ACTION_PAUSE
+                }
+            context.startService(intent)
+        }
+
+        fun resumeRecording() {
+            _uiState.value = _uiState.value.copy(phase = CapturePhase.RECORDING)
+            val intent =
+                Intent(context, RecordingForegroundService::class.java).apply {
+                    action = RecordingServiceActions.ACTION_RESUME
+                }
+            context.startService(intent)
         }
 
         fun stopRecording() {

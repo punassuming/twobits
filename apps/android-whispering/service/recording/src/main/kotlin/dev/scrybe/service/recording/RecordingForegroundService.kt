@@ -82,6 +82,8 @@ class RecordingForegroundService : Service() {
             RecordingServiceActions.ACTION_START -> handleStart()
             RecordingServiceActions.ACTION_STOP -> handleStop()
             RecordingServiceActions.ACTION_CANCEL -> handleCancel()
+            RecordingServiceActions.ACTION_PAUSE -> handlePause()
+            RecordingServiceActions.ACTION_RESUME -> handleResume()
         }
         return START_STICKY
     }
@@ -173,6 +175,14 @@ class RecordingForegroundService : Service() {
     private fun handleCancel() {
         audioRecorder.cancelRecording()
         cleanupAfterRecordingCommand()
+    }
+
+    private fun handlePause() {
+        serviceScope.launch { audioRecorder.pauseRecording() }
+    }
+
+    private fun handleResume() {
+        serviceScope.launch { audioRecorder.resumeRecording() }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

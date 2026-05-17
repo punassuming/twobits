@@ -29,10 +29,12 @@ data class RecentCaptureSession(
     val isArchived: Boolean,
     val speakerCount: Int = 0,
     val openTaskCount: Int = 0,
+    val waveformSamples: List<Float> = emptyList(),
 )
 
 enum class CapturePhase {
     IDLE,
     RECORDING,
+    PAUSED,
     STOPPING,
 }

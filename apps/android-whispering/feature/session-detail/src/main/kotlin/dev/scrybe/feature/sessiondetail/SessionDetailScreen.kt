@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.IosShare
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -354,6 +356,7 @@ fun SessionDetailScreen(
                                     onExtractTasks = viewModel::extractTasks,
                                     onToggleDone = viewModel::toggleTaskDone,
                                     onAddTask = viewModel::addTask,
+                                    onShareTasks = viewModel::shareLatestTranscript,
                                 )
                             else ->
                                 TranscriptTabContent(
@@ -634,6 +637,7 @@ private fun TasksTabContent(
     onExtractTasks: () -> Unit,
     onToggleDone: (String) -> Unit,
     onAddTask: (String) -> Unit,
+    onShareTasks: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ScrybeSectionCard(
@@ -644,6 +648,16 @@ private fun TasksTabContent(
                     MaterialTheme.colorScheme.surfaceContainerHigh
                 },
         ) {
+            ScrybeSectionHeader(
+                title = if (tasks.isEmpty()) "Tasks" else "Tasks (${tasks.size})",
+                trailing = {
+                    if (tasks.isNotEmpty()) {
+                        IconButton(onClick = onShareTasks) {
+                            Icon(Icons.Filled.IosShare, contentDescription = "Export tasks", modifier = Modifier.size(20.dp))
+                        }
+                    }
+                },
+            )
             if (tasks.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -775,10 +789,21 @@ private fun ExtendedActionsSection(onOpenTransformSheet: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 2.dp, top = 4.dp),
         )
-        ExtendedActionCard(icon = Icons.Filled.AutoFixHigh, label = "Clean up transcript", color = MaterialTheme.colorScheme.primary, onClick = onOpenTransformSheet)
-        ExtendedActionCard(icon = Icons.Filled.AutoAwesome, label = "Analyze sentiment", color = MaterialTheme.colorScheme.secondary, onClick = onOpenTransformSheet)
-        ExtendedActionCard(icon = Icons.Filled.IosShare, label = "Export output", color = MaterialTheme.colorScheme.onSurfaceVariant, onClick = onOpenTransformSheet)
+        ExtendedActionsTop(onOpenTransformSheet = onOpenTransformSheet)
+        ExtendedActionsBottom(onOpenTransformSheet = onOpenTransformSheet)
     }
+}
+
+@Composable
+private fun ExtendedActionsTop(onOpenTransformSheet: () -> Unit) {
+    ExtendedActionCard(icon = Icons.Filled.AutoFixHigh, label = "Clean up transcript", color = MaterialTheme.colorScheme.primary, onClick = onOpenTransformSheet)
+    ExtendedActionCard(icon = Icons.Filled.AutoAwesome, label = "Analyze sentiment", color = MaterialTheme.colorScheme.secondary, onClick = onOpenTransformSheet)
+}
+
+@Composable
+private fun ExtendedActionsBottom(onOpenTransformSheet: () -> Unit) {
+    ExtendedActionCard(icon = Icons.Filled.Translate, label = "Translate", color = MaterialTheme.colorScheme.tertiary, onClick = onOpenTransformSheet)
+    ExtendedActionCard(icon = Icons.Filled.FolderOpen, label = "Add to folder", color = MaterialTheme.colorScheme.secondary, onClick = onOpenTransformSheet)
 }
 
 @Composable

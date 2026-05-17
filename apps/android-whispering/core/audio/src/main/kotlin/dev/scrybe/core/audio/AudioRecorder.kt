@@ -10,5 +10,9 @@ interface AudioRecorder {
 
     suspend fun stopRecording(): Result<RecordedAudio>
 
+    suspend fun pauseRecording()
+
+    suspend fun resumeRecording()
+
     fun cancelRecording()
 }

@@ -18,6 +18,11 @@
 * add profile detail view — tapping a profile card opens a full-screen accordion view with Mode, AI Transforms, Send to, and Auto-trigger sections; pipeline step flow shown at top; Mode section open by default
 * add Integrations section in Settings — surfaces placeholder rows for Calendar, Reminders, Notion, Slack, and Shortcuts with Connect labels; UI groundwork for future integration wiring
 * add EcosystemSheet in session detail — share icon in TopAppBar opens a Send to… bottom sheet with integration rows (Calendar, Reminders, Notion, Slack, Email, Shortcuts, Share); Email and Share rows route to the existing share transcript action
+* add recording pause/resume — a Pause/Resume toggle button appears in the recording screen header; pausing freezes the waveform and timer (paused duration excluded from the saved session duration); MediaRecorder.pause/resume used directly (requires API 24+, minSdk 26)
+* add bottom nav labels — navigation bar now shows text labels (Record, History, Profiles, Settings) below each icon
+* add Translate and Add to folder action cards — Output tab extended actions now shows four cards: Clean up transcript, Analyze sentiment, Translate, and Add to folder
+* add Tasks tab export button — a share icon appears in the Tasks tab header when there are tasks, routing to the existing share transcript action
+* add session card waveform preview — home feed cards now show a compact mini-waveform at the bottom when waveform data is available for the session
 
 ### Improvements
 

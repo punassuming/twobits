@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -43,7 +44,9 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PersonSearch
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
@@ -127,7 +130,7 @@ fun CaptureScreen(
 
     DisposableEffect(view, uiState.phase, uiState.keepScreenOn) {
         val previous = view.keepScreenOn
-        view.keepScreenOn = uiState.keepScreenOn && uiState.phase == CapturePhase.RECORDING
+        view.keepScreenOn = uiState.keepScreenOn && uiState.phase != CapturePhase.IDLE
         onDispose { view.keepScreenOn = previous }
     }
 
@@ -164,6 +167,8 @@ fun CaptureScreen(
                     paddingValues = paddingValues,
                     onStop = viewModel::stopRecording,
                     onCancel = viewModel::cancelRecording,
+                    onPause = viewModel::pauseRecording,
+                    onResume = viewModel::resumeRecording,
                 )
             } else {
                 LazyColumn(
@@ -272,40 +277,33 @@ private fun RecordingActiveView(
     paddingValues: PaddingValues,
     onStop: () -> Unit,
     onCancel: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
 ) {
     val isStopping = state.phase == CapturePhase.STOPPING
+    val isPaused = state.phase == CapturePhase.PAUSED
     Column(
         modifier =
             Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onCancel, enabled = !isStopping) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel recording")
-            }
-            ModeBadge(mode = state.activeMode)
-            Spacer(Modifier.weight(1f))
-            if (isStopping) {
-                Text(
-                    text = "Stopping…",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 16.dp),
-                )
-            }
-        }
+        RecordingActiveHeader(
+            state = state,
+            isStopping = isStopping,
+            isPaused = isPaused,
+            onCancel = onCancel,
+            onPause = onPause,
+            onResume = onResume,
+        )
         Card(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                AmplitudeWaveform(amplitudeHistory = state.amplitudeHistory)
+                AmplitudeWaveform(amplitudeHistory = if (isPaused) emptyList() else state.amplitudeHistory)
                 Spacer(Modifier.height(8.dp))
-                RecordingTimerRow(elapsedMs = state.elapsedMs, isStopping = isStopping)
+                RecordingTimerRow(elapsedMs = state.elapsedMs, isStopping = isStopping, isPaused = isPaused)
             }
         }
         Spacer(Modifier.weight(1f))
@@ -318,9 +316,46 @@ private fun RecordingActiveView(
 }
 
 @Composable
+private fun RecordingActiveHeader(
+    state: CaptureUiState,
+    isStopping: Boolean,
+    isPaused: Boolean,
+    onCancel: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onCancel, enabled = !isStopping) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel recording")
+        }
+        ModeBadge(mode = state.activeMode)
+        Spacer(Modifier.weight(1f))
+        if (isStopping) {
+            Text(
+                text = "Stopping…",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+        } else {
+            IconButton(onClick = if (isPaused) onResume else onPause) {
+                Icon(
+                    imageVector = if (isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                    contentDescription = if (isPaused) "Resume recording" else "Pause recording",
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun RecordingTimerRow(
     elapsedMs: Long,
     isStopping: Boolean,
+    isPaused: Boolean,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -338,7 +373,12 @@ private fun RecordingTimerRow(
                         .background(MaterialTheme.colorScheme.tertiary, CircleShape),
             )
             Text(
-                text = if (isStopping) "Stopping…" else "Recording",
+                text =
+                    when {
+                        isStopping -> "Stopping…"
+                        isPaused -> "Paused"
+                        else -> "Recording"
+                    },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.tertiary,
             )
@@ -492,6 +532,38 @@ private fun ModePickerSheet(
                 Spacer(Modifier.size(8.dp))
                 Text("Start recording")
             }
+        }
+    }
+}
+
+@Composable
+private fun MiniWaveform(
+    samples: List<Float>,
+    modifier: Modifier = Modifier,
+) {
+    val barColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+    Canvas(modifier = modifier.height(20.dp)) {
+        if (samples.isEmpty()) return@Canvas
+        val targetCount = 40
+        val step = samples.size.toFloat() / targetCount
+        val barWidth = (size.width / (targetCount * 2.2f)).coerceAtLeast(1f)
+        val gap = size.width / targetCount - barWidth
+        repeat(targetCount) { i ->
+            val srcIdx = (i * step).toInt().coerceIn(0, samples.lastIndex)
+            val amp = samples[srcIdx].coerceIn(0f, 1f)
+            val barHeight = (4f + amp * (size.height - 4f)).coerceAtLeast(4f)
+            val x = i * (barWidth + gap) + barWidth / 2f
+            drawLine(
+                color = barColor,
+                start =
+                    androidx.compose.ui.geometry
+                        .Offset(x, size.height / 2f - barHeight / 2f),
+                end =
+                    androidx.compose.ui.geometry
+                        .Offset(x, size.height / 2f + barHeight / 2f),
+                strokeWidth = barWidth,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+            )
         }
     }
 }
@@ -656,6 +728,9 @@ private fun HomeSessionCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+            if (session.waveformSamples.isNotEmpty()) {
+                MiniWaveform(samples = session.waveformSamples, modifier = Modifier.fillMaxWidth())
             }
         }
     }
