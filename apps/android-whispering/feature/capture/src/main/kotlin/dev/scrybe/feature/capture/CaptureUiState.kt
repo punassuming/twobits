@@ -12,6 +12,7 @@ data class CaptureUiState(
     val recentSessions: List<RecentCaptureSession> = emptyList(),
     val errorMessage: String? = null,
     val showModePickerSheet: Boolean = false,
+    val openTaskTotal: Int = 0,
 )
 
 data class RecentCaptureSession(
@@ -26,6 +27,7 @@ data class RecentCaptureSession(
     val transcriptPreview: String?,
     val isArchived: Boolean,
     val speakerCount: Int = 0,
+    val openTaskCount: Int = 0,
 )
 
 enum class CapturePhase {

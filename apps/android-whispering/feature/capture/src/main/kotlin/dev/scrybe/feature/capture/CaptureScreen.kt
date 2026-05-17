@@ -182,6 +182,17 @@ fun CaptureScreen(
                 item(key = "filter") {
                     ModeFilterRow(selected = filterMode, onSelect = { filterMode = it })
                 }
+                if (uiState.openTaskTotal > 0) {
+                    item(key = "task-nudge") {
+                        TaskNudgeBanner(
+                            openTaskTotal = uiState.openTaskTotal,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .scrybeContentWidth(),
+                        )
+                    }
+                }
                 uiState.errorMessage?.let { message ->
                     item(key = "error") {
                         Card(
@@ -487,7 +498,8 @@ private fun HomeSessionCardMeta(session: RecentCaptureSession) {
         session.status == SessionStatus.FAILED ||
             session.status == SessionStatus.TRANSCRIBING ||
             session.status == SessionStatus.PARTIAL_TRANSCRIPTION
-    val hasMeta = hasLocation || hasMultipleSpeakers || isArchived || hasSpecialStatus
+    val hasOpenTasks = session.openTaskCount > 0
+    val hasMeta = hasLocation || hasMultipleSpeakers || isArchived || hasSpecialStatus || hasOpenTasks
     if (!hasMeta) return
 
     Row(
@@ -537,6 +549,24 @@ private fun HomeSessionCardMeta(session: RecentCaptureSession) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
+        }
+        if (hasOpenTasks) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.TaskAlt,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.secondary,
+                )
+                Text(
+                    text = "${session.openTaskCount} task${if (session.openTaskCount == 1) "" else "s"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
         }
     }
 }
@@ -637,6 +667,38 @@ private fun IntroGuidanceRow(
                 text = body,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TaskNudgeBanner(
+    openTaskTotal: Int,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            ),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.TaskAlt,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Text(
+                text = "$openTaskTotal open task${if (openTaskTotal == 1) "" else "s"} across your sessions",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
         }
     }

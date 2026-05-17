@@ -71,6 +71,31 @@ val MIGRATION_9_10: Migration =
         }
     }
 
+val MIGRATION_10_11: Migration =
+    object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `session_tasks` (
+                    `id` TEXT NOT NULL,
+                    `sessionId` TEXT NOT NULL,
+                    `text` TEXT NOT NULL,
+                    `assignee` TEXT,
+                    `dueLabel` TEXT,
+                    `isDone` INTEGER NOT NULL DEFAULT 0,
+                    `createdAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`),
+                    FOREIGN KEY(`sessionId`) REFERENCES `recording_sessions`(`id`)
+                        ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_session_tasks_sessionId` ON `session_tasks` (`sessionId`)",
+            )
+        }
+    }
+
 val MIGRATION_7_8: Migration =
     object : Migration(7, 8) {
         override fun migrate(db: SupportSQLiteDatabase) {

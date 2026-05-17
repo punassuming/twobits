@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.SessionTaskDao
 import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
@@ -35,6 +36,7 @@ class CaptureViewModel
         private val recordingSessionDao: RecordingSessionDao,
         private val transcriptDao: TranscriptDao,
         private val speakerSegmentDao: SpeakerSegmentDao,
+        private val sessionTaskDao: SessionTaskDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val recordingSessionEvents: RecordingSessionEvents,
     ) : ViewModel() {
@@ -101,7 +103,8 @@ class CaptureViewModel
                 combine(
                     recordingSessionDao.getAllSessions(),
                     transcriptDao.getAllTranscripts(),
-                ) { sessions, transcripts ->
+                    sessionTaskDao.getOpenTaskCountsPerSession(),
+                ) { sessions, transcripts, taskCounts ->
                     val transcriptLookup =
                         transcripts
                             .groupBy { it.sessionId }
@@ -121,6 +124,7 @@ class CaptureViewModel
                                     .distinct()
                                     .size
                         }
+                    val taskCountMap = taskCounts.associate { it.sessionId to it.count }
                     sessions.map { session ->
                         RecentCaptureSession(
                             id = session.id,
@@ -140,10 +144,16 @@ class CaptureViewModel
                             transcriptPreview = transcriptLookup[session.id],
                             isArchived = session.isArchived,
                             speakerCount = speakerCounts[session.id] ?: 0,
+                            openTaskCount = taskCountMap[session.id] ?: 0,
                         )
                     }
                 }.collectLatest { recentSessions ->
-                    _uiState.value = _uiState.value.copy(recentSessions = recentSessions)
+                    val openTotal = recentSessions.sumOf { it.openTaskCount }
+                    _uiState.value =
+                        _uiState.value.copy(
+                            recentSessions = recentSessions,
+                            openTaskTotal = openTotal,
+                        )
                 }
             }
         }

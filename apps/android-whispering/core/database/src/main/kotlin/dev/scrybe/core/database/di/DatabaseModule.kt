@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.scrybe.core.database.AppDatabase
+import dev.scrybe.core.database.MIGRATION_10_11
 import dev.scrybe.core.database.MIGRATION_4_5
 import dev.scrybe.core.database.MIGRATION_5_6
 import dev.scrybe.core.database.MIGRATION_6_7
@@ -29,8 +30,15 @@ object DatabaseModule {
                 context,
                 AppDatabase::class.java,
                 "scrybe-db",
-            ).addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
-            .fallbackToDestructiveMigrationFrom(1, 2, 3)
+            ).addMigrations(
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+                MIGRATION_8_9,
+                MIGRATION_9_10,
+                MIGRATION_10_11,
+            ).fallbackToDestructiveMigrationFrom(1, 2, 3)
             .build()
 
     @Provides
@@ -59,4 +67,7 @@ object DatabaseModule {
 
     @Provides
     fun providesTranscriptChunkDao(database: AppDatabase) = database.transcriptChunkDao()
+
+    @Provides
+    fun providesSessionTaskDao(database: AppDatabase) = database.sessionTaskDao()
 }

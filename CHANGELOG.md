@@ -7,6 +7,7 @@
 * add recording mode system — choose a capture intent (Meeting, Idea, Tasks, Conversation, Story, Interview, Journal) before recording starts; mode is stored per-session and will shape future AI pipelines
 * redesign capture home as a unified session feed — replace the recording hero card with a FAB + mode picker sheet; show all sessions with mode badge, location, speaker count, tags, and transcript preview; add horizontal mode filter chips and collapsible search bar
 * add tabbed session detail layout — Output, Tasks, and Transcript tabs replace the single scrolling view; the ⋮ menu is now a bottom sheet with grouped actions
+* add AI task extraction — tap "Extract tasks" in the Tasks tab to call an LLM that identifies action items with assignee and due-date; tasks are stored in a new session_tasks table (DB v11); open task counts appear on home feed cards and a global nudge banner shows total open tasks
 
 ### Improvements
 

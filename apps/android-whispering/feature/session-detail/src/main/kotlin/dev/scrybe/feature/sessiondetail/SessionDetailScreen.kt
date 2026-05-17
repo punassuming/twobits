@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -46,6 +47,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -101,6 +103,7 @@ import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.SessionTask
 import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
@@ -327,7 +330,14 @@ fun SessionDetailScreen(
                                     state = state,
                                     onOpenTransformSheet = { showTransformSheet = true },
                                 )
-                            1 -> TasksTabContent()
+                            1 ->
+                                TasksTabContent(
+                                    tasks = state.tasks,
+                                    isExtracting = state.isExtractingTasks,
+                                    hasTranscript = state.originalTranscript != null || state.currentTranscript != null,
+                                    onExtractTasks = viewModel::extractTasks,
+                                    onToggleDone = viewModel::toggleTaskDone,
+                                )
                             else ->
                                 TranscriptTabContent(
                                     state = state,
@@ -582,29 +592,116 @@ private fun OutputTabContent(
 }
 
 @Composable
-private fun TasksTabContent() {
-    ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+private fun TasksTabContent(
+    tasks: List<SessionTask>,
+    isExtracting: Boolean,
+    hasTranscript: Boolean,
+    onExtractTasks: () -> Unit,
+    onToggleDone: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (tasks.isEmpty()) {
+            ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.HourglassEmpty,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "No tasks extracted yet",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "Tasks will appear here after AI processing.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        } else {
+            ScrybeSectionCard {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    tasks.forEachIndexed { index, task ->
+                        TaskRow(task = task, onToggle = { onToggleDone(task.id) })
+                        if (index < tasks.lastIndex) {
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        }
+        if (hasTranscript) {
+            OutlinedButton(
+                onClick = onExtractTasks,
+                enabled = !isExtracting,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentWidth(),
+            ) {
+                if (isExtracting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Extracting…")
+                } else {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (tasks.isEmpty()) "Extract tasks" else "Re-extract tasks")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskRow(
+    task: SessionTask,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = task.isDone, onCheckedChange = { onToggle() })
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
         ) {
-            Icon(
-                Icons.Filled.HourglassEmpty,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Text(
-                text = "No tasks extracted yet",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = task.text,
+                style = MaterialTheme.typography.bodyMedium,
+                color =
+                    if (task.isDone) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
             )
-            Text(
-                text = "Tasks will appear here after AI processing.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            val meta =
+                listOfNotNull(
+                    task.assignee,
+                    task.dueLabel?.let { "Due $it" },
+                ).joinToString(" · ")
+            if (meta.isNotBlank()) {
+                Text(
+                    text = meta,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
