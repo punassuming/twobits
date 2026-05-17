@@ -23,6 +23,7 @@ import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import kotlinx.coroutines.CoroutineScope
@@ -62,6 +63,7 @@ class RecordingForegroundService : Service() {
     private var lastNotifiedSecond: Long = -1L
     private var telemetryJob: Job? = null
     private var capturedLocation: Triple<Double, Double, String?>? = null
+    private var pendingMode: String = RecordingMode.JOURNAL.name
 
     override fun onCreate() {
         super.onCreate()
@@ -73,6 +75,9 @@ class RecordingForegroundService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        pendingMode =
+            intent?.getStringExtra(RecordingServiceActions.EXTRA_RECORDING_MODE)
+                ?: RecordingMode.JOURNAL.name
         when (intent?.action) {
             RecordingServiceActions.ACTION_START -> handleStart()
             RecordingServiceActions.ACTION_STOP -> handleStop()
@@ -231,6 +236,7 @@ class RecordingForegroundService : Service() {
                 locationLat = location?.first,
                 locationLng = location?.second,
                 locationLabel = location?.third,
+                mode = pendingMode,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
             ),

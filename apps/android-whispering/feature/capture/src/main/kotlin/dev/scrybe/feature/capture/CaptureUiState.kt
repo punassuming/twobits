@@ -1,5 +1,6 @@
 package dev.scrybe.feature.capture
 
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 
 data class CaptureUiState(
@@ -10,13 +11,18 @@ data class CaptureUiState(
     val keepScreenOn: Boolean = true,
     val recentSessions: List<RecentCaptureSession> = emptyList(),
     val errorMessage: String? = null,
+    val showModePickerSheet: Boolean = false,
 )
 
 data class RecentCaptureSession(
     val id: String,
     val title: String,
     val createdAtLabel: String,
+    val durationMs: Long,
     val status: SessionStatus,
+    val mode: RecordingMode,
+    val tags: List<String>,
+    val locationLabel: String?,
     val transcriptPreview: String?,
     val isArchived: Boolean,
     val speakerCount: Int = 0,

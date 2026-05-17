@@ -25,6 +25,7 @@ data class RecordingSessionEntity(
     val locationLabel: String? = null,
     val sentimentJson: String? = null,
     val topicsJson: String? = null,
+    val mode: String = "JOURNAL",
     val createdAt: Long,
     val updatedAt: Long,
 )

@@ -7,10 +7,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
+import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.service.recording.RecordingForegroundService
 import dev.scrybe.service.recording.RecordingServiceActions
 import dev.scrybe.service.recording.RecordingSessionEvents
@@ -110,9 +112,8 @@ class CaptureViewModel
                                     ?.content
                                     ?: values.maxByOrNull { it.createdAt }?.content
                             }
-                    val recentSessions = sessions.take(3)
                     val speakerCounts =
-                        recentSessions.associate { session ->
+                        sessions.associate { session ->
                             session.id to
                                 speakerSegmentDao
                                     .getSegmentsOnce(session.id)
@@ -120,7 +121,7 @@ class CaptureViewModel
                                     .distinct()
                                     .size
                         }
-                    recentSessions.map { session ->
+                    sessions.map { session ->
                         RecentCaptureSession(
                             id = session.id,
                             title = session.title,
@@ -129,9 +130,13 @@ class CaptureViewModel
                                     .ofEpochMilli(session.createdAt)
                                     .atZone(ZoneId.systemDefault())
                                     .format(RECENT_TIME_FORMATTER),
+                            durationMs = session.durationMs,
                             status =
                                 dev.scrybe.core.model.SessionStatus
                                     .valueOf(session.status),
+                            mode = runCatching { RecordingMode.valueOf(session.mode) }.getOrDefault(RecordingMode.JOURNAL),
+                            tags = TagsCodec.decode(session.tags),
+                            locationLabel = session.locationLabel,
                             transcriptPreview = transcriptLookup[session.id],
                             isArchived = session.isArchived,
                             speakerCount = speakerCounts[session.id] ?: 0,
@@ -143,12 +148,26 @@ class CaptureViewModel
             }
         }
 
-        fun startRecording() {
+        fun showModePicker() {
+            _uiState.value = _uiState.value.copy(showModePickerSheet = true)
+        }
+
+        fun dismissModePicker() {
+            _uiState.value = _uiState.value.copy(showModePickerSheet = false)
+        }
+
+        fun startRecordingWithMode(mode: RecordingMode) {
             viewModelScope.launch {
-                _uiState.value = CaptureUiState(phase = CapturePhase.RECORDING, keepScreenOn = _uiState.value.keepScreenOn)
+                _uiState.value =
+                    CaptureUiState(
+                        phase = CapturePhase.RECORDING,
+                        keepScreenOn = _uiState.value.keepScreenOn,
+                        showModePickerSheet = false,
+                    )
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
                         action = RecordingServiceActions.ACTION_START
+                        putExtra(RecordingServiceActions.EXTRA_RECORDING_MODE, mode.name)
                     }
                 context.startForegroundService(intent)
             }

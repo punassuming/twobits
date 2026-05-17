@@ -27,6 +27,7 @@ import dev.scrybe.core.localai.AutoRenameServiceFacade
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SentimentSegment
 import dev.scrybe.core.model.SessionStatus
@@ -202,6 +203,7 @@ class SessionDetailViewModel
                                 locationLabel = sessionEntity.locationLabel,
                                 sentimentJson = sessionEntity.sentimentJson,
                                 topicsJson = sessionEntity.topicsJson,
+                                mode = RecordingMode.valueOf(sessionEntity.mode),
                                 createdAt = Instant.ofEpochMilli(sessionEntity.createdAt),
                                 updatedAt = Instant.ofEpochMilli(sessionEntity.updatedAt),
                             )

@@ -29,6 +29,7 @@ import dev.scrybe.core.localai.SemanticSearchServiceFacade
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
@@ -238,6 +239,7 @@ class HistoryViewModel
                             locationLabel = entity.locationLabel,
                             sentimentJson = entity.sentimentJson,
                             topicsJson = entity.topicsJson,
+                            mode = RecordingMode.valueOf(entity.mode),
                             createdAt = Instant.ofEpochMilli(entity.createdAt),
                             updatedAt = Instant.ofEpochMilli(entity.updatedAt),
                         )

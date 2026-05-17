@@ -15,6 +15,7 @@ import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.export.MarkdownExporter
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.Transcript
@@ -236,6 +237,7 @@ class FileManagerViewModel
                 locationLabel = locationLabel,
                 sentimentJson = sentimentJson,
                 topicsJson = topicsJson,
+                mode = runCatching { RecordingMode.valueOf(mode) }.getOrDefault(RecordingMode.JOURNAL),
                 createdAt = Instant.ofEpochMilli(createdAt),
                 updatedAt = Instant.ofEpochMilli(updatedAt),
             )

@@ -62,6 +62,15 @@ val MIGRATION_8_9: Migration =
         }
     }
 
+val MIGRATION_9_10: Migration =
+    object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE recording_sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'JOURNAL'",
+            )
+        }
+    }
+
 val MIGRATION_7_8: Migration =
     object : Migration(7, 8) {
         override fun migrate(db: SupportSQLiteDatabase) {

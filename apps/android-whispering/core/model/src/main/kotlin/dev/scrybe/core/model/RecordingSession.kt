@@ -23,6 +23,7 @@ data class RecordingSession(
     val locationLabel: String? = null,
     val sentimentJson: String? = null,
     val topicsJson: String? = null,
+    val mode: RecordingMode = RecordingMode.JOURNAL,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

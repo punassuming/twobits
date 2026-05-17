@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
         PersonEntity::class,
         TranscriptChunkEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

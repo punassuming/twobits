@@ -4,6 +4,10 @@
 
 ### Features
 
+* add recording mode system — choose a capture intent (Meeting, Idea, Tasks, Conversation, Story, Interview, Journal) before recording starts; mode is stored per-session and will shape future AI pipelines
+* redesign capture home as a unified session feed — replace the recording hero card with a FAB + mode picker sheet; show all sessions with mode badge, location, speaker count, tags, and transcript preview; add horizontal mode filter chips and collapsible search bar
+* add tabbed session detail layout — Output, Tasks, and Transcript tabs replace the single scrolling view; the ⋮ menu is now a bottom sheet with grouped actions
+
 ### Improvements
 
 ### Fixes
