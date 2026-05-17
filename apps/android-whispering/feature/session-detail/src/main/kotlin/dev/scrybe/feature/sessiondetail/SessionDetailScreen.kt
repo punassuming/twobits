@@ -26,9 +26,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -78,6 +80,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -329,6 +332,9 @@ fun SessionDetailScreen(
                                 OutputTabContent(
                                     state = state,
                                     onOpenTransformSheet = { showTransformSheet = true },
+                                    onSuggestTags = viewModel::suggestTags,
+                                    onSaveTags = viewModel::saveTags,
+                                    onClearTagSuggestions = viewModel::clearTagSuggestionState,
                                 )
                             1 ->
                                 TasksTabContent(
@@ -337,6 +343,7 @@ fun SessionDetailScreen(
                                     hasTranscript = state.originalTranscript != null || state.currentTranscript != null,
                                     onExtractTasks = viewModel::extractTasks,
                                     onToggleDone = viewModel::toggleTaskDone,
+                                    onAddTask = viewModel::addTask,
                                 )
                             else ->
                                 TranscriptTabContent(
@@ -553,11 +560,14 @@ fun SessionDetailScreen(
 private fun OutputTabContent(
     state: SessionDetailUiState.Success,
     onOpenTransformSheet: () -> Unit,
+    onSuggestTags: () -> Unit,
+    onSaveTags: (List<String>) -> Unit,
+    onClearTagSuggestions: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing)) {
         val transformedTranscript =
             state.transcripts
-                .filter { it.type == dev.scrybe.core.model.TranscriptType.TRANSFORMED }
+                .filter { it.type == TranscriptType.TRANSFORMED }
                 .maxByOrNull { it.createdAt }
         if (transformedTranscript != null) {
             ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
@@ -579,15 +589,20 @@ private fun OutputTabContent(
             }
         }
         if (state.profiles.isNotEmpty() && state.currentTranscript != null) {
-            OutlinedButton(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = onOpenTransformSheet,
-            ) {
+            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = onOpenTransformSheet) {
                 Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Post-process transcript")
             }
         }
+        ExtendedActionsSection(onOpenTransformSheet = onOpenTransformSheet)
+        InlineTagsCard(
+            tags = state.session.tags,
+            tagSuggestionState = state.tagSuggestionState,
+            onSaveTags = onSaveTags,
+            onSuggestTags = onSuggestTags,
+            onClear = onClearTagSuggestions,
+        )
     }
 }
 
@@ -598,53 +613,43 @@ private fun TasksTabContent(
     hasTranscript: Boolean,
     onExtractTasks: () -> Unit,
     onToggleDone: (String) -> Unit,
+    onAddTask: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (tasks.isEmpty()) {
-            ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+        ScrybeSectionCard(
+            containerColor =
+                if (tasks.isEmpty()) {
+                    MaterialTheme.colorScheme.surfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+        ) {
+            if (tasks.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(
-                        Icons.Filled.HourglassEmpty,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = "No tasks extracted yet",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = "Tasks will appear here after AI processing.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Icon(Icons.Filled.HourglassEmpty, contentDescription = null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No tasks yet", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Add manually below or extract with AI.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }
-        } else {
-            ScrybeSectionCard {
+            } else {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     tasks.forEachIndexed { index, task ->
                         TaskRow(task = task, onToggle = { onToggleDone(task.id) })
-                        if (index < tasks.lastIndex) {
-                            HorizontalDivider()
-                        }
+                        if (index < tasks.lastIndex) HorizontalDivider()
                     }
                 }
             }
+            HorizontalDivider()
+            AddTaskRow(onAdd = onAddTask)
         }
         if (hasTranscript) {
             OutlinedButton(
                 onClick = onExtractTasks,
                 enabled = !isExtracting,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .wrapContentWidth(),
+                modifier = Modifier.fillMaxWidth().wrapContentWidth(),
             ) {
                 if (isExtracting) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
@@ -707,6 +712,199 @@ private fun TaskRow(
 }
 
 @Composable
+private fun AddTaskRow(onAdd: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    var isEditing by remember { mutableStateOf(false) }
+    if (isEditing) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            placeholder = { Text("Describe a task…") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions =
+                KeyboardActions(onDone = {
+                    if (text.isNotBlank()) onAdd(text)
+                    text = ""
+                    isEditing = false
+                }),
+        )
+    } else {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { isEditing = true }
+                    .padding(horizontal = 4.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Add task", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ExtendedActionsSection(onOpenTransformSheet: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = "Actions",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 2.dp, top = 4.dp),
+        )
+        ExtendedActionCard(icon = Icons.Filled.AutoFixHigh, label = "Clean up transcript", color = MaterialTheme.colorScheme.primary, onClick = onOpenTransformSheet)
+        ExtendedActionCard(icon = Icons.Filled.AutoAwesome, label = "Analyze sentiment", color = MaterialTheme.colorScheme.secondary, onClick = onOpenTransformSheet)
+        ExtendedActionCard(icon = Icons.Filled.IosShare, label = "Export output", color = MaterialTheme.colorScheme.onSurfaceVariant, onClick = onOpenTransformSheet)
+    }
+}
+
+@Composable
+private fun ExtendedActionCard(
+    icon: ImageVector,
+    label: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    ScrybeSectionCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = color, modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InlineTagsCard(
+    tags: List<String>,
+    tagSuggestionState: TagSuggestionUiState,
+    onSaveTags: (List<String>) -> Unit,
+    onSuggestTags: () -> Unit,
+    onClear: () -> Unit,
+) {
+    var localTags by remember(tags) { mutableStateOf(tags) }
+    var isExpanded by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+
+    ScrybeSectionCard {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Label, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(6.dp))
+            Text("Tags", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = {
+                if (isExpanded) {
+                    onSaveTags(localTags)
+                    isExpanded = false
+                    query = ""
+                    onClear()
+                } else {
+                    isExpanded = true
+                    onSuggestTags()
+                }
+            }) { Text(if (isExpanded) "Done" else "Edit") }
+        }
+        if (localTags.isEmpty() && !isExpanded) {
+            Text("No tags yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                localTags.forEach { tag ->
+                    TagChipEditable(tag = tag, canRemove = isExpanded, onRemove = { localTags = localTags - tag })
+                }
+            }
+        }
+        if (isExpanded) {
+            TagSuggestionPanel(
+                query = query,
+                tagSuggestionState = tagSuggestionState,
+                existingTags = localTags,
+                onQueryChange = { query = it },
+                onAddTag = { t ->
+                    val clean = t.trim().lowercase()
+                    if (clean.isNotBlank() && !localTags.contains(clean)) localTags = localTags + clean
+                    query = ""
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TagChipEditable(
+    tag: String,
+    canRemove: Boolean,
+    onRemove: () -> Unit,
+) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Label, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+            Text(tag, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            if (canRemove) {
+                Icon(Icons.Filled.Close, contentDescription = "Remove tag", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp).clickable(onClick = onRemove))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagSuggestionPanel(
+    query: String,
+    tagSuggestionState: TagSuggestionUiState,
+    existingTags: List<String>,
+    onQueryChange: (String) -> Unit,
+    onAddTag: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search or create a tag…") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (query.isNotBlank()) onAddTag(query) }),
+        )
+        if (query.isNotBlank() && !existingTags.contains(query.trim().lowercase())) {
+            TextButton(onClick = { onAddTag(query) }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Create \"#${query.trim()}\"")
+            }
+        }
+        when (tagSuggestionState) {
+            is TagSuggestionUiState.Loading ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+            is TagSuggestionUiState.Success -> {
+                val filtered = tagSuggestionState.tags.filter { !existingTags.contains(it) && (query.isBlank() || it.contains(query, ignoreCase = true)) }
+                if (filtered.isNotEmpty()) {
+                    Text("AI suggested", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+                    filtered.take(5).forEach { tag ->
+                        ListItem(headlineContent = { Text("#$tag") }, leadingContent = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }, modifier = Modifier.clickable { onAddTag(tag) })
+                    }
+                }
+            }
+            else -> Unit
+        }
+    }
+}
+
+@Composable
 private fun TranscriptTabContent(
     state: SessionDetailUiState.Success,
     onEditTranscript: () -> Unit,
@@ -737,6 +935,34 @@ private data class MoreMenuExportCallbacks(
     val onSendToExternal: () -> Unit,
 )
 
+@Composable
+private fun MoreMenuSectionLabel(label: String) {
+    Text(
+        text = label.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
+private fun MoreMenuItem(
+    icon: ImageVector,
+    label: String,
+    tint: Color = Color.Unspecified,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        headlineContent = {
+            Text(label, color = if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurface else tint)
+        },
+        leadingContent = {
+            Icon(icon, contentDescription = null, tint = if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else tint)
+        },
+        modifier = Modifier.clickable(onClick = onClick),
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MoreMenuSheet(
@@ -749,77 +975,34 @@ private fun MoreMenuSheet(
     val sessionStatus = state.session.status
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(bottom = 16.dp)) {
-            ListItem(
-                headlineContent = { Text("Rename") },
-                leadingContent = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = editCallbacks.onRename),
-            )
-            ListItem(
-                headlineContent = { Text("Manage Tags") },
-                leadingContent = { Icon(Icons.Filled.Label, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = editCallbacks.onManageTags),
-            )
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(state.session.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(state.session.mode.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+            HorizontalDivider()
+            MoreMenuItem(Icons.Filled.Edit, "Rename", onClick = editCallbacks.onRename)
+            MoreMenuItem(Icons.Filled.Label, "Manage Tags", onClick = editCallbacks.onManageTags)
             if (hasTranscript) {
                 HorizontalDivider()
-                ListItem(
-                    headlineContent = { Text("Post-process…") },
-                    leadingContent = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
-                    modifier = Modifier.clickable(onClick = exportCallbacks.onPostProcess),
-                )
-                HorizontalDivider()
-                ListItem(
-                    headlineContent = { Text("Share Transcript") },
-                    leadingContent = { Icon(Icons.Filled.IosShare, contentDescription = null) },
-                    modifier = Modifier.clickable(onClick = exportCallbacks.onShareTranscript),
-                )
-                ListItem(
-                    headlineContent = { Text("Send to External App") },
-                    leadingContent = { Icon(Icons.Filled.IosShare, contentDescription = null) },
-                    modifier = Modifier.clickable(onClick = exportCallbacks.onSendToExternal),
-                )
+                MoreMenuSectionLabel("Re-process")
+                MoreMenuItem(Icons.Filled.AutoFixHigh, "Post-process…", onClick = exportCallbacks.onPostProcess)
             }
-            ListItem(
-                headlineContent = { Text("Export Files") },
-                leadingContent = { Icon(Icons.Filled.Description, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = exportCallbacks.onExportFiles),
-            )
             HorizontalDivider()
-            ListItem(
-                headlineContent = {
-                    Text(if (state.session.isArchived) "Restore" else "Archive")
-                },
-                leadingContent = {
-                    Icon(
-                        if (state.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
-                        contentDescription = null,
-                    )
-                },
-                modifier = Modifier.clickable(onClick = editCallbacks.onSetArchived),
-            )
-            ListItem(
-                headlineContent = { Text("Delete", color = MaterialTheme.colorScheme.error) },
-                leadingContent = {
-                    Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                },
-                modifier = Modifier.clickable(onClick = editCallbacks.onDelete),
-            )
+            MoreMenuSectionLabel("Export")
+            MoreMenuItem(Icons.Filled.IosShare, "Share Transcript", onClick = exportCallbacks.onShareTranscript)
+            if (hasTranscript) MoreMenuItem(Icons.Filled.IosShare, "Send to External App", onClick = exportCallbacks.onSendToExternal)
+            MoreMenuItem(Icons.Filled.Description, "Export Files", onClick = exportCallbacks.onExportFiles)
+            HorizontalDivider()
+            MoreMenuSectionLabel("Manage")
+            MoreMenuItem(icon = if (state.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive, label = if (state.session.isArchived) "Restore" else "Archive", onClick = editCallbacks.onSetArchived)
+            MoreMenuItem(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error, onClick = editCallbacks.onDelete)
             if (sessionStatus == SessionStatus.FAILED || sessionStatus == SessionStatus.PARTIAL_TRANSCRIPTION) {
                 HorizontalDivider()
-                ListItem(
-                    headlineContent = {
-                        Text(if (sessionStatus == SessionStatus.FAILED) "Retry Transcription" else "Resume Transcription")
-                    },
-                    leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                    modifier = Modifier.clickable(onClick = editCallbacks.onTranscribe),
-                )
+                MoreMenuItem(Icons.Filled.Refresh, if (sessionStatus == SessionStatus.FAILED) "Retry Transcription" else "Resume Transcription", onClick = editCallbacks.onTranscribe)
             }
             if (sessionStatus == SessionStatus.TRANSCRIBING) {
                 HorizontalDivider()
-                ListItem(
-                    headlineContent = { Text("Clear Stuck State") },
-                    leadingContent = { Icon(Icons.Filled.Refresh, contentDescription = null) },
-                    modifier = Modifier.clickable(onClick = editCallbacks.onResetTranscription),
-                )
+                MoreMenuItem(Icons.Filled.Refresh, "Clear Stuck State", onClick = editCallbacks.onResetTranscription)
             }
         }
     }

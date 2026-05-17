@@ -10,6 +10,11 @@
 * add AI task extraction — tap "Extract tasks" in the Tasks tab to call an LLM that identifies action items with assignee and due-date; tasks are stored in a new session_tasks table (DB v11); open task counts appear on home feed cards and a global nudge banner shows total open tasks
 * add in-app recording screen — when a recording is active, the session feed is replaced by a full-screen recording view showing the active mode badge, an animated amplitude waveform, a running MM:SS timer, and Stop / Cancel buttons; the STOPPING phase disables buttons and shows a "Stopping…" label
 * add profile pipeline visualization — each profile card now shows a horizontal scrollable chip flow starting with an implied "Transcribe" chip, followed by chips for up to 3 AI pipeline steps, with an overflow "+N more" chip when applicable
+* add extended actions in session detail — Output tab now shows Clean up, Analyze sentiment, and Export action cards below the AI output, routing into the post-process sheet
+* add inline tag editor in Output tab — tap Edit on the Tags card to expand a search-and-create panel with AI-suggested tags; tags are saved on Done without leaving the tab
+* add manual task entry — Tasks tab now shows an "Add task" row at the bottom of the list for quick manual task creation without AI extraction
+* add Intelligence section in Settings — surfaces Profiles navigation link, Auto-transcribe, Speaker identification, and Auto-extract tasks toggles at the top of Settings for quick access
+* redesign More menu bottom sheet — grouped sections (Edit, Re-process, Export, Manage) with a session title + mode label header for clearer context
 
 ### Improvements
 

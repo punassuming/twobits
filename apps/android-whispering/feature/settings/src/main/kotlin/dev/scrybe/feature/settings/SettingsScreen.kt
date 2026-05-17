@@ -82,6 +82,7 @@ import dev.scrybe.core.model.ThemeMode
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToFileManager: () -> Unit = {},
+    onNavigateToProfiles: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -130,6 +131,42 @@ fun SettingsScreen(
                         .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
             ) {
+                SettingsSectionCard(
+                    title = "Intelligence",
+                    icon = Icons.Filled.AutoAwesome,
+                ) {
+                    SettingOptionRow(
+                        title = "Profiles",
+                        value = "Manage",
+                        supportingText = "Pipeline recipes for recording + AI transforms + destinations",
+                        onClick = onNavigateToProfiles,
+                    )
+                    HorizontalDivider()
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Auto-transcribe", style = MaterialTheme.typography.bodyLarge)
+                            Text("Begins immediately after stopping", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.autoTranscribe, onCheckedChange = viewModel::setAutoTranscribe)
+                    }
+                    HorizontalDivider()
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Speaker identification", style = MaterialTheme.typography.bodyLarge)
+                            Text("Color-code multiple voices in transcript", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.enableSpeakerIdentification, onCheckedChange = viewModel::setEnableSpeakerIdentification)
+                    }
+                    HorizontalDivider()
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Auto-extract tasks", style = MaterialTheme.typography.bodyLarge)
+                            Text("Pull action items from transcript with AI", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.enableInsightAnalysis, onCheckedChange = viewModel::setEnableInsightAnalysis)
+                    }
+                }
+
                 SettingsSectionCard(
                     title = "Appearance",
                     icon = Icons.Filled.Palette,

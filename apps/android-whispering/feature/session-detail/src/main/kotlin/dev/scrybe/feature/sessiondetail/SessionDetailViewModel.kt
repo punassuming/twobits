@@ -649,6 +649,30 @@ class SessionDetailViewModel
             }
         }
 
+        fun addTask(text: String) {
+            val trimmed = text.trim()
+            if (trimmed.isBlank()) return
+            viewModelScope.launch {
+                val entity =
+                    dev.scrybe.core.database.SessionTaskEntity(
+                        id =
+                            java.util.UUID
+                                .randomUUID()
+                                .toString(),
+                        sessionId = sessionId,
+                        text = trimmed,
+                        assignee = null,
+                        dueLabel = null,
+                        isDone = false,
+                        createdAt =
+                            java.time.Instant
+                                .now()
+                                .toEpochMilli(),
+                    )
+                sessionTaskDao.insertTasks(listOf(entity))
+            }
+        }
+
         fun fetchSpeakerInfo() {
             viewModelScope.launch {
                 isFetchingSpeakerInfo.value = true
