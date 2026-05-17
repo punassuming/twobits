@@ -15,6 +15,9 @@
 * add manual task entry — Tasks tab now shows an "Add task" row at the bottom of the list for quick manual task creation without AI extraction
 * add Intelligence section in Settings — surfaces Profiles navigation link, Auto-transcribe, Speaker identification, and Auto-extract tasks toggles at the top of Settings for quick access
 * redesign More menu bottom sheet — grouped sections (Edit, Re-process, Export, Manage) with a session title + mode label header for clearer context
+* add profile detail view — tapping a profile card opens a full-screen accordion view with Mode, AI Transforms, Send to, and Auto-trigger sections; pipeline step flow shown at top; Mode section open by default
+* add Integrations section in Settings — surfaces placeholder rows for Calendar, Reminders, Notion, Slack, and Shortcuts with Connect labels; UI groundwork for future integration wiring
+* add EcosystemSheet in session detail — share icon in TopAppBar opens a Send to… bottom sheet with integration rows (Calendar, Reminders, Notion, Slack, Email, Shortcuts, Share); Email and Share rows route to the existing share transcript action
 
 ### Improvements
 

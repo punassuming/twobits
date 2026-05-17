@@ -28,13 +28,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.GraphicEq
@@ -42,6 +47,7 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Unarchive
@@ -126,6 +132,7 @@ fun SessionDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var showMoreSheet by remember { mutableStateOf(false) }
+    var showEcosystemSheet by remember { mutableStateOf(false) }
     var activeTab by remember { mutableStateOf(0) }
     var isEditingTranscript by remember { mutableStateOf(false) }
     var isEditingTags by remember { mutableStateOf(false) }
@@ -244,6 +251,9 @@ fun SessionDetailScreen(
                                 Icons.Filled.GraphicEq,
                                 contentDescription = if (successState.isTranscribing) "Transcribing" else "Transcribe recording",
                             )
+                        }
+                        IconButton(onClick = { showEcosystemSheet = true }) {
+                            Icon(Icons.Filled.IosShare, contentDescription = "Send to")
                         }
                         IconButton(onClick = { showMoreSheet = true }) {
                             Icon(Icons.Filled.MoreVert, contentDescription = "More actions")
@@ -426,6 +436,16 @@ fun SessionDetailScreen(
                         viewModel.sendToTaskForge()
                     },
                 ),
+        )
+    }
+
+    if (showEcosystemSheet) {
+        EcosystemSheet(
+            onDismiss = { showEcosystemSheet = false },
+            onShareTranscript = {
+                viewModel.shareLatestTranscript()
+                showEcosystemSheet = false
+            },
         )
     }
 
@@ -1005,6 +1025,59 @@ private fun MoreMenuSheet(
                 MoreMenuItem(Icons.Filled.Refresh, "Clear Stuck State", onClick = editCallbacks.onResetTranscription)
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EcosystemSheet(
+    onDismiss: () -> Unit,
+    onShareTranscript: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            Text("Send to…", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
+            EcosystemRow(Icons.Filled.CalendarToday, "Calendar", "Add tasks with dates", Color(0xFF4285F4)) {}
+            EcosystemRow(Icons.Filled.Notifications, "Reminders", "Create reminders", Color(0xFFFF5252)) {}
+            EcosystemRow(Icons.Filled.Article, "Notion", "Export as page", MaterialTheme.colorScheme.onSurface) {}
+            EcosystemRow(Icons.Filled.Chat, "Slack", "Post summary to channel", Color(0xFFE01E5A)) {}
+            EcosystemRow(Icons.Filled.Email, "Email", "Send via email", MaterialTheme.colorScheme.primary) { onShareTranscript() }
+            EcosystemRow(Icons.Filled.Bolt, "Shortcuts", "iOS Shortcuts automations", Color(0xFFFF9800)) {}
+            EcosystemRow(Icons.Filled.IosShare, "Share…", "System share sheet", MaterialTheme.colorScheme.primary, isLast = true) { onShareTranscript() }
+        }
+    }
+}
+
+@Composable
+private fun EcosystemRow(
+    icon: ImageVector,
+    label: String,
+    sub: String,
+    color: Color,
+    isLast: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp).background(color.copy(alpha = 0.12f), MaterialTheme.shapes.medium),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (!isLast) HorizontalDivider(Modifier.padding(start = 52.dp))
     }
 }
 
