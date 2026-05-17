@@ -173,6 +173,7 @@ class CaptureViewModel
                         phase = CapturePhase.RECORDING,
                         keepScreenOn = _uiState.value.keepScreenOn,
                         showModePickerSheet = false,
+                        activeMode = mode,
                     )
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {

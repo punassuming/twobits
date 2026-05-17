@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,17 +16,20 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CheckCircle
@@ -52,6 +56,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -153,79 +158,86 @@ fun CaptureScreen(
         },
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding =
-                    PaddingValues(
-                        start = ScrybeLayoutDefaults.screenHorizontalPadding,
-                        top = paddingValues.calculateTopPadding() + 4.dp,
-                        end = ScrybeLayoutDefaults.screenHorizontalPadding,
-                        bottom = paddingValues.calculateBottomPadding() + 16.dp,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (searchOpen) {
-                    item(key = "search") {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text("Search sessions…") },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .scrybeContentWidth(),
-                            singleLine = true,
-                        )
-                    }
-                }
-                item(key = "filter") {
-                    ModeFilterRow(selected = filterMode, onSelect = { filterMode = it })
-                }
-                if (uiState.openTaskTotal > 0) {
-                    item(key = "task-nudge") {
-                        TaskNudgeBanner(
-                            openTaskTotal = uiState.openTaskTotal,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .scrybeContentWidth(),
-                        )
-                    }
-                }
-                uiState.errorMessage?.let { message ->
-                    item(key = "error") {
-                        Card(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .scrybeContentWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        ) {
-                            Text(
-                                text = "Error: $message",
-                                modifier = Modifier.padding(16.dp),
-                                color = MaterialTheme.colorScheme.onErrorContainer,
+            if (uiState.phase != CapturePhase.IDLE) {
+                RecordingActiveView(
+                    state = uiState,
+                    paddingValues = paddingValues,
+                    onStop = viewModel::stopRecording,
+                    onCancel = viewModel::cancelRecording,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding =
+                        PaddingValues(
+                            start = ScrybeLayoutDefaults.screenHorizontalPadding,
+                            top = paddingValues.calculateTopPadding() + 4.dp,
+                            end = ScrybeLayoutDefaults.screenHorizontalPadding,
+                            bottom = paddingValues.calculateBottomPadding() + 16.dp,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (searchOpen) {
+                        item(key = "search") {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = { Text("Search sessions…") },
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .scrybeContentWidth(),
+                                singleLine = true,
                             )
                         }
                     }
+                    item(key = "filter") {
+                        ModeFilterRow(selected = filterMode, onSelect = { filterMode = it })
+                    }
+                    if (uiState.openTaskTotal > 0) {
+                        item(key = "task-nudge") {
+                            TaskNudgeBanner(
+                                openTaskTotal = uiState.openTaskTotal,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .scrybeContentWidth(),
+                            )
+                        }
+                    }
+                    uiState.errorMessage?.let { message ->
+                        item(key = "error") {
+                            Card(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .scrybeContentWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                            ) {
+                                Text(
+                                    text = "Error: $message",
+                                    modifier = Modifier.padding(16.dp),
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                )
+                            }
+                        }
+                    }
+                    if (filteredSessions.isEmpty() &&
+                        uiState.phase == CapturePhase.IDLE &&
+                        searchQuery.isBlank() &&
+                        filterMode == null
+                    ) {
+                        item(key = "intro") { IntroGuidanceSection() }
+                    }
+                    items(filteredSessions, key = { it.id }) { session ->
+                        HomeSessionCard(
+                            session = session,
+                            onClick = { onNavigateToSessionDetail(session.id) },
+                        )
+                    }
+                    item(key = "bottom-spacer") { Spacer(Modifier.height(80.dp)) }
                 }
-                if (filteredSessions.isEmpty() &&
-                    uiState.phase == CapturePhase.IDLE &&
-                    searchQuery.isBlank() &&
-                    filterMode == null
-                ) {
-                    item(key = "intro") { IntroGuidanceSection() }
-                }
-                items(filteredSessions, key = { it.id }) { session ->
-                    HomeSessionCard(
-                        session = session,
-                        onClick = { onNavigateToSessionDetail(session.id) },
-                    )
-                }
-                item(key = "bottom-spacer") { Spacer(Modifier.height(80.dp)) }
-            }
-            if (uiState.phase == CapturePhase.IDLE) {
                 FloatingActionButton(
                     onClick = viewModel::showModePicker,
                     modifier =
@@ -235,7 +247,7 @@ fun CaptureScreen(
                 ) {
                     Icon(Icons.Filled.Mic, contentDescription = "Start recording")
                 }
-            }
+            } // end IDLE branch
         }
     }
 
@@ -252,6 +264,166 @@ fun CaptureScreen(
             onDismiss = viewModel::dismissModePicker,
         )
     }
+}
+
+@Composable
+private fun RecordingActiveView(
+    state: CaptureUiState,
+    paddingValues: PaddingValues,
+    onStop: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val isStopping = state.phase == CapturePhase.STOPPING
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onCancel, enabled = !isStopping) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel recording")
+            }
+            ModeBadge(mode = state.activeMode)
+            Spacer(Modifier.weight(1f))
+            if (isStopping) {
+                Text(
+                    text = "Stopping…",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 16.dp),
+                )
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                AmplitudeWaveform(amplitudeHistory = state.amplitudeHistory)
+                Spacer(Modifier.height(8.dp))
+                RecordingTimerRow(elapsedMs = state.elapsedMs, isStopping = isStopping)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        RecordingStopButtons(
+            modeName = state.activeMode.label,
+            enabled = !isStopping,
+            onStop = onStop,
+        )
+    }
+}
+
+@Composable
+private fun RecordingTimerRow(
+    elapsedMs: Long,
+    isStopping: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(8.dp)
+                        .background(MaterialTheme.colorScheme.tertiary, CircleShape),
+            )
+            Text(
+                text = if (isStopping) "Stopping…" else "Recording",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+        Text(
+            text = formatElapsed(elapsedMs),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.tertiary,
+        )
+    }
+}
+
+@Composable
+private fun RecordingStopButtons(
+    modeName: String,
+    enabled: Boolean,
+    onStop: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Button(
+            onClick = onStop,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Stop — process as $modeName")
+        }
+        OutlinedButton(
+            onClick = onStop,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Stop, save raw transcript only")
+        }
+    }
+}
+
+@Composable
+private fun AmplitudeWaveform(amplitudeHistory: List<Float>) {
+    val bars = amplitudeHistory.takeLast(48)
+    val recentCount = 8
+    Row(
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val totalBars = 48
+        val padding = totalBars - bars.size
+        repeat(padding) {
+            Box(
+                modifier =
+                    Modifier
+                        .width(3.dp)
+                        .fillMaxHeight(0.08f)
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            RoundedCornerShape(2.dp),
+                        ),
+            )
+        }
+        bars.forEachIndexed { index, amplitude ->
+            val isRecent = index >= bars.size - recentCount
+            val color =
+                if (isRecent) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                }
+            val heightFraction = (0.08f + amplitude * 0.92f).coerceIn(0.08f, 1f)
+            Box(
+                modifier =
+                    Modifier
+                        .width(3.dp)
+                        .fillMaxHeight(heightFraction)
+                        .background(color, RoundedCornerShape(2.dp)),
+            )
+        }
+    }
+}
+
+private fun formatElapsed(ms: Long): String {
+    val totalSec = ms / 1000
+    return "%02d:%02d".format(totalSec / 60, totalSec % 60)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

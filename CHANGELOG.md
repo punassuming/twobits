@@ -8,6 +8,8 @@
 * redesign capture home as a unified session feed — replace the recording hero card with a FAB + mode picker sheet; show all sessions with mode badge, location, speaker count, tags, and transcript preview; add horizontal mode filter chips and collapsible search bar
 * add tabbed session detail layout — Output, Tasks, and Transcript tabs replace the single scrolling view; the ⋮ menu is now a bottom sheet with grouped actions
 * add AI task extraction — tap "Extract tasks" in the Tasks tab to call an LLM that identifies action items with assignee and due-date; tasks are stored in a new session_tasks table (DB v11); open task counts appear on home feed cards and a global nudge banner shows total open tasks
+* add in-app recording screen — when a recording is active, the session feed is replaced by a full-screen recording view showing the active mode badge, an animated amplitude waveform, a running MM:SS timer, and Stop / Cancel buttons; the STOPPING phase disables buttons and shows a "Stopping…" label
+* add profile pipeline visualization — each profile card now shows a horizontal scrollable chip flow starting with an implied "Transcribe" chip, followed by chips for up to 3 AI pipeline steps, with an overflow "+N more" chip when applicable
 
 ### Improvements
 

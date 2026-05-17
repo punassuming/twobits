@@ -13,6 +13,7 @@ data class CaptureUiState(
     val errorMessage: String? = null,
     val showModePickerSheet: Boolean = false,
     val openTaskTotal: Int = 0,
+    val activeMode: RecordingMode = RecordingMode.JOURNAL,
 )
 
 data class RecentCaptureSession(

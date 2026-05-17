@@ -1,5 +1,6 @@
 package dev.scrybe.feature.profiles
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,11 +18,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
@@ -268,7 +271,7 @@ private fun ProfileRow(
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
                         text = profile.name,
@@ -276,58 +279,117 @@ private fun ProfileRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(
-                        text = profile.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (profile.description.isNotBlank()) {
+                        Text(
+                            text = profile.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(
-                        onClick = onSetDefault,
-                        enabled = !profile.isDefault,
-                    ) {
+                    IconButton(onClick = onSetDefault, enabled = !profile.isDefault) {
                         Icon(
                             imageVector = if (profile.isDefault) Icons.Filled.Star else Icons.Outlined.StarOutline,
-                            contentDescription = if (profile.isDefault) "Default profile" else "Make default",
+                            contentDescription = if (profile.isDefault) "Default" else "Make default",
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                     IconButton(onClick = onEdit) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Edit profile")
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit")
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Delete profile",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
-            Text(
-                text = "Prompt preview",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            PipelineStepFlow(steps = profile.steps)
+        }
+    }
+}
+
+@Composable
+private fun PipelineStepFlow(steps: List<String>) {
+    val visibleSteps = steps.take(3)
+    val overflow = steps.size - visibleSteps.size
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+    ) {
+        PipelineChip(
+            label = "Transcribe",
+            icon = { Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(12.dp)) },
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+        )
+        visibleSteps.forEachIndexed { index, step ->
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp).padding(horizontal = 2.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
             )
-            Text(
-                text = profile.systemPrompt,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "${profile.steps.size} step${if (profile.steps.size == 1) "" else "s"}",
-                style = MaterialTheme.typography.labelMedium,
+            val label = stepShortLabel(step, index)
+            PipelineChip(
+                label = label,
+                icon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(12.dp)) },
                 color = MaterialTheme.colorScheme.primary,
             )
         }
+        if (overflow > 0) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp).padding(horizontal = 2.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            )
+            PipelineChip(
+                label = "+$overflow more",
+                icon = null,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
+}
+
+@Composable
+private fun PipelineChip(
+    label: String,
+    icon: (@Composable () -> Unit)?,
+    color: androidx.compose.ui.graphics.Color,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (icon != null) {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.material3.LocalContentColor provides color,
+                ) { icon() }
+            }
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = color)
+        }
+    }
+}
+
+private fun stepShortLabel(
+    step: String,
+    index: Int,
+): String {
+    val trimmed = step.trim()
+    if (trimmed.isBlank()) return "Step ${index + 1}"
+    val firstLine = trimmed.lines().firstOrNull { it.isNotBlank() } ?: return "Step ${index + 1}"
+    return if (firstLine.length <= 20) firstLine else firstLine.take(18).trimEnd() + "…"
 }
 
 @Composable
