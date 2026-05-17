@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrybe — Flow Rethink</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<link rel="stylesheet" href="colors_and_type.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="android-frame.jsx"></script>
+<script type="text/babel" src="Common.jsx"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: 'DM Sans', sans-serif; }
+  #root { height: 100vh; }
+  @keyframes scrRec   { 0%,100%{opacity:.7;transform:scale(.97)} 50%{opacity:1;transform:scale(1.04)} }
+  @keyframes scrBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+
+/* ─── Palette ─────────────────────────────────────────────── */
+const C = {
+  bg:          '#0F1720',
+  surface:     '#172431',
+  surfaceHigh: '#1C2B3B',
+  surfaceVar:  '#243443',
+  primary:     '#89C7FF',
+  secondary:   '#88D7A8',
+  tertiary:    '#FFB695',
+  onSurface:   '#E2E8F0',
+  onSurfVar:   '#8B9BAB',
+  muted:       '#6D7D8B',
+  primCont:    '#003A63',
+};
+
+/* ─── Shared primitives ───────────────────────────────────── */
+
+function Ico({ name, size = 22, color }) {
+  return (
+    <span className="material-icons-round"
+      style={{ fontSize: size, color: color ?? C.onSurfVar, lineHeight: 1, flexShrink: 0, display: 'block' }}>
+      {name}
+    </span>
+  );
+}
+
+function Row({ children, style }) {
+  return <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...style }}>{children}</div>;
+}
+
+function Card({ children, style }) {
+  return (
+    <div style={{ background: C.surfaceHigh, borderRadius: 20, padding: 14,
+                  display: 'flex', flexDirection: 'column', gap: 8, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function Pill({ type = 'done' }) {
+  const map = {
+    done:    { icon: 'check_circle',    bg: '#003A63', fg: C.primary,   label: 'Transcribed'  },
+    busy:    { icon: 'hourglass_empty', bg: '#1B3D2F', fg: C.secondary, label: 'Transcribing' },
+    saved:   { icon: 'mic',             bg: '#1D2D3E', fg: C.muted,     label: 'Saved'        },
+    archive: { icon: 'archive',         bg: '#3B2515', fg: C.tertiary,  label: 'Archived'     },
+  };
+  const p = map[type] || map.saved;
+  return (
+    <div style={{ background: p.bg, borderRadius: 9999, padding: '4px 8px',
+                  display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      <Ico name={p.icon} size={12} color={p.fg} />
+      <span style={{ fontSize: 11, color: p.fg, fontWeight: 500, whiteSpace: 'nowrap' }}>{p.label}</span>
+    </div>
+  );
+}
+
+function TopBar({ title, sub, right, back }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', minHeight: 52, padding: '0 8px', flexShrink: 0, gap: 2 }}>
+      {back && <div style={{ padding: 8, cursor: 'pointer', display: 'flex' }}><Ico name="arrow_back" /></div>}
+      <div style={{ flex: 1, paddingLeft: back ? 2 : 10 }}>
+        <div style={{ fontSize: 17, fontWeight: 600, color: C.onSurface, lineHeight: '22px' }}>{title}</div>
+        {sub && <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{sub}</div>}
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function NavBar({ active = 'home' }) {
+  const tabs = [
+    { id: 'home',    icon: 'home'    },
+    { id: 'history', icon: 'history' },
+    { id: 'tune',    icon: 'tune'    },
+    { id: 'config',  icon: 'settings'},
+  ];
+  return (
+    <div style={{ background: C.surface, borderTop: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex', padding: '4px 0 6px', flexShrink: 0 }}>
+      {tabs.map(t => (
+        <div key={t.id} style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '6px 0' }}>
+          <div style={{ width: 56, height: 28, borderRadius: 9999,
+                        background: active === t.id ? '#1C3A52' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Ico name={t.icon} size={22} color={active === t.id ? C.primary : C.muted} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TransformChips() {
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {[['auto_fix_high','Clean up'],['summarize','Summarize'],['checklist','Action items']].map(([ico, lbl]) => (
+        <div key={lbl} style={{ background: C.surfaceVar, borderRadius: 8, padding: '5px 9px',
+                                display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+          <Ico name={ico} size={13} color={C.primary} />
+          <span style={{ fontSize: 12, color: C.primary, fontWeight: 500 }}>{lbl}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WaveStatic({ h = 40, color = C.primary, fadeOpacity = 0.55 }) {
+  const bars = useMemo(() =>
+    Array.from({ length: 52 }, (_, i) =>
+      0.12 + Math.abs(Math.sin(i * 0.4 + 1.1)) * 0.5 + Math.abs(Math.sin(i * 0.9)) * 0.3
+    ), []);
+  return (
+    <div style={{ height: h, display: 'flex', alignItems: 'center', gap: 1.5, overflow: 'hidden' }}>
+      {bars.map((amp, i) => (
+        <div key={i} style={{ width: 2, height: Math.max(amp * h * 0.88, 2), borderRadius: 1,
+                              background: color, flexShrink: 0, alignSelf: 'center',
+                              opacity: fadeOpacity * (0.3 + (i / bars.length) * 0.7) }} />
+      ))}
+    </div>
+  );
+}
+
+function WaveAnim({ h = 56, color = C.tertiary }) {
+  const [bars, setBars] = useState(() =>
+    Array.from({ length: 52 }, () => 0.1 + Math.random() * 0.4));
+  useEffect(() => {
+    const id = setInterval(() =>
+      setBars(p => [...p.slice(1), 0.15 + Math.random() * 0.82]), 85);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div style={{ height: h, display: 'flex', alignItems: 'center', gap: 1.5, overflow: 'hidden' }}>
+      {bars.map((amp, i) => {
+        const recent = i >= bars.length - 7;
+        return (
+          <div key={i} style={{ width: 2, height: Math.max(amp * h, 2), borderRadius: 1,
+                                background: recent ? color : C.primary,
+                                opacity: recent ? 0.88 : 0.38,
+                                flexShrink: 0, alignSelf: 'center' }} />
+        );
+      })}
+    </div>
+  );
+}
+
+function SCard({ title, time, dur, status, preview, children }) {
+  return (
+    <Card>
+      <Row style={{ alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 15, fontWeight: 600, color: C.onSurface, flex: 1, lineHeight: '20px' }}>{title}</span>
+        <Pill type={status} />
+      </Row>
+      <div style={{ fontSize: 12, color: C.muted }}>{time}{dur ? ` · ${dur}` : ''}</div>
+      {preview && (
+        <div style={{ fontSize: 13, color: C.onSurfVar, lineHeight: '18px', overflow: 'hidden',
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          {preview}
+        </div>
+      )}
+      {children}
+    </Card>
+  );
+}
+
+function Phone({ children }) {
+  return <AndroidDevice width={360} height={740} dark={true}>{children}</AndroidDevice>;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DIRECTION A — Unified Feed + FAB
+══════════════════════════════════════════════════════════════ */
+
+function A_Feed() {
+  return (
+    <div style={{ background: C.bg, height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif', position: 'relative' }}>
+      <TopBar
+        title="Scrybe"
+        sub="Thursday, May 15"
+        right={
+          <Row>
+            <div style={{ padding: 8 }}><Ico name="search" /></div>
+            <div style={{ padding: 8 }}><Ico name="more_vert" /></div>
+          </Row>
+        }
+      />
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* AI nudge */}
+        <div style={{ background: '#0A1C2E', border: `1px solid ${C.primary}2E`,
+                      borderRadius: 14, padding: '9px 13px',
+                      display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Ico name="auto_awesome" size={15} color={C.primary} />
+          <span style={{ fontSize: 13, color: C.primary, flex: 1 }}>2 sessions ready for action</span>
+          <span style={{ fontSize: 12, color: C.muted }}>Review →</span>
+        </div>
+
+        <SCard
+          title="Q2 Planning call"
+          time="Today · 2:32 PM"
+          dur="14:32"
+          status="done"
+          preview="So I've been thinking about the notification redesign. The current system is too noisy — users get pinged for every tiny thing."
+        >
+          <TransformChips />
+        </SCard>
+
+        {/* Processing card */}
+        <Card>
+          <Row style={{ alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: C.onSurface, flex: 1 }}>Team standup</span>
+            <Pill type="busy" />
+          </Row>
+          <div style={{ fontSize: 12, color: C.muted }}>Today · 9:14 AM · 04:23</div>
+          <Row style={{ gap: 8 }}>
+            <div style={{ flex: 1, height: 3, background: C.surfaceVar, borderRadius: 2 }}>
+              <div style={{ width: '62%', height: '100%', background: C.secondary, borderRadius: 2 }} />
+            </div>
+            <span style={{ fontSize: 11, color: C.secondary }}>62%</span>
+          </Row>
+        </Card>
+
+        <SCard
+          title="Weekly review"
+          time="Mon · 8:00 PM"
+          dur="12:47"
+          status="done"
+          preview="Good progress on the recording pipeline this week. Still need to address the dedup sync issue."
+        />
+        <SCard title="Interview prep notes" time="Nov 12 · 3:30 PM" dur="08:05" status="archive" />
+      </div>
+
+      {/* FAB */}
+      <div style={{ position: 'absolute', bottom: 66, right: 16, width: 54, height: 54,
+                    borderRadius: 9999, background: C.primary, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: `0 4px 24px ${C.primary}55` }}>
+        <Ico name="mic" size={26} color={C.primCont} />
+      </div>
+
+      <NavBar active="home" />
+    </div>
+  );
+}
+
+function A_RecSheet() {
+  return (
+    <div style={{ background: C.bg, height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif', position: 'relative' }}>
+      <TopBar title="Scrybe" sub="Thursday, May 15"
+        right={<div style={{ padding: 8, opacity: 0.2 }}><Ico name="search" /></div>}
+      />
+      {/* Dimmed feed skeleton */}
+      <div style={{ flex: 1, padding: '0 14px', display: 'flex', flexDirection: 'column',
+                    gap: 10, opacity: 0.15, pointerEvents: 'none' }}>
+        <div style={{ background: C.surfaceHigh, borderRadius: 14, height: 38 }} />
+        <div style={{ background: C.surfaceHigh, borderRadius: 20, height: 118 }} />
+        <div style={{ background: C.surfaceHigh, borderRadius: 20, height: 72 }} />
+        <div style={{ background: C.surfaceHigh, borderRadius: 20, height: 90 }} />
+      </div>
+
+      {/* Bottom sheet */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
+                    background: C.surface, borderRadius: '24px 24px 0 0',
+                    padding: '12px 18px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.surfaceVar }} />
+        </div>
+
+        <Row style={{ justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: C.onSurface }}>Recording</div>
+            <Row style={{ gap: 5, marginTop: 3 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.tertiary,
+                            animation: 'scrRec 1s ease-in-out infinite' }} />
+              <span style={{ fontSize: 12, color: C.tertiary, fontVariantNumeric: 'tabular-nums' }}>01:23</span>
+            </Row>
+          </div>
+          <div style={{ background: C.surfaceVar, borderRadius: 9999, padding: '7px 14px', cursor: 'pointer' }}>
+            <span style={{ fontSize: 13, color: C.onSurfVar }}>Cancel</span>
+          </div>
+        </Row>
+
+        <WaveAnim h={62} />
+
+        <div style={{ background: C.surfaceHigh, borderRadius: 12, padding: '9px 12px' }}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>Live transcript</div>
+          <div style={{ fontSize: 13, color: C.onSurface, lineHeight: '20px' }}>
+            "The main thing I want to address is the API integration timeline…"
+            <span style={{ display: 'inline-block', width: 2, height: 13, background: C.primary,
+                           marginLeft: 3, verticalAlign: 'middle', animation: 'scrBlink 1s step-end infinite' }} />
+          </div>
+        </div>
+
+        <button style={{ background: C.primary, border: 'none', borderRadius: 14,
+                         padding: '14px 0', fontSize: 15, fontWeight: 600,
+                         color: C.primCont, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+          Stop recording
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DIRECTION B — Intent-First Recording
+══════════════════════════════════════════════════════════════ */
+
+const INTENTS = [
+  { icon: 'groups',     label: 'Meeting',  desc: 'Notes + actions',  color: C.primary,   active: true  },
+  { icon: 'lightbulb',  label: 'Idea',     desc: 'Brainstorm list',  color: C.secondary, active: false },
+  { icon: 'checklist',  label: 'Tasks',    desc: 'Action items',     color: C.tertiary,  active: false },
+  { icon: 'edit_note',  label: 'Note',     desc: 'Plain transcript', color: C.onSurfVar, active: false },
+];
+
+function B_Intent() {
+  return (
+    <div style={{ background: C.bg, height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif' }}>
+      <div style={{ padding: '14px 16px 4px', flexShrink: 0 }}>
+        <div style={{ fontSize: 11, color: C.muted, letterSpacing: '0.06em', marginBottom: 4 }}>THURSDAY, MAY 15</div>
+        <div style={{ fontSize: 22, fontWeight: 600, color: C.onSurface }}>Capture a thought</div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 14px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Card style={{ gap: 12 }}>
+          <div style={{ fontSize: 13, color: C.muted }}>What are you capturing?</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {INTENTS.map(({ icon, label, desc, color, active }) => (
+              <div key={label} style={{ background: C.surface, borderRadius: 14,
+                                        padding: '13px 12px', display: 'flex',
+                                        flexDirection: 'column', gap: 7, cursor: 'pointer',
+                                        border: active ? `1.5px solid ${C.primary}` : '1.5px solid transparent' }}>
+                <Ico name={icon} size={20} color={color} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.onSurface }}>{label}</div>
+                <div style={{ fontSize: 11, color: C.muted, lineHeight: '14px' }}>{desc}</div>
+              </div>
+            ))}
+          </div>
+
+          <Row style={{ gap: 8 }}>
+            <div style={{ flex: 1, height: 1, background: C.surfaceVar }} />
+            <span style={{ fontSize: 12, color: C.muted }}>or tap to start now</span>
+            <div style={{ flex: 1, height: 1, background: C.surfaceVar }} />
+          </Row>
+
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: 50, height: 50, borderRadius: '50%', background: C.surfaceVar,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <Ico name="mic" size={24} color={C.onSurfVar} />
+            </div>
+          </div>
+        </Card>
+
+        <div style={{ fontSize: 12, color: C.muted, padding: '2px 2px' }}>Recent</div>
+        <SCard title="Team standup — Thursday" time="Today · 9:14 AM" dur="04:23" status="done"
+          preview="Blocked on API integration, need to sync with Dana before end of week." />
+        <SCard title="Weekly review" time="Mon · 8:00 PM" dur="12:47" status="done" />
+      </div>
+
+      <NavBar active="home" />
+    </div>
+  );
+}
+
+function B_Recording() {
+  return (
+    <div style={{ background: '#090F19', height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif' }}>
+      {/* Minimal header */}
+      <div style={{ padding: '0 8px', display: 'flex', alignItems: 'center', minHeight: 52,
+                    gap: 8, flexShrink: 0 }}>
+        <div style={{ padding: 8, cursor: 'pointer', display: 'flex' }}><Ico name="arrow_back" /></div>
+        <div style={{ background: '#0E2235', borderRadius: 9, padding: '4px 10px',
+                      display: 'flex', alignItems: 'center', gap: 5 }}>
+          <Ico name="groups" size={13} color={C.primary} />
+          <span style={{ fontSize: 12, color: C.primary, fontWeight: 500 }}>Meeting</span>
+        </div>
+        <div style={{ flex: 1 }} />
+        <div style={{ padding: 8 }}><Ico name="close" /></div>
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column',
+                    padding: '8px 14px 18px', gap: 14 }}>
+        {/* Waveform + timer */}
+        <Card style={{ gap: 12, background: C.surface }}>
+          <WaveAnim h={82} />
+          <Row style={{ justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 26, fontWeight: 300, color: C.tertiary,
+                           fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px' }}>01:47</span>
+            <Row style={{ gap: 5 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.tertiary,
+                            animation: 'scrRec 1s ease-in-out infinite' }} />
+              <span style={{ fontSize: 12, color: C.tertiary }}>Recording</span>
+            </Row>
+          </Row>
+        </Card>
+
+        {/* Live transcript */}
+        <Card style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: C.muted, letterSpacing: '0.06em' }}>LIVE</div>
+          <div style={{ fontSize: 14, color: C.onSurface, lineHeight: '22px' }}>
+            <span style={{ color: C.onSurfVar }}>"The main thing I want to discuss is the API integration
+              timeline… </span>
+            <span>We need to sync with Dana before end of week and figure out the dedup issue."</span>
+            <span style={{ display: 'inline-block', width: 2, height: 14, background: C.primary,
+                           marginLeft: 3, verticalAlign: 'middle',
+                           animation: 'scrBlink 1s step-end infinite' }} />
+          </div>
+        </Card>
+
+        {/* Dual CTA */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button style={{ background: C.primary, border: 'none', borderRadius: 14, padding: '14px 0',
+                           fontSize: 15, fontWeight: 600, color: C.primCont,
+                           cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+            Stop — get meeting notes
+          </button>
+          <button style={{ background: 'transparent', border: `1px solid ${C.surfaceVar}`,
+                           borderRadius: 14, padding: '12px 0', fontSize: 14, color: C.onSurfVar,
+                           cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+            Stop, save as transcript
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function B_Result() {
+  return (
+    <div style={{ background: C.bg, height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif' }}>
+      <TopBar back title="Q2 Planning call" sub="Just now · 01:47"
+        right={
+          <Row>
+            <div style={{ padding: 8 }}><Ico name="ios_share" /></div>
+            <div style={{ padding: 8 }}><Ico name="more_vert" /></div>
+          </Row>
+        }
+      />
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <Row style={{ padding: '2px 0' }}>
+          <Pill type="done" />
+          <span style={{ fontSize: 12, color: C.muted }}>Transcribed via Whisper · 01:47</span>
+        </Row>
+
+        {/* Summary */}
+        <Card>
+          <Row>
+            <Ico name="summarize" size={15} color={C.primary} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.onSurface }}>Summary</span>
+          </Row>
+          <div style={{ fontSize: 13, color: C.onSurface, lineHeight: '20px' }}>
+            Discussion covered API timeline and Q3 roadmap priorities. Three blockers identified.
+            Follow-up needed with Dana on dedup sync.
+          </div>
+        </Card>
+
+        {/* Action items */}
+        <Card>
+          <Row>
+            <Ico name="checklist" size={15} color={C.secondary} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.onSurface }}>Action items</span>
+          </Row>
+          {[
+            'Sync with Dana on API integration before Friday',
+            'Share Q3 roadmap draft with the team',
+            'Schedule dedup sync for Thursday',
+          ].map((item, i) => (
+            <Row key={i} style={{ alignItems: 'flex-start', gap: 10 }}>
+              <div style={{ width: 17, height: 17, borderRadius: 4,
+                            border: `1.5px solid ${C.secondary}55`,
+                            marginTop: 2, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: C.onSurface, lineHeight: '20px' }}>{item}</span>
+            </Row>
+          ))}
+        </Card>
+
+        {/* Quick actions */}
+        <Row style={{ gap: 8 }}>
+          {[['ios_share','Share'],['content_copy','Copy'],['edit','Edit']].map(([ico, lbl]) => (
+            <div key={lbl} style={{ flex: 1, background: C.surface, borderRadius: 12,
+                                     padding: '10px 0', display: 'flex', flexDirection: 'column',
+                                     alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+              <Ico name={ico} size={18} />
+              <span style={{ fontSize: 11, color: C.muted }}>{lbl}</span>
+            </div>
+          ))}
+        </Row>
+
+        {/* Transcript collapsed */}
+        <div style={{ background: C.surfaceHigh, borderRadius: 14, padding: '11px 14px',
+                      display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'center', cursor: 'pointer' }}>
+          <span style={{ fontSize: 13, color: C.onSurfVar }}>Full transcript</span>
+          <Ico name="expand_more" size={18} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DIRECTION C — Processing Pipeline
+══════════════════════════════════════════════════════════════ */
+
+function C_Pipeline() {
+  return (
+    <div style={{ background: C.bg, height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif' }}>
+      <TopBar title="Your pipeline"
+        right={
+          <Row>
+            <div style={{ padding: 8 }}><Ico name="add" color={C.primary} /></div>
+            <div style={{ padding: 8 }}><Ico name="more_vert" /></div>
+          </Row>
+        }
+      />
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        {/* ● Active */}
+        <div style={{ background: '#130C1A', border: `1px solid ${C.tertiary}2E`,
+                      borderRadius: 20, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Row style={{ gap: 6 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: C.tertiary,
+                          animation: 'scrRec 1s ease-in-out infinite' }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.tertiary, letterSpacing: '0.08em' }}>RECORDING NOW</span>
+          </Row>
+          <div style={{ fontSize: 15, fontWeight: 600, color: C.onSurface }}>Team standup</div>
+          <WaveAnim h={32} color={C.tertiary} />
+          <Row style={{ justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, color: C.tertiary, fontVariantNumeric: 'tabular-nums' }}>● 02:14</span>
+            <button style={{ background: C.tertiary, border: 'none', borderRadius: 9,
+                             padding: '6px 16px', fontSize: 13, fontWeight: 600,
+                             color: '#1A0800', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+              Stop
+            </button>
+          </Row>
+        </div>
+
+        {/* ◉ Processing */}
+        <div style={{ background: '#0A1812', border: `1px solid ${C.secondary}25`,
+                      borderRadius: 20, padding: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
+          <Row style={{ gap: 6 }}>
+            <Ico name="hourglass_empty" size={12} color={C.secondary} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.secondary, letterSpacing: '0.08em' }}>PROCESSING</span>
+          </Row>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: C.onSurface }}>Q2 Planning call</div>
+            <span style={{ fontSize: 12, color: C.secondary }}>62%</span>
+          </Row>
+          <div style={{ height: 3, background: C.surfaceVar, borderRadius: 2 }}>
+            <div style={{ width: '62%', height: '100%', background: C.secondary, borderRadius: 2 }} />
+          </div>
+          <div style={{ fontSize: 12, color: C.muted }}>Transcribing via Whisper · 14:32</div>
+        </div>
+
+        {/* ✓ Ready */}
+        <div style={{ background: '#091D31', border: `1px solid ${C.primary}40`,
+                      borderRadius: 20, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Row style={{ gap: 6 }}>
+            <Ico name="check_circle" size={12} color={C.primary} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.primary, letterSpacing: '0.08em' }}>READY FOR ACTION</span>
+          </Row>
+          <div style={{ fontSize: 15, fontWeight: 600, color: C.onSurface }}>Product ideas · brainstorm</div>
+          <div style={{ fontSize: 13, color: C.onSurface }}>AI found 3 action items</div>
+          <Row style={{ gap: 8 }}>
+            <button style={{ flex: 1, background: C.primary, border: 'none', borderRadius: 10,
+                             padding: '9px 0', fontSize: 13, fontWeight: 600, color: C.primCont,
+                             cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+              View actions →
+            </button>
+            <button style={{ flex: 1, background: C.surfaceVar, border: 'none', borderRadius: 10,
+                             padding: '9px 0', fontSize: 13, color: C.onSurfVar,
+                             cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+              Summary
+            </button>
+          </Row>
+        </div>
+
+        {/* Older */}
+        <div style={{ fontSize: 12, color: C.muted, padding: '4px 2px 0' }}>Older</div>
+        {[
+          { title: 'Weekly review',       time: 'Mon · 8:00 PM', status: 'done'    },
+          { title: 'Interview prep notes', time: 'Nov 12',        status: 'archive' },
+        ].map(s => (
+          <div key={s.title} style={{ background: C.surfaceHigh, borderRadius: 14,
+                                       padding: '10px 14px', display: 'flex',
+                                       justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 14, color: C.onSurface }}>{s.title}</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{s.time}</div>
+            </div>
+            <Pill type={s.status} />
+          </div>
+        ))}
+      </div>
+
+      <NavBar active="home" />
+    </div>
+  );
+}
+
+function C_Ready() {
+  return (
+    <div style={{ background: C.bg, height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif' }}>
+      <TopBar back title="Product ideas" sub="Brainstorm · Nov 10 · 06:30"
+        right={
+          <Row>
+            <div style={{ padding: 8 }}><Ico name="ios_share" /></div>
+            <div style={{ padding: 8 }}><Ico name="more_vert" /></div>
+          </Row>
+        }
+      />
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* AI banner */}
+        <div style={{ background: '#091D31', border: `1px solid ${C.primary}30`,
+                      borderRadius: 16, padding: '12px 14px',
+                      display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Ico name="auto_awesome" size={20} color={C.primary} />
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.primary }}>AI found 3 action items</div>
+            <div style={{ fontSize: 12, color: C.muted }}>Ready to extract or summarize</div>
+          </div>
+        </div>
+
+        {/* Action rows */}
+        {[
+          { icon: 'checklist',                 label: 'View action items', fg: C.primary,   bg: '#091D31', br: C.primary   },
+          { icon: 'summarize',                 label: 'Read summary',      fg: C.secondary, bg: '#0A1812', br: C.secondary },
+          { icon: 'play_circle',               label: 'Play back audio',   fg: C.onSurfVar, bg: C.surfaceHigh, br: 'transparent' },
+          { icon: 'drive_file_rename_outline', label: 'Edit transcript',   fg: C.onSurfVar, bg: C.surfaceHigh, br: 'transparent' },
+        ].map(({ icon, label, fg, bg, br }) => (
+          <div key={label} style={{ background: bg, border: `1px solid ${br === 'transparent' ? 'transparent' : br + '28'}`,
+                                    borderRadius: 16, padding: '14px 16px',
+                                    display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+            <Ico name={icon} size={20} color={fg} />
+            <span style={{ fontSize: 15, color: fg, flex: 1,
+                           fontWeight: fg === C.onSurfVar ? 400 : 500 }}>{label}</span>
+            <Ico name="chevron_right" size={18} color={C.muted} />
+          </div>
+        ))}
+
+        {/* Mini player */}
+        <Card style={{ gap: 10 }}>
+          <WaveStatic h={34} />
+          <Row style={{ justifyContent: 'center', gap: 14 }}>
+            <Ico name="replay_10" size={22} />
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: C.primary,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <Ico name="play_arrow" size={22} color={C.primCont} />
+            </div>
+            <Ico name="forward_10" size={22} />
+          </Row>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DIRECTION D — Voice Canvas
+══════════════════════════════════════════════════════════════ */
+
+function D_Canvas() {
+  const bigBars = useMemo(() =>
+    Array.from({ length: 72 }, (_, i) =>
+      0.06 + Math.abs(Math.sin(i * 0.28)) * 0.38 + Math.abs(Math.sin(i * 0.75 + 0.6)) * 0.38
+    ), []);
+
+  return (
+    <div style={{ background: '#06101A', height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif', position: 'relative' }}>
+      <div style={{ padding: '0 16px', display: 'flex', alignItems: 'center',
+                    minHeight: 52, flexShrink: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: C.onSurface }}>Scrybe</div>
+        <div style={{ flex: 1 }} />
+        <Ico name="more_vert" />
+      </div>
+
+      {/* Canvas body */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', padding: '0 14px', gap: 26 }}>
+        {/* Oscilloscope waveform */}
+        <div style={{ width: '100%', height: 96, display: 'flex', alignItems: 'center', gap: 1 }}>
+          {bigBars.map((amp, i) => {
+            const dist = Math.abs(i - bigBars.length / 2) / (bigBars.length / 2);
+            return (
+              <div key={i} style={{ flex: 1, height: Math.max(amp * 84, 2), borderRadius: 1,
+                                    alignSelf: 'center', background: C.primary,
+                                    opacity: 0.1 + (1 - dist) * 0.28 }} />
+            );
+          })}
+        </div>
+
+        <div style={{ fontSize: 11, color: C.muted, letterSpacing: '0.1em', textAlign: 'center' }}>
+          YOUR VOICE · YOUR THOUGHTS
+        </div>
+
+        {/* Record button + rings */}
+        <div style={{ position: 'relative', width: 130, height: 130,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', width: 130, height: 130, borderRadius: '50%',
+                        background: `${C.primary}10`, animation: 'scrRec 1.72s ease-in-out infinite' }} />
+          <div style={{ position: 'absolute', width: 106, height: 106, borderRadius: '50%',
+                        background: `${C.primary}1C`, animation: 'scrRec 1.38s ease-in-out infinite' }} />
+          <button style={{ width: 76, height: 76, borderRadius: '50%', background: C.primary,
+                           border: 'none', cursor: 'pointer', zIndex: 1, position: 'relative',
+                           display: 'flex', alignItems: 'center', justifyContent: 'center',
+                           boxShadow: `0 0 36px ${C.primary}44` }}>
+            <Ico name="mic" size={30} color={C.primCont} />
+          </button>
+        </div>
+      </div>
+
+      {/* Recent pills */}
+      <div style={{ padding: '10px 14px 10px', display: 'flex', flexDirection: 'column',
+                    gap: 8, flexShrink: 0 }}>
+        <div style={{ fontSize: 11, color: C.muted }}>Recent thoughts</div>
+        <div style={{ display: 'flex', gap: 7, overflowX: 'auto', paddingBottom: 2 }}>
+          {['Q2 Planning','Team standup','Weekly review','Interview prep'].map(t => (
+            <div key={t} style={{ background: C.surfaceHigh, borderRadius: 9999,
+                                   padding: '6px 12px', flexShrink: 0, cursor: 'pointer' }}>
+              <span style={{ fontSize: 12, color: C.onSurfVar, whiteSpace: 'nowrap' }}>{t}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 108, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.18)' }} />
+      </div>
+    </div>
+  );
+}
+
+function D_Sheet() {
+  const bgBars = useMemo(() =>
+    Array.from({ length: 72 }, (_, i) =>
+      0.06 + Math.abs(Math.sin(i * 0.28)) * 0.38 + Math.abs(Math.sin(i * 0.75 + 0.6)) * 0.38
+    ), []);
+
+  return (
+    <div style={{ background: '#06101A', height: '100%', display: 'flex', flexDirection: 'column',
+                  fontFamily: 'DM Sans, sans-serif', position: 'relative' }}>
+      {/* Dimmed canvas behind */}
+      <div style={{ padding: '0 16px', display: 'flex', alignItems: 'center', minHeight: 52, opacity: 0.2 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: C.onSurface }}>Scrybe</div>
+      </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', padding: '0 14px', gap: 26,
+                    opacity: 0.12, pointerEvents: 'none' }}>
+        <div style={{ width: '100%', height: 96, display: 'flex', alignItems: 'center', gap: 1 }}>
+          {bgBars.map((amp, i) => (
+            <div key={i} style={{ flex: 1, height: Math.max(amp * 84, 2), borderRadius: 1,
+                                  alignSelf: 'center', background: C.primary, opacity: 0.5 }} />
+          ))}
+        </div>
+        <div style={{ width: 76, height: 76, borderRadius: '50%', background: C.primary,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Ico name="mic" size={30} color={C.primCont} />
+        </div>
+      </div>
+
+      {/* Bottom sheet */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0,
+                    background: C.surface, borderRadius: '24px 24px 0 0',
+                    padding: '12px 18px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.surfaceVar }} />
+        </div>
+
+        <Row style={{ justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: C.onSurface }}>Q2 Planning call</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Just now · 01:47</div>
+          </div>
+          <Pill type="done" />
+        </Row>
+
+        <WaveStatic h={28} fadeOpacity={0.45} />
+
+        <div style={{ fontSize: 12, color: C.muted }}>What would you like to do?</div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[
+            { icon: 'auto_fix_high', label: 'Clean up transcript',  color: C.primary   },
+            { icon: 'summarize',     label: 'Summarize',            color: C.secondary },
+            { icon: 'checklist',     label: 'Extract action items', color: C.tertiary  },
+            { icon: 'save',          label: 'Save as transcript',   color: C.onSurfVar },
+          ].map(({ icon, label, color }) => (
+            <div key={label} style={{ background: C.surfaceHigh, borderRadius: 14,
+                                       padding: '11px 14px', display: 'flex',
+                                       alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <Ico name={icon} size={18} color={color} />
+              <span style={{ fontSize: 14, flex: 1,
+                             color: color === C.onSurfVar ? C.onSurface : color }}>{label}</span>
+              <Ico name="chevron_right" size={16} color={C.muted} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── App ─────────────────────────────────────────────────── */
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection
+        id="dir-a"
+        title="A — Unified Feed + FAB"
+        subtitle="Collapse Capture + Records into one scrollable feed. AI transforms surface inline on cards — no drilling in. Record anywhere with a persistent FAB that expands into a bottom sheet."
+      >
+        <DCArtboard id="a1" label="Main feed" width={376} height={758}>
+          <Phone><A_Feed /></Phone>
+        </DCArtboard>
+        <DCArtboard id="a2" label="Recording sheet" width={376} height={758}>
+          <Phone><A_RecSheet /></Phone>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="dir-b"
+        title="B — Intent-First Recording"
+        subtitle="Choose what you're capturing before you speak — Meeting, Idea, Tasks, or Note. The AI knows what to produce before you stop. Results appear immediately, no session drilling needed."
+      >
+        <DCArtboard id="b1" label="Intent picker" width={376} height={758}>
+          <Phone><B_Intent /></Phone>
+        </DCArtboard>
+        <DCArtboard id="b2" label="Recording with intent" width={376} height={758}>
+          <Phone><B_Recording /></Phone>
+        </DCArtboard>
+        <DCArtboard id="b3" label="Immediate result" width={376} height={758}>
+          <Phone><B_Result /></Phone>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="dir-c"
+        title="C — Processing Pipeline"
+        subtitle="Make the AI pipeline the hero. Active → Processing → Ready becomes a live status dashboard. 'Ready' surfaces proactive action cards — nothing is buried in a detail view."
+      >
+        <DCArtboard id="c1" label="Pipeline dashboard" width={376} height={758}>
+          <Phone><C_Pipeline /></Phone>
+        </DCArtboard>
+        <DCArtboard id="c2" label="Ready for action" width={376} height={758}>
+          <Phone><C_Ready /></Phone>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="dir-d"
+        title="D — Voice Canvas"
+        subtitle="Strip away everything. The waveform is the interface. Tap to record; a sheet rises when you stop. Sessions live as pills at the bottom — explore when you're ready."
+      >
+        <DCArtboard id="d1" label="Voice canvas" width={376} height={758}>
+          <Phone><D_Canvas /></Phone>
+        </DCArtboard>
+        <DCArtboard id="d2" label="Post-capture sheet" width={376} height={758}>
+          <Phone><D_Sheet /></Phone>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
