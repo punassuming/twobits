@@ -64,12 +64,30 @@ private val LightColorScheme =
         onTertiary = Mist100,
         tertiaryContainer = LightTertiaryContainer,
         onTertiaryContainer = LightOnTertiaryContainer,
+        // Error
+        error = LightError,
+        onError = LightOnError,
+        errorContainer = LightErrorContainer,
+        onErrorContainer = LightOnErrorContainer,
+        // Background / canvas
         background = Mist100,
         onBackground = Ink900,
+        // Surface hierarchy
         surface = LightSurface,
         onSurface = Ink900,
         surfaceVariant = Mist200,
         onSurfaceVariant = Ink700,
+        surfaceContainer = Mist100,
+        surfaceContainerLow = LightSurface,
+        surfaceContainerHigh = Mist200,
+        surfaceContainerHighest = LightSurfHighest,
+        // Outlines / borders
+        outline = Slate500,
+        outlineVariant = LightOutlineVariant,
+        // Inverse
+        inverseSurface = Ink900,
+        inverseOnSurface = Mist100,
+        inversePrimary = SignalDark,
     )
 
 @Composable

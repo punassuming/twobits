@@ -27,6 +27,7 @@
 ### Improvements
 
 * align theme with v2 design handoff — disable Material You dynamic color so the app always uses the custom Scrybe palette; add full dark scheme surface hierarchy (surfaceContainerLow/High/Highest mapped to #111C27/#1C2B3B/#243443); add explicit container colors (primaryContainer #003A63, secondaryContainer #1B3D2F, tertiaryContainer #3B2515); set onSurface #E2E8F0 and onSurfaceVariant #8B9BAB; fill in missing typography styles (titleLarge 20sp, titleSmall 14sp, bodySmall 12sp, labelMedium 12sp, labelSmall 11sp); refine shape scale (extraSmall 8dp, small 12dp, medium 18dp)
+* complete light mode Material 3 token coverage — add full error pair, surface container hierarchy (surfaceContainerLow/High/Highest), outlines, and inverse colours to LightColorScheme, bringing light mode to parity with the dark scheme so system-dynamic theming is reliable across both modes
 
 ### Fixes
 

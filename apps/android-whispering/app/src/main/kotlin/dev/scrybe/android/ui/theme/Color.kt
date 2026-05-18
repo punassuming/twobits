@@ -56,3 +56,15 @@ val LightSecondaryContainer = Color(0xFFCCF0DC)
 val LightOnSecondaryContainer = Color(0xFF002112)
 val LightTertiaryContainer = Color(0xFFFFDBCA)
 val LightOnTertiaryContainer = Color(0xFF321200)
+
+// Light error (M3 standard)
+val LightError = Color(0xFFBA1A1A)
+val LightOnError = Color(0xFFFFFFFF)
+val LightErrorContainer = Color(0xFFFFDAD6)
+val LightOnErrorContainer = Color(0xFF410002)
+
+// Light surface hierarchy — highest elevation step above Mist200
+val LightSurfHighest = Color(0xFFDAE3EE)
+
+// Light outline — subtle border between Mist100 and Mist200
+val LightOutlineVariant = Color(0xFFC9D6E3)
