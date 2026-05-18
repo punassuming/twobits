@@ -1,5 +1,8 @@
 package dev.scrybe.feature.profiles
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,11 +20,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
@@ -50,6 +57,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +70,7 @@ import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.TransformProfile
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,75 +84,90 @@ fun ProfilesScreen(
     val profileSuggestionModel by viewModel.profileSuggestionModel.collectAsState()
     val editorDraft by viewModel.editorDraft.collectAsState()
     val aiCreatorOpen by viewModel.aiCreatorOpen.collectAsState()
+    var detailProfile by remember { mutableStateOf<TransformProfile?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Profiles") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-    ) { paddingValues ->
-        when (val state = uiState) {
-            is ProfilesUiState.Loading ->
-                Box(
-                    Modifier.fillMaxSize().padding(paddingValues),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
-            is ProfilesUiState.Error ->
-                Box(
-                    Modifier.fillMaxSize().padding(paddingValues),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(state.message, color = MaterialTheme.colorScheme.error)
-                }
-            is ProfilesUiState.Success -> {
-                LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                    contentPadding =
-                        androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = ScrybeLayoutDefaults.screenHorizontalPadding,
-                            vertical = 12.dp,
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    item {
-                        ProfileCreationCard(
-                            onCreateManual = {
-                                viewModel.clearSuggestionState()
-                                viewModel.openNewEditor()
-                            },
-                            onCreateWithAi = {
-                                viewModel.clearSuggestionState()
-                                viewModel.openAiCreator()
-                            },
-                        )
-                    }
-                    if (state.profiles.isEmpty()) {
-                        item {
-                            EmptyProfilesCard()
+    val detail = detailProfile
+    if (detail != null) {
+        ProfileDetailView(
+            profile = detail,
+            onBack = { detailProfile = null },
+            onEdit = {
+                viewModel.clearSuggestionState()
+                viewModel.openEditor(detail)
+                detailProfile = null
+            },
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Profiles") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
-                    } else {
-                        items(state.profiles) { profile ->
-                            ProfileRow(
-                                profile = profile,
-                                onEdit = {
+                    },
+                )
+            },
+        ) { paddingValues ->
+            when (val state = uiState) {
+                is ProfilesUiState.Loading ->
+                    Box(
+                        Modifier.fillMaxSize().padding(paddingValues),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                is ProfilesUiState.Error ->
+                    Box(
+                        Modifier.fillMaxSize().padding(paddingValues),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(state.message, color = MaterialTheme.colorScheme.error)
+                    }
+                is ProfilesUiState.Success -> {
+                    LazyColumn(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues),
+                        contentPadding =
+                            androidx.compose.foundation.layout.PaddingValues(
+                                horizontal = ScrybeLayoutDefaults.screenHorizontalPadding,
+                                vertical = 12.dp,
+                            ),
+                        verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        item {
+                            ProfileCreationCard(
+                                onCreateManual = {
                                     viewModel.clearSuggestionState()
-                                    viewModel.openEditor(profile)
+                                    viewModel.openNewEditor()
                                 },
-                                onDelete = { viewModel.deleteProfile(profile.id) },
-                                onSetDefault = { viewModel.setDefaultProfile(profile.id) },
+                                onCreateWithAi = {
+                                    viewModel.clearSuggestionState()
+                                    viewModel.openAiCreator()
+                                },
                             )
+                        }
+                        if (state.profiles.isEmpty()) {
+                            item {
+                                EmptyProfilesCard()
+                            }
+                        } else {
+                            items(state.profiles) { profile ->
+                                ProfileRow(
+                                    profile = profile,
+                                    onClick = { detailProfile = profile },
+                                    onEdit = {
+                                        viewModel.clearSuggestionState()
+                                        viewModel.openEditor(profile)
+                                    },
+                                    onDelete = { viewModel.deleteProfile(profile.id) },
+                                    onSetDefault = { viewModel.setDefaultProfile(profile.id) },
+                                )
+                            }
                         }
                     }
                 }
@@ -253,11 +277,12 @@ private fun EmptyProfilesCard() {
 @Composable
 private fun ProfileRow(
     profile: TransformProfile,
+    onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onSetDefault: () -> Unit,
 ) {
-    ScrybeSectionCard {
+    ScrybeSectionCard(modifier = Modifier.clickable(onClick = onClick)) {
         Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -268,7 +293,7 @@ private fun ProfileRow(
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
                         text = profile.name,
@@ -276,58 +301,332 @@ private fun ProfileRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(
-                        text = profile.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (profile.description.isNotBlank()) {
+                        Text(
+                            text = profile.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(
-                        onClick = onSetDefault,
-                        enabled = !profile.isDefault,
-                    ) {
+                    IconButton(onClick = onSetDefault, enabled = !profile.isDefault) {
                         Icon(
                             imageVector = if (profile.isDefault) Icons.Filled.Star else Icons.Outlined.StarOutline,
-                            contentDescription = if (profile.isDefault) "Default profile" else "Make default",
+                            contentDescription = if (profile.isDefault) "Default" else "Make default",
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                     IconButton(onClick = onEdit) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Edit profile")
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit")
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Delete profile",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                     }
                 }
             }
-            Text(
-                text = "Prompt preview",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            PipelineStepFlow(steps = profile.steps)
+        }
+    }
+}
+
+@Composable
+private fun PipelineStepFlow(steps: List<String>) {
+    val visibleSteps = steps.take(3)
+    val overflow = steps.size - visibleSteps.size
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+    ) {
+        PipelineChip(
+            label = "Transcribe",
+            icon = { Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(12.dp)) },
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+        )
+        visibleSteps.forEachIndexed { index, step ->
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp).padding(horizontal = 2.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
             )
-            Text(
-                text = profile.systemPrompt,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = "${profile.steps.size} step${if (profile.steps.size == 1) "" else "s"}",
-                style = MaterialTheme.typography.labelMedium,
+            val label = stepShortLabel(step, index)
+            PipelineChip(
+                label = label,
+                icon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(12.dp)) },
                 color = MaterialTheme.colorScheme.primary,
             )
         }
+        if (overflow > 0) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp).padding(horizontal = 2.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            )
+            PipelineChip(
+                label = "+$overflow more",
+                icon = null,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
+}
+
+@Composable
+private fun PipelineChip(
+    label: String,
+    icon: (@Composable () -> Unit)?,
+    color: androidx.compose.ui.graphics.Color,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (icon != null) {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.material3.LocalContentColor provides color,
+                ) { icon() }
+            }
+            Text(text = label, style = MaterialTheme.typography.labelSmall, color = color)
+        }
+    }
+}
+
+private fun stepShortLabel(
+    step: String,
+    index: Int,
+): String {
+    val trimmed = step.trim()
+    if (trimmed.isBlank()) return "Step ${index + 1}"
+    val firstLine = trimmed.lines().firstOrNull { it.isNotBlank() } ?: return "Step ${index + 1}"
+    return if (firstLine.length <= 20) firstLine else firstLine.take(18).trimEnd() + "…"
+}
+
+@Composable
+private fun ProfileDetailView(
+    profile: TransformProfile,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    var modeOpen by remember { mutableStateOf(true) }
+    var transformsOpen by remember { mutableStateOf(false) }
+    var sendToOpen by remember { mutableStateOf(false) }
+    var triggerOpen by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize()) {
+        ProfileDetailHeader(profile = profile, onBack = onBack, onEdit = onEdit)
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PipelineStepFlow(steps = profile.steps)
+            BuilderSection(
+                title = "Mode",
+                icon = Icons.Filled.Mic,
+                isOpen = modeOpen,
+                onToggle = { modeOpen = !modeOpen },
+            ) { ModeOptionRows() }
+            BuilderSection(
+                title = "AI Transforms",
+                icon = Icons.Filled.AutoAwesome,
+                badge = profile.steps.size,
+                isOpen = transformsOpen,
+                onToggle = { transformsOpen = !transformsOpen },
+            ) { TransformOptionRows(profile.steps) }
+            BuilderSection(
+                title = "Send to",
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                isOpen = sendToOpen,
+                onToggle = { sendToOpen = !sendToOpen },
+            ) { SendToOptionRows() }
+            BuilderSection(
+                title = "Auto-trigger",
+                icon = Icons.Filled.AutoAwesome,
+                isOpen = triggerOpen,
+                onToggle = { triggerOpen = !triggerOpen },
+            ) { TriggerOptionRows() }
+        }
+    }
+}
+
+@Composable
+private fun ProfileDetailHeader(
+    profile: TransformProfile,
+    onBack: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
+        Text(
+            text = profile.name,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        IconButton(onClick = onEdit) {
+            Icon(Icons.Filled.Edit, contentDescription = "Edit profile")
+        }
+    }
+}
+
+@Composable
+private fun BuilderSection(
+    title: String,
+    icon: ImageVector,
+    badge: Int = 0,
+    isOpen: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    ScrybeSectionCard {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            if (badge > 0) {
+                Text("$badge", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+            Icon(
+                imageVector = if (isOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (isOpen) "Collapse" else "Expand",
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        AnimatedVisibility(visible = isOpen) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) { content() }
+        }
+    }
+}
+
+@Composable
+private fun OptionRow(
+    icon: ImageVector,
+    label: String,
+    sub: String,
+    selected: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium)
+            if (sub.isNotBlank()) {
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Switch(checked = selected, onCheckedChange = onToggle)
+    }
+}
+
+@Composable
+private fun ModeOptionRows() {
+    var selected by remember { mutableStateOf(RecordingMode.JOURNAL) }
+    RecordingMode.entries.forEach { mode ->
+        OptionRow(
+            icon = Icons.Filled.Mic,
+            label = mode.label,
+            sub = mode.outputDescription,
+            selected = selected == mode,
+            onToggle = { if (it) selected = mode },
+        )
+    }
+}
+
+@Composable
+private fun TransformOptionRows(steps: List<String>) {
+    if (steps.isEmpty()) {
+        Text(
+            text = "No steps configured",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+    steps.forEachIndexed { idx, step ->
+        OptionRow(
+            icon = Icons.Filled.AutoAwesome,
+            label = stepShortLabel(step, idx),
+            sub = if (step.length > 60) step.take(60).trimEnd() + "…" else step,
+            selected = true,
+            onToggle = {},
+        )
+    }
+}
+
+@Composable
+private fun SendToOptionRows() {
+    OptionRow(
+        icon = Icons.AutoMirrored.Filled.ArrowForward,
+        label = "Notion",
+        sub = "Export session as page",
+        selected = false,
+        onToggle = {},
+    )
+    OptionRow(
+        icon = Icons.AutoMirrored.Filled.ArrowForward,
+        label = "Slack",
+        sub = "Post summary to channel",
+        selected = false,
+        onToggle = {},
+    )
+    OptionRow(
+        icon = Icons.AutoMirrored.Filled.ArrowForward,
+        label = "Share",
+        sub = "System share sheet",
+        selected = false,
+        onToggle = {},
+    )
+}
+
+@Composable
+private fun TriggerOptionRows() {
+    var autoEnabled by remember { mutableStateOf(false) }
+    OptionRow(
+        icon = Icons.Filled.AutoAwesome,
+        label = "After every recording",
+        sub = "Run automatically when recording stops",
+        selected = autoEnabled,
+        onToggle = { autoEnabled = it },
+    )
+    OptionRow(
+        icon = Icons.Filled.Mic,
+        label = "Manual only",
+        sub = "Trigger transforms manually from session view",
+        selected = !autoEnabled,
+        onToggle = { if (it) autoEnabled = false },
+    )
 }
 
 @Composable

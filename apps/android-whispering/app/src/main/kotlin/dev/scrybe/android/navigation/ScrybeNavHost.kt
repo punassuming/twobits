@@ -125,6 +125,7 @@ fun ScrybeNavHost(navController: NavHostController) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToFileManager = { navController.navigate(Screen.FileManager.route) },
+                onNavigateToProfiles = { navController.navigate(Screen.Profiles.route) },
             )
         }
     }

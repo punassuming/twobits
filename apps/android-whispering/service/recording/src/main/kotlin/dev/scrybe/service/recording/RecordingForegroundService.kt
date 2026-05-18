@@ -23,6 +23,7 @@ import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import kotlinx.coroutines.CoroutineScope
@@ -62,6 +63,7 @@ class RecordingForegroundService : Service() {
     private var lastNotifiedSecond: Long = -1L
     private var telemetryJob: Job? = null
     private var capturedLocation: Triple<Double, Double, String?>? = null
+    private var pendingMode: String = RecordingMode.JOURNAL.name
 
     override fun onCreate() {
         super.onCreate()
@@ -73,10 +75,15 @@ class RecordingForegroundService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        pendingMode =
+            intent?.getStringExtra(RecordingServiceActions.EXTRA_RECORDING_MODE)
+                ?: RecordingMode.JOURNAL.name
         when (intent?.action) {
             RecordingServiceActions.ACTION_START -> handleStart()
             RecordingServiceActions.ACTION_STOP -> handleStop()
             RecordingServiceActions.ACTION_CANCEL -> handleCancel()
+            RecordingServiceActions.ACTION_PAUSE -> handlePause()
+            RecordingServiceActions.ACTION_RESUME -> handleResume()
         }
         return START_STICKY
     }
@@ -170,6 +177,14 @@ class RecordingForegroundService : Service() {
         cleanupAfterRecordingCommand()
     }
 
+    private fun handlePause() {
+        serviceScope.launch { audioRecorder.pauseRecording() }
+    }
+
+    private fun handleResume() {
+        serviceScope.launch { audioRecorder.resumeRecording() }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
@@ -231,6 +246,7 @@ class RecordingForegroundService : Service() {
                 locationLat = location?.first,
                 locationLng = location?.second,
                 locationLabel = location?.third,
+                mode = pendingMode,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
             ),

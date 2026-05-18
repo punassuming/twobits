@@ -15,6 +15,7 @@ import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.PersonDao
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.SessionTaskDao
 import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TranscriptEntity
@@ -27,9 +28,11 @@ import dev.scrybe.core.localai.AutoRenameServiceFacade
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SentimentSegment
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.SessionTask
 import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.TopicMarker
 import dev.scrybe.core.model.Transcript
@@ -37,6 +40,7 @@ import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transforms.OpenAiTagSuggestionService
+import dev.scrybe.core.transforms.OpenAiTaskExtractionService
 import dev.scrybe.core.transforms.SessionTransformCoordinator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,11 +71,13 @@ class SessionDetailViewModel
         private val transformRunDao: TransformRunDao,
         private val speakerSegmentDao: SpeakerSegmentDao,
         private val personDao: PersonDao,
+        private val sessionTaskDao: SessionTaskDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val autoRenameService: AutoRenameServiceFacade,
         private val tagSuggestionService: OpenAiTagSuggestionService,
+        private val taskExtractionService: OpenAiTaskExtractionService,
         private val exportCoordinator: ExportCoordinator,
         private val audioPlayer: AudioPlayer,
         @ApplicationContext private val context: Context,
@@ -82,6 +88,7 @@ class SessionDetailViewModel
         val uiState: StateFlow<SessionDetailUiState> = _uiState.asStateFlow()
         private val isTransforming = MutableStateFlow(false)
         private val isFetchingSpeakerInfo = MutableStateFlow(false)
+        private val isExtractingTasks = MutableStateFlow(false)
         private val playbackSeekMutex = Mutex()
         private val renamePromptDismissed = MutableStateFlow(false)
         private val tagSuggestionState = MutableStateFlow<TagSuggestionUiState>(TagSuggestionUiState.Idle)
@@ -173,7 +180,21 @@ class SessionDetailViewModel
                         Triple(sessionEntity, transcriptEntities, profileEntities)
                     },
                     detailContext,
-                ) { sessionBundle, detailContext ->
+                    sessionTaskDao.getTasksForSession(sessionId).map { entities ->
+                        entities.map { e ->
+                            SessionTask(
+                                id = e.id,
+                                sessionId = e.sessionId,
+                                text = e.text,
+                                assignee = e.assignee,
+                                dueLabel = e.dueLabel,
+                                isDone = e.isDone,
+                                createdAt = Instant.ofEpochMilli(e.createdAt),
+                            )
+                        }
+                    },
+                    isExtractingTasks,
+                ) { sessionBundle, detailContext, tasks, extractingTasks ->
                     val (sessionEntity, transcriptEntities, profileEntities) = sessionBundle
                     val (defaultProfileId, isTransforming, isFetchingSpeakerInfo, playbackBundle, sideData) = detailContext
                     val (playbackState, showRenameAfterRecording, renamePromptDismissed) = playbackBundle
@@ -202,6 +223,7 @@ class SessionDetailViewModel
                                 locationLabel = sessionEntity.locationLabel,
                                 sentimentJson = sessionEntity.sentimentJson,
                                 topicsJson = sessionEntity.topicsJson,
+                                mode = RecordingMode.valueOf(sessionEntity.mode),
                                 createdAt = Instant.ofEpochMilli(sessionEntity.createdAt),
                                 updatedAt = Instant.ofEpochMilli(sessionEntity.updatedAt),
                             )
@@ -289,6 +311,8 @@ class SessionDetailViewModel
                             persons = persons,
                             sentimentSegments = sentimentSegments,
                             topicMarkers = topicMarkers,
+                            tasks = tasks,
+                            isExtractingTasks = extractingTasks,
                         )
                     }
                 }.catch { emit(SessionDetailUiState.Error(it.message ?: "Unknown error")) }
@@ -571,6 +595,82 @@ class SessionDetailViewModel
 
         fun clearTagSuggestionState() {
             tagSuggestionState.value = TagSuggestionUiState.Idle
+        }
+
+        fun extractTasks() {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            val transcriptText =
+                state.currentTranscript?.content ?: state.originalTranscript?.content
+            if (transcriptText.isNullOrBlank()) {
+                viewModelScope.launch {
+                    _events.emit(SessionDetailEvent.Message("Transcribe this recording before extracting tasks"))
+                }
+                return
+            }
+            viewModelScope.launch {
+                isExtractingTasks.value = true
+                taskExtractionService
+                    .extractTasks(sessionId, transcriptText)
+                    .fold(
+                        onSuccess = { tasks ->
+                            val entities =
+                                tasks.map { task ->
+                                    dev.scrybe.core.database.SessionTaskEntity(
+                                        id = task.id,
+                                        sessionId = task.sessionId,
+                                        text = task.text,
+                                        assignee = task.assignee,
+                                        dueLabel = task.dueLabel,
+                                        isDone = task.isDone,
+                                        createdAt = task.createdAt.toEpochMilli(),
+                                    )
+                                }
+                            sessionTaskDao.insertTasks(entities)
+                            _events.emit(
+                                SessionDetailEvent.Message(
+                                    if (tasks.isEmpty()) "No tasks found" else "Extracted ${tasks.size} task${if (tasks.size == 1) "" else "s"}",
+                                ),
+                            )
+                        },
+                        onFailure = { error ->
+                            Log.e(TAG, "Task extraction failed for session $sessionId", error)
+                            _events.emit(SessionDetailEvent.Message(error.message ?: "Task extraction failed"))
+                        },
+                    )
+                isExtractingTasks.value = false
+            }
+        }
+
+        fun toggleTaskDone(taskId: String) {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            val task = state.tasks.firstOrNull { it.id == taskId } ?: return
+            viewModelScope.launch {
+                sessionTaskDao.updateIsDone(taskId, !task.isDone)
+            }
+        }
+
+        fun addTask(text: String) {
+            val trimmed = text.trim()
+            if (trimmed.isBlank()) return
+            viewModelScope.launch {
+                val entity =
+                    dev.scrybe.core.database.SessionTaskEntity(
+                        id =
+                            java.util.UUID
+                                .randomUUID()
+                                .toString(),
+                        sessionId = sessionId,
+                        text = trimmed,
+                        assignee = null,
+                        dueLabel = null,
+                        isDone = false,
+                        createdAt =
+                            java.time.Instant
+                                .now()
+                                .toEpochMilli(),
+                    )
+                sessionTaskDao.insertTasks(listOf(entity))
+            }
         }
 
         fun fetchSpeakerInfo() {

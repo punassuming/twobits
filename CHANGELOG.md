@@ -4,7 +4,30 @@
 
 ### Features
 
+* add recording mode system — choose a capture intent (Meeting, Idea, Tasks, Conversation, Story, Interview, Journal) before recording starts; mode is stored per-session and will shape future AI pipelines
+* redesign capture home as a unified session feed — replace the recording hero card with a FAB + mode picker sheet; show all sessions with mode badge, location, speaker count, tags, and transcript preview; add horizontal mode filter chips and collapsible search bar
+* add tabbed session detail layout — Output, Tasks, and Transcript tabs replace the single scrolling view; the ⋮ menu is now a bottom sheet with grouped actions
+* add AI task extraction — tap "Extract tasks" in the Tasks tab to call an LLM that identifies action items with assignee and due-date; tasks are stored in a new session_tasks table (DB v11); open task counts appear on home feed cards and a global nudge banner shows total open tasks
+* add in-app recording screen — when a recording is active, the session feed is replaced by a full-screen recording view showing the active mode badge, an animated amplitude waveform, a running MM:SS timer, and Stop / Cancel buttons; the STOPPING phase disables buttons and shows a "Stopping…" label
+* add profile pipeline visualization — each profile card now shows a horizontal scrollable chip flow starting with an implied "Transcribe" chip, followed by chips for up to 3 AI pipeline steps, with an overflow "+N more" chip when applicable
+* add extended actions in session detail — Output tab now shows Clean up, Analyze sentiment, and Export action cards below the AI output, routing into the post-process sheet
+* add inline tag editor in Output tab — tap Edit on the Tags card to expand a search-and-create panel with AI-suggested tags; tags are saved on Done without leaving the tab
+* add manual task entry — Tasks tab now shows an "Add task" row at the bottom of the list for quick manual task creation without AI extraction
+* add Intelligence section in Settings — surfaces Profiles navigation link, Auto-transcribe, Speaker identification, and Auto-extract tasks toggles at the top of Settings for quick access
+* redesign More menu bottom sheet — grouped sections (Edit, Re-process, Export, Manage) with a session title + mode label header for clearer context
+* add profile detail view — tapping a profile card opens a full-screen accordion view with Mode, AI Transforms, Send to, and Auto-trigger sections; pipeline step flow shown at top; Mode section open by default
+* add Integrations section in Settings — surfaces placeholder rows for Calendar, Reminders, Notion, Slack, and Shortcuts with Connect labels; UI groundwork for future integration wiring
+* add EcosystemSheet in session detail — share icon in TopAppBar opens a Send to… bottom sheet with integration rows (Calendar, Reminders, Notion, Slack, Email, Shortcuts, Share); Email and Share rows route to the existing share transcript action
+* add recording pause/resume — a Pause/Resume toggle button appears in the recording screen header; pausing freezes the waveform and timer (paused duration excluded from the saved session duration); MediaRecorder.pause/resume used directly (requires API 24+, minSdk 26)
+* add bottom nav labels — navigation bar now shows text labels (Record, History, Profiles, Settings) below each icon
+* add Translate and Add to folder action cards — Output tab extended actions now shows four cards: Clean up transcript, Analyze sentiment, Translate, and Add to folder
+* add Tasks tab export button — a share icon appears in the Tasks tab header when there are tasks, routing to the existing share transcript action
+* add session card waveform preview — home feed cards now show a compact mini-waveform at the bottom when waveform data is available for the session
+
 ### Improvements
+
+* align theme with v2 design handoff — disable Material You dynamic color so the app always uses the custom Scrybe palette; add full dark scheme surface hierarchy (surfaceContainerLow/High/Highest mapped to #111C27/#1C2B3B/#243443); add explicit container colors (primaryContainer #003A63, secondaryContainer #1B3D2F, tertiaryContainer #3B2515); set onSurface #E2E8F0 and onSurfaceVariant #8B9BAB; fill in missing typography styles (titleLarge 20sp, titleSmall 14sp, bodySmall 12sp, labelMedium 12sp, labelSmall 11sp); refine shape scale (extraSmall 8dp, small 12dp, medium 18dp)
+* complete light mode Material 3 token coverage — add full error pair, surface container hierarchy (surfaceContainerLow/High/Highest), outlines, and inverse colours to LightColorScheme, bringing light mode to parity with the dark scheme so system-dynamic theming is reliable across both modes
 
 ### Fixes
 

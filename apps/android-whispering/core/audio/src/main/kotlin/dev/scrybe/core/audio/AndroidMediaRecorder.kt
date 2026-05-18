@@ -41,6 +41,8 @@ class AndroidMediaRecorder
         private var telemetryJob: Job? = null
         private var waveformSamples: MutableList<Float> = mutableListOf()
         private var smoothedAmplitudeRatio: Float = 0f
+        private var pausedDurationMs: Long = 0L
+        private var pausedAtMs: Long = 0L
 
         override suspend fun startRecording(config: RecordingConfig): Result<Unit> =
             runCatching {
@@ -85,6 +87,8 @@ class AndroidMediaRecorder
                 currentChannelCount = config.channelCount
                 waveformSamples = mutableListOf()
                 smoothedAmplitudeRatio = 0f
+                pausedDurationMs = 0L
+                pausedAtMs = 0L
                 _isRecording.value = true
                 _telemetry.value = RecordingTelemetry()
                 startTelemetryUpdates(recorder)
@@ -94,7 +98,9 @@ class AndroidMediaRecorder
             runCatching {
                 val recorder = requireNotNull(mediaRecorder) { "MediaRecorder is not recording" }
                 val file = requireNotNull(currentFile) { "No current recording file" }
-                val durationMs = System.currentTimeMillis() - startTimeMs
+                val stoppedAt = System.currentTimeMillis()
+                val effectivePaused = pausedDurationMs + if (pausedAtMs > 0L) stoppedAt - pausedAtMs else 0L
+                val durationMs = stoppedAt - startTimeMs - effectivePaused
                 stopTelemetryUpdates(recorder)
 
                 try {
@@ -120,10 +126,32 @@ class AndroidMediaRecorder
                     telemetryJob?.cancel()
                     waveformSamples = mutableListOf()
                     smoothedAmplitudeRatio = 0f
+                    pausedDurationMs = 0L
+                    pausedAtMs = 0L
                     _isRecording.value = false
                     _telemetry.value = RecordingTelemetry()
                 }
             }
+
+        override suspend fun pauseRecording() {
+            runCatching {
+                mediaRecorder?.pause()
+                pausedAtMs = System.currentTimeMillis()
+                telemetryJob?.cancel()
+                telemetryJob = null
+            }
+        }
+
+        override suspend fun resumeRecording() {
+            runCatching {
+                mediaRecorder?.resume()
+                if (pausedAtMs > 0L) {
+                    pausedDurationMs += System.currentTimeMillis() - pausedAtMs
+                    pausedAtMs = 0L
+                }
+                mediaRecorder?.let { startTelemetryUpdates(it) }
+            }
+        }
 
         override fun cancelRecording() {
             val recorder = mediaRecorder
@@ -148,7 +176,7 @@ class AndroidMediaRecorder
             telemetryJob =
                 recorderScope.launch {
                     while (isActive && mediaRecorder === recorder) {
-                        val elapsedMs = System.currentTimeMillis() - startTimeMs
+                        val elapsedMs = System.currentTimeMillis() - startTimeMs - pausedDurationMs
                         val rawAmplitudeRatio = recorder.readAmplitudeRatio() ?: break
                         val gatedAmplitudeRatio = if (rawAmplitudeRatio < SILENCE_GATE_RATIO) 0f else rawAmplitudeRatio
                         smoothedAmplitudeRatio = (smoothedAmplitudeRatio * SMOOTHING_DECAY) +

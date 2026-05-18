@@ -14,8 +14,9 @@ import androidx.room.RoomDatabase
         SpeakerSegmentEntity::class,
         PersonEntity::class,
         TranscriptChunkEntity::class,
+        SessionTaskEntity::class,
     ],
-    version = 9,
+    version = 11,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,4 +37,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun personDao(): PersonDao
 
     abstract fun transcriptChunkDao(): TranscriptChunkDao
+
+    abstract fun sessionTaskDao(): SessionTaskDao
 }

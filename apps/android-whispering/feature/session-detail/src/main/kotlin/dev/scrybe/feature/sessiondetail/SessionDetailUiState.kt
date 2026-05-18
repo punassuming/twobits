@@ -3,6 +3,7 @@ package dev.scrybe.feature.sessiondetail
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SentimentSegment
+import dev.scrybe.core.model.SessionTask
 import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.TopicMarker
 import dev.scrybe.core.model.Transcript
@@ -45,6 +46,8 @@ sealed interface SessionDetailUiState {
         val sentimentSegments: List<SentimentSegment> = emptyList(),
         val topicMarkers: List<TopicMarker> = emptyList(),
         val densityProfile: List<Float> = emptyList(),
+        val tasks: List<SessionTask> = emptyList(),
+        val isExtractingTasks: Boolean = false,
     ) : SessionDetailUiState
 
     data class Error(

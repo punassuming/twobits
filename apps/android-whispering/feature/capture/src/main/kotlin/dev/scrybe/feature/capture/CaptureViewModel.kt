@@ -7,10 +7,14 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
+import dev.scrybe.core.common.TagsCodec
+import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.SessionTaskDao
 import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.service.recording.RecordingForegroundService
 import dev.scrybe.service.recording.RecordingServiceActions
 import dev.scrybe.service.recording.RecordingSessionEvents
@@ -33,6 +37,7 @@ class CaptureViewModel
         private val recordingSessionDao: RecordingSessionDao,
         private val transcriptDao: TranscriptDao,
         private val speakerSegmentDao: SpeakerSegmentDao,
+        private val sessionTaskDao: SessionTaskDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val recordingSessionEvents: RecordingSessionEvents,
     ) : ViewModel() {
@@ -67,7 +72,8 @@ class CaptureViewModel
             }
             viewModelScope.launch {
                 audioRecorder.isRecording.collectLatest { isRecording ->
-                    if (!isRecording && _uiState.value.phase == CapturePhase.RECORDING) {
+                    val phase = _uiState.value.phase
+                    if (!isRecording && (phase == CapturePhase.RECORDING || phase == CapturePhase.PAUSED)) {
                         _uiState.value =
                             _uiState.value.copy(
                                 phase = CapturePhase.IDLE,
@@ -99,7 +105,8 @@ class CaptureViewModel
                 combine(
                     recordingSessionDao.getAllSessions(),
                     transcriptDao.getAllTranscripts(),
-                ) { sessions, transcripts ->
+                    sessionTaskDao.getOpenTaskCountsPerSession(),
+                ) { sessions, transcripts, taskCounts ->
                     val transcriptLookup =
                         transcripts
                             .groupBy { it.sessionId }
@@ -110,9 +117,8 @@ class CaptureViewModel
                                     ?.content
                                     ?: values.maxByOrNull { it.createdAt }?.content
                             }
-                    val recentSessions = sessions.take(3)
                     val speakerCounts =
-                        recentSessions.associate { session ->
+                        sessions.associate { session ->
                             session.id to
                                 speakerSegmentDao
                                     .getSegmentsOnce(session.id)
@@ -120,7 +126,8 @@ class CaptureViewModel
                                     .distinct()
                                     .size
                         }
-                    recentSessions.map { session ->
+                    val taskCountMap = taskCounts.associate { it.sessionId to it.count }
+                    sessions.map { session ->
                         RecentCaptureSession(
                             id = session.id,
                             title = session.title,
@@ -129,29 +136,73 @@ class CaptureViewModel
                                     .ofEpochMilli(session.createdAt)
                                     .atZone(ZoneId.systemDefault())
                                     .format(RECENT_TIME_FORMATTER),
+                            durationMs = session.durationMs,
                             status =
                                 dev.scrybe.core.model.SessionStatus
                                     .valueOf(session.status),
+                            mode = runCatching { RecordingMode.valueOf(session.mode) }.getOrDefault(RecordingMode.JOURNAL),
+                            tags = TagsCodec.decode(session.tags),
+                            locationLabel = session.locationLabel,
                             transcriptPreview = transcriptLookup[session.id],
                             isArchived = session.isArchived,
                             speakerCount = speakerCounts[session.id] ?: 0,
+                            openTaskCount = taskCountMap[session.id] ?: 0,
+                            waveformSamples = WaveformCodec.decode(session.waveformSamples).take(40),
                         )
                     }
                 }.collectLatest { recentSessions ->
-                    _uiState.value = _uiState.value.copy(recentSessions = recentSessions)
+                    val openTotal = recentSessions.sumOf { it.openTaskCount }
+                    _uiState.value =
+                        _uiState.value.copy(
+                            recentSessions = recentSessions,
+                            openTaskTotal = openTotal,
+                        )
                 }
             }
         }
 
-        fun startRecording() {
+        fun showModePicker() {
+            _uiState.value = _uiState.value.copy(showModePickerSheet = true)
+        }
+
+        fun dismissModePicker() {
+            _uiState.value = _uiState.value.copy(showModePickerSheet = false)
+        }
+
+        fun startRecordingWithMode(mode: RecordingMode) {
             viewModelScope.launch {
-                _uiState.value = CaptureUiState(phase = CapturePhase.RECORDING, keepScreenOn = _uiState.value.keepScreenOn)
+                _uiState.value =
+                    CaptureUiState(
+                        phase = CapturePhase.RECORDING,
+                        keepScreenOn = _uiState.value.keepScreenOn,
+                        showModePickerSheet = false,
+                        activeMode = mode,
+                    )
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
                         action = RecordingServiceActions.ACTION_START
+                        putExtra(RecordingServiceActions.EXTRA_RECORDING_MODE, mode.name)
                     }
                 context.startForegroundService(intent)
             }
+        }
+
+        fun pauseRecording() {
+            _uiState.value = _uiState.value.copy(phase = CapturePhase.PAUSED)
+            val intent =
+                Intent(context, RecordingForegroundService::class.java).apply {
+                    action = RecordingServiceActions.ACTION_PAUSE
+                }
+            context.startService(intent)
+        }
+
+        fun resumeRecording() {
+            _uiState.value = _uiState.value.copy(phase = CapturePhase.RECORDING)
+            val intent =
+                Intent(context, RecordingForegroundService::class.java).apply {
+                    action = RecordingServiceActions.ACTION_RESUME
+                }
+            context.startService(intent)
         }
 
         fun stopRecording() {

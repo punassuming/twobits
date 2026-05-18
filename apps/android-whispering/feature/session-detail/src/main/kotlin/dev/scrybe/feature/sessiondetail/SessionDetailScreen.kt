@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -25,34 +26,44 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -61,6 +72,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -75,6 +88,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -100,6 +114,7 @@ import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.SessionTask
 import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
@@ -118,7 +133,9 @@ fun SessionDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
-    var actionMenuExpanded by remember { mutableStateOf(false) }
+    var showMoreSheet by remember { mutableStateOf(false) }
+    var showEcosystemSheet by remember { mutableStateOf(false) }
+    var activeTab by remember { mutableStateOf(0) }
     var isEditingTranscript by remember { mutableStateOf(false) }
     var isEditingTags by remember { mutableStateOf(false) }
     var deleteTranscriptTarget by remember { mutableStateOf<Transcript?>(null) }
@@ -237,183 +254,11 @@ fun SessionDetailScreen(
                                 contentDescription = if (successState.isTranscribing) "Transcribing" else "Transcribe recording",
                             )
                         }
-                        Box {
-                            IconButton(onClick = { actionMenuExpanded = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "More actions")
-                            }
-                            DropdownMenu(
-                                expanded = actionMenuExpanded,
-                                onDismissRequest = { actionMenuExpanded = false },
-                            ) {
-                                val hasTranscript = successState.transcripts.isNotEmpty()
-                                if (hasTranscript) {
-                                    HorizontalDivider()
-                                    Text(
-                                        text = "AI",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Post-process…") },
-                                        leadingIcon = {
-                                            Icon(Icons.Filled.AutoFixHigh, contentDescription = null)
-                                        },
-                                        onClick = {
-                                            actionMenuExpanded = false
-                                            showTransformSheet = true
-                                        },
-                                    )
-                                }
-                                HorizontalDivider()
-                                Text(
-                                    text = "Export",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                )
-                                if (hasTranscript) {
-                                    DropdownMenuItem(
-                                        text = { Text("Share Transcript") },
-                                        leadingIcon = {
-                                            Icon(Icons.Filled.IosShare, contentDescription = null)
-                                        },
-                                        onClick = {
-                                            actionMenuExpanded = false
-                                            viewModel.shareLatestTranscript()
-                                        },
-                                    )
-                                }
-                                DropdownMenuItem(
-                                    text = { Text("Export Files") },
-                                    leadingIcon = {
-                                        Icon(Icons.Filled.Description, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        actionMenuExpanded = false
-                                        viewModel.exportAll()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Send to External App") },
-                                    enabled = hasTranscript,
-                                    leadingIcon = {
-                                        Icon(Icons.Filled.IosShare, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        actionMenuExpanded = false
-                                        viewModel.sendToTaskForge()
-                                    },
-                                )
-                                HorizontalDivider()
-                                Text(
-                                    text = "Manage",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Rename") },
-                                    leadingIcon = {
-                                        Icon(Icons.Filled.Edit, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        actionMenuExpanded = false
-                                        showRenameDialog = true
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Manage Tags") },
-                                    leadingIcon = {
-                                        Icon(Icons.Filled.Label, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        actionMenuExpanded = false
-                                        viewModel.clearTagSuggestionState()
-                                        isEditingTags = true
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(if (successState.session.isArchived) "Restore" else "Archive")
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            if (successState.session.isArchived) {
-                                                Icons.Filled.Unarchive
-                                            } else {
-                                                Icons.Filled.Archive
-                                            },
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = {
-                                        actionMenuExpanded = false
-                                        viewModel.setArchived(!successState.session.isArchived)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Delete") },
-                                    leadingIcon = {
-                                        Icon(Icons.Filled.Delete, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        actionMenuExpanded = false
-                                        showDeleteConfirm = true
-                                    },
-                                )
-                                val sessionStatus = successState.session.status
-                                val hasStatusItems =
-                                    sessionStatus == SessionStatus.FAILED ||
-                                        sessionStatus == SessionStatus.TRANSCRIBING ||
-                                        sessionStatus == SessionStatus.PARTIAL_TRANSCRIPTION
-                                if (hasStatusItems) {
-                                    HorizontalDivider()
-                                    Text(
-                                        text = "Status",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier =
-                                            Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    )
-                                    if (sessionStatus == SessionStatus.FAILED) {
-                                        DropdownMenuItem(
-                                            text = { Text("Retry Transcription") },
-                                            leadingIcon = {
-                                                Icon(Icons.Filled.Refresh, contentDescription = null)
-                                            },
-                                            onClick = {
-                                                actionMenuExpanded = false
-                                                viewModel.transcribe()
-                                            },
-                                        )
-                                    }
-                                    if (sessionStatus == SessionStatus.PARTIAL_TRANSCRIPTION) {
-                                        DropdownMenuItem(
-                                            text = { Text("Resume Transcription") },
-                                            leadingIcon = {
-                                                Icon(Icons.Filled.Refresh, contentDescription = null)
-                                            },
-                                            onClick = {
-                                                actionMenuExpanded = false
-                                                viewModel.transcribe()
-                                            },
-                                        )
-                                    }
-                                    if (sessionStatus == SessionStatus.TRANSCRIBING) {
-                                        DropdownMenuItem(
-                                            text = { Text("Clear Stuck State") },
-                                            leadingIcon = {
-                                                Icon(Icons.Filled.Refresh, contentDescription = null)
-                                            },
-                                            onClick = {
-                                                actionMenuExpanded = false
-                                                viewModel.resetTranscriptionState()
-                                            },
-                                        )
-                                    }
-                                }
-                            }
+                        IconButton(onClick = { showEcosystemSheet = true }) {
+                            Icon(Icons.Filled.IosShare, contentDescription = "Send to")
+                        }
+                        IconButton(onClick = { showMoreSheet = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "More actions")
                         }
                     }
                 },
@@ -477,25 +322,49 @@ fun SessionDetailScreen(
                                 onMergeSpeakers = viewModel::mergeSpeakers,
                             )
                         }
-                        TranscriptSection(
-                            state = state,
-                            onEditTranscript = { isEditingTranscript = true },
-                            onDeleteTranscript = { deleteTranscriptTarget = it },
-                            onResumeTranscription = viewModel::transcribe,
-                        )
-                        if (state.profiles.isNotEmpty() && state.currentTranscript != null) {
-                            OutlinedButton(
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = { showTransformSheet = true },
-                            ) {
-                                Icon(
-                                    Icons.Filled.AutoFixHigh,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
+                        TabRow(selectedTabIndex = activeTab) {
+                            Tab(
+                                selected = activeTab == 0,
+                                onClick = { activeTab = 0 },
+                                text = { Text("Output") },
+                            )
+                            Tab(
+                                selected = activeTab == 1,
+                                onClick = { activeTab = 1 },
+                                text = { Text("Tasks") },
+                            )
+                            Tab(
+                                selected = activeTab == 2,
+                                onClick = { activeTab = 2 },
+                                text = { Text("Transcript") },
+                            )
+                        }
+                        when (activeTab) {
+                            0 ->
+                                OutputTabContent(
+                                    state = state,
+                                    onOpenTransformSheet = { showTransformSheet = true },
+                                    onSuggestTags = viewModel::suggestTags,
+                                    onSaveTags = viewModel::saveTags,
+                                    onClearTagSuggestions = viewModel::clearTagSuggestionState,
                                 )
-                                Spacer(Modifier.width(8.dp))
-                                Text("Post-process transcript")
-                            }
+                            1 ->
+                                TasksTabContent(
+                                    tasks = state.tasks,
+                                    isExtracting = state.isExtractingTasks,
+                                    hasTranscript = state.originalTranscript != null || state.currentTranscript != null,
+                                    onExtractTasks = viewModel::extractTasks,
+                                    onToggleDone = viewModel::toggleTaskDone,
+                                    onAddTask = viewModel::addTask,
+                                    onShareTasks = viewModel::shareLatestTranscript,
+                                )
+                            else ->
+                                TranscriptTabContent(
+                                    state = state,
+                                    onEditTranscript = { isEditingTranscript = true },
+                                    onDeleteTranscript = { deleteTranscriptTarget = it },
+                                    onResumeTranscription = viewModel::transcribe,
+                                )
                         }
                     }
                 }
@@ -517,6 +386,70 @@ fun SessionDetailScreen(
                 onDismiss = { showTransformSheet = false },
             )
         }
+    }
+
+    if (showMoreSheet && successState != null) {
+        MoreMenuSheet(
+            state = successState,
+            onDismiss = { showMoreSheet = false },
+            editCallbacks =
+                MoreMenuEditCallbacks(
+                    onRename = {
+                        showMoreSheet = false
+                        showRenameDialog = true
+                    },
+                    onManageTags = {
+                        showMoreSheet = false
+                        viewModel.clearTagSuggestionState()
+                        isEditingTags = true
+                    },
+                    onSetArchived = {
+                        showMoreSheet = false
+                        viewModel.setArchived(!successState.session.isArchived)
+                    },
+                    onDelete = {
+                        showMoreSheet = false
+                        showDeleteConfirm = true
+                    },
+                    onTranscribe = {
+                        showMoreSheet = false
+                        viewModel.transcribe()
+                    },
+                    onResetTranscription = {
+                        showMoreSheet = false
+                        viewModel.resetTranscriptionState()
+                    },
+                ),
+            exportCallbacks =
+                MoreMenuExportCallbacks(
+                    onPostProcess = {
+                        showMoreSheet = false
+                        showTransformSheet = true
+                    },
+                    onShareTranscript = {
+                        showMoreSheet = false
+                        viewModel.shareLatestTranscript()
+                    },
+                    onExportFiles = {
+                        showMoreSheet = false
+                        viewModel.exportAll()
+                    },
+                    onSendToExternal = {
+                        showMoreSheet = false
+                        viewModel.sendToTaskForge()
+                    },
+                ),
+        )
+    }
+
+    if (showEcosystemSheet) {
+        EcosystemSheet(
+            onDismiss = { showEcosystemSheet = false },
+            onShareTranscript = {
+                viewModel.shareLatestTranscript()
+                showEcosystemSheet = false
+            },
+        )
     }
 
     if (successState?.shouldPromptForRename == true) {
@@ -643,6 +576,533 @@ fun SessionDetailScreen(
                 transformResult = null
             },
         )
+    }
+}
+
+@Composable
+private fun OutputTabContent(
+    state: SessionDetailUiState.Success,
+    onOpenTransformSheet: () -> Unit,
+    onSuggestTags: () -> Unit,
+    onSaveTags: (List<String>) -> Unit,
+    onClearTagSuggestions: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing)) {
+        val transformedTranscript =
+            state.transcripts
+                .filter { it.type == TranscriptType.TRANSFORMED }
+                .maxByOrNull { it.createdAt }
+        if (transformedTranscript != null) {
+            ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                ScrybeSectionHeader(title = "Output", subtitle = "Most recent AI-generated output")
+                Text(
+                    text = transformedTranscript.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 8,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        } else {
+            ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+                Text(
+                    text = "No output yet — transcribe and post-process to see AI summaries here.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (state.profiles.isNotEmpty() && state.currentTranscript != null) {
+            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = onOpenTransformSheet) {
+                Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Post-process transcript")
+            }
+        }
+        ExtendedActionsSection(onOpenTransformSheet = onOpenTransformSheet)
+        InlineTagsCard(
+            tags = state.session.tags,
+            tagSuggestionState = state.tagSuggestionState,
+            onSaveTags = onSaveTags,
+            onSuggestTags = onSuggestTags,
+            onClear = onClearTagSuggestions,
+        )
+    }
+}
+
+@Composable
+private fun TasksTabContent(
+    tasks: List<SessionTask>,
+    isExtracting: Boolean,
+    hasTranscript: Boolean,
+    onExtractTasks: () -> Unit,
+    onToggleDone: (String) -> Unit,
+    onAddTask: (String) -> Unit,
+    onShareTasks: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ScrybeSectionCard(
+            containerColor =
+                if (tasks.isEmpty()) {
+                    MaterialTheme.colorScheme.surfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                },
+        ) {
+            ScrybeSectionHeader(
+                title = if (tasks.isEmpty()) "Tasks" else "Tasks (${tasks.size})",
+                trailing = {
+                    if (tasks.isNotEmpty()) {
+                        IconButton(onClick = onShareTasks) {
+                            Icon(Icons.Filled.IosShare, contentDescription = "Export tasks", modifier = Modifier.size(20.dp))
+                        }
+                    }
+                },
+            )
+            if (tasks.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(Icons.Filled.HourglassEmpty, contentDescription = null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No tasks yet", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Add manually below or extract with AI.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    tasks.forEachIndexed { index, task ->
+                        TaskRow(task = task, onToggle = { onToggleDone(task.id) })
+                        if (index < tasks.lastIndex) HorizontalDivider()
+                    }
+                }
+            }
+            HorizontalDivider()
+            AddTaskRow(onAdd = onAddTask)
+        }
+        if (hasTranscript) {
+            OutlinedButton(
+                onClick = onExtractTasks,
+                enabled = !isExtracting,
+                modifier = Modifier.fillMaxWidth().wrapContentWidth(),
+            ) {
+                if (isExtracting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Extracting…")
+                } else {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (tasks.isEmpty()) "Extract tasks" else "Re-extract tasks")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TaskRow(
+    task: SessionTask,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = task.isDone, onCheckedChange = { onToggle() })
+        Column(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp),
+        ) {
+            Text(
+                text = task.text,
+                style = MaterialTheme.typography.bodyMedium,
+                color =
+                    if (task.isDone) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+            )
+            val meta =
+                listOfNotNull(
+                    task.assignee,
+                    task.dueLabel?.let { "Due $it" },
+                ).joinToString(" · ")
+            if (meta.isNotBlank()) {
+                Text(
+                    text = meta,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddTaskRow(onAdd: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    var isEditing by remember { mutableStateOf(false) }
+    if (isEditing) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            placeholder = { Text("Describe a task…") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions =
+                KeyboardActions(onDone = {
+                    if (text.isNotBlank()) onAdd(text)
+                    text = ""
+                    isEditing = false
+                }),
+        )
+    } else {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { isEditing = true }
+                    .padding(horizontal = 4.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Add task", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ExtendedActionsSection(onOpenTransformSheet: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = "Actions",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 2.dp, top = 4.dp),
+        )
+        ExtendedActionsTop(onOpenTransformSheet = onOpenTransformSheet)
+        ExtendedActionsBottom(onOpenTransformSheet = onOpenTransformSheet)
+    }
+}
+
+@Composable
+private fun ExtendedActionsTop(onOpenTransformSheet: () -> Unit) {
+    ExtendedActionCard(icon = Icons.Filled.AutoFixHigh, label = "Clean up transcript", color = MaterialTheme.colorScheme.primary, onClick = onOpenTransformSheet)
+    ExtendedActionCard(icon = Icons.Filled.AutoAwesome, label = "Analyze sentiment", color = MaterialTheme.colorScheme.secondary, onClick = onOpenTransformSheet)
+}
+
+@Composable
+private fun ExtendedActionsBottom(onOpenTransformSheet: () -> Unit) {
+    ExtendedActionCard(icon = Icons.Filled.Translate, label = "Translate", color = MaterialTheme.colorScheme.tertiary, onClick = onOpenTransformSheet)
+    ExtendedActionCard(icon = Icons.Filled.FolderOpen, label = "Add to folder", color = MaterialTheme.colorScheme.secondary, onClick = onOpenTransformSheet)
+}
+
+@Composable
+private fun ExtendedActionCard(
+    icon: ImageVector,
+    label: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
+    ScrybeSectionCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = color, modifier = Modifier.weight(1f))
+            Icon(Icons.Filled.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun InlineTagsCard(
+    tags: List<String>,
+    tagSuggestionState: TagSuggestionUiState,
+    onSaveTags: (List<String>) -> Unit,
+    onSuggestTags: () -> Unit,
+    onClear: () -> Unit,
+) {
+    var localTags by remember(tags) { mutableStateOf(tags) }
+    var isExpanded by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+
+    ScrybeSectionCard {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Label, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(6.dp))
+            Text("Tags", style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            TextButton(onClick = {
+                if (isExpanded) {
+                    onSaveTags(localTags)
+                    isExpanded = false
+                    query = ""
+                    onClear()
+                } else {
+                    isExpanded = true
+                    onSuggestTags()
+                }
+            }) { Text(if (isExpanded) "Done" else "Edit") }
+        }
+        if (localTags.isEmpty() && !isExpanded) {
+            Text("No tags yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                localTags.forEach { tag ->
+                    TagChipEditable(tag = tag, canRemove = isExpanded, onRemove = { localTags = localTags - tag })
+                }
+            }
+        }
+        if (isExpanded) {
+            TagSuggestionPanel(
+                query = query,
+                tagSuggestionState = tagSuggestionState,
+                existingTags = localTags,
+                onQueryChange = { query = it },
+                onAddTag = { t ->
+                    val clean = t.trim().lowercase()
+                    if (clean.isNotBlank() && !localTags.contains(clean)) localTags = localTags + clean
+                    query = ""
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TagChipEditable(
+    tag: String,
+    canRemove: Boolean,
+    onRemove: () -> Unit,
+) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.Label, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+            Text(tag, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            if (canRemove) {
+                Icon(Icons.Filled.Close, contentDescription = "Remove tag", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp).clickable(onClick = onRemove))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagSuggestionPanel(
+    query: String,
+    tagSuggestionState: TagSuggestionUiState,
+    existingTags: List<String>,
+    onQueryChange: (String) -> Unit,
+    onAddTag: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search or create a tag…") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (query.isNotBlank()) onAddTag(query) }),
+        )
+        if (query.isNotBlank() && !existingTags.contains(query.trim().lowercase())) {
+            TextButton(onClick = { onAddTag(query) }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Create \"#${query.trim()}\"")
+            }
+        }
+        when (tagSuggestionState) {
+            is TagSuggestionUiState.Loading ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+            is TagSuggestionUiState.Success -> {
+                val filtered = tagSuggestionState.tags.filter { !existingTags.contains(it) && (query.isBlank() || it.contains(query, ignoreCase = true)) }
+                if (filtered.isNotEmpty()) {
+                    Text("AI suggested", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 4.dp))
+                    filtered.take(5).forEach { tag ->
+                        ListItem(headlineContent = { Text("#$tag") }, leadingContent = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }, modifier = Modifier.clickable { onAddTag(tag) })
+                    }
+                }
+            }
+            else -> Unit
+        }
+    }
+}
+
+@Composable
+private fun TranscriptTabContent(
+    state: SessionDetailUiState.Success,
+    onEditTranscript: () -> Unit,
+    onDeleteTranscript: (dev.scrybe.core.model.Transcript) -> Unit,
+    onResumeTranscription: () -> Unit,
+) {
+    TranscriptSection(
+        state = state,
+        onEditTranscript = onEditTranscript,
+        onDeleteTranscript = onDeleteTranscript,
+        onResumeTranscription = onResumeTranscription,
+    )
+}
+
+private data class MoreMenuEditCallbacks(
+    val onRename: () -> Unit,
+    val onManageTags: () -> Unit,
+    val onSetArchived: () -> Unit,
+    val onDelete: () -> Unit,
+    val onTranscribe: () -> Unit,
+    val onResetTranscription: () -> Unit,
+)
+
+private data class MoreMenuExportCallbacks(
+    val onPostProcess: () -> Unit,
+    val onShareTranscript: () -> Unit,
+    val onExportFiles: () -> Unit,
+    val onSendToExternal: () -> Unit,
+)
+
+@Composable
+private fun MoreMenuSectionLabel(label: String) {
+    Text(
+        text = label.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp),
+    )
+}
+
+@Composable
+private fun MoreMenuItem(
+    icon: ImageVector,
+    label: String,
+    tint: Color = Color.Unspecified,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        headlineContent = {
+            Text(label, color = if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurface else tint)
+        },
+        leadingContent = {
+            Icon(icon, contentDescription = null, tint = if (tint == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else tint)
+        },
+        modifier = Modifier.clickable(onClick = onClick),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MoreMenuSheet(
+    state: SessionDetailUiState.Success,
+    onDismiss: () -> Unit,
+    editCallbacks: MoreMenuEditCallbacks,
+    exportCallbacks: MoreMenuExportCallbacks,
+) {
+    val hasTranscript = state.transcripts.isNotEmpty()
+    val sessionStatus = state.session.status
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(bottom = 16.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text(state.session.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(state.session.mode.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            }
+            HorizontalDivider()
+            MoreMenuItem(Icons.Filled.Edit, "Rename", onClick = editCallbacks.onRename)
+            MoreMenuItem(Icons.Filled.Label, "Manage Tags", onClick = editCallbacks.onManageTags)
+            if (hasTranscript) {
+                HorizontalDivider()
+                MoreMenuSectionLabel("Re-process")
+                MoreMenuItem(Icons.Filled.AutoFixHigh, "Post-process…", onClick = exportCallbacks.onPostProcess)
+            }
+            HorizontalDivider()
+            MoreMenuSectionLabel("Export")
+            MoreMenuItem(Icons.Filled.IosShare, "Share Transcript", onClick = exportCallbacks.onShareTranscript)
+            if (hasTranscript) MoreMenuItem(Icons.Filled.IosShare, "Send to External App", onClick = exportCallbacks.onSendToExternal)
+            MoreMenuItem(Icons.Filled.Description, "Export Files", onClick = exportCallbacks.onExportFiles)
+            HorizontalDivider()
+            MoreMenuSectionLabel("Manage")
+            MoreMenuItem(icon = if (state.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive, label = if (state.session.isArchived) "Restore" else "Archive", onClick = editCallbacks.onSetArchived)
+            MoreMenuItem(Icons.Filled.Delete, "Delete", tint = MaterialTheme.colorScheme.error, onClick = editCallbacks.onDelete)
+            if (sessionStatus == SessionStatus.FAILED || sessionStatus == SessionStatus.PARTIAL_TRANSCRIPTION) {
+                HorizontalDivider()
+                MoreMenuItem(Icons.Filled.Refresh, if (sessionStatus == SessionStatus.FAILED) "Retry Transcription" else "Resume Transcription", onClick = editCallbacks.onTranscribe)
+            }
+            if (sessionStatus == SessionStatus.TRANSCRIBING) {
+                HorizontalDivider()
+                MoreMenuItem(Icons.Filled.Refresh, "Clear Stuck State", onClick = editCallbacks.onResetTranscription)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EcosystemSheet(
+    onDismiss: () -> Unit,
+    onShareTranscript: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            Text("Send to…", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
+            EcosystemRow(Icons.Filled.CalendarToday, "Calendar", "Add tasks with dates", Color(0xFF4285F4)) {}
+            EcosystemRow(Icons.Filled.Notifications, "Reminders", "Create reminders", Color(0xFFFF5252)) {}
+            EcosystemRow(Icons.Filled.Article, "Notion", "Export as page", MaterialTheme.colorScheme.onSurface) {}
+            EcosystemRow(Icons.Filled.Chat, "Slack", "Post summary to channel", Color(0xFFE01E5A)) {}
+            EcosystemRow(Icons.Filled.Email, "Email", "Send via email", MaterialTheme.colorScheme.primary) { onShareTranscript() }
+            EcosystemRow(Icons.Filled.Bolt, "Shortcuts", "iOS Shortcuts automations", Color(0xFFFF9800)) {}
+            EcosystemRow(Icons.Filled.IosShare, "Share…", "System share sheet", MaterialTheme.colorScheme.primary, isLast = true) { onShareTranscript() }
+        }
+    }
+}
+
+@Composable
+private fun EcosystemRow(
+    icon: ImageVector,
+    label: String,
+    sub: String,
+    color: Color,
+    isLast: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp).background(color.copy(alpha = 0.12f), MaterialTheme.shapes.medium),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (!isLast) HorizontalDivider(Modifier.padding(start = 52.dp))
     }
 }
 

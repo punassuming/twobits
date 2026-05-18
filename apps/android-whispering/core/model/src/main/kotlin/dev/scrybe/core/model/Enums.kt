@@ -49,3 +49,29 @@ enum class PostStopDestination {
     HOME,
     SESSION_REVIEW,
 }
+
+enum class RecordingMode {
+    MEETING,
+    IDEA,
+    TASKS,
+    CONVERSATION,
+    STORY,
+    INTERVIEW,
+    JOURNAL,
+    ;
+
+    val label: String
+        get() = name.lowercase().replaceFirstChar { it.uppercase() }
+
+    val outputDescription: String
+        get() =
+            when (this) {
+                MEETING -> "Action items + summary"
+                IDEA -> "Brainstorm list"
+                TASKS -> "Task list"
+                CONVERSATION -> "Dialogue summary"
+                STORY -> "Narrative write-up"
+                INTERVIEW -> "Q&A + highlights"
+                JOURNAL -> "Plain transcript"
+            }
+}

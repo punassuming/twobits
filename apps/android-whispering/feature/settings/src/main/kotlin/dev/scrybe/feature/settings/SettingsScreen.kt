@@ -15,7 +15,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
@@ -82,6 +86,7 @@ import dev.scrybe.core.model.ThemeMode
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToFileManager: () -> Unit = {},
+    onNavigateToProfiles: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -130,6 +135,42 @@ fun SettingsScreen(
                         .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
             ) {
+                SettingsSectionCard(
+                    title = "Intelligence",
+                    icon = Icons.Filled.AutoAwesome,
+                ) {
+                    SettingOptionRow(
+                        title = "Profiles",
+                        value = "Manage",
+                        supportingText = "Pipeline recipes for recording + AI transforms + destinations",
+                        onClick = onNavigateToProfiles,
+                    )
+                    HorizontalDivider()
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Auto-transcribe", style = MaterialTheme.typography.bodyLarge)
+                            Text("Begins immediately after stopping", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.autoTranscribe, onCheckedChange = viewModel::setAutoTranscribe)
+                    }
+                    HorizontalDivider()
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Speaker identification", style = MaterialTheme.typography.bodyLarge)
+                            Text("Color-code multiple voices in transcript", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.enableSpeakerIdentification, onCheckedChange = viewModel::setEnableSpeakerIdentification)
+                    }
+                    HorizontalDivider()
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Auto-extract tasks", style = MaterialTheme.typography.bodyLarge)
+                            Text("Pull action items from transcript with AI", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.enableInsightAnalysis, onCheckedChange = viewModel::setEnableInsightAnalysis)
+                    }
+                }
+
                 SettingsSectionCard(
                     title = "Appearance",
                     icon = Icons.Filled.Palette,
@@ -658,6 +699,21 @@ fun SettingsScreen(
                 }
 
                 SettingsSectionCard(
+                    title = "Integrations",
+                    icon = Icons.Filled.Sync,
+                ) {
+                    Text(
+                        text = "Connect external apps and services.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    IntegrationRow(Icons.Filled.CalendarToday, "Calendar", "Add tasks with dates", Color(0xFF4285F4))
+                    IntegrationRow(Icons.Filled.Notifications, "Reminders", "Create reminders", Color(0xFFFF5252))
+                    IntegrationRow(Icons.Filled.Article, "Notion", "Export sessions as pages", MaterialTheme.colorScheme.onSurface)
+                    IntegrationRow(Icons.Filled.Chat, "Slack", "Post summaries to channels", Color(0xFFE01E5A))
+                    IntegrationRow(Icons.Filled.Bolt, "Shortcuts", "iOS Shortcuts automations", Color(0xFFFF9800), isLast = true)
+                }
+
+                SettingsSectionCard(
                     title = "File Manager",
                     icon = Icons.Filled.FolderOpen,
                 ) {
@@ -1151,6 +1207,31 @@ private fun LocalModelDownloadSection(
                     }
                 }
         }
+    }
+}
+
+@Composable
+private fun IntegrationRow(
+    icon: ImageVector,
+    label: String,
+    sub: String,
+    color: Color,
+    isLast: Boolean = false,
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text("Connect", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (!isLast) HorizontalDivider(Modifier.padding(start = 34.dp))
     }
 }
 
