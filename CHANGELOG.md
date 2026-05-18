@@ -4,6 +4,9 @@
 
 ### Features
 
+* add profile icon and color identity — each profile now has a colored icon avatar (16 icon choices, 6 accent colors) shown in the profile list and editor; DB migrated to v12 with iconName/colorName columns
+* add profile template quick-start — creating a new profile shows four template cards (Daily Standup, Product Ideas, Interview, Voice Journal) that pre-fill name, icon, color, and prompt steps
+
 ### Improvements
 
 * add ±10 second skip buttons to audio playback — Replay10 and Forward10 icon buttons flank play/pause in the playback card for quick seek without scrubbing the waveform

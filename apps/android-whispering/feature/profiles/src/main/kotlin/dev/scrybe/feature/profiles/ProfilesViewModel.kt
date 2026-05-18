@@ -57,6 +57,8 @@ data class ProfileEditorDraft(
     val isDefault: Boolean = false,
     val providerType: ProviderType = ProviderType.OPENAI,
     val modelName: String? = null,
+    val iconName: String = "MIC",
+    val colorName: String = "BLUE",
 )
 
 internal fun TransformProfile.toDraft(): ProfileEditorDraft =
@@ -68,6 +70,8 @@ internal fun TransformProfile.toDraft(): ProfileEditorDraft =
         isDefault = isDefault,
         providerType = providerType,
         modelName = modelName,
+        iconName = iconName,
+        colorName = colorName,
     )
 
 @HiltViewModel
@@ -132,37 +136,29 @@ class ProfilesViewModel
             _aiCreatorOpen.value = false
         }
 
-        fun saveProfile(
-            existingId: String?,
-            name: String,
-            description: String,
-            steps: List<String>,
-            setAsDefault: Boolean,
-            providerType: ProviderType = ProviderType.OPENAI,
-            modelName: String? = null,
-        ) {
+        fun saveProfile(draft: ProfileEditorDraft) {
             viewModelScope.launch {
-                val id = existingId ?: UUID.randomUUID().toString()
-                val normalizedSteps = steps.map { it.trim() }.filter { it.isNotBlank() }
+                val id = draft.existingId ?: UUID.randomUUID().toString()
+                val normalizedSteps = draft.steps.map { it.trim() }.filter { it.isNotBlank() }
                 if (normalizedSteps.isEmpty()) return@launch
-                if (setAsDefault) {
-                    transformProfileDao.clearDefaultProfile()
-                }
+                if (draft.isDefault) transformProfileDao.clearDefaultProfile()
                 transformProfileDao.insertProfile(
                     TransformProfileEntity(
                         id = id,
-                        name = name.trim(),
-                        description = description.trim(),
+                        name = draft.name.trim(),
+                        description = draft.description.trim(),
                         systemPrompt = normalizedSteps.first(),
                         steps = TransformStepsCodec.encode(normalizedSteps),
-                        providerType = providerType.name,
-                        isDefault = setAsDefault,
-                        modelName = modelName?.takeIf { it.isNotBlank() },
+                        providerType = draft.providerType.name,
+                        isDefault = draft.isDefault,
+                        modelName = draft.modelName?.takeIf { it.isNotBlank() },
+                        iconName = draft.iconName,
+                        colorName = draft.colorName,
                     ),
                 )
-                if (setAsDefault) {
+                if (draft.isDefault) {
                     preferencesDataStore.setDefaultTransformProfileId(id)
-                } else if (existingId != null && transformProfileDao.getProfileById(existingId)?.isDefault == true) {
+                } else if (draft.existingId != null && transformProfileDao.getProfileById(draft.existingId)?.isDefault == true) {
                     preferencesDataStore.setDefaultTransformProfileId(null)
                 }
             }
@@ -231,5 +227,7 @@ class ProfilesViewModel
                 providerType = ProviderType.valueOf(entity.providerType),
                 isDefault = entity.isDefault,
                 modelName = entity.modelName,
+                iconName = entity.iconName,
+                colorName = entity.colorName,
             )
     }

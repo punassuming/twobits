@@ -16,7 +16,7 @@ import androidx.room.RoomDatabase
         TranscriptChunkEntity::class,
         SessionTaskEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

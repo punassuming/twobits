@@ -115,3 +115,11 @@ val MIGRATION_7_8: Migration =
             )
         }
     }
+
+val MIGRATION_11_12: Migration =
+    object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE transform_profiles ADD COLUMN iconName TEXT NOT NULL DEFAULT 'MIC'")
+            db.execSQL("ALTER TABLE transform_profiles ADD COLUMN colorName TEXT NOT NULL DEFAULT 'BLUE'")
+        }
+    }

@@ -9,4 +9,6 @@ data class TransformProfile(
     val providerType: ProviderType,
     val isDefault: Boolean,
     val modelName: String? = null,
+    val iconName: String = "MIC",
+    val colorName: String = "BLUE",
 )
