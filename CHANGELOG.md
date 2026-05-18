@@ -6,6 +6,11 @@
 
 ### Improvements
 
+* add ±10 second skip buttons to audio playback — Replay10 and Forward10 icon buttons flank play/pause in the playback card for quick seek without scrubbing the waveform
+* replace theme picker dialog with inline segmented buttons — Appearance section now shows System / Light / Dark buttons directly, removing the extra tap to open a dialog
+* add audio storage visualization bar in Usage section — shows a LinearProgressIndicator with "X.X / 10 GB" label so storage consumption is visible at a glance
+* add "Add integration" row to Integrations section — Browse entry at the bottom of the integrations list matches the design handoff
+
 ### Fixes
 
 ## 0.24.0 (2026-05-18)

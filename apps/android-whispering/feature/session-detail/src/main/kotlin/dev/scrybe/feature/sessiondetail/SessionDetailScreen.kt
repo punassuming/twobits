@@ -311,6 +311,8 @@ fun SessionDetailScreen(
                             state = state,
                             onTogglePlayback = viewModel::togglePlayback,
                             onStopPlayback = viewModel::stopPlayback,
+                            onSkipBack = viewModel::skipBackward,
+                            onSkipForward = viewModel::skipForward,
                             onSeek = viewModel::seekPlayback,
                         )
                         if (state.speakerSegments.isNotEmpty() || state.currentTranscript != null || state.originalTranscript != null) {

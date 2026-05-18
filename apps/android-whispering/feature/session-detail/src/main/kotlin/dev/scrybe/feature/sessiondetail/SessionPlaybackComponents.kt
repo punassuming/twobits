@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +61,8 @@ internal fun PlaybackCard(
     state: SessionDetailUiState.Success,
     onTogglePlayback: () -> Unit,
     onStopPlayback: () -> Unit,
+    onSkipBack: () -> Unit,
+    onSkipForward: () -> Unit,
     onSeek: (Long) -> Unit,
 ) {
     ScrybeSectionCard(
@@ -71,10 +75,24 @@ internal fun PlaybackCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    IconButton(onClick = onSkipBack) {
+                        Icon(
+                            imageVector = Icons.Filled.Replay10,
+                            contentDescription = "Skip back 10 seconds",
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                     IconButton(onClick = onTogglePlayback) {
                         Icon(
                             imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = if (state.isPlaying) "Pause" else "Play",
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    IconButton(onClick = onSkipForward) {
+                        Icon(
+                            imageVector = Icons.Filled.Forward10,
+                            contentDescription = "Skip forward 10 seconds",
                             modifier = Modifier.size(22.dp),
                         )
                     }
