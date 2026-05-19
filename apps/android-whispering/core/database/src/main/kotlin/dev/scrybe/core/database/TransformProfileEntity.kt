@@ -13,4 +13,7 @@ data class TransformProfileEntity(
     val providerType: String,
     val isDefault: Boolean,
     val modelName: String? = null,
+    val iconName: String = "MIC",
+    val colorName: String = "BLUE",
+    val mode: String? = null,
 )

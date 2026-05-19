@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +61,8 @@ internal fun PlaybackCard(
     state: SessionDetailUiState.Success,
     onTogglePlayback: () -> Unit,
     onStopPlayback: () -> Unit,
+    onSkipBack: () -> Unit,
+    onSkipForward: () -> Unit,
     onSeek: (Long) -> Unit,
 ) {
     ScrybeSectionCard(
@@ -71,10 +75,24 @@ internal fun PlaybackCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    IconButton(onClick = onSkipBack) {
+                        Icon(
+                            imageVector = Icons.Filled.Replay10,
+                            contentDescription = "Skip back 10 seconds",
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                     IconButton(onClick = onTogglePlayback) {
                         Icon(
                             imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = if (state.isPlaying) "Pause" else "Play",
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    IconButton(onClick = onSkipForward) {
+                        Icon(
+                            imageVector = Icons.Filled.Forward10,
+                            contentDescription = "Skip forward 10 seconds",
                             modifier = Modifier.size(22.dp),
                         )
                     }
@@ -109,6 +127,7 @@ internal fun PlaybackCard(
                 durationMs = state.playbackDurationMs,
                 sentimentSegments = state.sentimentSegments,
                 topicMarkers = state.topicMarkers,
+                speakerSegments = state.speakerSegments,
                 onSeek = onSeek,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -126,12 +145,7 @@ internal fun PlaybackCard(
             )
         }
         if (state.speakerSegments.isNotEmpty()) {
-            PerSpeakerTimelineSection(
-                segments = state.speakerSegments,
-                durationMs = state.session.durationMs,
-                playbackPositionMs = state.playbackPositionMs,
-                onSeek = onSeek,
-            )
+            SpeakerLegend(segments = state.speakerSegments)
         }
     }
 }
@@ -144,6 +158,7 @@ private fun WaveformTimeline(
     durationMs: Long,
     sentimentSegments: List<SentimentSegment>,
     topicMarkers: List<TopicMarker>,
+    speakerSegments: List<SpeakerSegment> = emptyList(),
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -152,6 +167,13 @@ private fun WaveformTimeline(
     val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
     val baselineColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.20f)
     val playheadColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+    val speakerIndex =
+        speakerSegments
+            .map { it.speakerId }
+            .distinct()
+            .sorted()
+            .withIndex()
+            .associate { (i, id) -> id to i }
     BoxWithConstraints(modifier = modifier) {
         val density = LocalDensity.current
         val waveformWidthPx = with(density) { maxWidth.toPx().coerceAtLeast(1f) }
@@ -242,8 +264,19 @@ private fun WaveformTimeline(
                 val shapedAmplitude = playbackAmplitude(sample)
                 val lineHeight = (size.height * 0.34f) * shapedAmplitude
                 val x = (index * (barWidth + spacing)) + (barWidth / 2f)
+                val barTimeMs =
+                    if (durationMs > 0L) (index.toFloat() / bars.size.toFloat()) * durationMs else 0f
+                val activeSpeaker =
+                    speakerSegments.firstOrNull { barTimeMs >= it.startMs && barTimeMs <= it.endMs }
+                val barColor =
+                    if (activeSpeaker != null) {
+                        val idx = speakerIndex[activeSpeaker.speakerId] ?: 0
+                        speakerColorForIndex(idx).copy(alpha = if (index <= progressIndex) 0.85f else 0.40f)
+                    } else {
+                        if (index <= progressIndex) activeColor else inactiveColor
+                    }
                 drawLine(
-                    color = if (index <= progressIndex) activeColor else inactiveColor,
+                    color = barColor,
                     start = Offset(x, centerY - lineHeight),
                     end = Offset(x, centerY + lineHeight),
                     strokeWidth = barWidth,
@@ -271,6 +304,31 @@ private fun WaveformTimeline(
                 strokeWidth = 2.dp.toPx(),
                 cap = StrokeCap.Round,
             )
+        }
+    }
+}
+
+@Composable
+private fun SpeakerLegend(
+    segments: List<SpeakerSegment>,
+    modifier: Modifier = Modifier,
+) {
+    val speakerIds = segments.map { it.speakerId }.distinct().sorted()
+    if (speakerIds.isEmpty()) return
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        speakerIds.forEachIndexed { idx, speakerId ->
+            val color = speakerColorForIndex(idx)
+            val label = speakerId.removePrefix("SPEAKER_").let { "Speaker $it" }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Canvas(modifier = Modifier.size(8.dp)) { drawCircle(color = color) }
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

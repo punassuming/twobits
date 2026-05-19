@@ -4,9 +4,36 @@
 
 ### Features
 
+* add profile icon and color identity — each profile now has a colored icon avatar (16 icon choices, 6 accent colors) shown in the profile list and editor; DB migrated to v12 with iconName/colorName columns
+* add profile template quick-start — creating a new profile shows four template cards (Daily Standup, Product Ideas, Interview, Voice Journal) that pre-fill name, icon, color, and prompt steps
+* add profile mode field — each profile now carries an optional RecordingMode; DB migrated to v13 with mode column; profile editor shows a mode chip picker; profile cards and detail header show a mode badge; built-in templates are pre-assigned their natural modes
+
 ### Improvements
 
+* remove bottom navigation bar — replaced with Settings and History icons in the home top bar; profiles route through Settings (Intelligence section) which is the first item visible when Settings opens
+* restyle home session cards to match design — title full-width with mode badge and location on a dedicated row below; mini waveform now appears before the metadata row; tasks badge uses secondary container background; tags displayed as #tag pills
+* add date·duration subtitle to session detail header — recording date and duration shown in the TopAppBar below the title, freeing vertical space above the waveform
+* replace verbose "Recording details" card with compact MetaStrip — mode badge, location, and tags displayed as an inline chip row directly below the session title, moving key context closer to the header
+* remove back arrow from History top bar in browse mode — Close icon remains during multi-select; navigation uses system back gesture
+* migrate speaker timeline to waveform bar colors — instead of a separate row-per-speaker below the waveform, each bar in the waveform is now colored by the active speaker at that timestamp (played bars at 0.85 alpha, unplayed at 0.40); a compact dot + label legend replaces the old segment bar rows
+
+* add ±10 second skip buttons to audio playback — Replay10 and Forward10 icon buttons flank play/pause in the playback card for quick seek without scrubbing the waveform
+* replace theme picker dialog with inline segmented buttons — Appearance section now shows System / Light / Dark buttons directly, removing the extra tap to open a dialog
+* add audio storage visualization bar in Usage section — shows a LinearProgressIndicator with "X.X / 10 GB" label so storage consumption is visible at a glance
+* add "Add integration" row to Integrations section — Browse entry at the bottom of the integrations list matches the design handoff
+
+### Improvements
+
+* add mode-specific accent colors to recording mode picker — each mode card now highlights with its own color when selected (Meeting=blue, Idea=amber, Tasks=green, Conversation=purple, Story=pink, Interview=orange, Journal=muted); the output preview surface below the grid updates to the same accent tint
+* animate recording indicator dot — the red dot in the recording header now pulses between full and 25% alpha on a 600 ms cycle while actively recording; it freezes when paused or stopping
+* add gradient opacity to amplitude waveform — the 6 most recent bars render in tertiary color at full opacity; older bars graduate from 18% to 65% opacity toward the live edge, giving the waveform a natural temporal fade
+* replace pause/resume icon button with text pill — the Pause/Resume control in the recording header is now a pill-shaped "Pause" / "Resume" label with surfaceVariant background, matching the design intent
+* refine stop control visual hierarchy — Stop primary button uses 14 dp corner radius and 14 dp vertical padding with semibold text; secondary button uses a lighter outlineVariant border and muted text at 11 dp vertical padding
+
 ### Fixes
+
+* fix missing Screen import in ScrybeApp — resolves "Unresolved reference: Screen" compile error that broke CI assembleDebug
+* fix cross-module smart cast for profile.mode in ProfileDetailView — capture property to local val before null check to satisfy Kotlin compiler
 
 ## 0.24.0 (2026-05-18)
 

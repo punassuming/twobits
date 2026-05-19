@@ -529,6 +529,16 @@ class SessionDetailViewModel
             audioPlayer.stop()
         }
 
+        fun skipBackward() {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            seekPlayback((state.playbackPositionMs - 10_000L).coerceAtLeast(0L))
+        }
+
+        fun skipForward() {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            seekPlayback((state.playbackPositionMs + 10_000L).coerceAtMost(state.playbackDurationMs))
+        }
+
         fun renameSession(newTitle: String) {
             val trimmed = newTitle.trim()
             if (trimmed.isBlank()) return

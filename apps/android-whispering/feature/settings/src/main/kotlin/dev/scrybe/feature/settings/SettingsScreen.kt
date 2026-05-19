@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
@@ -95,7 +96,6 @@ fun SettingsScreen(
     val gemmaStates by viewModel.gemmaStates.collectAsState()
     val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
     var showChangelog by remember { mutableStateOf(false) }
-    var showThemePicker by remember { mutableStateOf(false) }
     var showPostStopPicker by remember { mutableStateOf(false) }
     var showSampleRatePicker by remember { mutableStateOf(false) }
     var showBitRatePicker by remember { mutableStateOf(false) }
@@ -175,17 +175,19 @@ fun SettingsScreen(
                     title = "Appearance",
                     icon = Icons.Filled.Palette,
                 ) {
-                    SettingOptionRow(
-                        title = "Theme",
-                        value =
-                            when (uiState.themeMode) {
-                                ThemeMode.SYSTEM -> "Follow system"
-                                ThemeMode.LIGHT -> "Light"
-                                ThemeMode.DARK -> "Dark"
-                            },
-                        supportingText = "Use the system theme or force light or dark mode.",
-                        onClick = { showThemePicker = true },
-                    )
+                    val themeOptions =
+                        listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark")
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        themeOptions.forEachIndexed { index, (mode, label) ->
+                            SegmentedButton(
+                                selected = uiState.themeMode == mode,
+                                onClick = { viewModel.setThemeMode(mode) },
+                                shape = SegmentedButtonDefaults.itemShape(index = index, count = themeOptions.size),
+                            ) {
+                                Text(label)
+                            }
+                        }
+                    }
                 }
 
                 SettingsSectionCard(
@@ -710,7 +712,8 @@ fun SettingsScreen(
                     IntegrationRow(Icons.Filled.Notifications, "Reminders", "Create reminders", Color(0xFFFF5252))
                     IntegrationRow(Icons.Filled.Article, "Notion", "Export sessions as pages", MaterialTheme.colorScheme.onSurface)
                     IntegrationRow(Icons.Filled.Chat, "Slack", "Post summaries to channels", Color(0xFFE01E5A))
-                    IntegrationRow(Icons.Filled.Bolt, "Shortcuts", "iOS Shortcuts automations", Color(0xFFFF9800), isLast = true)
+                    IntegrationRow(Icons.Filled.Bolt, "Shortcuts", "iOS Shortcuts automations", Color(0xFFFF9800))
+                    AddIntegrationRow()
                 }
 
                 SettingsSectionCard(
@@ -733,6 +736,26 @@ fun SettingsScreen(
                     title = "Usage",
                     icon = Icons.Filled.Info,
                 ) {
+                    val storageGb = uiState.usageStats.totalStorageBytes / (1024f * 1024f * 1024f)
+                    val storageFraction = (storageGb / 10f).coerceIn(0f, 1f)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("Audio storage", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "${"%.1f".format(storageGb)} / 10 GB",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        LinearProgressIndicator(
+                            progress = { storageFraction },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -870,26 +893,6 @@ fun SettingsScreen(
                 TextButton(onClick = { showChangelog = false }) {
                     Text("Close")
                 }
-            },
-        )
-    }
-
-    if (showThemePicker) {
-        OptionPickerDialog(
-            title = "Choose Theme",
-            options = ThemeMode.entries.toList(),
-            selected = uiState.themeMode,
-            label = {
-                when (it) {
-                    ThemeMode.SYSTEM -> "Follow system"
-                    ThemeMode.LIGHT -> "Light"
-                    ThemeMode.DARK -> "Dark"
-                }
-            },
-            onDismiss = { showThemePicker = false },
-            onSelect = {
-                viewModel.setThemeMode(it)
-                showThemePicker = false
             },
         )
     }
@@ -1207,6 +1210,20 @@ private fun LocalModelDownloadSection(
                     }
                 }
         }
+    }
+}
+
+@Composable
+private fun AddIntegrationRow() {
+    HorizontalDivider(Modifier.padding(start = 34.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        Text("Add integration", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text("Browse", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
     }
 }
 

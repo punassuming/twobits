@@ -9,6 +9,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.scrybe.core.database.AppDatabase
 import dev.scrybe.core.database.MIGRATION_10_11
+import dev.scrybe.core.database.MIGRATION_11_12
+import dev.scrybe.core.database.MIGRATION_12_13
 import dev.scrybe.core.database.MIGRATION_4_5
 import dev.scrybe.core.database.MIGRATION_5_6
 import dev.scrybe.core.database.MIGRATION_6_7
@@ -38,6 +40,8 @@ object DatabaseModule {
                 MIGRATION_8_9,
                 MIGRATION_9_10,
                 MIGRATION_10_11,
+                MIGRATION_11_12,
+                MIGRATION_12_13,
             ).fallbackToDestructiveMigrationFrom(1, 2, 3)
             .build()
 

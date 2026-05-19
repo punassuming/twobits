@@ -5,6 +5,13 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,16 +45,15 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PersonSearch
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -75,6 +81,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -94,6 +101,8 @@ import dev.scrybe.core.model.SessionStatus
 @Composable
 fun CaptureScreen(
     onNavigateToSessionDetail: (String) -> Unit,
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {},
     viewModel: CaptureViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -155,6 +164,12 @@ fun CaptureScreen(
                 actions = {
                     IconButton(onClick = { searchOpen = !searchOpen }) {
                         Icon(Icons.Filled.Search, contentDescription = "Search sessions")
+                    }
+                    IconButton(onClick = onNavigateToHistory) {
+                        Icon(Icons.Filled.History, contentDescription = "All recordings")
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 },
             )
@@ -315,6 +330,7 @@ private fun RecordingActiveView(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecordingActiveHeader(
     state: CaptureUiState,
@@ -341,10 +357,16 @@ private fun RecordingActiveHeader(
                 modifier = Modifier.padding(end = 8.dp),
             )
         } else {
-            IconButton(onClick = if (isPaused) onResume else onPause) {
-                Icon(
-                    imageVector = if (isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
-                    contentDescription = if (isPaused) "Resume recording" else "Pause recording",
+            Surface(
+                onClick = if (isPaused) onResume else onPause,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+            ) {
+                Text(
+                    text = if (isPaused) "Resume" else "Pause",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -357,6 +379,18 @@ private fun RecordingTimerRow(
     isStopping: Boolean,
     isPaused: Boolean,
 ) {
+    val isActivelyRecording = !isPaused && !isStopping
+    val infiniteTransition = rememberInfiniteTransition(label = "rec-pulse")
+    val dotAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.25f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(600, easing = EaseInOut),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        label = "dot-alpha",
+    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -370,7 +404,12 @@ private fun RecordingTimerRow(
                 modifier =
                     Modifier
                         .size(8.dp)
-                        .background(MaterialTheme.colorScheme.tertiary, CircleShape),
+                        .background(
+                            MaterialTheme.colorScheme.tertiary.copy(
+                                alpha = if (isActivelyRecording) dotAlpha else 1f,
+                            ),
+                            CircleShape,
+                        ),
             )
             Text(
                 text =
@@ -405,15 +444,27 @@ private fun RecordingStopButtons(
             onClick = onStop,
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            contentPadding = PaddingValues(vertical = 14.dp),
         ) {
-            Text("Stop — process as $modeName")
+            Text(
+                "Stop — process as $modeName",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+            )
         }
         OutlinedButton(
             onClick = onStop,
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            contentPadding = PaddingValues(vertical = 11.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
-            Text("Stop, save raw transcript only")
+            Text(
+                "Stop, save raw transcript only",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -421,7 +472,7 @@ private fun RecordingStopButtons(
 @Composable
 private fun AmplitudeWaveform(amplitudeHistory: List<Float>) {
     val bars = amplitudeHistory.takeLast(48)
-    val recentCount = 8
+    val recentCount = 6
     Row(
         modifier = Modifier.fillMaxWidth().height(52.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -443,11 +494,12 @@ private fun AmplitudeWaveform(amplitudeHistory: List<Float>) {
         }
         bars.forEachIndexed { index, amplitude ->
             val isRecent = index >= bars.size - recentCount
+            val gradientRatio = index.toFloat() / (bars.size - recentCount).coerceAtLeast(1)
             val color =
                 if (isRecent) {
                     MaterialTheme.colorScheme.tertiary
                 } else {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f + gradientRatio * 0.47f)
                 }
             val heightFraction = (0.08f + amplitude * 0.92f).coerceIn(0.08f, 1f)
             Box(
@@ -509,18 +561,7 @@ private fun ModePickerSheet(
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                Text(
-                    text = "Will produce: ${selectedMode.outputDescription}",
-                    modifier = Modifier.padding(12.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
+            ModeOutputPreview(selectedMode = selectedMode)
             Button(
                 onClick = { onStartRecording(selectedMode) },
                 modifier =
@@ -533,6 +574,26 @@ private fun ModePickerSheet(
                 Text("Start recording")
             }
         }
+    }
+}
+
+@Composable
+private fun ModeOutputPreview(
+    selectedMode: RecordingMode,
+    modifier: Modifier = Modifier,
+) {
+    val accent = modeAccentColor(selectedMode)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = accent.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Text(
+            text = "Will produce: ${selectedMode.outputDescription}",
+            modifier = Modifier.padding(12.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = accent,
+        )
     }
 }
 
@@ -575,15 +636,16 @@ private fun ModeCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accentColor = modeAccentColor(mode)
     val containerColor =
         if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer
+            accentColor.copy(alpha = 0.18f)
         } else {
             MaterialTheme.colorScheme.surfaceContainerHigh
         }
     val contentColor =
         if (isSelected) {
-            MaterialTheme.colorScheme.onPrimaryContainer
+            accentColor
         } else {
             MaterialTheme.colorScheme.onSurface
         }
@@ -662,31 +724,11 @@ private fun HomeSessionCard(
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ModeBadge(mode = session.mode)
-                    Text(
-                        text = session.title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(
-                    text = session.createdAtLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            HomeSessionCardHeader(session)
+            if (session.waveformSamples.isNotEmpty()) {
+                MiniWaveform(samples = session.waveformSamples, modifier = Modifier.fillMaxWidth())
             }
             HomeSessionCardMeta(session = session)
             if (session.tags.isNotEmpty()) {
@@ -697,25 +739,14 @@ private fun HomeSessionCard(
                     session.tags.take(3).forEach { tag ->
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                         ) {
-                            Row(
+                            Text(
+                                text = "#$tag",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Filled.Label,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(10.dp),
-                                )
-                                Text(
-                                    text = tag,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -729,16 +760,84 @@ private fun HomeSessionCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (session.waveformSamples.isNotEmpty()) {
-                MiniWaveform(samples = session.waveformSamples, modifier = Modifier.fillMaxWidth())
-            }
         }
     }
 }
 
 @Composable
+private fun HomeSessionCardHeader(session: RecentCaptureSession) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f).padding(end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = session.title,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ModeBadge(mode = session.mode)
+                session.locationLabel?.let { loc ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Filled.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(11.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            loc,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                session.createdAtLabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (session.durationMs > 0L) {
+                Text(
+                    formatCardDuration(session.durationMs),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private fun formatCardDuration(durationMs: Long): String {
+    val totalSeconds = durationMs / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return if (minutes >= 60) {
+        "%dh %02dm".format(minutes / 60, minutes % 60)
+    } else {
+        "%d:%02d".format(minutes, seconds)
+    }
+}
+
+@Composable
 private fun HomeSessionCardMeta(session: RecentCaptureSession) {
-    val hasLocation = session.locationLabel != null
     val hasMultipleSpeakers = session.speakerCount > 1
     val isArchived = session.isArchived
     val hasSpecialStatus =
@@ -746,7 +845,7 @@ private fun HomeSessionCardMeta(session: RecentCaptureSession) {
             session.status == SessionStatus.TRANSCRIBING ||
             session.status == SessionStatus.PARTIAL_TRANSCRIPTION
     val hasOpenTasks = session.openTaskCount > 0
-    val hasMeta = hasLocation || hasMultipleSpeakers || isArchived || hasSpecialStatus || hasOpenTasks
+    val hasMeta = hasMultipleSpeakers || isArchived || hasSpecialStatus || hasOpenTasks
     if (!hasMeta) return
 
     Row(
@@ -770,49 +869,46 @@ private fun HomeSessionCardMeta(session: RecentCaptureSession) {
                 }
             Icon(icon, contentDescription = session.status.name, modifier = Modifier.size(14.dp))
         }
-        if (hasLocation) {
+        if (hasMultipleSpeakers) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    Icons.Filled.LocationOn,
+                    Icons.Filled.PersonSearch,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = session.locationLabel!!,
+                    "${session.speakerCount} speakers",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        if (hasMultipleSpeakers) {
-            Text(
-                text = "${session.speakerCount} speakers",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
         if (hasOpenTasks) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
             ) {
-                Icon(
-                    Icons.Filled.TaskAlt,
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = MaterialTheme.colorScheme.secondary,
-                )
-                Text(
-                    text = "${session.openTaskCount} task${if (session.openTaskCount == 1) "" else "s"}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Filled.TaskAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(11.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    Text(
+                        "${session.openTaskCount} task${if (session.openTaskCount == 1) "" else "s"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
             }
         }
     }
@@ -950,6 +1046,18 @@ private fun TaskNudgeBanner(
         }
     }
 }
+
+@Composable
+private fun modeAccentColor(mode: RecordingMode): Color =
+    when (mode) {
+        RecordingMode.MEETING -> Color(0xFF89C7FF)
+        RecordingMode.IDEA -> Color(0xFFFFD580)
+        RecordingMode.TASKS -> Color(0xFF88D7A8)
+        RecordingMode.CONVERSATION -> Color(0xFFC4ABFF)
+        RecordingMode.STORY -> Color(0xFFFF9EC4)
+        RecordingMode.INTERVIEW -> Color(0xFFFFB695)
+        RecordingMode.JOURNAL -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
 private fun modeIcon(mode: RecordingMode): ImageVector =
     when (mode) {

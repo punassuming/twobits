@@ -1,6 +1,7 @@
 package dev.scrybe.feature.profiles
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -17,26 +18,43 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Brush
+import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +75,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,6 +91,92 @@ import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.TransformProfile
+
+private enum class ProfileIcon(
+    val vector: ImageVector,
+) {
+    MIC(Icons.Filled.Mic),
+    GROUPS(Icons.Filled.Groups),
+    LIGHTBULB(Icons.Filled.Lightbulb),
+    FORUM(Icons.Filled.Forum),
+    BOOK(Icons.Filled.Book),
+    BOLT(Icons.Filled.Bolt),
+    SCHOOL(Icons.Filled.School),
+    WORK(Icons.Filled.Work),
+    PSYCHOLOGY(Icons.Filled.Psychology),
+    FLAG(Icons.Filled.Flag),
+    HEADPHONES(Icons.Filled.Headphones),
+    CAMERA(Icons.Filled.Camera),
+    BRUSH(Icons.Filled.Brush),
+    TUNE(Icons.Filled.Tune),
+    CAMPAIGN(Icons.Filled.Campaign),
+    SCIENCE(Icons.Filled.Science),
+    ;
+
+    companion object {
+        fun fromName(name: String): ProfileIcon = entries.firstOrNull { it.name == name } ?: MIC
+    }
+}
+
+private enum class ProfileColor(
+    val color: Color,
+) {
+    BLUE(Color(0xFF3D9CF5)),
+    GREEN(Color(0xFF4CD6A5)),
+    AMBER(Color(0xFFF5A23D)),
+    PURPLE(Color(0xFFA57BF5)),
+    PINK(Color(0xFFF57BAF)),
+    GRAY(Color(0xFF8B9EAF)),
+    ;
+
+    companion object {
+        fun fromName(name: String): ProfileColor = entries.firstOrNull { it.name == name } ?: BLUE
+    }
+}
+
+private data class ProfileTemplate(
+    val name: String,
+    val iconName: String,
+    val colorName: String,
+    val steps: List<String>,
+    val mode: RecordingMode? = null,
+)
+
+private val PROFILE_TEMPLATES =
+    listOf(
+        ProfileTemplate(
+            name = "Daily Standup",
+            iconName = "GROUPS",
+            colorName = "BLUE",
+            steps = listOf("Summarize this standup: what each person is working on, blockers, and key decisions. Use {{transcript}}."),
+            mode = RecordingMode.MEETING,
+        ),
+        ProfileTemplate(
+            name = "Product Ideas",
+            iconName = "LIGHTBULB",
+            colorName = "AMBER",
+            steps = listOf("Turn this voice note into a structured list of product ideas with brief descriptions. Use {{transcript}}."),
+            mode = RecordingMode.IDEA,
+        ),
+        ProfileTemplate(
+            name = "Interview",
+            iconName = "FORUM",
+            colorName = "PURPLE",
+            steps =
+                listOf(
+                    "Format this interview into a clean Q&A with speaker labels. Use {{transcript}}.",
+                    "Extract 3-5 key highlights and notable quotes. Use {{current_text}}.",
+                ),
+            mode = RecordingMode.INTERVIEW,
+        ),
+        ProfileTemplate(
+            name = "Voice Journal",
+            iconName = "BOOK",
+            colorName = "PINK",
+            steps = listOf("Clean up and format this journal entry, improving grammar and flow while keeping the personal voice. Use {{transcript}}."),
+            mode = RecordingMode.JOURNAL,
+        ),
+    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,8 +285,8 @@ fun ProfilesScreen(
             draft = draft,
             onUpdate = { viewModel.updateEditorDraft(it) },
             onDismiss = { viewModel.closeEditor() },
-            onSave = { id, name, description, steps, isDefault, providerType, modelName ->
-                viewModel.saveProfile(id, name, description, steps, isDefault, providerType, modelName)
+            onSave = {
+                viewModel.saveProfile(it)
                 viewModel.closeEditor()
             },
         )
@@ -199,11 +304,12 @@ fun ProfilesScreen(
             onSuggestionConsumed = viewModel::clearSuggestionState,
             onSaveSuggestion = { suggestion, isDefault ->
                 viewModel.saveProfile(
-                    existingId = null,
-                    name = suggestion.name,
-                    description = suggestion.description,
-                    steps = suggestion.steps,
-                    setAsDefault = isDefault,
+                    ProfileEditorDraft(
+                        name = suggestion.name,
+                        description = suggestion.description,
+                        steps = suggestion.steps,
+                        isDefault = isDefault,
+                    ),
                 )
                 viewModel.clearSuggestionState()
                 viewModel.closeAiCreator()
@@ -283,55 +389,89 @@ private fun ProfileRow(
     onSetDefault: () -> Unit,
 ) {
     ScrybeSectionCard(modifier = Modifier.clickable(onClick = onClick)) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = profile.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (profile.description.isNotBlank()) {
-                        Text(
-                            text = profile.description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onSetDefault, enabled = !profile.isDefault) {
-                        Icon(
-                            imageVector = if (profile.isDefault) Icons.Filled.Star else Icons.Outlined.StarOutline,
-                            contentDescription = if (profile.isDefault) "Default" else "Make default",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Edit")
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                    }
-                }
-            }
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ProfileRowHeader(
+                profile = profile,
+                onEdit = onEdit,
+                onDelete = onDelete,
+                onSetDefault = onSetDefault,
+            )
             PipelineStepFlow(steps = profile.steps)
         }
+    }
+}
+
+@Composable
+private fun ProfileRowHeader(
+    profile: TransformProfile,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onSetDefault: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ProfileIconAvatar(iconName = profile.iconName, colorName = profile.colorName)
+        profile.mode?.let { ProfileModeBadge(mode = it) }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = profile.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (profile.description.isNotBlank()) {
+                Text(
+                    text = profile.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onSetDefault, enabled = !profile.isDefault) {
+                Icon(
+                    imageVector = if (profile.isDefault) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                    contentDescription = if (profile.isDefault) "Default" else "Make default",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+            IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileIconAvatar(
+    iconName: String,
+    colorName: String,
+    modifier: Modifier = Modifier,
+    size: Int = 40,
+) {
+    val icon = ProfileIcon.fromName(iconName)
+    val color = ProfileColor.fromName(colorName).color
+    Box(modifier = modifier.size(size.dp), contentAlignment = Alignment.Center) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = MaterialTheme.shapes.small,
+            color = color.copy(alpha = 0.15f),
+        ) {}
+        Icon(
+            imageVector = icon.vector,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size((size * 0.5f).dp),
+        )
     }
 }
 
@@ -441,7 +581,24 @@ private fun ProfileDetailView(
                 icon = Icons.Filled.Mic,
                 isOpen = modeOpen,
                 onToggle = { modeOpen = !modeOpen },
-            ) { ModeOptionRows() }
+            ) {
+                val mode = profile.mode
+                if (mode != null) {
+                    Text(mode.label, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        mode.outputDescription,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text("Any mode", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "This profile applies to any recording mode",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             BuilderSection(
                 title = "AI Transforms",
                 icon = Icons.Filled.AutoAwesome,
@@ -485,6 +642,7 @@ private fun ProfileDetailHeader(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        profile.mode?.let { ProfileModeBadge(mode = it) }
         IconButton(onClick = onEdit) {
             Icon(Icons.Filled.Edit, contentDescription = "Edit profile")
         }
@@ -634,7 +792,7 @@ private fun ProfileEditorDialog(
     draft: ProfileEditorDraft,
     onUpdate: (ProfileEditorDraft) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (String?, String, String, List<String>, Boolean, ProviderType, String?) -> Unit,
+    onSave: (ProfileEditorDraft) -> Unit,
 ) {
     val maxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.88f
     Dialog(
@@ -667,17 +825,7 @@ private fun ProfileEditorDialog(
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Spacer(Modifier.width(8.dp))
                     Button(
-                        onClick = {
-                            onSave(
-                                draft.existingId,
-                                draft.name,
-                                draft.description,
-                                draft.steps,
-                                draft.isDefault,
-                                draft.providerType,
-                                draft.modelName,
-                            )
-                        },
+                        onClick = { onSave(draft) },
                         enabled = draft.name.isNotBlank() && draft.steps.any { it.isNotBlank() },
                     ) {
                         Icon(Icons.Filled.CheckCircle, contentDescription = null)
@@ -700,74 +848,18 @@ private fun ProfileEditorFormBody(
         modifier = modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Prompt inputs", style = MaterialTheme.typography.labelLarge)
-                Text(
-                    "Step 1 should usually use {{transcript}}. Bulk consolidation transforms can also use {{combined_transcripts}}. Later steps can use {{current_text}} or {{prior_output}} to build on earlier output.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        if (draft.existingId == null) {
+            ProfileTemplateSection { template ->
+                onUpdate(draft.copy(name = template.name, iconName = template.iconName, colorName = template.colorName, steps = template.steps, mode = template.mode))
             }
         }
-        OutlinedTextField(
-            value = draft.name,
-            onValueChange = { onUpdate(draft.copy(name = it)) },
-            label = { Text("Name") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = draft.description,
-            onValueChange = { onUpdate(draft.copy(description = it)) },
-            label = { Text("Description") },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        draft.steps.forEachIndexed { index, step ->
-            OutlinedTextField(
-                value = step,
-                onValueChange = { next ->
-                    onUpdate(draft.copy(steps = draft.steps.toMutableList().also { it[index] = next }))
-                },
-                label = { Text("Step ${index + 1}") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                supportingText = {
-                    Text("Use {{transcript}} for the original transcription, {{combined_transcripts}} for multi-recording consolidation, and {{prior_output}} or {{current_text}} for previous-step output.")
-                },
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            TextButton(onClick = { onUpdate(draft.copy(steps = draft.steps + "")) }) { Text("Add Step") }
-            if (draft.steps.size > 1) {
-                TextButton(onClick = { onUpdate(draft.copy(steps = draft.steps.dropLast(1))) }) {
-                    Text("Remove Last")
-                }
-            }
-        }
-        Column {
-            Text("Provider", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = draft.providerType == ProviderType.OPENAI,
-                    onClick = { onUpdate(draft.copy(providerType = ProviderType.OPENAI)) },
-                    label = { Text("OpenAI") },
-                )
-                FilterChip(
-                    selected = draft.providerType == ProviderType.LOCAL,
-                    onClick = { onUpdate(draft.copy(providerType = ProviderType.LOCAL)) },
-                    label = { Text("On-device") },
-                )
-            }
-        }
-        ModelPickerRow(
-            draft = draft,
-            onUpdate = onUpdate,
-        )
+        ProfilePromptInputsCard()
+        OutlinedTextField(value = draft.name, onValueChange = { onUpdate(draft.copy(name = it)) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(value = draft.description, onValueChange = { onUpdate(draft.copy(description = it)) }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+        ProfileModePickerRow(selectedMode = draft.mode, onModeSelected = { onUpdate(draft.copy(mode = it)) })
+        ProfileAppearanceSection(draft = draft, onUpdate = onUpdate)
+        ProfileStepsSection(draft = draft, onUpdate = onUpdate)
+        ProfileProviderSection(draft = draft, onUpdate = onUpdate)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -775,6 +867,299 @@ private fun ProfileEditorFormBody(
         ) {
             Text("Use as default")
             Switch(checked = draft.isDefault, onCheckedChange = { onUpdate(draft.copy(isDefault = it)) })
+        }
+    }
+}
+
+@Composable
+private fun ProfilePromptInputsCard() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Prompt inputs", style = MaterialTheme.typography.labelLarge)
+            Text(
+                "Step 1 should usually use {{transcript}}. Bulk consolidation transforms can also use {{combined_transcripts}}. Later steps can use {{current_text}} or {{prior_output}} to build on earlier output.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileStepsSection(
+    draft: ProfileEditorDraft,
+    onUpdate: (ProfileEditorDraft) -> Unit,
+) {
+    draft.steps.forEachIndexed { index, step ->
+        OutlinedTextField(
+            value = step,
+            onValueChange = { next ->
+                onUpdate(draft.copy(steps = draft.steps.toMutableList().also { it[index] = next }))
+            },
+            label = { Text("Step ${index + 1}") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3,
+            supportingText = {
+                Text("Use {{transcript}} for the original transcription, {{combined_transcripts}} for multi-recording consolidation, and {{prior_output}} or {{current_text}} for previous-step output.")
+            },
+        )
+    }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        TextButton(onClick = { onUpdate(draft.copy(steps = draft.steps + "")) }) { Text("Add Step") }
+        if (draft.steps.size > 1) {
+            TextButton(onClick = { onUpdate(draft.copy(steps = draft.steps.dropLast(1))) }) { Text("Remove Last") }
+        }
+    }
+}
+
+@Composable
+private fun ProfileProviderSection(
+    draft: ProfileEditorDraft,
+    onUpdate: (ProfileEditorDraft) -> Unit,
+) {
+    Column {
+        Text("Provider", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = draft.providerType == ProviderType.OPENAI,
+                onClick = { onUpdate(draft.copy(providerType = ProviderType.OPENAI)) },
+                label = { Text("OpenAI") },
+            )
+            FilterChip(
+                selected = draft.providerType == ProviderType.LOCAL,
+                onClick = { onUpdate(draft.copy(providerType = ProviderType.LOCAL)) },
+                label = { Text("On-device") },
+            )
+        }
+    }
+    ModelPickerRow(draft = draft, onUpdate = onUpdate)
+}
+
+@Composable
+private fun ProfileModePickerRow(
+    selectedMode: RecordingMode?,
+    onModeSelected: (RecordingMode?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Mode", style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = selectedMode == null, onClick = { onModeSelected(null) }, label = { Text("Any") })
+            RecordingMode.entries.forEach { mode ->
+                FilterChip(
+                    selected = selectedMode == mode,
+                    onClick = { onModeSelected(mode) },
+                    label = { Text(mode.label) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileModeBadge(mode: RecordingMode) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.extraSmall,
+    ) {
+        Text(
+            text = mode.label,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
+
+@Composable
+private fun ProfileAppearanceSection(
+    draft: ProfileEditorDraft,
+    onUpdate: (ProfileEditorDraft) -> Unit,
+) {
+    var showIconPicker by remember { mutableStateOf(false) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("ICON", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ProfileIconPickerRow(
+                    selectedIconName = draft.iconName,
+                    selectedColorName = draft.colorName,
+                    onIconSelected = { onUpdate(draft.copy(iconName = it)) },
+                    onShowAll = { showIconPicker = true },
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("COLOR", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                ProfileColorPickerRow(
+                    selectedColorName = draft.colorName,
+                    onColorSelected = { onUpdate(draft.copy(colorName = it)) },
+                )
+            }
+        }
+    }
+    if (showIconPicker) {
+        ProfileIconPickerModal(
+            selectedIconName = draft.iconName,
+            selectedColorName = draft.colorName,
+            onIconSelected = { onUpdate(draft.copy(iconName = it)) },
+            onDismiss = { showIconPicker = false },
+        )
+    }
+}
+
+@Composable
+private fun ProfileIconPickerRow(
+    selectedIconName: String,
+    selectedColorName: String,
+    onIconSelected: (String) -> Unit,
+    onShowAll: () -> Unit,
+) {
+    val selectedColor = ProfileColor.fromName(selectedColorName).color
+    val quickIcons = ProfileIcon.entries.take(8)
+    val isInQuick = quickIcons.any { it.name == selectedIconName }
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        quickIcons.forEach { icon ->
+            val sel = icon.name == selectedIconName
+            Surface(
+                onClick = { onIconSelected(icon.name) },
+                modifier = Modifier.size(44.dp),
+                shape = MaterialTheme.shapes.small,
+                color = if (sel) selectedColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (sel) BorderStroke(2.dp, selectedColor) else null,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon.vector, contentDescription = null, tint = if (sel) selectedColor else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                }
+            }
+        }
+        val moreIcon = if (!isInQuick) ProfileIcon.fromName(selectedIconName).vector else Icons.Filled.MoreHoriz
+        val moreTint = if (!isInQuick) selectedColor else MaterialTheme.colorScheme.onSurfaceVariant
+        Surface(
+            onClick = onShowAll,
+            modifier = Modifier.size(44.dp),
+            shape = MaterialTheme.shapes.small,
+            color = if (!isInQuick) selectedColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+            border = if (!isInQuick) BorderStroke(2.dp, selectedColor) else null,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(moreIcon, contentDescription = "More icons", tint = moreTint, modifier = Modifier.size(22.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileColorPickerRow(
+    selectedColorName: String,
+    onColorSelected: (String) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ProfileColor.entries.forEach { profileColor ->
+            val isSelected = profileColor.name == selectedColorName
+            Surface(
+                onClick = { onColorSelected(profileColor.name) },
+                modifier = Modifier.size(30.dp),
+                shape = CircleShape,
+                color = profileColor.color,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (isSelected) {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileIconPickerModal(
+    selectedIconName: String,
+    selectedColorName: String,
+    onIconSelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val selectedColor = ProfileColor.fromName(selectedColorName).color
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 6.dp,
+        ) {
+            Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Choose an icon", style = MaterialTheme.typography.titleMedium)
+                ProfileIcon.entries.chunked(4).forEach { rowIcons ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        rowIcons.forEach { icon ->
+                            val sel = icon.name == selectedIconName
+                            Surface(
+                                onClick = {
+                                    onIconSelected(icon.name)
+                                    onDismiss()
+                                },
+                                modifier = Modifier.size(52.dp),
+                                shape = MaterialTheme.shapes.medium,
+                                color = if (sel) selectedColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                                border = if (sel) BorderStroke(2.dp, selectedColor) else null,
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(icon.vector, contentDescription = null, tint = if (sel) selectedColor else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(26.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text("Close") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileTemplateSection(onApplyTemplate: (ProfileTemplate) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "START FROM A TEMPLATE",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Column {
+                PROFILE_TEMPLATES.forEachIndexed { i, template ->
+                    if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { onApplyTemplate(template) }.padding(horizontal = 14.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ProfileIconAvatar(iconName = template.iconName, colorName = template.colorName, size = 34)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(template.name, style = MaterialTheme.typography.bodyMedium)
+                            val stepLabel = if (template.steps.size == 1) "1 step" else "${template.steps.size} steps"
+                            Text(stepLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
         }
     }
 }
