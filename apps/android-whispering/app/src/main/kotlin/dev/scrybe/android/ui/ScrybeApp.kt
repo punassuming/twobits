@@ -11,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -23,18 +22,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,9 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import dev.scrybe.android.navigation.Screen
 import dev.scrybe.android.navigation.ScrybeNavHost
 
 @Composable
@@ -61,80 +52,11 @@ fun ScrybeApp() {
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
     val activeRecordingState by activeRecordingViewModel.uiState.collectAsState()
 
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar =
-        currentRoute in
-            setOf(
-                Screen.Capture.route,
-                Screen.History.route,
-                Screen.Profiles.route,
-                Screen.Settings.route,
-            )
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        MainContentBox(
-            navController = navController,
-            activeRecordingState = activeRecordingState,
-            modifier = Modifier.weight(1f),
-        )
-        AnimatedVisibility(
-            visible = showBottomBar,
-            enter = slideInVertically { it } + fadeIn(),
-            exit = slideOutVertically { it } + fadeOut(),
-        ) {
-            NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
-                NavigationBarItem(
-                    selected = currentRoute == Screen.Capture.route,
-                    onClick = {
-                        navController.navigate(Screen.Capture.route) {
-                            popUpTo(Screen.Capture.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(Icons.Filled.Mic, contentDescription = "Record", modifier = Modifier.size(28.dp)) },
-                    label = { Text("Record") },
-                )
-                NavigationBarItem(
-                    selected = currentRoute == Screen.History.route,
-                    onClick = {
-                        navController.navigate(Screen.History.route) {
-                            popUpTo(Screen.Capture.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(Icons.Filled.History, contentDescription = "History", modifier = Modifier.size(28.dp)) },
-                    label = { Text("History") },
-                )
-                NavigationBarItem(
-                    selected = currentRoute == Screen.Profiles.route,
-                    onClick = {
-                        navController.navigate(Screen.Profiles.route) {
-                            popUpTo(Screen.Capture.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(Icons.Filled.Tune, contentDescription = "Profiles", modifier = Modifier.size(28.dp)) },
-                    label = { Text("Profiles") },
-                )
-                NavigationBarItem(
-                    selected = currentRoute == Screen.Settings.route,
-                    onClick = {
-                        navController.navigate(Screen.Settings.route) {
-                            popUpTo(Screen.Capture.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings", modifier = Modifier.size(28.dp)) },
-                    label = { Text("Settings") },
-                )
-            }
-        }
-    }
+    MainContentBox(
+        navController = navController,
+        activeRecordingState = activeRecordingState,
+        modifier = Modifier.fillMaxSize(),
+    )
 
     if (whatsNewState.isVisible) {
         AlertDialog(

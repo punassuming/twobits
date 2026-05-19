@@ -47,6 +47,8 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -207,35 +209,48 @@ fun SessionDetailScreen(
             TopAppBar(
                 title = {
                     val titleText = successState?.session?.title ?: "Session Review"
-                    if (successState != null) {
-                        Row(
-                            modifier =
-                                Modifier.clickable(
-                                    role = Role.Button,
-                                    onClickLabel = "Rename recording",
-                                    onClick = { showRenameDialog = true },
-                                ),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
+                    Column {
+                        if (successState != null) {
+                            Row(
+                                modifier =
+                                    Modifier.clickable(
+                                        role = Role.Button,
+                                        onClickLabel = "Rename recording",
+                                        onClick = { showRenameDialog = true },
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(text = titleText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Icon(
+                                    Icons.Filled.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            val subtitle =
+                                buildString {
+                                    append(
+                                        successState.session.createdAt
+                                            .atZone(ZoneId.systemDefault())
+                                            .format(DETAIL_DATE_FORMATTER),
+                                    )
+                                    if (successState.session.durationMs > 0L) {
+                                        append("  ·  ")
+                                        append(formatDuration(successState.session.durationMs))
+                                    }
+                                }
                             Text(
-                                text = titleText,
+                                subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Icon(
-                                Icons.Filled.Edit,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        } else {
+                            Text(text = titleText, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                    } else {
-                        Text(
-                            text = titleText,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
                     }
                 },
                 navigationIcon = {
@@ -306,7 +321,7 @@ fun SessionDetailScreen(
                                 .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
                     ) {
-                        SessionOverviewCard(state)
+                        SessionMetaStrip(state)
                         PlaybackCard(
                             state = state,
                             onTogglePlayback = viewModel::togglePlayback,
@@ -1171,6 +1186,54 @@ private fun TransformResultDialog(
             }
         },
     )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SessionMetaStrip(
+    state: SessionDetailUiState.Success,
+    modifier: Modifier = Modifier,
+) {
+    val session = state.session
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (session.isArchived) {
+            MetaChip(
+                icon = Icons.Filled.Archive,
+                text = "Archived",
+                tint = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+        MetaChip(
+            icon = Icons.Filled.Mic,
+            text = session.mode.label,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        session.locationLabel?.let { loc ->
+            MetaChip(icon = Icons.Filled.LocationOn, text = loc)
+        }
+        session.tags.forEach { tag -> TagPill(tag = tag) }
+    }
+}
+
+@Composable
+private fun MetaChip(
+    icon: ImageVector,
+    text: String,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(13.dp), tint = tint)
+        Text(text, style = MaterialTheme.typography.labelSmall, color = tint)
+    }
 }
 
 @Composable
@@ -2204,3 +2267,6 @@ private fun formatUsd(amount: Double): String = "$" + String.format("%.2f", amou
 
 private val SUMMARY_TIME_FORMATTER: DateTimeFormatter =
     DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")
+
+private val DETAIL_DATE_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM d · h:mm a")

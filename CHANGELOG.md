@@ -10,6 +10,11 @@
 
 ### Improvements
 
+* remove bottom navigation bar — replaced with Settings and History icons in the home top bar; profiles route through Settings (Intelligence section) which is the first item visible when Settings opens
+* restyle home session cards to match design — title full-width with mode badge and location on a dedicated row below; mini waveform now appears before the metadata row; tasks badge uses secondary container background; tags displayed as #tag pills
+* add date·duration subtitle to session detail header — recording date and duration shown in the TopAppBar below the title, freeing vertical space above the waveform
+* replace verbose "Recording details" card with compact MetaStrip — mode badge, location, and tags displayed as an inline chip row directly below the session title, moving key context closer to the header
+* remove back arrow from History top bar in browse mode — Close icon remains during multi-select; navigation uses system back gesture
 * migrate speaker timeline to waveform bar colors — instead of a separate row-per-speaker below the waveform, each bar in the waveform is now colored by the active speaker at that timestamp (played bars at 0.85 alpha, unplayed at 0.40); a compact dot + label legend replaces the old segment bar rows
 
 * add ±10 second skip buttons to audio playback — Replay10 and Forward10 icon buttons flank play/pause in the playback card for quick seek without scrubbing the waveform
