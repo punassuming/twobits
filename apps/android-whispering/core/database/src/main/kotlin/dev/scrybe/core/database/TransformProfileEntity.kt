@@ -15,4 +15,5 @@ data class TransformProfileEntity(
     val modelName: String? = null,
     val iconName: String = "MIC",
     val colorName: String = "BLUE",
+    val mode: String? = null,
 )

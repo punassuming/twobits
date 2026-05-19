@@ -9,6 +9,7 @@ import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transforms.OpenAiProfileSuggestionService
 import dev.scrybe.core.transforms.ProfileSuggestion
@@ -59,6 +60,7 @@ data class ProfileEditorDraft(
     val modelName: String? = null,
     val iconName: String = "MIC",
     val colorName: String = "BLUE",
+    val mode: RecordingMode? = null,
 )
 
 internal fun TransformProfile.toDraft(): ProfileEditorDraft =
@@ -72,6 +74,7 @@ internal fun TransformProfile.toDraft(): ProfileEditorDraft =
         modelName = modelName,
         iconName = iconName,
         colorName = colorName,
+        mode = mode,
     )
 
 @HiltViewModel
@@ -154,6 +157,7 @@ class ProfilesViewModel
                         modelName = draft.modelName?.takeIf { it.isNotBlank() },
                         iconName = draft.iconName,
                         colorName = draft.colorName,
+                        mode = draft.mode?.name,
                     ),
                 )
                 if (draft.isDefault) {
@@ -229,5 +233,6 @@ class ProfilesViewModel
                 modelName = entity.modelName,
                 iconName = entity.iconName,
                 colorName = entity.colorName,
+                mode = entity.mode?.let { runCatching { RecordingMode.valueOf(it) }.getOrNull() },
             )
     }

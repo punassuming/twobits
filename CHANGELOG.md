@@ -6,8 +6,11 @@
 
 * add profile icon and color identity — each profile now has a colored icon avatar (16 icon choices, 6 accent colors) shown in the profile list and editor; DB migrated to v12 with iconName/colorName columns
 * add profile template quick-start — creating a new profile shows four template cards (Daily Standup, Product Ideas, Interview, Voice Journal) that pre-fill name, icon, color, and prompt steps
+* add profile mode field — each profile now carries an optional RecordingMode; DB migrated to v13 with mode column; profile editor shows a mode chip picker; profile cards and detail header show a mode badge; built-in templates are pre-assigned their natural modes
 
 ### Improvements
+
+* migrate speaker timeline to waveform bar colors — instead of a separate row-per-speaker below the waveform, each bar in the waveform is now colored by the active speaker at that timestamp (played bars at 0.85 alpha, unplayed at 0.40); a compact dot + label legend replaces the old segment bar rows
 
 * add ±10 second skip buttons to audio playback — Replay10 and Forward10 icon buttons flank play/pause in the playback card for quick seek without scrubbing the waveform
 * replace theme picker dialog with inline segmented buttons — Appearance section now shows System / Light / Dark buttons directly, removing the extra tap to open a dialog

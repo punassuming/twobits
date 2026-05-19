@@ -139,6 +139,7 @@ private data class ProfileTemplate(
     val iconName: String,
     val colorName: String,
     val steps: List<String>,
+    val mode: RecordingMode? = null,
 )
 
 private val PROFILE_TEMPLATES =
@@ -148,12 +149,14 @@ private val PROFILE_TEMPLATES =
             iconName = "GROUPS",
             colorName = "BLUE",
             steps = listOf("Summarize this standup: what each person is working on, blockers, and key decisions. Use {{transcript}}."),
+            mode = RecordingMode.MEETING,
         ),
         ProfileTemplate(
             name = "Product Ideas",
             iconName = "LIGHTBULB",
             colorName = "AMBER",
             steps = listOf("Turn this voice note into a structured list of product ideas with brief descriptions. Use {{transcript}}."),
+            mode = RecordingMode.IDEA,
         ),
         ProfileTemplate(
             name = "Interview",
@@ -164,12 +167,14 @@ private val PROFILE_TEMPLATES =
                     "Format this interview into a clean Q&A with speaker labels. Use {{transcript}}.",
                     "Extract 3-5 key highlights and notable quotes. Use {{current_text}}.",
                 ),
+            mode = RecordingMode.INTERVIEW,
         ),
         ProfileTemplate(
             name = "Voice Journal",
             iconName = "BOOK",
             colorName = "PINK",
             steps = listOf("Clean up and format this journal entry, improving grammar and flow while keeping the personal voice. Use {{transcript}}."),
+            mode = RecordingMode.JOURNAL,
         ),
     )
 
@@ -409,6 +414,7 @@ private fun ProfileRowHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ProfileIconAvatar(iconName = profile.iconName, colorName = profile.colorName)
+        profile.mode?.let { ProfileModeBadge(mode = it) }
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -575,7 +581,23 @@ private fun ProfileDetailView(
                 icon = Icons.Filled.Mic,
                 isOpen = modeOpen,
                 onToggle = { modeOpen = !modeOpen },
-            ) { ModeOptionRows() }
+            ) {
+                if (profile.mode != null) {
+                    Text(profile.mode.label, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        profile.mode.outputDescription,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Text("Any mode", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "This profile applies to any recording mode",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             BuilderSection(
                 title = "AI Transforms",
                 icon = Icons.Filled.AutoAwesome,
@@ -619,6 +641,7 @@ private fun ProfileDetailHeader(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        profile.mode?.let { ProfileModeBadge(mode = it) }
         IconButton(onClick = onEdit) {
             Icon(Icons.Filled.Edit, contentDescription = "Edit profile")
         }
@@ -826,12 +849,13 @@ private fun ProfileEditorFormBody(
     ) {
         if (draft.existingId == null) {
             ProfileTemplateSection { template ->
-                onUpdate(draft.copy(name = template.name, iconName = template.iconName, colorName = template.colorName, steps = template.steps))
+                onUpdate(draft.copy(name = template.name, iconName = template.iconName, colorName = template.colorName, steps = template.steps, mode = template.mode))
             }
         }
         ProfilePromptInputsCard()
         OutlinedTextField(value = draft.name, onValueChange = { onUpdate(draft.copy(name = it)) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(value = draft.description, onValueChange = { onUpdate(draft.copy(description = it)) }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+        ProfileModePickerRow(selectedMode = draft.mode, onModeSelected = { onUpdate(draft.copy(mode = it)) })
         ProfileAppearanceSection(draft = draft, onUpdate = onUpdate)
         ProfileStepsSection(draft = draft, onUpdate = onUpdate)
         ProfileProviderSection(draft = draft, onUpdate = onUpdate)
@@ -912,6 +936,44 @@ private fun ProfileProviderSection(
         }
     }
     ModelPickerRow(draft = draft, onUpdate = onUpdate)
+}
+
+@Composable
+private fun ProfileModePickerRow(
+    selectedMode: RecordingMode?,
+    onModeSelected: (RecordingMode?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Mode", style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = selectedMode == null, onClick = { onModeSelected(null) }, label = { Text("Any") })
+            RecordingMode.entries.forEach { mode ->
+                FilterChip(
+                    selected = selectedMode == mode,
+                    onClick = { onModeSelected(mode) },
+                    label = { Text(mode.label) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileModeBadge(mode: RecordingMode) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.extraSmall,
+    ) {
+        Text(
+            text = mode.label,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
 }
 
 @Composable

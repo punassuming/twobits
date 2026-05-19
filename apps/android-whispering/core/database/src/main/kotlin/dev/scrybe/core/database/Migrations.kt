@@ -123,3 +123,10 @@ val MIGRATION_11_12: Migration =
             db.execSQL("ALTER TABLE transform_profiles ADD COLUMN colorName TEXT NOT NULL DEFAULT 'BLUE'")
         }
     }
+
+val MIGRATION_12_13: Migration =
+    object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE transform_profiles ADD COLUMN mode TEXT DEFAULT NULL")
+        }
+    }
