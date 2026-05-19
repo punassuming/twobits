@@ -22,6 +22,14 @@
 * add audio storage visualization bar in Usage section — shows a LinearProgressIndicator with "X.X / 10 GB" label so storage consumption is visible at a glance
 * add "Add integration" row to Integrations section — Browse entry at the bottom of the integrations list matches the design handoff
 
+### Improvements
+
+* add mode-specific accent colors to recording mode picker — each mode card now highlights with its own color when selected (Meeting=blue, Idea=amber, Tasks=green, Conversation=purple, Story=pink, Interview=orange, Journal=muted); the output preview surface below the grid updates to the same accent tint
+* animate recording indicator dot — the red dot in the recording header now pulses between full and 25% alpha on a 600 ms cycle while actively recording; it freezes when paused or stopping
+* add gradient opacity to amplitude waveform — the 6 most recent bars render in tertiary color at full opacity; older bars graduate from 18% to 65% opacity toward the live edge, giving the waveform a natural temporal fade
+* replace pause/resume icon button with text pill — the Pause/Resume control in the recording header is now a pill-shaped "Pause" / "Resume" label with surfaceVariant background, matching the design intent
+* refine stop control visual hierarchy — Stop primary button uses 14 dp corner radius and 14 dp vertical padding with semibold text; secondary button uses a lighter outlineVariant border and muted text at 11 dp vertical padding
+
 ### Fixes
 
 * fix cross-module smart cast for profile.mode in ProfileDetailView — capture property to local val before null check to satisfy Kotlin compiler
