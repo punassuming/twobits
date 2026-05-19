@@ -582,10 +582,11 @@ private fun ProfileDetailView(
                 isOpen = modeOpen,
                 onToggle = { modeOpen = !modeOpen },
             ) {
-                if (profile.mode != null) {
-                    Text(profile.mode.label, style = MaterialTheme.typography.bodyMedium)
+                val mode = profile.mode
+                if (mode != null) {
+                    Text(mode.label, style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        profile.mode.outputDescription,
+                        mode.outputDescription,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

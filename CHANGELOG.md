@@ -19,6 +19,8 @@
 
 ### Fixes
 
+* fix cross-module smart cast for profile.mode in ProfileDetailView — capture property to local val before null check to satisfy Kotlin compiler
+
 ## 0.24.0 (2026-05-18)
 
 ### Features
