@@ -33,4 +33,13 @@ interface SessionTaskDao {
             "WHERE isDone = 0 GROUP BY sessionId",
     )
     fun getOpenTaskCountsPerSession(): Flow<List<SessionTaskCount>>
+
+    @Query("SELECT * FROM session_tasks ORDER BY isDone ASC, createdAt DESC")
+    fun getAllTasks(): Flow<List<SessionTaskEntity>>
+
+    @Query("SELECT COUNT(*) FROM session_tasks WHERE isDone = 0")
+    fun getAllOpenTaskCount(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT sessionId) FROM session_tasks WHERE isDone = 0")
+    fun getSessionsWithOpenTaskCount(): Flow<Int>
 }

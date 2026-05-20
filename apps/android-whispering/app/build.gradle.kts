@@ -115,9 +115,10 @@ dependencies {
     implementation(project(":feature:capture"))
     implementation(project(":feature:file-manager"))
     implementation(project(":feature:history"))
-    implementation(project(":feature:session-detail"))
     implementation(project(":feature:profiles"))
+    implementation(project(":feature:session-detail"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:tasks"))
     implementation(project(":service:recording"))
 
     implementation(libs.androidx.core.ktx)

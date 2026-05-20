@@ -16,6 +16,7 @@ import dev.scrybe.feature.history.HistoryScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.SettingsScreen
+import dev.scrybe.feature.tasks.TaskInboxScreen
 
 sealed class Screen(
     val route: String,
@@ -33,6 +34,8 @@ sealed class Screen(
     object FileManager : Screen("file_manager")
 
     object Settings : Screen("settings")
+
+    object Tasks : Screen("tasks")
 }
 
 @Composable
@@ -103,6 +106,7 @@ fun ScrybeNavHost(navController: NavHostController) {
                     navController.navigate(Screen.SessionDetail.createRoute(sessionId))
                 },
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateToTasks = { navController.navigate(Screen.Tasks.route) },
             )
         }
         composable(Screen.SessionDetail.route) { backStackEntry ->
@@ -120,6 +124,14 @@ fun ScrybeNavHost(navController: NavHostController) {
         }
         composable(Screen.FileManager.route) {
             FileManagerScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(Screen.Tasks.route) {
+            TaskInboxScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSession = { sessionId ->
+                    navController.navigate(Screen.SessionDetail.createRoute(sessionId))
+                },
+            )
         }
         composable(
             Screen.Settings.route,

@@ -73,6 +73,8 @@ sealed interface HistoryUiState {
         val availableTags: List<Pair<String, Int>> = emptyList(),
         val semanticSearchLoading: Boolean = false,
         val semanticRankedIds: List<String>? = null,
+        val openTaskCount: Int = 0,
+        val sessionsWithTasksCount: Int = 0,
     ) : HistoryUiState
 
     data class Error(

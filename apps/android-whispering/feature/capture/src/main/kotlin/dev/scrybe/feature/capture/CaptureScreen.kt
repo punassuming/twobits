@@ -60,6 +60,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -603,7 +604,7 @@ private fun MiniWaveform(
     modifier: Modifier = Modifier,
 ) {
     val barColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-    Canvas(modifier = modifier.height(20.dp)) {
+    Canvas(modifier = modifier.height(28.dp)) {
         if (samples.isEmpty()) return@Canvas
         val targetCount = 40
         val step = samples.size.toFloat() / targetCount
@@ -683,9 +684,10 @@ private fun ModeCard(
 
 @Composable
 private fun ModeBadge(mode: RecordingMode) {
+    val accentColor = modeAccentColor(mode)
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = accentColor.copy(alpha = 0.18f),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -695,13 +697,13 @@ private fun ModeBadge(mode: RecordingMode) {
             Icon(
                 imageVector = modeIcon(mode),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                tint = accentColor,
                 modifier = Modifier.size(12.dp),
             )
             Text(
                 text = mode.label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = accentColor,
             )
         }
     }
@@ -730,27 +732,7 @@ private fun HomeSessionCard(
             if (session.waveformSamples.isNotEmpty()) {
                 MiniWaveform(samples = session.waveformSamples, modifier = Modifier.fillMaxWidth())
             }
-            HomeSessionCardMeta(session = session)
-            if (session.tags.isNotEmpty()) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    session.tags.take(3).forEach { tag ->
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                        ) {
-                            Text(
-                                text = "#$tag",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
+            HomeSessionCardFooter(session = session)
             session.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
                 Text(
                     text = preview,
@@ -836,21 +818,26 @@ private fun formatCardDuration(durationMs: Long): String {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HomeSessionCardMeta(session: RecentCaptureSession) {
+private fun HomeSessionCardFooter(session: RecentCaptureSession) {
     val hasMultipleSpeakers = session.speakerCount > 1
+    val hasOpenTasks = session.openTaskCount > 0
     val isArchived = session.isArchived
     val hasSpecialStatus =
         session.status == SessionStatus.FAILED ||
             session.status == SessionStatus.TRANSCRIBING ||
             session.status == SessionStatus.PARTIAL_TRANSCRIPTION
-    val hasOpenTasks = session.openTaskCount > 0
-    val hasMeta = hasMultipleSpeakers || isArchived || hasSpecialStatus || hasOpenTasks
-    if (!hasMeta) return
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    val hasContent =
+        hasMultipleSpeakers ||
+            hasOpenTasks ||
+            isArchived ||
+            hasSpecialStatus ||
+            session.tags.isNotEmpty()
+    if (!hasContent) return
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         if (isArchived) {
             Icon(
@@ -888,28 +875,40 @@ private fun HomeSessionCardMeta(session: RecentCaptureSession) {
             }
         }
         if (hasOpenTasks) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.secondaryContainer,
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Filled.TaskAlt,
-                        contentDescription = null,
-                        modifier = Modifier.size(11.dp),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                    Text(
-                        "${session.openTaskCount} task${if (session.openTaskCount == 1) "" else "s"}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
+            SessionTasksChip(count = session.openTaskCount)
+        }
+        session.tags.take(3).forEach { tag ->
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                Text(
+                    text = "#$tag",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun SessionTasksChip(count: Int) {
+    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.tertiaryContainer) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.TaskAlt,
+                contentDescription = null,
+                modifier = Modifier.size(11.dp),
+                tint = MaterialTheme.colorScheme.tertiary,
+            )
+            Text(
+                "$count task${if (count == 1) "" else "s"}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
         }
     }
 }
@@ -933,6 +932,7 @@ private fun ModeFilterRow(
             label = { Text("All") },
         )
         RecordingMode.entries.forEach { mode ->
+            val accentColor = modeAccentColor(mode)
             FilterChip(
                 selected = selected == mode,
                 onClick = { onSelect(if (selected == mode) null else mode) },
@@ -940,6 +940,12 @@ private fun ModeFilterRow(
                 leadingIcon = {
                     Icon(modeIcon(mode), contentDescription = null, modifier = Modifier.size(16.dp))
                 },
+                colors =
+                    FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = accentColor.copy(alpha = 0.18f),
+                        selectedLabelColor = accentColor,
+                        selectedLeadingIconColor = accentColor,
+                    ),
             )
         }
     }

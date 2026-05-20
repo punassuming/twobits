@@ -18,6 +18,7 @@ import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.database.PersonDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
+import dev.scrybe.core.database.SessionTaskDao
 import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao
@@ -107,6 +108,7 @@ class HistoryViewModel
     constructor(
         @ApplicationContext private val context: Context,
         private val recordingSessionDao: RecordingSessionDao,
+        private val sessionTaskDao: SessionTaskDao,
         private val transcriptDao: TranscriptDao,
         private val transformRunDao: TransformRunDao,
         private val transformProfileDao: TransformProfileDao,
@@ -380,7 +382,9 @@ class HistoryViewModel
                 baseUiState,
                 semanticSearchLoading,
                 semanticRankedIds,
-            ) { base, semanticLoading, semanticIds ->
+                sessionTaskDao.getAllOpenTaskCount(),
+                sessionTaskDao.getSessionsWithOpenTaskCount(),
+            ) { base, semanticLoading, semanticIds, openTaskCount, sessionsWithTasks ->
                 if (base !is HistoryUiState.Success) return@combine base
                 val rankedSessions =
                     if (semanticIds != null) {
@@ -395,6 +399,8 @@ class HistoryViewModel
                     sessions = rankedSessions,
                     semanticSearchLoading = semanticLoading,
                     semanticRankedIds = semanticIds,
+                    openTaskCount = openTaskCount,
+                    sessionsWithTasksCount = sessionsWithTasks,
                 )
             }.catch { emit(HistoryUiState.Error(it.message ?: "Unknown error")) }
                 .stateIn(

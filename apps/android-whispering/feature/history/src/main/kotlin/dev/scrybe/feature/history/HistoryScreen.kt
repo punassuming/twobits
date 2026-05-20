@@ -10,6 +10,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,6 +99,7 @@ import kotlinx.coroutines.launch
 fun HistoryScreen(
     onSessionClick: (String) -> Unit,
     onNavigateBack: () -> Unit,
+    onNavigateToTasks: () -> Unit = {},
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -372,6 +374,13 @@ fun HistoryScreen(
                             onNavigate = { viewModel.navigateToFolder(it) },
                             onCreateFolder = { showCreateFolder = true },
                         )
+                        if (state.openTaskCount > 0) {
+                            TaskNudgeBanner(
+                                openTaskCount = state.openTaskCount,
+                                sessionsWithTasksCount = state.sessionsWithTasksCount,
+                                onClick = onNavigateToTasks,
+                            )
+                        }
                         if (state.availableTags.isNotEmpty()) {
                             TagFilterRow(
                                 availableTags = state.availableTags,
@@ -1093,6 +1102,48 @@ private fun TagFilterRow(
                         null
                     },
             )
+        }
+    }
+}
+
+@Composable
+private fun TaskNudgeBanner(
+    openTaskCount: Int,
+    sessionsWithTasksCount: Int,
+    onClick: () -> Unit,
+) {
+    val sessionWord = if (sessionsWithTasksCount == 1) "session" else "sessions"
+    Surface(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    "$openTaskCount open task${if (openTaskCount == 1) "" else "s"} across $sessionsWithTasksCount $sessionWord",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    "Tap to review",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                )
+            }
         }
     }
 }
