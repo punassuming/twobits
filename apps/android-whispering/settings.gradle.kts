@@ -90,6 +90,7 @@ include(":feature:history")
 include(":feature:profiles")
 include(":feature:session-detail")
 include(":feature:settings")
+include(":feature:tasks")
 
 // Service modules
 include(":service:recording")

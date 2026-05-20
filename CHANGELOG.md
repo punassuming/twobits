@@ -4,6 +4,9 @@
 
 ### Features
 
+* add global task inbox screen — new Tasks screen aggregates all action items extracted across recording sessions into one inbox with Today/Week/Mine stat cards, filter tabs (Open/Today/Week/Mine/Delegated/Done), and task rows grouped by due date; accessible via nudge banner in History screen
+* add task nudge banner to History screen — when any sessions have open action items, a dismissible banner appears at the top of the session list showing the open task count and session count; tapping navigates to the Task Inbox
+
 ### Improvements
 
 * add ±10 second skip buttons to audio playback — Replay10 and Forward10 icon buttons flank play/pause in the playback card for quick seek without scrubbing the waveform
