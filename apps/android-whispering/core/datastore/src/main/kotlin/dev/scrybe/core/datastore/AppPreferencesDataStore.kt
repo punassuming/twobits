@@ -59,6 +59,8 @@ class AppPreferencesDataStore
             val DELETED_DEFAULT_PROFILE_IDS = stringPreferencesKey("deleted_default_profile_ids")
             val ENABLE_SPEAKER_IDENTIFICATION = booleanPreferencesKey("enable_speaker_identification")
             val ENABLE_INSIGHT_ANALYSIS = booleanPreferencesKey("enable_insight_analysis")
+            val HAS_SEEN_ONBOARDING = booleanPreferencesKey("has_seen_onboarding")
+            val OPENAI_API_KEY = stringPreferencesKey("openai_api_key")
         }
 
         val defaultProvider: Flow<String> =
@@ -217,6 +219,16 @@ class AppPreferencesDataStore
                     ?: emptySet()
             }
 
+        val hasSeenOnboarding: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.HAS_SEEN_ONBOARDING] ?: false
+            }
+
+        val openAiApiKey: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.OPENAI_API_KEY] ?: ""
+            }
+
         suspend fun setDefaultProvider(provider: String) {
             context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PROVIDER] = provider }
         }
@@ -337,6 +349,14 @@ class AppPreferencesDataStore
 
         suspend fun setEnableInsightAnalysis(enabled: Boolean) {
             context.dataStore.edit { prefs -> prefs[Keys.ENABLE_INSIGHT_ANALYSIS] = enabled }
+        }
+
+        suspend fun setOnboardingSeen() {
+            context.dataStore.edit { prefs -> prefs[Keys.HAS_SEEN_ONBOARDING] = true }
+        }
+
+        suspend fun setOpenAiApiKey(key: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.OPENAI_API_KEY] = key }
         }
 
         suspend fun addDeletedDefaultProfileId(id: String) {
