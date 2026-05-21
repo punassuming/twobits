@@ -3,6 +3,7 @@ package dev.scrybe.feature.capture
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.EaseInOut
@@ -71,6 +72,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -157,6 +159,10 @@ fun CaptureScreen(
             }
         }
 
+    BackHandler(enabled = uiState.phase != CapturePhase.IDLE) {
+        // No-op: keep user on screen while recording; foreground service continues.
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -182,6 +188,7 @@ fun CaptureScreen(
                     state = uiState,
                     paddingValues = paddingValues,
                     onStop = viewModel::stopRecording,
+                    onBack = {},
                     onCancel = viewModel::cancelRecording,
                     onPause = viewModel::pauseRecording,
                     onResume = viewModel::resumeRecording,
@@ -292,6 +299,7 @@ private fun RecordingActiveView(
     state: CaptureUiState,
     paddingValues: PaddingValues,
     onStop: () -> Unit,
+    onBack: () -> Unit,
     onCancel: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -308,7 +316,7 @@ private fun RecordingActiveView(
             state = state,
             isStopping = isStopping,
             isPaused = isPaused,
-            onCancel = onCancel,
+            onBack = onBack,
             onPause = onPause,
             onResume = onResume,
         )
@@ -327,6 +335,7 @@ private fun RecordingActiveView(
             modeName = state.activeMode.label,
             enabled = !isStopping,
             onStop = onStop,
+            onCancel = onCancel,
         )
     }
 }
@@ -337,7 +346,7 @@ private fun RecordingActiveHeader(
     state: CaptureUiState,
     isStopping: Boolean,
     isPaused: Boolean,
-    onCancel: () -> Unit,
+    onBack: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
 ) {
@@ -345,8 +354,8 @@ private fun RecordingActiveHeader(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onCancel, enabled = !isStopping) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel recording")
+        IconButton(onClick = onBack, enabled = !isStopping) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
         }
         ModeBadge(mode = state.activeMode)
         Spacer(Modifier.weight(1f))
@@ -436,6 +445,7 @@ private fun RecordingStopButtons(
     modeName: String,
     enabled: Boolean,
     onStop: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
@@ -465,6 +475,17 @@ private fun RecordingStopButtons(
                 "Stop, save raw transcript only",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(
+            onClick = onCancel,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                "Cancel recording",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
             )
         }
     }

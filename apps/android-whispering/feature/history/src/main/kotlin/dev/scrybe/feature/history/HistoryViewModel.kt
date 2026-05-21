@@ -209,15 +209,21 @@ class HistoryViewModel
             }
         }
 
+        private val openTaskCountsPerSession =
+            sessionTaskDao.getOpenTaskCountsPerSession()
+
         private val baseUiState =
             combine(
                 recordingSessionDao.getAllSessions(),
                 transcriptDao.getAllTranscripts(),
                 historyUiInputs,
                 transformingSessionIds,
-                folderNavState,
-            ) { entities, transcripts, inputs, currentlyTransforming, folderNav ->
+                combine(folderNavState, openTaskCountsPerSession) { nav, counts -> nav to counts },
+            ) { entities, transcripts, inputs, currentlyTransforming, folderNavAndCounts ->
+                val folderNav = folderNavAndCounts.first
+                val taskCounts = folderNavAndCounts.second
                 val speakerPersonNames = folderNav.speakerPersonNames
+                val taskCountMap = taskCounts.associate { it.sessionId to it.count }
                 val sessions =
                     entities.map { entity ->
                         RecordingSession(
@@ -267,6 +273,8 @@ class HistoryViewModel
                         }.filter { session ->
                             inputs.filters.selectedTag == null || inputs.filters.selectedTag in session.tags
                         }.filter { session ->
+                            inputs.filters.selectedMode == null || session.mode == inputs.filters.selectedMode
+                        }.filter { session ->
                             if (inputs.query.isBlank()) {
                                 true
                             } else {
@@ -290,6 +298,8 @@ class HistoryViewModel
                             HistorySessionItem(
                                 session = session,
                                 transcriptPreview = latestTranscriptBySession[session.id],
+                                speakerCount = speakerPersonNames[session.id]?.size ?: 0,
+                                openTaskCount = taskCountMap[session.id] ?: 0,
                             )
                         }
 
@@ -336,6 +346,8 @@ class HistoryViewModel
                                     HistorySessionItem(
                                         session = session,
                                         transcriptPreview = latestTranscriptBySession[session.id],
+                                        speakerCount = speakerPersonNames[session.id]?.size ?: 0,
+                                        openTaskCount = taskCountMap[session.id] ?: 0,
                                     )
                                 }
                         }
@@ -409,6 +421,12 @@ class HistoryViewModel
                     initialValue = HistoryUiState.Loading,
                 )
 
+        val folderTree: StateFlow<List<FolderNode>> =
+            folderNavState
+                .map { nav ->
+                    buildFolderTree(nav.allFolders)
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
         fun updateQuery(value: String) {
             query.value = value
             if (semanticRankedIds.value != null) semanticRankedIds.value = null
@@ -421,6 +439,10 @@ class HistoryViewModel
 
         fun selectTag(tag: String?) {
             filters.value = filters.value.copy(selectedTag = tag)
+        }
+
+        fun selectMode(mode: RecordingMode?) {
+            filters.value = filters.value.copy(selectedMode = mode)
         }
 
         fun triggerSemanticSearch(query: String) {
@@ -1307,6 +1329,21 @@ private fun buildBreadcrumb(
         folderId = folder.parentFolderId
     }
     return trail
+}
+
+internal fun buildFolderTree(allFolders: List<Folder>): List<FolderNode> {
+    val result = mutableListOf<FolderNode>()
+    fun visit(parentId: String?, depth: Int) {
+        allFolders
+            .filter { it.parentFolderId == parentId }
+            .sortedBy { it.name.lowercase() }
+            .forEach { folder ->
+                result.add(FolderNode(id = folder.id, name = folder.name, sessionCount = 0, depth = depth))
+                visit(folder.id, depth + 1)
+            }
+    }
+    visit(null, 0)
+    return result
 }
 
 internal fun isEligibleForTranscription(status: SessionStatus): Boolean =
