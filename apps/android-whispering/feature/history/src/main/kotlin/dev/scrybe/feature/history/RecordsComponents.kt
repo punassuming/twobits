@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -43,7 +42,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -64,7 +62,6 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonSearch
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
@@ -91,7 +88,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -121,7 +117,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
@@ -136,7 +131,10 @@ import kotlin.math.roundToInt
 private const val RECORD_WAVEFORM_TARGET_BAR_COUNT = 120
 private val RECORD_WAVEFORM_MAX_BAR_WIDTH = 2.dp
 
-private fun modeAccentColor(mode: RecordingMode, colors: ColorScheme): Color =
+private fun modeAccentColor(
+    mode: RecordingMode,
+    colors: ColorScheme,
+): Color =
     when (mode) {
         RecordingMode.MEETING -> colors.primary
         RecordingMode.IDEA -> colors.tertiary
@@ -177,7 +175,11 @@ private fun HistoryModeBadge(mode: RecordingMode) {
 }
 
 @Composable
-private fun HistoryMiniWaveform(samples: List<Float>, accentColor: Color, modifier: Modifier = Modifier) {
+private fun HistoryMiniWaveform(
+    samples: List<Float>,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+) {
     val barCount = 22
     val normalized =
         if (samples.isEmpty()) {
@@ -193,10 +195,11 @@ private fun HistoryMiniWaveform(samples: List<Float>, accentColor: Color, modifi
     ) {
         normalized.forEach { amp ->
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(amp.coerceIn(0.1f, 1f))
-                    .background(accentColor.copy(alpha = 0.55f), RoundedCornerShape(1.dp)),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight(amp.coerceIn(0.1f, 1f))
+                        .background(accentColor.copy(alpha = 0.55f), RoundedCornerShape(1.dp)),
             )
         }
     }
@@ -263,7 +266,13 @@ private fun RecordRowContent(item: HistorySessionItem) {
             }
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(item.session.createdAt.atZone(ZoneId.systemDefault()).format(HISTORY_TIME_FORMATTER), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                item.session.createdAt
+                    .atZone(ZoneId.systemDefault())
+                    .format(HISTORY_TIME_FORMATTER),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (item.session.durationMs > 0L) {
                 Text(formatDuration(item.session.durationMs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -306,18 +315,21 @@ internal fun RecordRow(
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth().combinedClickable(
-            onClick = { if (selectionEnabled) onToggleSelection() else onOpen() },
-            onLongClick = { if (selectionEnabled) onToggleSelection() else onLongPress() },
-        ),
+        modifier =
+            Modifier.fillMaxWidth().combinedClickable(
+                onClick = { if (selectionEnabled) onToggleSelection() else onOpen() },
+                onLongClick = { if (selectionEnabled) onToggleSelection() else onLongPress() },
+            ),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            },
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+            ),
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -374,43 +386,85 @@ private fun RecordDropdownMenu(
     onResetTranscriptionState: () -> Unit,
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        DropdownMenuItem(text = { Text("Open") }, leadingIcon = { Icon(Icons.Filled.History, null) }, onClick = { onDismiss(); onOpen() })
-        DropdownMenuItem(text = { Text("Open With") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null) }, onClick = { onDismiss(); onOpenWith() })
+        DropdownMenuItem(text = { Text("Open") }, leadingIcon = { Icon(Icons.Filled.History, null) }, onClick = {
+            onDismiss()
+            onOpen()
+        })
+        DropdownMenuItem(text = { Text("Open With") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null) }, onClick = {
+            onDismiss()
+            onOpenWith()
+        })
         val hasAiItems = item.session.status == SessionStatus.RECORDED || item.transcriptPreview != null
         if (hasAiItems) {
             DropdownSectionHeader("AI")
             if (item.session.status == SessionStatus.RECORDED) {
-                DropdownMenuItem(text = { Text("Transcribe") }, leadingIcon = { Icon(Icons.Filled.RecordVoiceOver, null) }, onClick = { onDismiss(); onRetryTranscription() })
+                DropdownMenuItem(text = { Text("Transcribe") }, leadingIcon = { Icon(Icons.Filled.RecordVoiceOver, null) }, onClick = {
+                    onDismiss()
+                    onRetryTranscription()
+                })
             }
             if (item.transcriptPreview != null) {
-                DropdownMenuItem(text = { Text("Transform…") }, leadingIcon = { Icon(Icons.Filled.AutoFixHigh, null) }, onClick = { onDismiss(); onTransform() })
+                DropdownMenuItem(text = { Text("Transform…") }, leadingIcon = { Icon(Icons.Filled.AutoFixHigh, null) }, onClick = {
+                    onDismiss()
+                    onTransform()
+                })
             }
         }
         DropdownSectionHeader("Export")
         if (item.transcriptPreview != null) {
-            DropdownMenuItem(text = { Text("Share Transcript") }, leadingIcon = { Icon(Icons.Filled.Share, null) }, onClick = { onDismiss(); onShareTranscript() })
+            DropdownMenuItem(text = { Text("Share Transcript") }, leadingIcon = { Icon(Icons.Filled.Share, null) }, onClick = {
+                onDismiss()
+                onShareTranscript()
+            })
         }
-        DropdownMenuItem(text = { Text("Save Copy") }, leadingIcon = { Icon(Icons.Filled.SaveAlt, null) }, onClick = { onDismiss(); onSaveCopy() })
+        DropdownMenuItem(text = { Text("Save Copy") }, leadingIcon = { Icon(Icons.Filled.SaveAlt, null) }, onClick = {
+            onDismiss()
+            onSaveCopy()
+        })
         DropdownSectionHeader("Manage")
-        DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { Icon(Icons.Filled.Edit, null) }, onClick = { onDismiss(); onRename() })
-        DropdownMenuItem(text = { Text("Manage Tags") }, leadingIcon = { Icon(Icons.Filled.Label, null) }, onClick = { onDismiss(); onManageTags() })
-        DropdownMenuItem(text = { Text("Move to Folder") }, leadingIcon = { Icon(Icons.Filled.DriveFileMove, null) }, onClick = { onDismiss(); onMoveToFolder() })
+        DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { Icon(Icons.Filled.Edit, null) }, onClick = {
+            onDismiss()
+            onRename()
+        })
+        DropdownMenuItem(text = { Text("Manage Tags") }, leadingIcon = { Icon(Icons.Filled.Label, null) }, onClick = {
+            onDismiss()
+            onManageTags()
+        })
+        DropdownMenuItem(text = { Text("Move to Folder") }, leadingIcon = { Icon(Icons.Filled.DriveFileMove, null) }, onClick = {
+            onDismiss()
+            onMoveToFolder()
+        })
         DropdownMenuItem(
             text = { Text(if (item.session.isArchived) "Restore" else "Archive") },
             leadingIcon = { Icon(if (item.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive, null) },
-            onClick = { onDismiss(); if (item.session.isArchived) onRestore() else onArchive() },
+            onClick = {
+                onDismiss()
+                if (item.session.isArchived) onRestore() else onArchive()
+            },
         )
-        DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { onDismiss(); onDelete() })
+        DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = {
+            onDismiss()
+            onDelete()
+        })
         DropdownSectionHeader("Info")
-        DropdownMenuItem(text = { Text("Information") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = { onDismiss(); onInfo() })
+        DropdownMenuItem(text = { Text("Information") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = {
+            onDismiss()
+            onInfo()
+        })
         val hasStatusItems = item.session.status == SessionStatus.FAILED || item.session.status == SessionStatus.TRANSCRIBING
         if (hasStatusItems) {
             DropdownSectionHeader("Status")
             if (item.session.status == SessionStatus.FAILED) {
-                DropdownMenuItem(text = { Text("Retry Transcription") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = { onDismiss(); onRetryTranscription() })
+                DropdownMenuItem(text = { Text("Retry Transcription") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = {
+                    onDismiss()
+                    onRetryTranscription()
+                })
             }
             if (item.session.status == SessionStatus.TRANSCRIBING) {
-                DropdownMenuItem(text = { Text("Clear Stuck State") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = { onDismiss(); onResetTranscriptionState() })
+                DropdownMenuItem(text = { Text("Clear Stuck State") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = {
+                    onDismiss()
+                    onResetTranscriptionState()
+                })
             }
         }
     }
@@ -434,11 +488,12 @@ internal fun HistoryModeFilterRow(
                 onClick = { onSelect(if (selected == mode) null else mode) },
                 label = { Text(mode.label) },
                 leadingIcon = { Icon(historyModeIcon(mode), contentDescription = null, modifier = Modifier.size(16.dp)) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = accentColor.copy(alpha = 0.18f),
-                    selectedLabelColor = accentColor,
-                    selectedLeadingIconColor = accentColor,
-                ),
+                colors =
+                    FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = accentColor.copy(alpha = 0.18f),
+                        selectedLabelColor = accentColor,
+                        selectedLeadingIconColor = accentColor,
+                    ),
             )
         }
     }
@@ -487,14 +542,20 @@ internal fun FolderNavigationSheet(
                 FolderSheetItem(
                     node = FolderNode(id = "", name = "All recordings", sessionCount = 0, depth = 0),
                     isSelected = currentFolderId == null,
-                    onSelect = { onSelectFolder(null); onDismiss() },
+                    onSelect = {
+                        onSelectFolder(null)
+                        onDismiss()
+                    },
                 )
             }
             items(folderTree, key = { it.id }) { node ->
                 FolderSheetItem(
                     node = node,
                     isSelected = node.id == currentFolderId,
-                    onSelect = { onSelectFolder(node.id); onDismiss() },
+                    onSelect = {
+                        onSelectFolder(node.id)
+                        onDismiss()
+                    },
                 )
             }
             item { Spacer(Modifier.height(24.dp)) }
