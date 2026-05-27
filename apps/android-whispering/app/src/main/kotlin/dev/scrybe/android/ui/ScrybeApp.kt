@@ -44,75 +44,96 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import dev.scrybe.android.navigation.Screen
 import dev.scrybe.android.navigation.ScrybeNavHost
+import dev.scrybe.feature.capture.OnboardingScreen
+import dev.scrybe.feature.capture.OnboardingViewModel
 
 @Composable
 fun ScrybeApp() {
+    val onboardingViewModel: OnboardingViewModel = hiltViewModel()
+    val hasSeenOnboarding by onboardingViewModel.hasSeenOnboarding.collectAsState()
+    if (hasSeenOnboarding == null) return
+    if (hasSeenOnboarding == false) {
+        OnboardingScreen(
+            onComplete = onboardingViewModel::completeOnboarding,
+            onSaveApiKey = onboardingViewModel::saveApiKey,
+        )
+        return
+    }
+    ScrybeMainContent()
+}
+
+@Composable
+private fun ScrybeMainContent() {
     val navController = rememberNavController()
     val whatsNewViewModel: WhatsNewViewModel = hiltViewModel()
     val activeRecordingViewModel: ActiveRecordingViewModel = hiltViewModel()
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
     val activeRecordingState by activeRecordingViewModel.uiState.collectAsState()
-
     MainContentBox(
         navController = navController,
         activeRecordingState = activeRecordingState,
         modifier = Modifier.fillMaxSize(),
     )
-
     if (whatsNewState.isVisible) {
-        AlertDialog(
-            onDismissRequest = whatsNewViewModel::dismiss,
-            title = {
-                Text(
-                    text =
-                        if (whatsNewState.isFirstRun) {
-                            "Welcome to Scrybe"
-                        } else if (whatsNewState.versionName.isBlank()) {
-                            "What's New"
-                        } else {
-                            "What's New in ${whatsNewState.versionName}"
-                        },
-                )
-            },
-            text = {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 400.dp)
-                            .verticalScroll(rememberScrollState()),
-                ) {
-                    if (whatsNewState.summary.isNotBlank()) {
-                        Text(
-                            text = whatsNewState.summary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Text(
-                        text = whatsNewState.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    whatsNewState.notes.forEach { note ->
-                        Text(
-                            text = "• $note",
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 8.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = whatsNewViewModel::dismiss) {
-                    Text(whatsNewState.confirmLabel)
-                }
-            },
-        )
+        WhatsNewDialog(state = whatsNewState, onDismiss = whatsNewViewModel::dismiss)
     }
+}
+
+@Composable
+private fun WhatsNewDialog(
+    state: WhatsNewUiState,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text =
+                    when {
+                        state.isFirstRun -> "Welcome to Scrybe"
+                        state.versionName.isBlank() -> "What's New"
+                        else -> "What's New in ${state.versionName}"
+                    },
+            )
+        },
+        text = {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState()),
+            ) {
+                if (state.summary.isNotBlank()) {
+                    Text(
+                        text = state.summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = state.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                state.notes.forEach { note ->
+                    Text(
+                        text = "• $note",
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(state.confirmLabel)
+            }
+        },
+    )
 }
 
 @Composable

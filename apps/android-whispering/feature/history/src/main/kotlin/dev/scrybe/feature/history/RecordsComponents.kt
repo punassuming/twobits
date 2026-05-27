@@ -17,16 +17,22 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -34,8 +40,8 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -45,25 +51,36 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,7 +88,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -101,8 +117,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.model.Folder
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TransformProfile
@@ -114,6 +130,162 @@ import kotlin.math.roundToInt
 
 private const val RECORD_WAVEFORM_TARGET_BAR_COUNT = 120
 private val RECORD_WAVEFORM_MAX_BAR_WIDTH = 2.dp
+
+private fun modeAccentColor(
+    mode: RecordingMode,
+    colors: ColorScheme,
+): Color =
+    when (mode) {
+        RecordingMode.MEETING -> colors.primary
+        RecordingMode.IDEA -> colors.tertiary
+        RecordingMode.TASKS -> colors.secondary
+        RecordingMode.CONVERSATION -> colors.primary
+        RecordingMode.STORY -> colors.tertiary
+        RecordingMode.INTERVIEW -> colors.secondary
+        RecordingMode.JOURNAL -> colors.onSurfaceVariant
+    }
+
+private fun historyModeIcon(mode: RecordingMode): ImageVector =
+    when (mode) {
+        RecordingMode.MEETING -> Icons.Filled.Groups
+        RecordingMode.IDEA -> Icons.Filled.Lightbulb
+        RecordingMode.TASKS -> Icons.Filled.TaskAlt
+        RecordingMode.CONVERSATION -> Icons.Filled.Forum
+        RecordingMode.STORY -> Icons.Filled.MenuBook
+        RecordingMode.INTERVIEW -> Icons.Filled.PersonSearch
+        RecordingMode.JOURNAL -> Icons.Filled.Book
+    }
+
+@Composable
+private fun HistoryModeBadge(mode: RecordingMode) {
+    val accentColor = modeAccentColor(mode, MaterialTheme.colorScheme)
+    Surface(
+        shape = CircleShape,
+        color = accentColor.copy(alpha = 0.12f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(historyModeIcon(mode), contentDescription = null, modifier = Modifier.size(11.dp), tint = accentColor)
+            Text(mode.label, style = MaterialTheme.typography.labelSmall, color = accentColor)
+        }
+    }
+}
+
+@Composable
+private fun HistoryMiniWaveform(
+    samples: List<Float>,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val barCount = 22
+    val normalized =
+        if (samples.isEmpty()) {
+            List(barCount) { 0.3f }
+        } else {
+            val step = samples.size.toFloat() / barCount
+            List(barCount) { i -> samples[(i * step).toInt().coerceAtMost(samples.size - 1)] }
+        }
+    Row(
+        modifier = modifier.height(28.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        normalized.forEach { amp ->
+            Box(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight(amp.coerceIn(0.1f, 1f))
+                        .background(accentColor.copy(alpha = 0.55f), RoundedCornerShape(1.dp)),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RecordRowFooter(item: HistorySessionItem) {
+    val hasSpeakers = item.speakerCount > 1
+    val hasTasks = item.openTaskCount > 0
+    val hasTags = item.session.tags.isNotEmpty()
+    if (!hasSpeakers && !hasTasks && !hasTags) return
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (hasSpeakers) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${item.speakerCount} speakers", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        if (hasTasks) {
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.TaskAlt, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.secondary)
+                    Text("${item.openTaskCount} task${if (item.openTaskCount == 1) "" else "s"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                }
+            }
+        }
+        item.session.tags.take(3).forEach { tag ->
+            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                Text("#$tag", modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordRowContent(item: HistorySessionItem) {
+    val accentColor = modeAccentColor(item.session.mode, MaterialTheme.colorScheme)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(item.session.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                HistoryModeBadge(mode = item.session.mode)
+                item.session.locationLabel?.let { loc ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(loc, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                item.session.createdAt
+                    .atZone(ZoneId.systemDefault())
+                    .format(HISTORY_TIME_FORMATTER),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (item.session.durationMs > 0L) {
+                Text(formatDuration(item.session.durationMs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    if (item.session.waveformSamples.isNotEmpty()) {
+        HistoryMiniWaveform(samples = item.session.waveformSamples, accentColor = accentColor, modifier = Modifier.fillMaxWidth())
+    }
+    RecordRowFooter(item = item)
+    item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
+        Text(preview, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -142,307 +314,251 @@ internal fun RecordRow(
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
 
-    SwipeRevealRow(
-        isArchived = item.session.isArchived,
-        enabled = !selectionEnabled,
-        onArchiveOrRestore = { if (item.session.isArchived) onRestore() else onArchive() },
-        onOpenTransformPicker = onTransform,
+    Card(
+        modifier =
+            Modifier.fillMaxWidth().combinedClickable(
+                onClick = { if (selectionEnabled) onToggleSelection() else onOpen() },
+                onLongClick = { if (selectionEnabled) onToggleSelection() else onLongPress() },
+            ),
+        shape = RoundedCornerShape(18.dp),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+            ),
     ) {
-        Surface(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(
-                        onClick = {
-                            if (selectionEnabled) onToggleSelection() else onOpen()
-                        },
-                        onLongClick = {
-                            if (selectionEnabled) onToggleSelection() else onLongPress()
-                        },
-                    ),
-            color =
-                if (selected) {
-                    MaterialTheme.colorScheme.secondaryContainer
-                } else {
-                    recordContainerColor(item.session.status, item.session.isArchived)
-                },
-            shape = MaterialTheme.shapes.large,
-        ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                WaveformBackdrop(
-                    samples = item.session.waveformSamples,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                )
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Icon(
-                        imageVector =
-                            if (selectionEnabled) {
-                                if (selected) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked
-                            } else {
-                                SessionStatusPresentation.icon(item.session.status, item.session.isArchived)
-                            },
-                        contentDescription =
-                            if (selectionEnabled) {
-                                null
-                            } else {
-                                SessionStatusPresentation.label(item.session.status, item.session.isArchived)
-                            },
-                        modifier =
-                            Modifier
-                                .padding(top = 2.dp)
-                                .then(if (selectionEnabled) Modifier.clickable { onToggleSelection() } else Modifier),
-                        tint =
-                            if (selectionEnabled) {
-                                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                            } else {
-                                SessionStatusPresentation.color(item.session.status, item.session.isArchived)
-                            },
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RecordRowContent(item = item)
+            }
+            if (!selectionEnabled) {
+                Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "Record actions")
+                    }
+                    RecordDropdownMenu(
+                        item = item,
+                        expanded = menuExpanded,
+                        onDismiss = { menuExpanded = false },
+                        onOpen = onOpen,
+                        onOpenWith = onOpenWith,
+                        onRetryTranscription = onRetryTranscription,
+                        onTransform = onTransform,
+                        onShareTranscript = onShareTranscript,
+                        onSaveCopy = onSaveCopy,
+                        onRename = onRename,
+                        onManageTags = onManageTags,
+                        onMoveToFolder = onMoveToFolder,
+                        onArchive = onArchive,
+                        onRestore = onRestore,
+                        onDelete = onDelete,
+                        onInfo = onInfo,
+                        onResetTranscriptionState = onResetTranscriptionState,
                     )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = item.session.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text =
-                                item.session.createdAt
-                                    .atZone(ZoneId.systemDefault())
-                                    .format(HISTORY_TIME_FORMATTER),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (showRecordingInfo) {
-                            Text(
-                                text = buildMetaLine(item.session),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        if (item.session.tags.isNotEmpty()) {
-                            val visibleTags = item.session.tags.take(3)
-                            val scrollState = rememberScrollState()
-                            Row(
-                                modifier = Modifier.horizontalScroll(scrollState),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                visibleTags.forEach { tag ->
-                                    SuggestionChip(
-                                        onClick = { onTagClick?.invoke(tag) },
-                                        label = {
-                                            Text(
-                                                text = tag,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                maxLines = 1,
-                                            )
-                                        },
-                                        modifier = Modifier.padding(0.dp),
-                                    )
-                                }
-                            }
-                        }
-                        item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
-                            Text(
-                                text = preview,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    if (!selectionEnabled) {
-                        Box {
-                            IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Filled.MoreVert, contentDescription = "Record actions")
-                            }
-                            DropdownMenu(
-                                expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Open") },
-                                    leadingIcon = { Icon(Icons.Filled.History, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onOpen()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Open With") },
-                                    leadingIcon = {
-                                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onOpenWith()
-                                    },
-                                )
-                                val hasAiItems =
-                                    item.session.status == SessionStatus.RECORDED ||
-                                        item.transcriptPreview != null
-                                if (hasAiItems) {
-                                    DropdownSectionHeader("AI")
-                                    if (item.session.status == SessionStatus.RECORDED) {
-                                        DropdownMenuItem(
-                                            text = { Text("Transcribe") },
-                                            leadingIcon = {
-                                                Icon(Icons.Filled.RecordVoiceOver, contentDescription = null)
-                                            },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onRetryTranscription()
-                                            },
-                                        )
-                                    }
-                                    if (item.transcriptPreview != null) {
-                                        DropdownMenuItem(
-                                            text = { Text("Transform…") },
-                                            leadingIcon = {
-                                                Icon(Icons.Filled.AutoFixHigh, contentDescription = null)
-                                            },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onTransform()
-                                            },
-                                        )
-                                    }
-                                }
-                                DropdownSectionHeader("Export")
-                                if (item.transcriptPreview != null) {
-                                    DropdownMenuItem(
-                                        text = { Text("Share Transcript") },
-                                        leadingIcon = {
-                                            Icon(Icons.Filled.Share, contentDescription = null)
-                                        },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onShareTranscript()
-                                        },
-                                    )
-                                }
-                                DropdownMenuItem(
-                                    text = { Text("Save Copy") },
-                                    leadingIcon = { Icon(Icons.Filled.SaveAlt, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onSaveCopy()
-                                    },
-                                )
-                                DropdownSectionHeader("Manage")
-                                DropdownMenuItem(
-                                    text = { Text("Rename") },
-                                    leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onRename()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Manage Tags") },
-                                    leadingIcon = { Icon(Icons.Filled.Label, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onManageTags()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Move to Folder") },
-                                    leadingIcon = {
-                                        Icon(Icons.Filled.DriveFileMove, contentDescription = null)
-                                    },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onMoveToFolder()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(if (item.session.isArchived) "Restore" else "Archive")
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            if (item.session.isArchived) {
-                                                Icons.Filled.Unarchive
-                                            } else {
-                                                Icons.Filled.Archive
-                                            },
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onClick = {
-                                        menuExpanded = false
-                                        if (item.session.isArchived) onRestore() else onArchive()
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Delete") },
-                                    leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onDelete()
-                                    },
-                                )
-                                DropdownSectionHeader("Info")
-                                DropdownMenuItem(
-                                    text = { Text("Information") },
-                                    leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
-                                    onClick = {
-                                        menuExpanded = false
-                                        onInfo()
-                                    },
-                                )
-                                val hasStatusItems =
-                                    item.session.status == SessionStatus.FAILED ||
-                                        item.session.status == SessionStatus.TRANSCRIBING
-                                if (hasStatusItems) {
-                                    DropdownSectionHeader("Status")
-                                    if (item.session.status == SessionStatus.FAILED) {
-                                        DropdownMenuItem(
-                                            text = { Text("Retry Transcription") },
-                                            leadingIcon = {
-                                                Icon(Icons.Filled.Refresh, contentDescription = null)
-                                            },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onRetryTranscription()
-                                            },
-                                        )
-                                    }
-                                    if (item.session.status == SessionStatus.TRANSCRIBING) {
-                                        DropdownMenuItem(
-                                            text = { Text("Clear Stuck State") },
-                                            leadingIcon = {
-                                                Icon(Icons.Filled.Refresh, contentDescription = null)
-                                            },
-                                            onClick = {
-                                                menuExpanded = false
-                                                onResetTranscriptionState()
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RecordDropdownMenu(
+    item: HistorySessionItem,
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onOpen: () -> Unit,
+    onOpenWith: () -> Unit,
+    onRetryTranscription: () -> Unit,
+    onTransform: () -> Unit,
+    onShareTranscript: () -> Unit,
+    onSaveCopy: () -> Unit,
+    onRename: () -> Unit,
+    onManageTags: () -> Unit,
+    onMoveToFolder: () -> Unit,
+    onArchive: () -> Unit,
+    onRestore: () -> Unit,
+    onDelete: () -> Unit,
+    onInfo: () -> Unit,
+    onResetTranscriptionState: () -> Unit,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(text = { Text("Open") }, leadingIcon = { Icon(Icons.Filled.History, null) }, onClick = {
+            onDismiss()
+            onOpen()
+        })
+        DropdownMenuItem(text = { Text("Open With") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null) }, onClick = {
+            onDismiss()
+            onOpenWith()
+        })
+        val hasAiItems = item.session.status == SessionStatus.RECORDED || item.transcriptPreview != null
+        if (hasAiItems) {
+            DropdownSectionHeader("AI")
+            if (item.session.status == SessionStatus.RECORDED) {
+                DropdownMenuItem(text = { Text("Transcribe") }, leadingIcon = { Icon(Icons.Filled.RecordVoiceOver, null) }, onClick = {
+                    onDismiss()
+                    onRetryTranscription()
+                })
+            }
+            if (item.transcriptPreview != null) {
+                DropdownMenuItem(text = { Text("Transform…") }, leadingIcon = { Icon(Icons.Filled.AutoFixHigh, null) }, onClick = {
+                    onDismiss()
+                    onTransform()
+                })
+            }
+        }
+        DropdownSectionHeader("Export")
+        if (item.transcriptPreview != null) {
+            DropdownMenuItem(text = { Text("Share Transcript") }, leadingIcon = { Icon(Icons.Filled.Share, null) }, onClick = {
+                onDismiss()
+                onShareTranscript()
+            })
+        }
+        DropdownMenuItem(text = { Text("Save Copy") }, leadingIcon = { Icon(Icons.Filled.SaveAlt, null) }, onClick = {
+            onDismiss()
+            onSaveCopy()
+        })
+        DropdownSectionHeader("Manage")
+        DropdownMenuItem(text = { Text("Rename") }, leadingIcon = { Icon(Icons.Filled.Edit, null) }, onClick = {
+            onDismiss()
+            onRename()
+        })
+        DropdownMenuItem(text = { Text("Manage Tags") }, leadingIcon = { Icon(Icons.Filled.Label, null) }, onClick = {
+            onDismiss()
+            onManageTags()
+        })
+        DropdownMenuItem(text = { Text("Move to Folder") }, leadingIcon = { Icon(Icons.Filled.DriveFileMove, null) }, onClick = {
+            onDismiss()
+            onMoveToFolder()
+        })
+        DropdownMenuItem(
+            text = { Text(if (item.session.isArchived) "Restore" else "Archive") },
+            leadingIcon = { Icon(if (item.session.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive, null) },
+            onClick = {
+                onDismiss()
+                if (item.session.isArchived) onRestore() else onArchive()
+            },
+        )
+        DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = {
+            onDismiss()
+            onDelete()
+        })
+        DropdownSectionHeader("Info")
+        DropdownMenuItem(text = { Text("Information") }, leadingIcon = { Icon(Icons.Filled.Info, null) }, onClick = {
+            onDismiss()
+            onInfo()
+        })
+        val hasStatusItems = item.session.status == SessionStatus.FAILED || item.session.status == SessionStatus.TRANSCRIBING
+        if (hasStatusItems) {
+            DropdownSectionHeader("Status")
+            if (item.session.status == SessionStatus.FAILED) {
+                DropdownMenuItem(text = { Text("Retry Transcription") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = {
+                    onDismiss()
+                    onRetryTranscription()
+                })
+            }
+            if (item.session.status == SessionStatus.TRANSCRIBING) {
+                DropdownMenuItem(text = { Text("Clear Stuck State") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = {
+                    onDismiss()
+                    onResetTranscriptionState()
+                })
+            }
+        }
+    }
+}
+
+@Composable
+internal fun HistoryModeFilterRow(
+    selected: RecordingMode?,
+    onSelect: (RecordingMode?) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FilterChip(selected = selected == null, onClick = { onSelect(null) }, label = { Text("All") })
+        RecordingMode.entries.forEach { mode ->
+            val accentColor = modeAccentColor(mode, MaterialTheme.colorScheme)
+            FilterChip(
+                selected = selected == mode,
+                onClick = { onSelect(if (selected == mode) null else mode) },
+                label = { Text(mode.label) },
+                leadingIcon = { Icon(historyModeIcon(mode), contentDescription = null, modifier = Modifier.size(16.dp)) },
+                colors =
+                    FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = accentColor.copy(alpha = 0.18f),
+                        selectedLabelColor = accentColor,
+                        selectedLeadingIconColor = accentColor,
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FolderSheetItem(
+    node: FolderNode,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onSelect),
+        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = (16 + node.depth * 20).dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(if (isSelected) Icons.Filled.FolderOpen else Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(node.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun FolderNavigationSheet(
+    folderTree: List<FolderNode>,
+    currentFolderId: String?,
+    onSelectFolder: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+        scrimColor = Color.Black.copy(alpha = 0.62f),
+    ) {
+        Text("Browse folders", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        HorizontalDivider()
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            item {
+                FolderSheetItem(
+                    node = FolderNode(id = "", name = "All recordings", sessionCount = 0, depth = 0),
+                    isSelected = currentFolderId == null,
+                    onSelect = {
+                        onSelectFolder(null)
+                        onDismiss()
+                    },
+                )
+            }
+            items(folderTree, key = { it.id }) { node ->
+                FolderSheetItem(
+                    node = node,
+                    isSelected = node.id == currentFolderId,
+                    onSelect = {
+                        onSelectFolder(node.id)
+                        onDismiss()
+                    },
+                )
+            }
+            item { Spacer(Modifier.height(24.dp)) }
         }
     }
 }

@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.MoreVert
@@ -60,6 +62,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -68,7 +71,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -106,6 +108,7 @@ fun HistoryScreen(
     val isAiWorking by viewModel.isAiWorking.collectAsState()
     val transformDialog by viewModel.transformDialog.collectAsState()
     val profiles by viewModel.profiles.collectAsState()
+    val folderTree by viewModel.folderTree.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -127,6 +130,7 @@ fun HistoryScreen(
     var transformResultEvent by remember { mutableStateOf<HistoryEvent.TransformResult?>(null) }
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showTagBrowser by remember { mutableStateOf(false) }
+    var showFolderSheet by remember { mutableStateOf(false) }
 
     val importLauncher =
         rememberLauncherForActivityResult(
@@ -292,6 +296,9 @@ fun HistoryScreen(
                             }
                         }
                     } else {
+                        IconButton(onClick = { showFolderSheet = true }) {
+                            Icon(Icons.Filled.FolderOpen, contentDescription = "Browse folders")
+                        }
                         IconButton(onClick = { searchVisible = !searchVisible }) {
                             Icon(Icons.Filled.Search, contentDescription = "Search")
                         }
@@ -367,13 +374,20 @@ fun HistoryScreen(
                         if (isAiWorking) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         }
-                        FolderNavigationRow(
-                            breadcrumb = state.breadcrumb,
-                            subfolders = state.subfolders,
-                            currentFolderId = state.currentFolderId,
-                            onNavigate = { viewModel.navigateToFolder(it) },
-                            onCreateFolder = { showCreateFolder = true },
+                        HistoryModeFilterRow(
+                            selected = state.filters.selectedMode,
+                            onSelect = { viewModel.selectMode(it) },
                         )
+                        if (state.currentFolderId != null) {
+                            val folderName = state.breadcrumb.lastOrNull()?.name ?: "Folder"
+                            InputChip(
+                                selected = true,
+                                onClick = { viewModel.navigateToFolder(null) },
+                                label = { Text(folderName) },
+                                leadingIcon = { Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                trailingIcon = { Icon(Icons.Filled.Close, contentDescription = "Clear folder filter", modifier = Modifier.size(16.dp)) },
+                            )
+                        }
                         if (state.openTaskCount > 0) {
                             TaskNudgeBanner(
                                 openTaskCount = state.openTaskCount,
@@ -684,6 +698,15 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    if (showFolderSheet) {
+        FolderNavigationSheet(
+            folderTree = folderTree,
+            currentFolderId = successState?.currentFolderId,
+            onSelectFolder = { viewModel.navigateToFolder(it) },
+            onDismiss = { showFolderSheet = false },
+        )
     }
 
     if (showTagBrowser && successState != null) {
@@ -1004,68 +1027,6 @@ private fun folderDescendantIds(
         }
     }
     return result
-}
-
-@Composable
-private fun FolderNavigationRow(
-    breadcrumb: List<Folder>,
-    subfolders: List<Folder>,
-    currentFolderId: String?,
-    onNavigate: (String?) -> Unit,
-    onCreateFolder: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val scrollState = rememberScrollState()
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .horizontalScroll(scrollState),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        FilterChip(
-            selected = currentFolderId == null,
-            onClick = { onNavigate(null) },
-            label = { Text("Home") },
-        )
-        breadcrumb.forEach { folder ->
-            Text(
-                "›",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FilterChip(
-                selected = folder.id == currentFolderId,
-                onClick = { onNavigate(folder.id) },
-                label = { Text(folder.name, maxLines = 1) },
-            )
-        }
-        subfolders
-            .filter { sf -> breadcrumb.none { it.id == sf.id } && sf.id != currentFolderId }
-            .forEach { subfolder ->
-                Text(
-                    "›",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                SuggestionChip(
-                    onClick = { onNavigate(subfolder.id) },
-                    label = { Text(subfolder.name, maxLines = 1) },
-                )
-            }
-        SuggestionChip(
-            onClick = onCreateFolder,
-            label = { Text("New folder") },
-            icon = {
-                Icon(
-                    Icons.Filled.CreateNewFolder,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-            },
-        )
-    }
 }
 
 @Composable

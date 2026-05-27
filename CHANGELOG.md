@@ -4,9 +4,18 @@
 
 ### Features
 
+* add first-run onboarding flow — 4-step walkthrough (Welcome, Pick a mode, Quick setup, One-tap pipelines) shown on first launch; gated by DataStore boolean flag so it only appears once
+* add folder bottom sheet to History — folder icon in the History top bar opens a modal bottom sheet showing the full folder hierarchy with depth indentation; tapping a folder filters the session list and shows a dismissible chip; replaces the breadcrumb row
+
 ### Improvements
 
+* add mode filter row to History — horizontally scrollable mode chip row appears below search bar in History, matching the Capture screen; chips use mode-specific accent colors when selected
+* rebuild History session cards to match home screen — cards now show mode badge with accent color, mini waveform thumb, speaker count, task chip, and tag pills; swipe-to-reveal actions removed; long-press dropdown menu retained
+* enrich History session items with per-session speaker and task counts — speaker diarization count and open task count are now populated per session in the History list
+
 ### Fixes
+
+* fix back navigation destroying active recording — system back and header arrow no longer cancel an in-progress recording; a dedicated "Cancel recording" button is now the only way to discard
 
 ## 0.26.0 (2026-05-20)
 

@@ -1,6 +1,7 @@
 package dev.scrybe.feature.history
 
 import dev.scrybe.core.model.Folder
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import java.time.Instant
@@ -8,6 +9,15 @@ import java.time.Instant
 data class HistorySessionItem(
     val session: RecordingSession,
     val transcriptPreview: String? = null,
+    val speakerCount: Int = 0,
+    val openTaskCount: Int = 0,
+)
+
+data class FolderNode(
+    val id: String,
+    val name: String,
+    val sessionCount: Int,
+    val depth: Int,
 )
 
 enum class RecordsSortOption {
@@ -30,6 +40,7 @@ data class RecordsFilterState(
     val includedStatuses: Set<SessionStatus> = emptySet(),
     val showArchived: Boolean = false,
     val selectedTag: String? = null,
+    val selectedMode: RecordingMode? = null,
 )
 
 data class RecordsInteractionPreferences(
