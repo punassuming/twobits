@@ -94,7 +94,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.Folder
-import dev.scrybe.core.model.RecordingMode
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

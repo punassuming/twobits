@@ -1333,7 +1333,11 @@ private fun buildBreadcrumb(
 
 internal fun buildFolderTree(allFolders: List<Folder>): List<FolderNode> {
     val result = mutableListOf<FolderNode>()
-    fun visit(parentId: String?, depth: Int) {
+
+    fun visit(
+        parentId: String?,
+        depth: Int,
+    ) {
         allFolders
             .filter { it.parentFolderId == parentId }
             .sortedBy { it.name.lowercase() }
