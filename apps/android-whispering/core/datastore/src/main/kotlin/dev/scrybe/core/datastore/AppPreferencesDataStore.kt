@@ -61,6 +61,8 @@ class AppPreferencesDataStore
             val ENABLE_INSIGHT_ANALYSIS = booleanPreferencesKey("enable_insight_analysis")
             val HAS_SEEN_ONBOARDING = booleanPreferencesKey("has_seen_onboarding")
             val OPENAI_API_KEY = stringPreferencesKey("openai_api_key")
+            val LOCATION_RECORDING_ENABLED = booleanPreferencesKey("location_recording_enabled")
+            val OBSIDIAN_VAULT_URI = stringPreferencesKey("obsidian_vault_uri")
         }
 
         val defaultProvider: Flow<String> =
@@ -229,6 +231,16 @@ class AppPreferencesDataStore
                 prefs[Keys.OPENAI_API_KEY] ?: ""
             }
 
+        val locationRecordingEnabled: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.LOCATION_RECORDING_ENABLED] ?: true
+            }
+
+        val obsidianVaultUri: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.OBSIDIAN_VAULT_URI] ?: ""
+            }
+
         suspend fun setDefaultProvider(provider: String) {
             context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PROVIDER] = provider }
         }
@@ -357,6 +369,14 @@ class AppPreferencesDataStore
 
         suspend fun setOpenAiApiKey(key: String) {
             context.dataStore.edit { prefs -> prefs[Keys.OPENAI_API_KEY] = key }
+        }
+
+        suspend fun setLocationRecordingEnabled(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.LOCATION_RECORDING_ENABLED] = enabled }
+        }
+
+        suspend fun setObsidianVaultUri(uri: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.OBSIDIAN_VAULT_URI] = uri }
         }
 
         suspend fun addDeletedDefaultProfileId(id: String) {

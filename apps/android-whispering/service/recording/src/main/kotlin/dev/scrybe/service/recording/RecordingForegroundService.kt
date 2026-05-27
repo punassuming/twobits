@@ -96,7 +96,9 @@ class RecordingForegroundService : Service() {
         )
         serviceScope.launch { playRecordingFeedback() }
         serviceScope.launch {
-            capturedLocation = locationProvider.captureCoarseLocationWithLabel()
+            if (preferencesDataStore.locationRecordingEnabled.first()) {
+                capturedLocation = locationProvider.captureCoarseLocationWithLabel()
+            }
         }
         telemetryJob?.cancel()
         telemetryJob =

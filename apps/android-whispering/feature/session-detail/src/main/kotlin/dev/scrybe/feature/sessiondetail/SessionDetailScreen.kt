@@ -146,6 +146,7 @@ fun SessionDetailScreen(
     var transformResult by remember { mutableStateOf<SessionDetailEvent.TransformResult?>(null) }
     var showTransformSheet by remember { mutableStateOf(false) }
     val transformSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var speakerAssignTarget by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -329,16 +330,8 @@ fun SessionDetailScreen(
                             onSkipBack = viewModel::skipBackward,
                             onSkipForward = viewModel::skipForward,
                             onSeek = viewModel::seekPlayback,
+                            onSpeakerClick = { speakerId -> speakerAssignTarget = speakerId },
                         )
-                        if (state.speakerSegments.isNotEmpty() || state.currentTranscript != null || state.originalTranscript != null) {
-                            SpeakerSlotsCard(
-                                state = state,
-                                onAssignPerson = viewModel::assignPersonToSpeaker,
-                                onCreatePerson = viewModel::createPersonAndAssign,
-                                onFetchSpeakerInfo = viewModel::fetchSpeakerInfo,
-                                onMergeSpeakers = viewModel::mergeSpeakers,
-                            )
-                        }
                         TabRow(selectedTabIndex = activeTab) {
                             Tab(
                                 selected = activeTab == 0,
@@ -593,6 +586,24 @@ fun SessionDetailScreen(
                 transformResult = null
             },
         )
+    }
+    val successForSpeaker = uiState as? SessionDetailUiState.Success
+    speakerAssignTarget?.let { speakerId ->
+        if (successForSpeaker != null) {
+            PersonPickerDialog(
+                persons = successForSpeaker.persons,
+                currentPersonId = successForSpeaker.speakerSegments.find { it.speakerId == speakerId }?.personId,
+                onDismiss = { speakerAssignTarget = null },
+                onAssign = { personId ->
+                    viewModel.assignPersonToSpeaker(speakerId, personId)
+                    speakerAssignTarget = null
+                },
+                onCreateNew = { name ->
+                    viewModel.createPersonAndAssign(speakerId, name)
+                    speakerAssignTarget = null
+                },
+            )
+        }
     }
 }
 

@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.database.FolderDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.SessionTaskDao
 import dev.scrybe.core.database.SpeakerSegmentDao
@@ -38,6 +39,7 @@ class CaptureViewModel
         private val transcriptDao: TranscriptDao,
         private val speakerSegmentDao: SpeakerSegmentDao,
         private val sessionTaskDao: SessionTaskDao,
+        private val folderDao: FolderDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val recordingSessionEvents: RecordingSessionEvents,
     ) : ViewModel() {
@@ -106,7 +108,8 @@ class CaptureViewModel
                     recordingSessionDao.getAllSessions(),
                     transcriptDao.getAllTranscripts(),
                     sessionTaskDao.getOpenTaskCountsPerSession(),
-                ) { sessions, transcripts, taskCounts ->
+                    folderDao.getAllFolders(),
+                ) { sessions, transcripts, taskCounts, folders ->
                     val transcriptLookup =
                         transcripts
                             .groupBy { it.sessionId }
@@ -127,35 +130,40 @@ class CaptureViewModel
                                     .size
                         }
                     val taskCountMap = taskCounts.associate { it.sessionId to it.count }
-                    sessions.map { session ->
-                        RecentCaptureSession(
-                            id = session.id,
-                            title = session.title,
-                            createdAtLabel =
-                                java.time.Instant
-                                    .ofEpochMilli(session.createdAt)
-                                    .atZone(ZoneId.systemDefault())
-                                    .format(RECENT_TIME_FORMATTER),
-                            durationMs = session.durationMs,
-                            status =
-                                dev.scrybe.core.model.SessionStatus
-                                    .valueOf(session.status),
-                            mode = runCatching { RecordingMode.valueOf(session.mode) }.getOrDefault(RecordingMode.JOURNAL),
-                            tags = TagsCodec.decode(session.tags),
-                            locationLabel = session.locationLabel,
-                            transcriptPreview = transcriptLookup[session.id],
-                            isArchived = session.isArchived,
-                            speakerCount = speakerCounts[session.id] ?: 0,
-                            openTaskCount = taskCountMap[session.id] ?: 0,
-                            waveformSamples = WaveformCodec.decode(session.waveformSamples).take(40),
-                        )
-                    }
-                }.collectLatest { recentSessions ->
+                    val folderNameMap = folders.associate { it.id to it.name }
+                    val mapped =
+                        sessions.map { session ->
+                            RecentCaptureSession(
+                                id = session.id,
+                                title = session.title,
+                                createdAtLabel =
+                                    java.time.Instant
+                                        .ofEpochMilli(session.createdAt)
+                                        .atZone(ZoneId.systemDefault())
+                                        .format(RECENT_TIME_FORMATTER),
+                                durationMs = session.durationMs,
+                                status =
+                                    dev.scrybe.core.model.SessionStatus
+                                        .valueOf(session.status),
+                                mode = runCatching { RecordingMode.valueOf(session.mode) }.getOrDefault(RecordingMode.JOURNAL),
+                                tags = TagsCodec.decode(session.tags),
+                                locationLabel = session.locationLabel,
+                                transcriptPreview = transcriptLookup[session.id],
+                                isArchived = session.isArchived,
+                                folderId = session.folderId,
+                                speakerCount = speakerCounts[session.id] ?: 0,
+                                openTaskCount = taskCountMap[session.id] ?: 0,
+                                waveformSamples = WaveformCodec.decode(session.waveformSamples).take(40),
+                            )
+                        }
+                    mapped to folderNameMap
+                }.collectLatest { (recentSessions, folderNameMap) ->
                     val openTotal = recentSessions.sumOf { it.openTaskCount }
                     _uiState.value =
                         _uiState.value.copy(
                             recentSessions = recentSessions,
                             openTaskTotal = openTotal,
+                            folderNames = folderNameMap,
                         )
                 }
             }

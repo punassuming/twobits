@@ -44,9 +44,10 @@ import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocationOn
@@ -56,6 +57,7 @@ import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -105,7 +107,6 @@ import dev.scrybe.core.model.SessionStatus
 fun CaptureScreen(
     onNavigateToSessionDetail: (String) -> Unit,
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToHistory: () -> Unit = {},
     viewModel: CaptureViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -115,6 +116,8 @@ fun CaptureScreen(
     var searchOpen by remember { mutableStateOf(false) }
     var filterMode by remember { mutableStateOf<RecordingMode?>(null) }
     var pendingMode by remember { mutableStateOf(RecordingMode.JOURNAL) }
+    var folderModeEnabled by remember { mutableStateOf(false) }
+    var expandedFolderIds by remember { mutableStateOf(emptySet<String>()) }
 
     val requiredPermissions =
         remember {
@@ -172,8 +175,11 @@ fun CaptureScreen(
                     IconButton(onClick = { searchOpen = !searchOpen }) {
                         Icon(Icons.Filled.Search, contentDescription = "Search sessions")
                     }
-                    IconButton(onClick = onNavigateToHistory) {
-                        Icon(Icons.Filled.History, contentDescription = "All recordings")
+                    IconButton(onClick = { folderModeEnabled = !folderModeEnabled }) {
+                        Icon(
+                            if (folderModeEnabled) Icons.Filled.ViewList else Icons.Filled.FolderOpen,
+                            contentDescription = if (folderModeEnabled) "List view" else "Folder view",
+                        )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
@@ -258,11 +264,74 @@ fun CaptureScreen(
                     ) {
                         item(key = "intro") { IntroGuidanceSection() }
                     }
-                    items(filteredSessions, key = { it.id }) { session ->
-                        HomeSessionCard(
-                            session = session,
-                            onClick = { onNavigateToSessionDetail(session.id) },
-                        )
+                    if (folderModeEnabled && searchQuery.isBlank()) {
+                        val grouped = filteredSessions.groupBy { it.folderId }
+                        val folderIds =
+                            grouped.keys
+                                .filterNotNull()
+                                .sortedBy { uiState.folderNames[it] ?: it }
+                        val unfiled = grouped[null] ?: emptyList()
+                        folderIds.forEach { folderId ->
+                            val name = uiState.folderNames[folderId] ?: folderId
+                            val expanded = folderId in expandedFolderIds
+                            val sessions = grouped[folderId] ?: emptyList()
+                            item(key = "folder-$folderId") {
+                                FolderSectionHeader(
+                                    name = name,
+                                    count = sessions.size,
+                                    expanded = expanded,
+                                    onToggle = {
+                                        expandedFolderIds =
+                                            if (expanded) {
+                                                expandedFolderIds - folderId
+                                            } else {
+                                                expandedFolderIds + folderId
+                                            }
+                                    },
+                                )
+                            }
+                            if (expanded) {
+                                items(sessions, key = { "f-${it.id}" }) { session ->
+                                    HomeSessionCard(
+                                        session = session,
+                                        onClick = { onNavigateToSessionDetail(session.id) },
+                                    )
+                                }
+                            }
+                        }
+                        if (unfiled.isNotEmpty()) {
+                            item(key = "folder-unfiled") {
+                                val expanded = "unfiled" in expandedFolderIds
+                                FolderSectionHeader(
+                                    name = "No folder",
+                                    count = unfiled.size,
+                                    expanded = expanded,
+                                    onToggle = {
+                                        expandedFolderIds =
+                                            if (expanded) {
+                                                expandedFolderIds - "unfiled"
+                                            } else {
+                                                expandedFolderIds + "unfiled"
+                                            }
+                                    },
+                                )
+                            }
+                            if ("unfiled" in expandedFolderIds) {
+                                items(unfiled, key = { "u-${it.id}" }) { session ->
+                                    HomeSessionCard(
+                                        session = session,
+                                        onClick = { onNavigateToSessionDetail(session.id) },
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        items(filteredSessions, key = { it.id }) { session ->
+                            HomeSessionCard(
+                                session = session,
+                                onClick = { onNavigateToSessionDetail(session.id) },
+                            )
+                        }
                     }
                     item(key = "bottom-spacer") { Spacer(Modifier.height(80.dp)) }
                 }
@@ -1071,6 +1140,48 @@ private fun TaskNudgeBanner(
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
         }
+    }
+}
+
+@Composable
+private fun FolderSectionHeader(
+    name: String,
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .scrybeContentWidth()
+                .clickable(onClick = onToggle)
+                .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            if (expanded) Icons.Filled.FolderOpen else Icons.Filled.Folder,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Icon(
+            if (expanded) Icons.Filled.ViewList else Icons.Filled.FolderOpen,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

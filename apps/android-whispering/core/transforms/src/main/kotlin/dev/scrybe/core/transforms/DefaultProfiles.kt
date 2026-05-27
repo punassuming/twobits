@@ -46,5 +46,19 @@ object DefaultProfiles {
             isDefault = false,
         )
 
-    val ALL = listOf(CLEANUP_DICTATION, SUMMARIZE, ACTION_ITEMS)
+    val TRANSLATE =
+        TransformProfile(
+            id = "default-translate",
+            name = "Translate to English",
+            description = "Translates the transcript into English, preserving speaker labels.",
+            systemPrompt = "You are a professional translator. Translate the following transcript to English. If speaker labels are present (e.g. \"SPEAKER_00:\"), preserve them unchanged. Return only the translated text.\n\nTranscript:\n{{transcript}}",
+            steps =
+                listOf(
+                    "You are a professional translator. Translate the following transcript to English. If speaker labels are present (e.g. \"SPEAKER_00:\"), preserve them unchanged. Return only the translated text.\n\nTranscript:\n{{transcript}}",
+                ),
+            providerType = ProviderType.OPENAI,
+            isDefault = false,
+        )
+
+    val ALL = listOf(CLEANUP_DICTATION, SUMMARIZE, ACTION_ITEMS, TRANSLATE)
 }
