@@ -71,6 +71,8 @@ data class SettingsUiState(
     val taskForgeAction: String = "android.intent.action.SEND",
     val enableSpeakerIdentification: Boolean = false,
     val enableInsightAnalysis: Boolean = false,
+    val locationRecordingEnabled: Boolean = true,
+    val obsidianVaultUri: String = "",
 )
 
 data class SavedFileEntry(
@@ -299,6 +301,16 @@ class SettingsViewModel
             ) { enabled, packageName, action ->
                 TaskForgeSettings(enabled = enabled, packageName = packageName, action = action)
             }
+        private val integrationsPreferences =
+            combine(
+                preferencesDataStore.locationRecordingEnabled,
+                preferencesDataStore.obsidianVaultUri,
+            ) { locationEnabled, obsidianUri ->
+                IntegrationsPreferences(
+                    locationRecordingEnabled = locationEnabled,
+                    obsidianVaultUri = obsidianUri,
+                )
+            }
         private val coreSettingsData =
             combine(
                 profileSettings,
@@ -340,11 +352,17 @@ class SettingsViewModel
                 )
             }
         private val settingsData =
-            combine(coreSettingsData, taskForgeSettings) { core, taskForge ->
+            combine(
+                coreSettingsData,
+                taskForgeSettings,
+                integrationsPreferences,
+            ) { core, taskForge, integrations ->
                 core.copy(
                     taskForgeEnabled = taskForge.enabled,
                     taskForgePackageName = taskForge.packageName,
                     taskForgeAction = taskForge.action,
+                    locationRecordingEnabled = integrations.locationRecordingEnabled,
+                    obsidianVaultUri = integrations.obsidianVaultUri,
                 )
             }
 
@@ -390,6 +408,8 @@ class SettingsViewModel
                     taskForgeAction = settingsData.taskForgeAction,
                     enableSpeakerIdentification = settingsData.enableSpeakerIdentification,
                     enableInsightAnalysis = settingsData.enableInsightAnalysis,
+                    locationRecordingEnabled = settingsData.locationRecordingEnabled,
+                    obsidianVaultUri = settingsData.obsidianVaultUri,
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -567,6 +587,14 @@ class SettingsViewModel
             viewModelScope.launch { preferencesDataStore.setTaskForgeAction(action) }
         }
 
+        fun setLocationRecordingEnabled(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setLocationRecordingEnabled(enabled) }
+        }
+
+        fun setObsidianVaultUri(uri: String) {
+            viewModelScope.launch { preferencesDataStore.setObsidianVaultUri(uri) }
+        }
+
         fun testApiConnection() {
             viewModelScope.launch {
                 val trimmed = apiKey.value.trim()
@@ -696,6 +724,8 @@ class SettingsViewModel
             val taskForgeEnabled: Boolean = false,
             val taskForgePackageName: String = "",
             val taskForgeAction: String = "android.intent.action.SEND",
+            val locationRecordingEnabled: Boolean = true,
+            val obsidianVaultUri: String = "",
             val versionName: String = "",
             val versionCode: Long = 0L,
             val latestReleaseTitle: String? = null,
@@ -755,6 +785,11 @@ class SettingsViewModel
             val enabled: Boolean = false,
             val packageName: String = "",
             val action: String = "android.intent.action.SEND",
+        )
+
+        private data class IntegrationsPreferences(
+            val locationRecordingEnabled: Boolean = true,
+            val obsidianVaultUri: String = "",
         )
 
         private data class ProvidersData(

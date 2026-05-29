@@ -4,7 +4,16 @@
 
 ### Features
 
+* add Translate default transform profile — "Translate to English" is now seeded as a built-in profile that preserves speaker labels; available in the transform menu without any configuration
+* add Obsidian vault export — Settings > Integrations lets users choose an Obsidian vault directory; "Export to Obsidian" option in session detail writes a Markdown file with YAML frontmatter (date, mode, duration, location, tags) to the vault
+* add calendar integration foundation — `READ_CALENDAR` permission declared; `CalendarProvider` queries overlapping calendar events for post-recording title suggestions
+* add unified session screen — home screen now shows all recordings instead of only recent ones; History is no longer a separate navigation destination; top-bar folder icon toggles between flat list and folder-grouped view with collapsible sections
+
 ### Improvements
+
+* add location recording toggle — Settings > Recording Feedback > "Attach location to recordings" switch; when disabled, no location is captured and no city/region label is shown on new recordings; existing sessions are unaffected
+* rename "External Integration" settings section to "Send to App" for clarity
+* move speaker assignment into waveform legend — tapping a speaker row in the playback legend opens the person-picker dialog directly; the separate Speakers card is removed from session detail
 
 ### Fixes
 

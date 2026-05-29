@@ -1,6 +1,7 @@
 package dev.scrybe.feature.sessiondetail
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +46,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
+import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SentimentSegment
 import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.TopicMarker
@@ -64,6 +66,7 @@ internal fun PlaybackCard(
     onSkipBack: () -> Unit,
     onSkipForward: () -> Unit,
     onSeek: (Long) -> Unit,
+    onSpeakerClick: (speakerId: String) -> Unit = {},
 ) {
     ScrybeSectionCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -145,7 +148,11 @@ internal fun PlaybackCard(
             )
         }
         if (state.speakerSegments.isNotEmpty()) {
-            SpeakerLegend(segments = state.speakerSegments)
+            SpeakerLegend(
+                segments = state.speakerSegments,
+                persons = state.persons,
+                onSpeakerClick = onSpeakerClick,
+            )
         }
     }
 }
@@ -311,10 +318,13 @@ private fun WaveformTimeline(
 @Composable
 private fun SpeakerLegend(
     segments: List<SpeakerSegment>,
+    persons: List<Person> = emptyList(),
+    onSpeakerClick: (speakerId: String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val speakerIds = segments.map { it.speakerId }.distinct().sorted()
     if (speakerIds.isEmpty()) return
+    val personMap = persons.associate { it.id to it.name }
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -322,12 +332,20 @@ private fun SpeakerLegend(
         speakerIds.forEachIndexed { idx, speakerId ->
             val color = speakerColorForIndex(idx)
             val label = speakerId.removePrefix("SPEAKER_").let { "Speaker $it" }
+            val seg = segments.first { it.speakerId == speakerId }
+            val personName = seg.personId?.let { personMap[it] }
             Row(
+                modifier = Modifier.clickable { onSpeakerClick(speakerId) },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Canvas(modifier = Modifier.size(8.dp)) { drawCircle(color = color) }
-                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column {
+                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (personName != null) {
+                        Text(personName, style = MaterialTheme.typography.labelSmall, color = color)
+                    }
+                }
             }
         }
     }

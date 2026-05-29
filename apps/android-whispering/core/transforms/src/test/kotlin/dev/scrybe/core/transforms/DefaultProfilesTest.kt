@@ -7,8 +7,8 @@ import org.junit.Test
 
 class DefaultProfilesTest {
     @Test
-    fun `ALL contains exactly three profiles`() {
-        assertEquals(3, DefaultProfiles.ALL.size)
+    fun `ALL contains exactly four profiles`() {
+        assertEquals(4, DefaultProfiles.ALL.size)
     }
 
     @Test
@@ -24,6 +24,11 @@ class DefaultProfilesTest {
     @Test
     fun `ACTION_ITEMS is not the default profile`() {
         assertFalse(DefaultProfiles.ACTION_ITEMS.isDefault)
+    }
+
+    @Test
+    fun `TRANSLATE is not the default profile`() {
+        assertFalse(DefaultProfiles.TRANSLATE.isDefault)
     }
 
     @Test

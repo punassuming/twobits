@@ -14,6 +14,7 @@ data class CaptureUiState(
     val showModePickerSheet: Boolean = false,
     val openTaskTotal: Int = 0,
     val activeMode: RecordingMode = RecordingMode.JOURNAL,
+    val folderNames: Map<String, String> = emptyMap(),
 )
 
 data class RecentCaptureSession(
@@ -27,6 +28,7 @@ data class RecentCaptureSession(
     val locationLabel: String?,
     val transcriptPreview: String?,
     val isArchived: Boolean,
+    val folderId: String? = null,
     val speakerCount: Int = 0,
     val openTaskCount: Int = 0,
     val waveformSamples: List<Float> = emptyList(),

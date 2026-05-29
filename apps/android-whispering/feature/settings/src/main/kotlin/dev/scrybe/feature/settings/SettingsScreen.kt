@@ -1,5 +1,9 @@
 package dev.scrybe.feature.settings
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CloudDone
@@ -66,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -104,6 +108,17 @@ fun SettingsScreen(
     var showTransformModelPicker by remember { mutableStateOf(false) }
     val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
     val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
+    val context = LocalContext.current
+    val obsidianVaultLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+                viewModel.setObsidianVaultUri(uri.toString())
+            }
+        }
 
     Scaffold(
         topBar = {
@@ -655,10 +670,27 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.setRecordingSoundOnStartStop(it) },
                         )
                     }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Attach location to recordings")
+                            Text(
+                                "Saves city/region with each recording",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = uiState.locationRecordingEnabled,
+                            onCheckedChange = { viewModel.setLocationRecordingEnabled(it) },
+                        )
+                    }
                 }
 
                 SettingsSectionCard(
-                    title = "External Integration",
+                    title = "Send to App",
                     icon = Icons.Filled.IosShare,
                 ) {
                     Text(
@@ -708,11 +740,42 @@ fun SettingsScreen(
                         text = "Connect external apps and services.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    IntegrationRow(Icons.Filled.CalendarToday, "Calendar", "Add tasks with dates", Color(0xFF4285F4))
-                    IntegrationRow(Icons.Filled.Notifications, "Reminders", "Create reminders", Color(0xFFFF5252))
-                    IntegrationRow(Icons.Filled.Article, "Notion", "Export sessions as pages", MaterialTheme.colorScheme.onSurface)
+                    HorizontalDivider()
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.FolderOpen,
+                                contentDescription = null,
+                                tint = Color(0xFF7C3AED),
+                                modifier = Modifier.size(22.dp),
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Obsidian vault", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text =
+                                        if (uiState.obsidianVaultUri.isBlank()) {
+                                            "No vault selected"
+                                        } else {
+                                            Uri.parse(uiState.obsidianVaultUri).lastPathSegment
+                                                ?: uiState.obsidianVaultUri
+                                        },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            OutlinedButton(onClick = { obsidianVaultLauncher.launch(null) }) {
+                                Text(if (uiState.obsidianVaultUri.isBlank()) "Choose vault" else "Change")
+                            }
+                        }
+                    }
+                    HorizontalDivider()
+                    IntegrationRow(Icons.Filled.CalendarToday, "Calendar", "Suggest title from active event", Color(0xFF4285F4))
                     IntegrationRow(Icons.Filled.Chat, "Slack", "Post summaries to channels", Color(0xFFE01E5A))
-                    IntegrationRow(Icons.Filled.Bolt, "Shortcuts", "iOS Shortcuts automations", Color(0xFFFF9800))
+                    IntegrationRow(Icons.Filled.Article, "Notion", "Export sessions as pages", MaterialTheme.colorScheme.onSurface)
                     AddIntegrationRow()
                 }
 
