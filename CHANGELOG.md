@@ -10,6 +10,10 @@
 
 ### Fixes
 
+* fix Gemma 2 2B GPU download URL — Gemma 2 uses `gpu-int8` quantization (not `gpu-int4` which is Gemma 1); update size label from ~1.3 GB to ~2.6 GB
+
+### Fixes
+
 * fix Gemma model downloads failing on slow connections — removed hard call timeout from the file-download OkHttpClient so 1.3–2.3 GB downloads are not cut off
 * fix speaker legend never showing — restore "Retrieve speaker info" button in session detail when no speaker segments exist; the clickable legend appears once diarization has run
 * fix transcription failing on long recordings — add up to 3 attempts with exponential backoff (2 s, 4 s) per chunk for retriable errors (429 rate limit, 5xx server errors, network IO errors); non-retriable errors (400, 401) still fail immediately
