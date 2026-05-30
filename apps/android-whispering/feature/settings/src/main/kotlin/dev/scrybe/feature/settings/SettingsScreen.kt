@@ -567,6 +567,23 @@ fun SettingsScreen(
                             ),
                         onClick = { showChannelPicker = true },
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Attach location to recordings")
+                            Text(
+                                "Saves city/region with each recording",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = uiState.locationRecordingEnabled,
+                            onCheckedChange = { viewModel.setLocationRecordingEnabled(it) },
+                        )
+                    }
                 }
 
                 SettingsSectionCard(
@@ -668,23 +685,6 @@ fun SettingsScreen(
                         Switch(
                             checked = uiState.recordingSoundOnStartStop,
                             onCheckedChange = { viewModel.setRecordingSoundOnStartStop(it) },
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Attach location to recordings")
-                            Text(
-                                "Saves city/region with each recording",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = uiState.locationRecordingEnabled,
-                            onCheckedChange = { viewModel.setLocationRecordingEnabled(it) },
                         )
                     }
                 }

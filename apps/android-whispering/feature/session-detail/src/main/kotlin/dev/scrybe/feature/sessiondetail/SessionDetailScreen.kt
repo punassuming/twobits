@@ -332,6 +332,15 @@ fun SessionDetailScreen(
                             onSeek = viewModel::seekPlayback,
                             onSpeakerClick = { speakerId -> speakerAssignTarget = speakerId },
                         )
+                        if (state.speakerSegments.isEmpty()) {
+                            SpeakerSlotsCard(
+                                state = state,
+                                onAssignPerson = viewModel::assignPersonToSpeaker,
+                                onCreatePerson = viewModel::createPersonAndAssign,
+                                onFetchSpeakerInfo = viewModel::fetchSpeakerInfo,
+                                onMergeSpeakers = viewModel::mergeSpeakers,
+                            )
+                        }
                         TabRow(selectedTabIndex = activeTab) {
                             Tab(
                                 selected = activeTab == 0,

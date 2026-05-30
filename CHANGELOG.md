@@ -6,7 +6,12 @@
 
 ### Improvements
 
+* move "Attach location to recordings" toggle to Recording Defaults section for discoverability
+
 ### Fixes
+
+* fix Gemma model downloads failing on slow connections — removed hard call timeout from the file-download OkHttpClient so 1.3–2.3 GB downloads are not cut off
+* fix speaker legend never showing — restore "Retrieve speaker info" button in session detail when no speaker segments exist; the clickable legend appears once diarization has run
 
 ## 0.28.0 (2026-05-29)
 

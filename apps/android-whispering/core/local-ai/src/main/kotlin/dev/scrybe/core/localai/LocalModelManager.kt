@@ -19,6 +19,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -159,8 +160,13 @@ class LocalModelManager
             dest: File,
             onProgress: (Int) -> Unit,
         ) {
+            val client =
+                okHttpClient
+                    .newBuilder()
+                    .callTimeout(0, TimeUnit.MILLISECONDS)
+                    .build()
             val request = Request.Builder().url(url).build()
-            val response = okHttpClient.newCall(request).execute()
+            val response = client.newCall(request).execute()
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body ?: throw IOException("Empty response body")
             val contentLength = body.contentLength()
