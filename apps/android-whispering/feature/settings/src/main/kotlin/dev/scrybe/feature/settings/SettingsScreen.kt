@@ -119,6 +119,12 @@ fun SettingsScreen(
                 viewModel.setObsidianVaultUri(uri.toString())
             }
         }
+    var pendingImportGemmaModel by remember { mutableStateOf<LocalGemmaModel?>(null) }
+    val importGemmaFilePicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri?.let { viewModel.importGemmaModel(it, pendingImportGemmaModel ?: return@let) }
+            pendingImportGemmaModel = null
+        }
 
     Scaffold(
         topBar = {
@@ -416,25 +422,19 @@ fun SettingsScreen(
                                     state = gemmaStates[model] ?: LocalModelState.NotDownloaded,
                                     isSelected = selectedGemmaModel == model,
                                     onSelect = { viewModel.selectGemmaModel(model) },
-                                    onDownload = { viewModel.downloadGemmaModel(model) },
+                                    onImport = {
+                                        pendingImportGemmaModel = model
+                                        importGemmaFilePicker.launch("*/*")
+                                    },
+                                    onGetModel = {
+                                        val pageUrl = model.downloadUrl.substringBefore("/resolve/")
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse(pageUrl)),
+                                        )
+                                    },
                                     onDelete = { viewModel.deleteGemmaModel(model) },
                                 )
                             }
-                            OutlinedTextField(
-                                value = uiState.huggingFaceToken,
-                                onValueChange = viewModel::setHuggingFaceToken,
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                visualTransformation = PasswordVisualTransformation(),
-                                placeholder = { Text("hf_…") },
-                                label = { Text("HuggingFace Token") },
-                                supportingText = {
-                                    Text(
-                                        "Required to download Gemma 2. " +
-                                            "Accept the Gemma license on HuggingFace first.",
-                                    )
-                                },
-                            )
                         },
                     )
                     HorizontalDivider()
@@ -1157,7 +1157,8 @@ private fun GemmaModelRow(
     state: LocalModelState,
     isSelected: Boolean,
     onSelect: () -> Unit,
-    onDownload: () -> Unit,
+    onImport: () -> Unit,
+    onGetModel: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val isReady = state is LocalModelState.Ready
@@ -1200,9 +1201,14 @@ private fun GemmaModelRow(
             }
             when (state) {
                 is LocalModelState.NotDownloaded ->
-                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text(" Download")
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text(" Import .task file")
+                        }
+                        TextButton(onClick = onGetModel, modifier = Modifier.fillMaxWidth()) {
+                            Text("Get model on HuggingFace ↗")
+                        }
                     }
                 is LocalModelState.Downloading ->
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1211,7 +1217,7 @@ private fun GemmaModelRow(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Text(
-                            "${state.progressPercent}%",
+                            "Importing… ${state.progressPercent}%",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1227,7 +1233,7 @@ private fun GemmaModelRow(
                 is LocalModelState.Error ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
+                        OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
                     }
             }
         }

@@ -1,6 +1,7 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
+import android.net.Uri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.LocalGemmaModel
@@ -11,7 +12,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -111,20 +111,40 @@ class LocalModelManager
             }
         }
 
-        suspend fun downloadGemma(model: LocalGemmaModel) {
-            val current = _gemmaStates.value[model]
-            if (current is LocalModelState.Downloading) return
+        suspend fun importGemmaFromUri(
+            uri: Uri,
+            model: LocalGemmaModel,
+        ) {
+            if (_gemmaStates.value[model] is LocalModelState.Downloading) return
             withContext(Dispatchers.IO) {
                 try {
                     updateGemmaState(model, LocalModelState.Downloading(0))
                     val destFile = File(modelsDir, model.fileName)
-                    val authToken = preferencesDataStore.huggingFaceToken.first().ifBlank { null }
-                    downloadFile(model.downloadUrl, destFile, authToken) { progress ->
-                        updateGemmaState(model, LocalModelState.Downloading(progress))
-                    }
+                    val sizeBytes =
+                        context.contentResolver
+                            .openFileDescriptor(uri, "r")
+                            ?.use { it.statSize }
+                            ?: -1L
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        destFile.outputStream().use { output ->
+                            val buffer = ByteArray(65_536)
+                            var bytesRead = 0L
+                            var read: Int
+                            while (input.read(buffer).also { read = it } != -1) {
+                                output.write(buffer, 0, read)
+                                bytesRead += read
+                                if (sizeBytes > 0) {
+                                    updateGemmaState(
+                                        model,
+                                        LocalModelState.Downloading(((bytesRead * 100) / sizeBytes).toInt()),
+                                    )
+                                }
+                            }
+                        }
+                    } ?: throw IOException("Could not open selected file")
                     updateGemmaState(model, resolveGemmaState(model))
                 } catch (e: Exception) {
-                    updateGemmaState(model, LocalModelState.Error(e.message ?: "Download failed"))
+                    updateGemmaState(model, LocalModelState.Error(e.message ?: "Import failed"))
                 }
             }
         }
@@ -160,7 +180,6 @@ class LocalModelManager
         private fun downloadFile(
             url: String,
             dest: File,
-            authToken: String? = null,
             onProgress: (Int) -> Unit,
         ) {
             val client =
@@ -168,12 +187,7 @@ class LocalModelManager
                     .newBuilder()
                     .callTimeout(0, TimeUnit.MILLISECONDS)
                     .build()
-            val request =
-                Request
-                    .Builder()
-                    .url(url)
-                    .apply { if (!authToken.isNullOrBlank()) header("Authorization", "Bearer $authToken") }
-                    .build()
+            val request = Request.Builder().url(url).build()
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body ?: throw IOException("Empty response body")
