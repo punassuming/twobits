@@ -12,6 +12,7 @@
 
 * fix Gemma model downloads failing on slow connections — removed hard call timeout from the file-download OkHttpClient so 1.3–2.3 GB downloads are not cut off
 * fix speaker legend never showing — restore "Retrieve speaker info" button in session detail when no speaker segments exist; the clickable legend appears once diarization has run
+* fix transcription failing on long recordings — add up to 3 attempts with exponential backoff (2 s, 4 s) per chunk for retriable errors (429 rate limit, 5xx server errors, network IO errors); non-retriable errors (400, 401) still fail immediately
 
 ## 0.28.0 (2026-05-29)
 
