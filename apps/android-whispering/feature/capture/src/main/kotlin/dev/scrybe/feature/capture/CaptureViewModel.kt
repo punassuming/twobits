@@ -8,22 +8,30 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
+import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.database.FolderDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.SessionTaskDao
 import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
+import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
+import dev.scrybe.core.model.TransformProfile
+import dev.scrybe.core.transforms.SessionTransformCoordinator
 import dev.scrybe.service.recording.RecordingForegroundService
 import dev.scrybe.service.recording.RecordingServiceActions
 import dev.scrybe.service.recording.RecordingSessionEvents
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -40,11 +48,33 @@ class CaptureViewModel
         private val speakerSegmentDao: SpeakerSegmentDao,
         private val sessionTaskDao: SessionTaskDao,
         private val folderDao: FolderDao,
+        private val transformProfileDao: TransformProfileDao,
+        private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val recordingSessionEvents: RecordingSessionEvents,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(CaptureUiState())
         val uiState: StateFlow<CaptureUiState> = _uiState.asStateFlow()
+
+        private val _transformDialog = MutableStateFlow<CaptureTransformDialogState?>(null)
+        val transformDialog: StateFlow<CaptureTransformDialogState?> = _transformDialog.asStateFlow()
+
+        val profiles: StateFlow<List<TransformProfile>> =
+            transformProfileDao
+                .getAllProfiles()
+                .map { entities ->
+                    entities.map { e ->
+                        TransformProfile(
+                            id = e.id,
+                            name = e.name,
+                            description = e.description,
+                            systemPrompt = e.systemPrompt,
+                            steps = TransformStepsCodec.decode(e.steps, fallback = e.systemPrompt),
+                            providerType = ProviderType.valueOf(e.providerType),
+                            isDefault = e.isDefault,
+                        )
+                    }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         init {
             viewModelScope.launch {
@@ -233,6 +263,62 @@ class CaptureViewModel
                 context.startService(intent)
                 _uiState.value = CaptureUiState(keepScreenOn = _uiState.value.keepScreenOn)
             }
+        }
+
+        fun enterSelectionMode(sessionId: String) {
+            _uiState.value = _uiState.value.copy(selectedSessionIds = setOf(sessionId))
+        }
+
+        fun toggleSelection(sessionId: String) {
+            val current = _uiState.value.selectedSessionIds
+            _uiState.value =
+                _uiState.value.copy(
+                    selectedSessionIds =
+                        if (sessionId in current) current - sessionId else current + sessionId,
+                )
+        }
+
+        fun clearSelection() {
+            _uiState.value = _uiState.value.copy(selectedSessionIds = emptySet())
+        }
+
+        fun openTransformDialog() {
+            val ids = _uiState.value.selectedSessionIds.toList()
+            if (ids.isEmpty()) return
+            val titles =
+                ids.mapNotNull { id ->
+                    _uiState.value.recentSessions
+                        .find { it.id == id }
+                        ?.title
+                }
+            _transformDialog.value = CaptureTransformDialogState(sessionIds = ids, sessionTitles = titles)
+        }
+
+        fun runTransformFromDialog(profile: TransformProfile) {
+            val dialog = _transformDialog.value ?: return
+            _transformDialog.value = dialog.copy(runningProfileId = profile.id, result = null)
+            viewModelScope.launch {
+                val ids = dialog.sessionIds
+                val outcome =
+                    if (ids.size == 1) {
+                        sessionTransformCoordinator
+                            .transformLatestRawTranscript(ids.first(), profile.id)
+                            .map { it.content }
+                    } else {
+                        sessionTransformCoordinator
+                            .transformCombinedLatestTranscripts(ids, profile.id)
+                            .map { it.transcript.content }
+                    }
+                _transformDialog.value =
+                    _transformDialog.value?.copy(
+                        runningProfileId = null,
+                        result = outcome.getOrNull()?.let { CaptureTransformResult(profile.name, it) },
+                    )
+            }
+        }
+
+        fun closeTransformDialog() {
+            _transformDialog.value = null
         }
 
         private companion object {

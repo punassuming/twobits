@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":core:audio"))
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
+    implementation(project(":core:transforms"))
     implementation(project(":service:recording"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

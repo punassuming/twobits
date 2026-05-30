@@ -3,6 +3,7 @@ package dev.scrybe.core.transcription
 import android.util.Log
 import dev.scrybe.core.model.ProviderType
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -57,7 +58,7 @@ class OpenAiTranscriptionProvider
                 }
             }
 
-        private fun transcribeChunk(
+        private suspend fun transcribeChunk(
             audioFile: File,
             apiKey: String,
             options: TranscriptionOptions,
@@ -75,7 +76,7 @@ class OpenAiTranscriptionProvider
                 }
                 val delayMs = RETRY_BASE_DELAY_MS shl attempt
                 Log.w(TAG, "Chunk attempt ${attempt + 1}/$MAX_CHUNK_ATTEMPTS failed; retrying in ${delayMs}ms", lastError)
-                Thread.sleep(delayMs)
+                delay(delayMs)
             }
             throw lastError
         }

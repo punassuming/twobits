@@ -1,6 +1,8 @@
 package dev.scrybe.feature.settings
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -72,6 +74,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.common.ScrybeLayoutDefaults
@@ -124,6 +127,10 @@ fun SettingsScreen(
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri?.let { viewModel.importGemmaModel(it, pendingImportGemmaModel ?: return@let) }
             pendingImportGemmaModel = null
+        }
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) viewModel.setLocationRecordingEnabled(true)
         }
 
     Scaffold(
@@ -596,7 +603,21 @@ fun SettingsScreen(
                         }
                         Switch(
                             checked = uiState.locationRecordingEnabled,
-                            onCheckedChange = { viewModel.setLocationRecordingEnabled(it) },
+                            onCheckedChange = { enabled ->
+                                if (!enabled) {
+                                    viewModel.setLocationRecordingEnabled(false)
+                                } else if (ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    viewModel.setLocationRecordingEnabled(true)
+                                } else {
+                                    locationPermissionLauncher.launch(
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    )
+                                }
+                            },
                         )
                     }
                 }

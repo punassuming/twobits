@@ -16,6 +16,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,8 +41,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Folder
@@ -61,12 +64,16 @@ import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -110,6 +117,8 @@ fun CaptureScreen(
     viewModel: CaptureViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val transformDialog by viewModel.transformDialog.collectAsState()
+    val profiles by viewModel.profiles.collectAsState()
     val context = LocalContext.current
     val view = LocalView.current
     var searchQuery by remember { mutableStateOf("") }
@@ -165,24 +174,51 @@ fun CaptureScreen(
     BackHandler(enabled = uiState.phase != CapturePhase.IDLE) {
         // No-op: keep user on screen while recording; foreground service continues.
     }
+    BackHandler(enabled = uiState.isSelecting) {
+        viewModel.clearSelection()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Scrybe", style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    if (uiState.isSelecting) {
+                        Text("${uiState.selectedSessionIds.size} selected")
+                    } else {
+                        Text("Scrybe", style = MaterialTheme.typography.titleLarge)
+                    }
+                },
+                navigationIcon = {
+                    if (uiState.isSelecting) {
+                        IconButton(onClick = viewModel::clearSelection) {
+                            Icon(Icons.Filled.Close, contentDescription = "Clear selection")
+                        }
+                    }
+                },
                 actions = {
-                    IconButton(onClick = { searchOpen = !searchOpen }) {
-                        Icon(Icons.Filled.Search, contentDescription = "Search sessions")
-                    }
-                    IconButton(onClick = { folderModeEnabled = !folderModeEnabled }) {
-                        Icon(
-                            if (folderModeEnabled) Icons.Filled.ViewList else Icons.Filled.FolderOpen,
-                            contentDescription = if (folderModeEnabled) "List view" else "Folder view",
-                        )
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                    if (uiState.isSelecting) {
+                        TextButton(
+                            onClick = viewModel::openTransformDialog,
+                            enabled = uiState.selectedSessionIds.isNotEmpty(),
+                        ) {
+                            Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Transform")
+                        }
+                    } else {
+                        IconButton(onClick = { searchOpen = !searchOpen }) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search sessions")
+                        }
+                        IconButton(onClick = { folderModeEnabled = !folderModeEnabled }) {
+                            Icon(
+                                if (folderModeEnabled) Icons.Filled.ViewList else Icons.Filled.FolderOpen,
+                                contentDescription = if (folderModeEnabled) "List view" else "Folder view",
+                            )
+                        }
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        }
                     }
                 },
             )
@@ -294,7 +330,16 @@ fun CaptureScreen(
                                 items(sessions, key = { "f-${it.id}" }) { session ->
                                     HomeSessionCard(
                                         session = session,
-                                        onClick = { onNavigateToSessionDetail(session.id) },
+                                        isSelected = session.id in uiState.selectedSessionIds,
+                                        isSelecting = uiState.isSelecting,
+                                        onClick = {
+                                            if (uiState.isSelecting) {
+                                                viewModel.toggleSelection(session.id)
+                                            } else {
+                                                onNavigateToSessionDetail(session.id)
+                                            }
+                                        },
+                                        onLongClick = { viewModel.enterSelectionMode(session.id) },
                                     )
                                 }
                             }
@@ -320,7 +365,16 @@ fun CaptureScreen(
                                 items(unfiled, key = { "u-${it.id}" }) { session ->
                                     HomeSessionCard(
                                         session = session,
-                                        onClick = { onNavigateToSessionDetail(session.id) },
+                                        isSelected = session.id in uiState.selectedSessionIds,
+                                        isSelecting = uiState.isSelecting,
+                                        onClick = {
+                                            if (uiState.isSelecting) {
+                                                viewModel.toggleSelection(session.id)
+                                            } else {
+                                                onNavigateToSessionDetail(session.id)
+                                            }
+                                        },
+                                        onLongClick = { viewModel.enterSelectionMode(session.id) },
                                     )
                                 }
                             }
@@ -329,7 +383,16 @@ fun CaptureScreen(
                         items(filteredSessions, key = { it.id }) { session ->
                             HomeSessionCard(
                                 session = session,
-                                onClick = { onNavigateToSessionDetail(session.id) },
+                                isSelected = session.id in uiState.selectedSessionIds,
+                                isSelecting = uiState.isSelecting,
+                                onClick = {
+                                    if (uiState.isSelecting) {
+                                        viewModel.toggleSelection(session.id)
+                                    } else {
+                                        onNavigateToSessionDetail(session.id)
+                                    }
+                                },
+                                onLongClick = { viewModel.enterSelectionMode(session.id) },
                             )
                         }
                     }
@@ -359,6 +422,15 @@ fun CaptureScreen(
                 }
             },
             onDismiss = viewModel::dismissModePicker,
+        )
+    }
+
+    transformDialog?.let { dialog ->
+        CaptureTransformPickerSheet(
+            dialog = dialog,
+            profiles = profiles,
+            onPickProfile = viewModel::runTransformFromDialog,
+            onDismiss = viewModel::closeTransformDialog,
         )
     }
 }
@@ -801,24 +873,44 @@ private fun ModeBadge(mode: RecordingMode) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+@androidx.compose.foundation.ExperimentalFoundationApi
 private fun HomeSessionCard(
     session: RecentCaptureSession,
+    isSelected: Boolean = false,
+    isSelecting: Boolean = false,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
 ) {
     Card(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .scrybeContentWidth()
-                .clickable(onClick = onClick),
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isSelected) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+            ),
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            HomeSessionCardHeader(session)
+            if (isSelecting) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = isSelected, onCheckedChange = null)
+                    Spacer(Modifier.width(8.dp))
+                    HomeSessionCardHeader(session)
+                }
+            } else {
+                HomeSessionCardHeader(session)
+            }
             if (session.waveformSamples.isNotEmpty()) {
                 MiniWaveform(samples = session.waveformSamples, modifier = Modifier.fillMaxWidth())
             }
@@ -1207,3 +1299,63 @@ private fun modeIcon(mode: RecordingMode): ImageVector =
         RecordingMode.INTERVIEW -> Icons.Filled.PersonSearch
         RecordingMode.JOURNAL -> Icons.Filled.Book
     }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CaptureTransformPickerSheet(
+    dialog: CaptureTransformDialogState,
+    profiles: List<dev.scrybe.core.model.TransformProfile>,
+    onPickProfile: (dev.scrybe.core.model.TransformProfile) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            val titleText =
+                if (dialog.sessionTitles.size == 1) {
+                    "Transform: ${dialog.sessionTitles.first()}"
+                } else {
+                    "Transform ${dialog.sessionIds.size} recordings"
+                }
+            Text(titleText, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            dialog.result?.let { result ->
+                Text(
+                    "✓ ${result.profileName} complete",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                HorizontalDivider()
+            }
+            if (dialog.runningProfileId != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Running transform…")
+                }
+            } else {
+                profiles.forEach { profile ->
+                    ListItem(
+                        headlineContent = { Text(profile.name) },
+                        supportingContent = profile.description.takeIf { it.isNotBlank() }?.let { { Text(it) } },
+                        leadingContent = { Icon(Icons.Filled.AutoFixHigh, contentDescription = null) },
+                        modifier = Modifier.clickable { onPickProfile(profile) },
+                    )
+                }
+                if (profiles.isEmpty()) {
+                    Text(
+                        "No transform profiles — add one in Settings.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                }
+            }
+        }
+    }
+}
