@@ -11,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -117,7 +118,8 @@ class LocalModelManager
                 try {
                     updateGemmaState(model, LocalModelState.Downloading(0))
                     val destFile = File(modelsDir, model.fileName)
-                    downloadFile(model.downloadUrl, destFile) { progress ->
+                    val authToken = preferencesDataStore.huggingFaceToken.first().ifBlank { null }
+                    downloadFile(model.downloadUrl, destFile, authToken) { progress ->
                         updateGemmaState(model, LocalModelState.Downloading(progress))
                     }
                     updateGemmaState(model, resolveGemmaState(model))
@@ -158,6 +160,7 @@ class LocalModelManager
         private fun downloadFile(
             url: String,
             dest: File,
+            authToken: String? = null,
             onProgress: (Int) -> Unit,
         ) {
             val client =
@@ -165,7 +168,12 @@ class LocalModelManager
                     .newBuilder()
                     .callTimeout(0, TimeUnit.MILLISECONDS)
                     .build()
-            val request = Request.Builder().url(url).build()
+            val request =
+                Request
+                    .Builder()
+                    .url(url)
+                    .apply { if (!authToken.isNullOrBlank()) header("Authorization", "Bearer $authToken") }
+                    .build()
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body ?: throw IOException("Empty response body")

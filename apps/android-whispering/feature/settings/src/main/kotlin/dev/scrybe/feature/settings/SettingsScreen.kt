@@ -420,6 +420,21 @@ fun SettingsScreen(
                                     onDelete = { viewModel.deleteGemmaModel(model) },
                                 )
                             }
+                            OutlinedTextField(
+                                value = uiState.huggingFaceToken,
+                                onValueChange = viewModel::setHuggingFaceToken,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                placeholder = { Text("hf_…") },
+                                label = { Text("HuggingFace Token") },
+                                supportingText = {
+                                    Text(
+                                        "Required to download Gemma 2. " +
+                                            "Accept the Gemma license on HuggingFace first.",
+                                    )
+                                },
+                            )
                         },
                     )
                     HorizontalDivider()

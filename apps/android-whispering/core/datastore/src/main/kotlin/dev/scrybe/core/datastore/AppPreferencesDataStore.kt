@@ -63,6 +63,7 @@ class AppPreferencesDataStore
             val OPENAI_API_KEY = stringPreferencesKey("openai_api_key")
             val LOCATION_RECORDING_ENABLED = booleanPreferencesKey("location_recording_enabled")
             val OBSIDIAN_VAULT_URI = stringPreferencesKey("obsidian_vault_uri")
+            val HUGGINGFACE_TOKEN = stringPreferencesKey("huggingface_token")
         }
 
         val defaultProvider: Flow<String> =
@@ -241,6 +242,11 @@ class AppPreferencesDataStore
                 prefs[Keys.OBSIDIAN_VAULT_URI] ?: ""
             }
 
+        val huggingFaceToken: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.HUGGINGFACE_TOKEN] ?: ""
+            }
+
         suspend fun setDefaultProvider(provider: String) {
             context.dataStore.edit { prefs -> prefs[Keys.DEFAULT_PROVIDER] = provider }
         }
@@ -377,6 +383,10 @@ class AppPreferencesDataStore
 
         suspend fun setObsidianVaultUri(uri: String) {
             context.dataStore.edit { prefs -> prefs[Keys.OBSIDIAN_VAULT_URI] = uri }
+        }
+
+        suspend fun setHuggingFaceToken(token: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.HUGGINGFACE_TOKEN] = token }
         }
 
         suspend fun addDeletedDefaultProfileId(id: String) {

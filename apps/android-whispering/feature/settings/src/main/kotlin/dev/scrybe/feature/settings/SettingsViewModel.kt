@@ -73,6 +73,7 @@ data class SettingsUiState(
     val enableInsightAnalysis: Boolean = false,
     val locationRecordingEnabled: Boolean = true,
     val obsidianVaultUri: String = "",
+    val huggingFaceToken: String = "",
 )
 
 data class SavedFileEntry(
@@ -305,10 +306,12 @@ class SettingsViewModel
             combine(
                 preferencesDataStore.locationRecordingEnabled,
                 preferencesDataStore.obsidianVaultUri,
-            ) { locationEnabled, obsidianUri ->
+                preferencesDataStore.huggingFaceToken,
+            ) { locationEnabled, obsidianUri, hfToken ->
                 IntegrationsPreferences(
                     locationRecordingEnabled = locationEnabled,
                     obsidianVaultUri = obsidianUri,
+                    huggingFaceToken = hfToken,
                 )
             }
         private val coreSettingsData =
@@ -363,6 +366,7 @@ class SettingsViewModel
                     taskForgeAction = taskForge.action,
                     locationRecordingEnabled = integrations.locationRecordingEnabled,
                     obsidianVaultUri = integrations.obsidianVaultUri,
+                    huggingFaceToken = integrations.huggingFaceToken,
                 )
             }
 
@@ -410,6 +414,7 @@ class SettingsViewModel
                     enableInsightAnalysis = settingsData.enableInsightAnalysis,
                     locationRecordingEnabled = settingsData.locationRecordingEnabled,
                     obsidianVaultUri = settingsData.obsidianVaultUri,
+                    huggingFaceToken = settingsData.huggingFaceToken,
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -595,6 +600,10 @@ class SettingsViewModel
             viewModelScope.launch { preferencesDataStore.setObsidianVaultUri(uri) }
         }
 
+        fun setHuggingFaceToken(token: String) {
+            viewModelScope.launch { preferencesDataStore.setHuggingFaceToken(token) }
+        }
+
         fun testApiConnection() {
             viewModelScope.launch {
                 val trimmed = apiKey.value.trim()
@@ -726,6 +735,7 @@ class SettingsViewModel
             val taskForgeAction: String = "android.intent.action.SEND",
             val locationRecordingEnabled: Boolean = true,
             val obsidianVaultUri: String = "",
+            val huggingFaceToken: String = "",
             val versionName: String = "",
             val versionCode: Long = 0L,
             val latestReleaseTitle: String? = null,
@@ -790,6 +800,7 @@ class SettingsViewModel
         private data class IntegrationsPreferences(
             val locationRecordingEnabled: Boolean = true,
             val obsidianVaultUri: String = "",
+            val huggingFaceToken: String = "",
         )
 
         private data class ProvidersData(
