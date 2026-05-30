@@ -29,7 +29,9 @@ class BatchTranscriptionService
             providerType: ProviderType,
             options: TranscriptionOptions = TranscriptionOptions(),
         ): Result<BatchTranscriptResult> {
-            val audioChunks = audioChunker.createChunksIfNeeded(audioFile)
+            val audioChunks =
+                runCatching { audioChunker.createChunksIfNeeded(audioFile) }
+                    .getOrElse { e -> return Result.failure(e) }
             val totalChunks = audioChunks.size
             val isSingleChunk = totalChunks == 1 && audioChunks.first().absolutePath == audioFile.absolutePath
 

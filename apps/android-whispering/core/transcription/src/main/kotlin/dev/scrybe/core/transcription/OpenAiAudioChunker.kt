@@ -24,8 +24,19 @@ class OpenAiAudioChunker
         fun createChunksIfNeeded(audioFile: File): List<File> {
             if (audioFile.length() <= MAX_DIRECT_UPLOAD_BYTES) return listOf(audioFile)
 
-            val outputFormat = muxerOutputFormatFor(audioFile) ?: return listOf(audioFile)
-            val durationMs = readDurationMs(audioFile) ?: return listOf(audioFile)
+            val outputFormat = muxerOutputFormatFor(audioFile)
+            if (outputFormat == null) {
+                val sizeMb = audioFile.length() / (1024 * 1024)
+                throw UnsupportedOperationException(
+                    "Recording is $sizeMb MB but '${audioFile.extension}' cannot be split for upload. " +
+                        "Re-record in M4A format, or reduce bit rate so the file stays under ${MAX_DIRECT_UPLOAD_MB} MB.",
+                )
+            }
+            val durationMs =
+                readDurationMs(audioFile)
+                    ?: throw UnsupportedOperationException(
+                        "Could not read duration from ${audioFile.name} — file may be corrupt.",
+                    )
             val chunkDurationMs = computeChunkDurationMs(audioFile.length(), durationMs)
 
             Log.i(
@@ -154,7 +165,8 @@ class OpenAiAudioChunker
 
         private fun findAudioTrackIndex(extractor: MediaExtractor): Int =
             (0 until extractor.trackCount).firstOrNull { index ->
-                extractor.getTrackFormat(index)
+                extractor
+                    .getTrackFormat(index)
                     .getString(MediaFormat.KEY_MIME)
                     ?.startsWith("audio/") == true
             } ?: -1
@@ -221,7 +233,8 @@ class OpenAiAudioChunker
         private companion object {
             const val TAG = "OpenAiAudioChunker"
             const val BUFFER_SIZE_BYTES = 1 shl 20
-            const val MAX_DIRECT_UPLOAD_BYTES = 20L * 1024L * 1024L
+            const val MAX_DIRECT_UPLOAD_MB = 20
+            const val MAX_DIRECT_UPLOAD_BYTES = MAX_DIRECT_UPLOAD_MB.toLong() * 1024L * 1024L
             const val MIN_CHUNK_DURATION_MS = 60_000L
             const val CHUNK_TARGET_RATIO = 0.8
         }
