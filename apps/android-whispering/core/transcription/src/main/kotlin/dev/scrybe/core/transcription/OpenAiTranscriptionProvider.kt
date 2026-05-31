@@ -38,14 +38,11 @@ class OpenAiTranscriptionProvider
 
                     val audioChunks = audioChunker.createChunksIfNeeded(audioFile)
                     try {
-                        val transcriptText =
-                            audioChunks.joinToString(separator = "\n\n") { chunk ->
-                                transcribeChunk(
-                                    audioFile = chunk,
-                                    apiKey = apiKey,
-                                    options = options,
-                                )
-                            }
+                        val parts = mutableListOf<String>()
+                        for (chunk in audioChunks) {
+                            parts.add(transcribeChunk(audioFile = chunk, apiKey = apiKey, options = options))
+                        }
+                        val transcriptText = parts.joinToString(separator = "\n\n")
 
                         TranscriptResult(
                             text = transcriptText.trim(),
