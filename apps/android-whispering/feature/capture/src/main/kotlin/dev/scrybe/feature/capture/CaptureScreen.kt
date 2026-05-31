@@ -871,9 +871,8 @@ private fun ModeBadge(mode: RecordingMode) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-@androidx.compose.foundation.ExperimentalFoundationApi
 private fun HomeSessionCard(
     session: RecentCaptureSession,
     isSelected: Boolean = false,
