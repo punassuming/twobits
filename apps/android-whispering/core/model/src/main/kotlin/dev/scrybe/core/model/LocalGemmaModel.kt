@@ -10,11 +10,11 @@ enum class LocalGemmaModel(
     GEMMA_2_2B_GPU(
         displayName = "Gemma 2 2B IT · GPU",
         description = "Fast inference; requires GPU (Pixel 6+, Snapdragon 888+)",
-        fileName = "gemma2-2b-it-gpu-int4.task",
-        sizeLabel = "~1.3 GB",
+        fileName = "gemma2-2b-it-gpu-int8.task",
+        sizeLabel = "~2.6 GB",
         downloadUrl =
             "https://huggingface.co/litert-community/Gemma2-2B-IT/resolve/main/" +
-                "gemma2-2b-it-gpu-int4.task",
+                "gemma2-2b-it-gpu-int8.task",
     ),
     GEMMA_2_2B_CPU(
         displayName = "Gemma 2 2B IT · CPU",

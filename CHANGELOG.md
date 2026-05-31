@@ -6,7 +6,20 @@
 
 ### Improvements
 
+* move "Attach location to recordings" toggle to Recording Defaults section for discoverability
+
 ### Fixes
+
+* fix location permission never requested when enabling "Attach location" toggle — settings toggle now triggers the system permission dialog; enabling without permission granted is a no-op and leaves the switch off
+* fix "Add to folder" action card in session detail opening the transform profiles sheet instead of a folder picker — the card now opens a dedicated bottom sheet listing all folders; includes "Remove from folder" (when already in one) and "New folder" options
+* fix app freeze on long recordings (>10 min) — `Thread.sleep()` in the transcription retry loop blocked an IO thread pool thread; replaced with `delay()` which suspends without blocking
+* fix multi-select batch transform unreachable — history screen was removed from the nav graph without porting multi-select to the unified session list; long-pressing any recording on the home screen now enters selection mode with a "Transform" action in the top bar that runs any transform profile across all selected recordings
+* fix Gemma 2 2B GPU download URL — Gemma 2 uses `gpu-int8` quantization (not `gpu-int4` which is Gemma 1); update size label from ~1.3 GB to ~2.6 GB
+* fix Gemma model downloads failing on slow connections — removed hard call timeout from the file-download OkHttpClient so 1.3–2.3 GB downloads are not cut off
+* fix Gemma model availability — `litert-community/Gemma2-2B-IT` is a gated HuggingFace repo requiring license acceptance; replace the broken "Download" button with an "Import .task file" button (opens Android file picker to select a locally-saved model) and a "Get model on HuggingFace ↗" link that opens the model page in the browser so the user can accept the license and download the file
+* fix speaker legend never showing — restore "Retrieve speaker info" button in session detail when no speaker segments exist; the clickable legend appears once diarization has run
+* fix transcription failing on long recordings — add up to 3 attempts with exponential backoff (2 s, 4 s) per chunk for retriable errors (429 rate limit, 5xx server errors, network IO errors); non-retriable errors (400, 401) still fail immediately
+* fix transcription silently uploading oversized files in unsupported formats (OGG, WAV, MP3) — recordings too large to chunk now fail immediately with a clear "re-record in M4A format" message instead of sending a file that exceeds the 25 MB API limit; `BatchTranscriptionService` now surfaces chunking errors as `Result.failure` rather than letting them propagate as unhandled exceptions
 
 ## 0.28.0 (2026-05-29)
 

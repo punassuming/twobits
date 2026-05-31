@@ -1,6 +1,8 @@
 package dev.scrybe.feature.settings
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -72,6 +74,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.common.ScrybeLayoutDefaults
@@ -118,6 +121,16 @@ fun SettingsScreen(
                 )
                 viewModel.setObsidianVaultUri(uri.toString())
             }
+        }
+    var pendingImportGemmaModel by remember { mutableStateOf<LocalGemmaModel?>(null) }
+    val importGemmaFilePicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri?.let { viewModel.importGemmaModel(it, pendingImportGemmaModel ?: return@let) }
+            pendingImportGemmaModel = null
+        }
+    val locationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) viewModel.setLocationRecordingEnabled(true)
         }
 
     Scaffold(
@@ -416,7 +429,16 @@ fun SettingsScreen(
                                     state = gemmaStates[model] ?: LocalModelState.NotDownloaded,
                                     isSelected = selectedGemmaModel == model,
                                     onSelect = { viewModel.selectGemmaModel(model) },
-                                    onDownload = { viewModel.downloadGemmaModel(model) },
+                                    onImport = {
+                                        pendingImportGemmaModel = model
+                                        importGemmaFilePicker.launch("*/*")
+                                    },
+                                    onGetModel = {
+                                        val pageUrl = model.downloadUrl.substringBefore("/resolve/")
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse(pageUrl)),
+                                        )
+                                    },
                                     onDelete = { viewModel.deleteGemmaModel(model) },
                                 )
                             }
@@ -567,6 +589,37 @@ fun SettingsScreen(
                             ),
                         onClick = { showChannelPicker = true },
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Attach location to recordings")
+                            Text(
+                                "Saves city/region with each recording",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = uiState.locationRecordingEnabled,
+                            onCheckedChange = { enabled ->
+                                if (!enabled) {
+                                    viewModel.setLocationRecordingEnabled(false)
+                                } else if (ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    viewModel.setLocationRecordingEnabled(true)
+                                } else {
+                                    locationPermissionLauncher.launch(
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    )
+                                }
+                            },
+                        )
+                    }
                 }
 
                 SettingsSectionCard(
@@ -668,23 +721,6 @@ fun SettingsScreen(
                         Switch(
                             checked = uiState.recordingSoundOnStartStop,
                             onCheckedChange = { viewModel.setRecordingSoundOnStartStop(it) },
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Attach location to recordings")
-                            Text(
-                                "Saves city/region with each recording",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = uiState.locationRecordingEnabled,
-                            onCheckedChange = { viewModel.setLocationRecordingEnabled(it) },
                         )
                     }
                 }
@@ -1142,7 +1178,8 @@ private fun GemmaModelRow(
     state: LocalModelState,
     isSelected: Boolean,
     onSelect: () -> Unit,
-    onDownload: () -> Unit,
+    onImport: () -> Unit,
+    onGetModel: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val isReady = state is LocalModelState.Ready
@@ -1185,9 +1222,14 @@ private fun GemmaModelRow(
             }
             when (state) {
                 is LocalModelState.NotDownloaded ->
-                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text(" Download")
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text(" Import .task file")
+                        }
+                        TextButton(onClick = onGetModel, modifier = Modifier.fillMaxWidth()) {
+                            Text("Get model on HuggingFace ↗")
+                        }
                     }
                 is LocalModelState.Downloading ->
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1196,7 +1238,7 @@ private fun GemmaModelRow(
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Text(
-                            "${state.progressPercent}%",
+                            "Importing… ${state.progressPercent}%",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1212,7 +1254,7 @@ private fun GemmaModelRow(
                 is LocalModelState.Error ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
+                        OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
                     }
             }
         }

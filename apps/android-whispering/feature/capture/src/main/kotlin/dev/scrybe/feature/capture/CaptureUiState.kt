@@ -15,6 +15,21 @@ data class CaptureUiState(
     val openTaskTotal: Int = 0,
     val activeMode: RecordingMode = RecordingMode.JOURNAL,
     val folderNames: Map<String, String> = emptyMap(),
+    val selectedSessionIds: Set<String> = emptySet(),
+) {
+    val isSelecting: Boolean get() = selectedSessionIds.isNotEmpty()
+}
+
+data class CaptureTransformDialogState(
+    val sessionIds: List<String>,
+    val sessionTitles: List<String>,
+    val runningProfileId: String? = null,
+    val result: CaptureTransformResult? = null,
+)
+
+data class CaptureTransformResult(
+    val profileName: String,
+    val text: String,
 )
 
 data class RecentCaptureSession(

@@ -13,6 +13,8 @@ import dev.scrybe.core.audio.PlaybackState
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.database.FolderDao
+import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.database.PersonDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.SessionTaskDao
@@ -44,6 +46,7 @@ import dev.scrybe.core.transforms.OpenAiTaskExtractionService
 import dev.scrybe.core.transforms.SessionTransformCoordinator
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,6 +54,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -58,6 +62,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.Duration
 import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -66,6 +71,7 @@ class SessionDetailViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val sessionDao: RecordingSessionDao,
+        private val folderDao: FolderDao,
         private val transcriptDao: TranscriptDao,
         private val transformProfileDao: TransformProfileDao,
         private val transformRunDao: TransformRunDao,
@@ -94,6 +100,9 @@ class SessionDetailViewModel
         private val tagSuggestionState = MutableStateFlow<TagSuggestionUiState>(TagSuggestionUiState.Idle)
         private val _events = MutableSharedFlow<SessionDetailEvent>()
         val events = _events.asSharedFlow()
+
+        val folders: StateFlow<List<FolderEntity>> =
+            folderDao.getAllFolders().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
         private data class SideData(
             val tagSuggestion: TagSuggestionUiState,
@@ -848,6 +857,26 @@ class SessionDetailViewModel
 
         fun dismissRenamePrompt() {
             renamePromptDismissed.value = true
+        }
+
+        fun moveToFolder(folderId: String?) {
+            viewModelScope.launch {
+                sessionDao.moveSessionsToFolder(listOf(sessionId), folderId, System.currentTimeMillis())
+            }
+        }
+
+        fun createFolderAndMove(name: String) {
+            viewModelScope.launch {
+                val folder =
+                    FolderEntity(
+                        id = UUID.randomUUID().toString(),
+                        name = name.trim(),
+                        parentFolderId = null,
+                        createdAt = System.currentTimeMillis(),
+                    )
+                folderDao.insertFolder(folder)
+                sessionDao.moveSessionsToFolder(listOf(sessionId), folder.id, System.currentTimeMillis())
+            }
         }
 
         fun deleteSession() {

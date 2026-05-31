@@ -114,6 +114,7 @@ import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.scrybeContentWidth
+import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.SessionTask
@@ -133,6 +134,7 @@ fun SessionDetailScreen(
     viewModel: SessionDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val folders by viewModel.folders.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var showMoreSheet by remember { mutableStateOf(false) }
@@ -145,6 +147,7 @@ fun SessionDetailScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var transformResult by remember { mutableStateOf<SessionDetailEvent.TransformResult?>(null) }
     var showTransformSheet by remember { mutableStateOf(false) }
+    var showFolderSheet by remember { mutableStateOf(false) }
     val transformSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var speakerAssignTarget by remember { mutableStateOf<String?>(null) }
 
@@ -332,6 +335,15 @@ fun SessionDetailScreen(
                             onSeek = viewModel::seekPlayback,
                             onSpeakerClick = { speakerId -> speakerAssignTarget = speakerId },
                         )
+                        if (state.speakerSegments.isEmpty()) {
+                            SpeakerSlotsCard(
+                                state = state,
+                                onAssignPerson = viewModel::assignPersonToSpeaker,
+                                onCreatePerson = viewModel::createPersonAndAssign,
+                                onFetchSpeakerInfo = viewModel::fetchSpeakerInfo,
+                                onMergeSpeakers = viewModel::mergeSpeakers,
+                            )
+                        }
                         TabRow(selectedTabIndex = activeTab) {
                             Tab(
                                 selected = activeTab == 0,
@@ -354,6 +366,7 @@ fun SessionDetailScreen(
                                 OutputTabContent(
                                     state = state,
                                     onOpenTransformSheet = { showTransformSheet = true },
+                                    onAddToFolder = { showFolderSheet = true },
                                     onSuggestTags = viewModel::suggestTags,
                                     onSaveTags = viewModel::saveTags,
                                     onClearTagSuggestions = viewModel::clearTagSuggestionState,
@@ -396,6 +409,22 @@ fun SessionDetailScreen(
                 onDismiss = { showTransformSheet = false },
             )
         }
+    }
+
+    if (showFolderSheet && successState != null) {
+        FolderPickerSheet(
+            currentFolderId = successState.session.folderId,
+            folders = folders,
+            onPickFolder = { folderId ->
+                viewModel.moveToFolder(folderId)
+                showFolderSheet = false
+            },
+            onCreateFolder = { name ->
+                viewModel.createFolderAndMove(name)
+                showFolderSheet = false
+            },
+            onDismiss = { showFolderSheet = false },
+        )
     }
 
     if (showMoreSheet && successState != null) {
@@ -611,6 +640,7 @@ fun SessionDetailScreen(
 private fun OutputTabContent(
     state: SessionDetailUiState.Success,
     onOpenTransformSheet: () -> Unit,
+    onAddToFolder: () -> Unit,
     onSuggestTags: () -> Unit,
     onSaveTags: (List<String>) -> Unit,
     onClearTagSuggestions: () -> Unit,
@@ -646,7 +676,7 @@ private fun OutputTabContent(
                 Text("Post-process transcript")
             }
         }
-        ExtendedActionsSection(onOpenTransformSheet = onOpenTransformSheet)
+        ExtendedActionsSection(onOpenTransformSheet = onOpenTransformSheet, onAddToFolder = onAddToFolder)
         InlineTagsCard(
             tags = state.session.tags,
             tagSuggestionState = state.tagSuggestionState,
@@ -809,7 +839,10 @@ private fun AddTaskRow(onAdd: (String) -> Unit) {
 }
 
 @Composable
-private fun ExtendedActionsSection(onOpenTransformSheet: () -> Unit) {
+private fun ExtendedActionsSection(
+    onOpenTransformSheet: () -> Unit,
+    onAddToFolder: () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = "Actions",
@@ -818,7 +851,7 @@ private fun ExtendedActionsSection(onOpenTransformSheet: () -> Unit) {
             modifier = Modifier.padding(start = 2.dp, top = 4.dp),
         )
         ExtendedActionsTop(onOpenTransformSheet = onOpenTransformSheet)
-        ExtendedActionsBottom(onOpenTransformSheet = onOpenTransformSheet)
+        ExtendedActionsBottom(onOpenTransformSheet = onOpenTransformSheet, onAddToFolder = onAddToFolder)
     }
 }
 
@@ -829,9 +862,12 @@ private fun ExtendedActionsTop(onOpenTransformSheet: () -> Unit) {
 }
 
 @Composable
-private fun ExtendedActionsBottom(onOpenTransformSheet: () -> Unit) {
+private fun ExtendedActionsBottom(
+    onOpenTransformSheet: () -> Unit,
+    onAddToFolder: () -> Unit,
+) {
     ExtendedActionCard(icon = Icons.Filled.Translate, label = "Translate", color = MaterialTheme.colorScheme.tertiary, onClick = onOpenTransformSheet)
-    ExtendedActionCard(icon = Icons.Filled.FolderOpen, label = "Add to folder", color = MaterialTheme.colorScheme.secondary, onClick = onOpenTransformSheet)
+    ExtendedActionCard(icon = Icons.Filled.FolderOpen, label = "Add to folder", color = MaterialTheme.colorScheme.secondary, onClick = onAddToFolder)
 }
 
 @Composable
@@ -2281,3 +2317,70 @@ private val SUMMARY_TIME_FORMATTER: DateTimeFormatter =
 
 private val DETAIL_DATE_FORMATTER: DateTimeFormatter =
     DateTimeFormatter.ofPattern("MMM d · h:mm a")
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FolderPickerSheet(
+    currentFolderId: String?,
+    folders: List<FolderEntity>,
+    onPickFolder: (String?) -> Unit,
+    onCreateFolder: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var newFolderName by remember { mutableStateOf("") }
+    var showNewFolderField by remember { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text("Move to folder", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+            if (currentFolderId != null) {
+                ListItem(
+                    headlineContent = { Text("Remove from folder") },
+                    leadingContent = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
+                    modifier = Modifier.clickable { onPickFolder(null) },
+                )
+                HorizontalDivider()
+            }
+            folders.forEach { folder ->
+                ListItem(
+                    headlineContent = { Text(folder.name) },
+                    leadingContent = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
+                    trailingContent = {
+                        if (folder.id == currentFolderId) {
+                            Icon(Icons.Filled.Star, contentDescription = "Current folder", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    modifier = Modifier.clickable { onPickFolder(folder.id) },
+                )
+            }
+            HorizontalDivider()
+            if (showNewFolderField) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = newFolderName,
+                        onValueChange = { newFolderName = it },
+                        placeholder = { Text("Folder name") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        onClick = { if (newFolderName.isNotBlank()) onCreateFolder(newFolderName) },
+                        enabled = newFolderName.isNotBlank(),
+                    ) { Text("Create") }
+                }
+            } else {
+                ListItem(
+                    headlineContent = { Text("New folder…") },
+                    leadingContent = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    modifier = Modifier.clickable { showNewFolderField = true },
+                )
+            }
+        }
+    }
+}
