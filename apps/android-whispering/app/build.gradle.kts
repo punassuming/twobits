@@ -106,6 +106,7 @@ tasks.named("preBuild").configure {
 
 dependencies {
     implementation(project(":core:audio"))
+    implementation(project(":core:billing"))
     implementation(project(":core:local-ai"))
     implementation(project(":core:common"))
     implementation(project(":core:database"))

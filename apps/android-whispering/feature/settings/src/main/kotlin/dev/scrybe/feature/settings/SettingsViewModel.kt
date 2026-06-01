@@ -1,5 +1,6 @@
 package dev.scrybe.feature.settings
 
+import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.pm.PackageInfoCompat
@@ -7,6 +8,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.scrybe.core.billing.BillingManager
+import dev.scrybe.core.billing.PurchaseCancelledException
+import dev.scrybe.core.billing.SubscriptionRepository
+import dev.scrybe.core.billing.SubscriptionTier
 import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.common.ReleaseNotesParser
 import dev.scrybe.core.database.RecordingSessionDao
@@ -55,6 +60,9 @@ data class SettingsUiState(
     val encodingBitRate: Int = 128_000,
     val channelCount: Int = 1,
     val apiKey: String = "",
+    val subscriptionTier: SubscriptionTier = SubscriptionTier.Free,
+    val isPurchasing: Boolean = false,
+    val purchaseError: String? = null,
     val versionName: String = "",
     val versionCode: Long = 0L,
     val latestReleaseTitle: String? = null,
@@ -133,6 +141,8 @@ class SettingsViewModel
         private val apiKeyValidator: OpenAiApiKeyValidator,
         private val profileSuggestionService: OpenAiProfileSuggestionService,
         private val localModelManager: LocalModelManager,
+        private val subscriptionRepository: SubscriptionRepository,
+        private val billingManager: BillingManager,
     ) : ViewModel() {
         val whisperStates: StateFlow<Map<LocalWhisperModel, LocalModelState>> = localModelManager.whisperStates
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = localModelManager.selectedWhisperModel
@@ -151,6 +161,8 @@ class SettingsViewModel
         private val savedFiles = MutableStateFlow<List<SavedFileEntry>>(emptyList())
         private val apiKeyValidationStatus = MutableStateFlow(ApiKeyValidationStatus.Unknown)
         private val apiKeyValidationMessage = MutableStateFlow<String?>(null)
+        private val isPurchasing = MutableStateFlow(false)
+        private val purchaseError = MutableStateFlow<String?>(null)
         private val profileSuggestionModelTestState =
             MutableStateFlow<ProfileSuggestionModelTestUiState>(ProfileSuggestionModelTestUiState.Idle)
         private val localMetadata =
@@ -367,12 +379,22 @@ class SettingsViewModel
                 )
             }
 
+        private val billingState =
+            combine(
+                subscriptionRepository.subscriptionTier,
+                isPurchasing,
+                purchaseError,
+            ) { tier, purchasing, error ->
+                BillingState(tier = tier, isPurchasing = purchasing, purchaseError = error)
+            }
+
         val uiState: StateFlow<SettingsUiState> =
             combine(
-                settingsData,
-                apiKeyValidation,
-                profileSuggestionModelTestState,
-            ) { settingsData, validation, modelTestState ->
+                combine(settingsData, apiKeyValidation, profileSuggestionModelTestState) {
+                    s, v, m -> Triple(s, v, m)
+                },
+                billingState,
+            ) { (settingsData, validation, modelTestState), billing ->
                 SettingsUiState(
                     transcriptionProvider = settingsData.transcriptionProvider,
                     aiFeaturesProvider = settingsData.aiFeaturesProvider,
@@ -392,6 +414,9 @@ class SettingsViewModel
                     recordingVibrateOnStartStop = settingsData.recordingVibrateOnStartStop,
                     recordingSoundOnStartStop = settingsData.recordingSoundOnStartStop,
                     apiKey = settingsData.apiKey,
+                    subscriptionTier = billing.tier,
+                    isPurchasing = billing.isPurchasing,
+                    purchaseError = billing.purchaseError,
                     versionName = settingsData.versionName,
                     versionCode = settingsData.versionCode,
                     latestReleaseTitle = settingsData.latestReleaseTitle,
@@ -425,6 +450,7 @@ class SettingsViewModel
                 refreshSavedFiles()
                 apiKeyValidationStatus.value =
                     if (apiKey.value.isBlank()) ApiKeyValidationStatus.Unknown else ApiKeyValidationStatus.Valid
+                subscriptionRepository.refresh()
             }
         }
 
@@ -645,6 +671,40 @@ class SettingsViewModel
             profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
         }
 
+        fun startProPurchase(activity: Activity) {
+            viewModelScope.launch {
+                isPurchasing.value = true
+                purchaseError.value = null
+                val pkg = billingManager.getMonthlyPackage()
+                if (pkg == null) {
+                    purchaseError.value = "Subscription not available — try again shortly."
+                    isPurchasing.value = false
+                    return@launch
+                }
+                billingManager.purchase(activity, pkg)
+                    .onFailure { e ->
+                        if (e !is PurchaseCancelledException) {
+                            purchaseError.value = e.message ?: "Purchase failed."
+                        }
+                    }
+                isPurchasing.value = false
+            }
+        }
+
+        fun restorePurchases() {
+            viewModelScope.launch {
+                isPurchasing.value = true
+                purchaseError.value = null
+                billingManager.restorePurchases()
+                    .onFailure { purchaseError.value = it.message ?: "Restore failed." }
+                isPurchasing.value = false
+            }
+        }
+
+        fun dismissPurchaseError() {
+            purchaseError.value = null
+        }
+
         fun refreshSavedFiles() {
             viewModelScope.launch {
                 savedFiles.value = scanSavedFiles()
@@ -804,6 +864,12 @@ class SettingsViewModel
         private data class UsageData(
             val savedFiles: List<SavedFileEntry> = emptyList(),
             val usageStats: UsageStats = UsageStats(),
+        )
+
+        private data class BillingState(
+            val tier: SubscriptionTier = SubscriptionTier.Free,
+            val isPurchasing: Boolean = false,
+            val purchaseError: String? = null,
         )
 
         private fun scanSavedFiles(): List<SavedFileEntry> {

@@ -1,6 +1,7 @@
 package dev.scrybe.feature.settings
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Chat
@@ -73,10 +75,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.scrybe.core.billing.SubscriptionTier
 import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
@@ -99,6 +103,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val activity = LocalContext.current as? Activity
     val whisperStates by viewModel.whisperStates.collectAsState()
     val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
     val gemmaStates by viewModel.gemmaStates.collectAsState()
@@ -172,6 +177,15 @@ fun SettingsScreen(
                         .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
             ) {
+                ProSubscriptionCard(
+                    tier = uiState.subscriptionTier,
+                    isPurchasing = uiState.isPurchasing,
+                    purchaseError = uiState.purchaseError,
+                    onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
+                    onRestore = viewModel::restorePurchases,
+                    onDismissError = viewModel::dismissPurchaseError,
+                )
+
                 SettingsSectionCard(
                     title = "Intelligence",
                     icon = Icons.Filled.AutoAwesome,
@@ -1363,6 +1377,83 @@ private fun IntegrationRow(
             Text("Connect", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (!isLast) HorizontalDivider(Modifier.padding(start = 34.dp))
+    }
+}
+
+@Composable
+private fun ProSubscriptionCard(
+    tier: SubscriptionTier,
+    isPurchasing: Boolean,
+    purchaseError: String?,
+    onUpgrade: () -> Unit,
+    onRestore: () -> Unit,
+    onDismissError: () -> Unit,
+) {
+    ScrybeSectionCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text("Scrybe Pro", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (tier is SubscriptionTier.Pro) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Text(
+                        "Active",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+        }
+        when (tier) {
+            SubscriptionTier.Free -> {
+                Text(
+                    "Skip the API key — Pro includes managed OpenAI access for transcription and transforms.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = onUpgrade,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isPurchasing,
+                ) {
+                    if (isPurchasing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (isPurchasing) "Processing…" else "Upgrade to Pro — \$1.99 / month")
+                }
+                TextButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
+                    Text("Restore purchases")
+                }
+            }
+            SubscriptionTier.Pro -> {
+                Text(
+                    "Managed API keys are active — no personal key required for transcription or AI features.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
+                    Text("Restore purchases")
+                }
+            }
+        }
+        if (purchaseError != null) {
+            Text(purchaseError, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = onDismissError) { Text("Dismiss") }
+        }
     }
 }
 

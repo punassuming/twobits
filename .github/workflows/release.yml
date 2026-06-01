@@ -224,21 +224,23 @@ jobs:
       # Normal Android CI now validates compile, unit tests, lint, ktlint, and
       # detekt through a single debug-focused verification job. The release
       # workflow remains the only place that assembles the signed release APK.
-      - name: Build release APK
+      - name: Build release APK and AAB
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         working-directory: apps/android-whispering
         shell: bash
-        run: bash scripts/ci-gradle-retry.sh assembleRelease
+        run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
         # KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD are set in
         # GITHUB_ENV by the "Set up release signing" step above, ensuring the
         # build always uses the same credentials that were used to configure the
         # keystore (real secrets or fallback defaults).
 
-      - name: Create GitHub Release and upload APK
+      - name: Create GitHub Release and upload artifacts
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.new_tag }}
           name: ${{ steps.version.outputs.new_tag }}
           body_path: ${{ steps.changelog.outputs.release_notes_path }}
-          files: apps/android-whispering/app/build/outputs/apk/release/*.apk
+          files: |
+            apps/android-whispering/app/build/outputs/apk/release/*.apk
+            apps/android-whispering/app/build/outputs/bundle/release/*.aab

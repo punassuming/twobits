@@ -4,7 +4,13 @@
 
 ### Features
 
+* add Pro subscription tier — users can upgrade to Scrybe Pro ($1.99/month) via Google Play for managed OpenAI API access without requiring a personal API key; subscription status is surfaced at the top of the Settings screen
+* add RevenueCat billing integration — core:billing module wraps RevenueCat Purchases SDK with a SubscriptionRepository and BillingManager providing subscription tier as a StateFlow; purchase, restore, and refresh flows are coroutine-based
+
 ### Improvements
+
+* release workflow now builds both APK and AAB (App Bundle) artifacts — AAB is attached to GitHub Releases for direct Google Play upload
+* settings screen surfaces Pro subscription card at the top with upgrade, restore, and error dismissal actions
 
 ### Fixes
 
