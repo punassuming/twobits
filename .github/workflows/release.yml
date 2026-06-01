@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          has_bullets="$(python3 apps/android-whispering/scripts/manage-changelog.py has-unreleased-bullets --changelog CHANGELOG.md)"
+          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog CHANGELOG.md)"
           echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
 
           if [ "$has_bullets" != "true" ]; then
@@ -97,7 +97,7 @@ jobs:
 
       - name: Grant execute permission for gradlew
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
-        run: chmod +x apps/android-whispering/gradlew
+        run: chmod +x apps/scrybe/gradlew
 
       - name: Promote changelog release section
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
@@ -107,7 +107,7 @@ jobs:
           set -euo pipefail
 
           release_notes_path="${{ runner.temp }}/release-notes.md"
-          python3 apps/android-whispering/scripts/manage-changelog.py \
+          python3 apps/scrybe/scripts/manage-changelog.py \
             promote-release \
             --changelog CHANGELOG.md \
             --version "${{ steps.version.outputs.new_version }}" \
@@ -131,7 +131,7 @@ jobs:
           version_name="${{ steps.version.outputs.new_version }}"
           IFS='.' read -r major minor patch <<< "$version_name"
           version_code="$((major * 1000000 + minor * 1000 + patch))"
-          build_file="apps/android-whispering/app/build.gradle.kts"
+          build_file="apps/scrybe/app/build.gradle.kts"
 
           sed -Ei "s/versionCode = [0-9]+/versionCode = ${version_code}/" "$build_file"
           sed -Ei "s/versionName = \"[^\"]*\"/versionName = \"${version_name}\"/" "$build_file"
@@ -226,7 +226,7 @@ jobs:
       # workflow remains the only place that assembles the signed release APK.
       - name: Build release APK and AAB
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
-        working-directory: apps/android-whispering
+        working-directory: apps/scrybe
         shell: bash
         run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
         # KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD are set in
@@ -242,5 +242,5 @@ jobs:
           name: ${{ steps.version.outputs.new_tag }}
           body_path: ${{ steps.changelog.outputs.release_notes_path }}
           files: |
-            apps/android-whispering/app/build/outputs/apk/release/*.apk
-            apps/android-whispering/app/build/outputs/bundle/release/*.aab
+            apps/scrybe/app/build/outputs/apk/release/*.apk
+            apps/scrybe/app/build/outputs/bundle/release/*.aab
