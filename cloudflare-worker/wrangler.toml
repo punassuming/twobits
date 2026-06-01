@@ -1,6 +1,11 @@
-name = "aiapps-proxy"
+name = "twobits-proxy"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+
+# Custom domain — routes the worker to api.twobits.app
+# Requires twobits.app to be active in your Cloudflare account (it is).
+[[custom_domains]]
+pattern = "api.twobits.app"
 
 # KV namespace for subscription caching (create via: wrangler kv:namespace create SUBSCRIPTION_CACHE)
 # Replace <YOUR_KV_NAMESPACE_ID> with the ID returned by the command above.

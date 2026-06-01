@@ -1,21 +1,18 @@
 /**
- * Managed API Key Proxy — Cloudflare Worker
+ * Two Bits — Managed API Key Proxy (api.twobits.app)
  *
  * Validates a RevenueCat subscription receipt and proxies OpenAI API calls
  * on behalf of Pro subscribers so the OpenAI key never leaves the server.
  *
  * Setup:
- *   1. Create a Cloudflare Worker and deploy this script.
- *   2. Set the following environment secrets in the Worker settings:
- *        OPENAI_API_KEY     — your OpenAI secret key
- *        REVENUECAT_API_KEY — your RevenueCat secret API key (v1)
- *        ALLOWED_APP_USER_ID_PREFIX — (optional) prefix to restrict user IDs
- *   3. In the Android apps, call this Worker's URL instead of api.openai.com
- *      when SubscriptionTier is Pro. Pass the RevenueCat App User ID as the
- *      Authorization header: "Bearer <revenueCatAppUserId>".
+ *   1. Deploy via: wrangler deploy  (routes to api.twobits.app automatically)
+ *   2. Set secrets: wrangler secret put OPENAI_API_KEY
+ *                   wrangler secret put REVENUECAT_API_KEY
+ *   3. In the Android apps, set the Pro base URL to https://api.twobits.app
+ *      and pass the RevenueCat App User ID as: Authorization: Bearer <userId>
  *
  * Request format (same as OpenAI):
- *   POST /v1/chat/completions    — proxies to OpenAI Chat Completions
+ *   POST /v1/chat/completions     — proxies to OpenAI Chat Completions
  *   POST /v1/audio/transcriptions — proxies to OpenAI Whisper
  *
  * The worker validates the App User ID against RevenueCat before forwarding.
