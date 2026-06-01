@@ -458,7 +458,10 @@ fun CaptureScreen(
             title = { Text("Delete $count recording${if (count == 1) "" else "s"}?") },
             text = { Text("This will permanently delete the selected recordings and their transcripts.") },
             confirmButton = {
-                TextButton(onClick = { showDeleteConfirm = false; viewModel.deleteSelectedSessions() }) {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    viewModel.deleteSelectedSessions()
+                }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -473,7 +476,10 @@ fun CaptureScreen(
             title = { Text("Archive $count recording${if (count == 1) "" else "s"}?") },
             text = { Text("Archived recordings are hidden from the main list.") },
             confirmButton = {
-                TextButton(onClick = { showArchiveConfirm = false; viewModel.setArchivedForSelected(true) }) {
+                TextButton(onClick = {
+                    showArchiveConfirm = false
+                    viewModel.setArchivedForSelected(true)
+                }) {
                     Text("Archive")
                 }
             },

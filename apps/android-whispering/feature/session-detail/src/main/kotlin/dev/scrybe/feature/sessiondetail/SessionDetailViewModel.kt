@@ -953,9 +953,10 @@ class SessionDetailViewModel
             _analysisSuggestion.value = AnalysisSuggestionState(isLoading = true)
             viewModelScope.launch {
                 val titleDeferred = async { autoRenameService.suggestTitle(transcriptText, state.session.title) }
-                val tagsDeferred = async {
-                    tagSuggestionService.suggestTags(state.session.title, transcriptText, state.session.tags)
-                }
+                val tagsDeferred =
+                    async {
+                        tagSuggestionService.suggestTags(state.session.title, transcriptText, state.session.tags)
+                    }
                 val modeDeferred = async { modeSuggestionService.suggestMode(transcriptText) }
                 _analysisSuggestion.value =
                     AnalysisSuggestionState(

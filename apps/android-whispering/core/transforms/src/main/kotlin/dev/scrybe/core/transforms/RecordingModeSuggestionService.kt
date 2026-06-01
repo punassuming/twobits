@@ -3,9 +3,6 @@ package dev.scrybe.core.transforms
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.transcription.ApiKeyProvider
-import java.io.IOException
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -15,6 +12,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @Singleton
 class RecordingModeSuggestionService
@@ -70,30 +70,53 @@ class RecordingModeSuggestionService
                     val rawText =
                         okHttpClient.newCall(request).execute().use { response ->
                             if (!response.isSuccessful) {
-                                val err = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                                val err =
+                                    response.body
+                                        ?.string()
+                                        .orEmpty()
+                                        .replace("\n", " ")
+                                        .take(500)
                                 throw IOException("OpenAI error: ${response.code} $err")
                             }
                             val body = response.body?.string() ?: throw IOException("Empty response body")
                             val resp = json.decodeFromString(ApiResponse.serializer(), body)
                             resp.outputText
-                                ?: resp.output.orEmpty()
+                                ?: resp.output
+                                    .orEmpty()
                                     .flatMap { it.content.orEmpty() }
                                     .firstOrNull { it.type == "output_text" }
                                     ?.text
                                 ?: throw IOException("No output text in response")
                         }
 
-                    val cleaned = rawText.trim().removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
+                    val cleaned =
+                        rawText
+                            .trim()
+                            .removePrefix("```json")
+                            .removePrefix("```")
+                            .removeSuffix("```")
+                            .trim()
                     val payload = json.decodeFromString(ModePayload.serializer(), cleaned)
                     runCatching { RecordingMode.valueOf(payload.mode.uppercase()) }.getOrDefault(RecordingMode.JOURNAL)
                 }
             }
 
-        @Serializable private data class ApiRequest(val model: String, val instructions: String, val input: List<InputMessage>)
+        @Serializable private data class ApiRequest(
+            val model: String,
+            val instructions: String,
+            val input: List<InputMessage>,
+        )
 
-        @Serializable private data class InputMessage(val type: String, val role: String, val content: List<InputText>)
+        @Serializable private data class InputMessage(
+            val type: String,
+            val role: String,
+            val content: List<InputText>,
+        )
 
-        @Serializable private data class InputText(val type: String, val text: String)
+        @Serializable private data class InputText(
+            val type: String,
+            val text: String,
+        )
 
         @Serializable
         private data class ApiResponse(
@@ -101,11 +124,18 @@ class RecordingModeSuggestionService
             val output: List<OutputItem>? = null,
         )
 
-        @Serializable private data class OutputItem(val content: List<OutputContent>? = null)
+        @Serializable private data class OutputItem(
+            val content: List<OutputContent>? = null,
+        )
 
-        @Serializable private data class OutputContent(val type: String? = null, val text: String? = null)
+        @Serializable private data class OutputContent(
+            val type: String? = null,
+            val text: String? = null,
+        )
 
-        @Serializable private data class ModePayload(val mode: String)
+        @Serializable private data class ModePayload(
+            val mode: String,
+        )
 
         private companion object {
             const val MODEL_NAME = "gpt-5-mini"

@@ -4,11 +4,11 @@ import android.util.Log
 import dev.scrybe.core.database.TranscriptChunkDao
 import dev.scrybe.core.database.TranscriptChunkEntity
 import dev.scrybe.core.model.ProviderType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 data class BatchTranscriptResult(
     val text: String,

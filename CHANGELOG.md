@@ -18,6 +18,8 @@
 
 * fix transcription freeze / ANR — `BatchTranscriptionService` now wraps the blocking `MediaCodec` chunking step in `withContext(Dispatchers.IO)` so it no longer runs on the main thread; multi-chunk loop extracted to a helper to satisfy the 60-line function limit
 * fix location tags missing on new recordings — location capture is now awaited before the session row is persisted using a `Deferred`/`async` pattern, eliminating the race condition where `persistRecording()` could read a null location
+* fix location tracking default being ON without requesting permission — settings screen now requests `ACCESS_COARSE_LOCATION` automatically when the toggle is enabled and permission is absent; if the user denies, the toggle resets to OFF so the displayed state always matches actual capability
+* fix File Manager crash when scrolling — `LazyColumn` keys for recordings and outputs are now namespaced (`rec:path` / `out:path`) to prevent duplicate-key exceptions when the same path appears in both sections; each list is also deduplicated by path
 
 ## 0.28.1 (2026-05-31)
 
