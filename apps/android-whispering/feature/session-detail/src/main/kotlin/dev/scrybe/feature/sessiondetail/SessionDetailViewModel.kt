@@ -22,6 +22,7 @@ import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TranscriptEntity
 import dev.scrybe.core.database.TransformProfileDao
+import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.export.ExportCoordinator
@@ -43,7 +44,9 @@ import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transforms.OpenAiTagSuggestionService
 import dev.scrybe.core.transforms.OpenAiTaskExtractionService
+import dev.scrybe.core.transforms.RecordingModeSuggestionService
 import dev.scrybe.core.transforms.SessionTransformCoordinator
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -84,6 +87,7 @@ class SessionDetailViewModel
         private val autoRenameService: AutoRenameServiceFacade,
         private val tagSuggestionService: OpenAiTagSuggestionService,
         private val taskExtractionService: OpenAiTaskExtractionService,
+        private val modeSuggestionService: RecordingModeSuggestionService,
         private val exportCoordinator: ExportCoordinator,
         private val audioPlayer: AudioPlayer,
         @ApplicationContext private val context: Context,
@@ -98,6 +102,8 @@ class SessionDetailViewModel
         private val playbackSeekMutex = Mutex()
         private val renamePromptDismissed = MutableStateFlow(false)
         private val tagSuggestionState = MutableStateFlow<TagSuggestionUiState>(TagSuggestionUiState.Idle)
+        private val _analysisSuggestion = MutableStateFlow<AnalysisSuggestionState?>(null)
+        val analysisSuggestion: StateFlow<AnalysisSuggestionState?> = _analysisSuggestion.asStateFlow()
         private val _events = MutableSharedFlow<SessionDetailEvent>()
         val events = _events.asSharedFlow()
 
@@ -250,19 +256,24 @@ class SessionDetailViewModel
                                     createdAt = Instant.ofEpochMilli(entity.createdAt),
                                 )
                             }
+                        val sessionMode = sessionEntity.mode
                         val profiles =
-                            profileEntities.map { entity ->
-                                TransformProfile(
-                                    id = entity.id,
-                                    name = entity.name,
-                                    description = entity.description,
-                                    systemPrompt = entity.systemPrompt,
-                                    steps = TransformStepsCodec.decode(entity.steps, fallback = entity.systemPrompt),
-                                    providerType = ProviderType.valueOf(entity.providerType),
-                                    isDefault = entity.isDefault,
-                                    modelName = entity.modelName,
-                                )
-                            }
+                            profileEntities
+                                .filter { entity -> entity.mode == null || entity.mode == sessionMode }
+                                .sortedWith(compareByDescending<TransformProfileEntity> { it.isDefault }.thenBy { it.name })
+                                .map { entity ->
+                                    TransformProfile(
+                                        id = entity.id,
+                                        name = entity.name,
+                                        description = entity.description,
+                                        systemPrompt = entity.systemPrompt,
+                                        steps = TransformStepsCodec.decode(entity.steps, fallback = entity.systemPrompt),
+                                        providerType = ProviderType.valueOf(entity.providerType),
+                                        isDefault = entity.isDefault,
+                                        modelName = entity.modelName,
+                                        mode = entity.mode?.let { runCatching { RecordingMode.valueOf(it) }.getOrNull() },
+                                    )
+                                }
                         val originalTranscript =
                             transcripts
                                 .filter { it.type == TranscriptType.RAW }
@@ -929,6 +940,52 @@ class SessionDetailViewModel
                     },
                 )
             }
+        }
+
+        fun analyzeRecording() {
+            val state = _uiState.value as? SessionDetailUiState.Success ?: return
+            val transcriptText =
+                state.currentTranscript?.content?.takeIf { it.isNotBlank() }
+                    ?: run {
+                        viewModelScope.launch { _events.emit(SessionDetailEvent.Message("Transcribe this recording before analyzing")) }
+                        return
+                    }
+            _analysisSuggestion.value = AnalysisSuggestionState(isLoading = true)
+            viewModelScope.launch {
+                val titleDeferred = async { autoRenameService.suggestTitle(transcriptText, state.session.title) }
+                val tagsDeferred = async {
+                    tagSuggestionService.suggestTags(state.session.title, transcriptText, state.session.tags)
+                }
+                val modeDeferred = async { modeSuggestionService.suggestMode(transcriptText) }
+                _analysisSuggestion.value =
+                    AnalysisSuggestionState(
+                        suggestedTitle = titleDeferred.await().getOrNull(),
+                        suggestedTags = tagsDeferred.await().getOrNull() ?: emptyList(),
+                        suggestedMode = modeDeferred.await().getOrNull(),
+                    )
+            }
+        }
+
+        fun acceptTitleSuggestion() {
+            val title = _analysisSuggestion.value?.suggestedTitle?.takeIf { it.isNotBlank() } ?: return
+            renameSession(title)
+        }
+
+        fun acceptTagsSuggestion() {
+            val tags = _analysisSuggestion.value?.suggestedTags?.takeIf { it.isNotEmpty() } ?: return
+            saveTags(tags)
+        }
+
+        fun acceptModeSuggestion() {
+            val mode = _analysisSuggestion.value?.suggestedMode ?: return
+            viewModelScope.launch {
+                val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+                sessionDao.updateSession(session.copy(mode = mode.name, updatedAt = System.currentTimeMillis()))
+            }
+        }
+
+        fun dismissAnalysis() {
+            _analysisSuggestion.value = null
         }
 
         override fun onCleared() {

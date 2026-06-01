@@ -19,6 +19,7 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
+import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transforms.SessionTransformCoordinator
 import dev.scrybe.service.recording.RecordingForegroundService
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -319,6 +321,50 @@ class CaptureViewModel
 
         fun closeTransformDialog() {
             _transformDialog.value = null
+        }
+
+        fun deleteSelectedSessions() {
+            viewModelScope.launch {
+                val ids = _uiState.value.selectedSessionIds.toList()
+                for (id in ids) {
+                    val session = recordingSessionDao.getSessionByIdOnce(id) ?: continue
+                    runCatching { File(session.audioFilePath).delete() }
+                    transcriptDao.deleteTranscriptsForSession(id)
+                    speakerSegmentDao.deleteForSession(id)
+                    recordingSessionDao.deleteSession(id)
+                }
+                clearSelection()
+            }
+        }
+
+        fun setArchivedForSelected(archived: Boolean) {
+            val now = System.currentTimeMillis()
+            viewModelScope.launch {
+                val ids = _uiState.value.selectedSessionIds.toList()
+                for (id in ids) {
+                    val session = recordingSessionDao.getSessionByIdOnce(id) ?: continue
+                    recordingSessionDao.updateSession(
+                        session.copy(
+                            isArchived = archived,
+                            status = if (archived) SessionStatus.ARCHIVED.name else session.status,
+                            updatedAt = now,
+                        ),
+                    )
+                }
+                clearSelection()
+            }
+        }
+
+        fun renameSession(
+            sessionId: String,
+            newTitle: String,
+        ) {
+            viewModelScope.launch {
+                val session = recordingSessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+                recordingSessionDao.updateSession(
+                    session.copy(title = newTitle.trim(), updatedAt = System.currentTimeMillis()),
+                )
+            }
         }
 
         private companion object {

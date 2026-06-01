@@ -27,9 +27,11 @@ import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -62,7 +64,7 @@ class RecordingForegroundService : Service() {
     private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var lastNotifiedSecond: Long = -1L
     private var telemetryJob: Job? = null
-    private var capturedLocation: Triple<Double, Double, String?>? = null
+    private var locationDeferred: Deferred<Triple<Double, Double, String?>?>? = null
     private var pendingMode: String = RecordingMode.JOURNAL.name
 
     override fun onCreate() {
@@ -89,17 +91,20 @@ class RecordingForegroundService : Service() {
     }
 
     private fun handleStart() {
-        capturedLocation = null
+        locationDeferred = null
         startForeground(
             RecordingNotificationFactory.NOTIFICATION_ID,
             notificationFactory.buildNotification(this),
         )
         serviceScope.launch { playRecordingFeedback() }
-        serviceScope.launch {
-            if (preferencesDataStore.locationRecordingEnabled.first()) {
-                capturedLocation = locationProvider.captureCoarseLocationWithLabel()
+        locationDeferred =
+            serviceScope.async {
+                if (preferencesDataStore.locationRecordingEnabled.first()) {
+                    locationProvider.captureCoarseLocationWithLabel()
+                } else {
+                    null
+                }
             }
-        }
         telemetryJob?.cancel()
         telemetryJob =
             serviceScope.launch {
@@ -228,7 +233,7 @@ class RecordingForegroundService : Service() {
         val title = "Recording ${TITLE_FORMAT.format(Date(createdAt))}"
         val sessionId = UUID.randomUUID().toString()
 
-        val location = capturedLocation
+        val location = runCatching { locationDeferred?.await() }.getOrNull()
         recordingSessionDao.insertSession(
             RecordingSessionEntity(
                 id = sessionId,
