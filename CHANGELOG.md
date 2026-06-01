@@ -4,9 +4,22 @@
 
 ### Features
 
+* add Smart Analyze — "✨ Analyze" button in session detail runs title suggestion, tag suggestion, and recording-type classification in parallel; results appear in a bottom sheet where each suggestion can be accepted or dismissed individually
+* add recording-type classification — new `RecordingModeSuggestionService` uses the transcript to classify a recording as Meeting, Interview, Journal, etc.; classification is surfaced through Smart Analyze
+* add multi-select Delete and Archive actions — selecting recordings on the home screen now shows Delete (with confirmation dialog) and Archive icon buttons alongside the existing Transform action; selecting a single recording shows a Rename icon button
+
 ### Improvements
 
+* replace hardcoded action cards in session detail with dynamic profile cards — cards now reflect real transform profiles filtered to the current recording mode; phantom "Analyze sentiment" card is removed
+* compact speaker assignment — the full-width Speaker Slots card is removed from the transcript tab; speaker management is now accessible via a small icon button in the waveform legend, which opens a bottom sheet
+* add mode field to transform profiles — profiles can be marked as relevant to a specific recording mode (Meeting, Interview, etc.) so they surface in session detail for matching recordings
+
 ### Fixes
+
+* fix transcription freeze / ANR — `BatchTranscriptionService` now wraps the blocking `MediaCodec` chunking step in `withContext(Dispatchers.IO)` so it no longer runs on the main thread; multi-chunk loop extracted to a helper to satisfy the 60-line function limit
+* fix location tags missing on new recordings — location capture is now awaited before the session row is persisted using a `Deferred`/`async` pattern, eliminating the race condition where `persistRecording()` could read a null location
+* fix location tracking default being ON without requesting permission — settings screen now requests `ACCESS_COARSE_LOCATION` automatically when the toggle is enabled and permission is absent; if the user denies, the toggle resets to OFF so the displayed state always matches actual capability
+* fix File Manager crash when scrolling — `LazyColumn` keys for recordings and outputs are now namespaced (`rec:path` / `out:path`) to prevent duplicate-key exceptions when the same path appears in both sections; each list is also deduplicated by path
 
 ## 0.28.1 (2026-05-31)
 

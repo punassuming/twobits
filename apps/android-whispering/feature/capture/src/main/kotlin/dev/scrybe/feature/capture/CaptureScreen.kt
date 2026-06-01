@@ -45,7 +45,9 @@ import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
@@ -61,6 +63,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -127,6 +130,10 @@ fun CaptureScreen(
     var pendingMode by remember { mutableStateOf(RecordingMode.JOURNAL) }
     var folderModeEnabled by remember { mutableStateOf(false) }
     var expandedFolderIds by remember { mutableStateOf(emptySet<String>()) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showArchiveConfirm by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var renameText by remember { mutableStateOf("") }
 
     val requiredPermissions =
         remember {
@@ -198,13 +205,23 @@ fun CaptureScreen(
                 },
                 actions = {
                     if (uiState.isSelecting) {
-                        TextButton(
-                            onClick = viewModel::openTransformDialog,
-                            enabled = uiState.selectedSessionIds.isNotEmpty(),
-                        ) {
-                            Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Transform")
+                        if (uiState.selectedSessionIds.size == 1) {
+                            IconButton(onClick = {
+                                val session = uiState.recentSessions.find { it.id == uiState.selectedSessionIds.first() }
+                                renameText = session?.title.orEmpty()
+                                showRenameDialog = true
+                            }) {
+                                Icon(Icons.Filled.Edit, contentDescription = "Rename")
+                            }
+                        }
+                        IconButton(onClick = { showArchiveConfirm = true }) {
+                            Icon(Icons.Filled.Archive, contentDescription = "Archive selected")
+                        }
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete selected", tint = MaterialTheme.colorScheme.error)
+                        }
+                        IconButton(onClick = viewModel::openTransformDialog) {
+                            Icon(Icons.Filled.AutoFixHigh, contentDescription = "Transform selected")
                         }
                     } else {
                         IconButton(onClick = { searchOpen = !searchOpen }) {
@@ -431,6 +448,65 @@ fun CaptureScreen(
             profiles = profiles,
             onPickProfile = viewModel::runTransformFromDialog,
             onDismiss = viewModel::closeTransformDialog,
+        )
+    }
+
+    if (showDeleteConfirm) {
+        val count = uiState.selectedSessionIds.size
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete $count recording${if (count == 1) "" else "s"}?") },
+            text = { Text("This will permanently delete the selected recordings and their transcripts.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    viewModel.deleteSelectedSessions()
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+        )
+    }
+
+    if (showArchiveConfirm) {
+        val count = uiState.selectedSessionIds.size
+        AlertDialog(
+            onDismissRequest = { showArchiveConfirm = false },
+            title = { Text("Archive $count recording${if (count == 1) "" else "s"}?") },
+            text = { Text("Archived recordings are hidden from the main list.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showArchiveConfirm = false
+                    viewModel.setArchivedForSelected(true)
+                }) {
+                    Text("Archive")
+                }
+            },
+            dismissButton = { TextButton(onClick = { showArchiveConfirm = false }) { Text("Cancel") } },
+        )
+    }
+
+    if (showRenameDialog) {
+        val sessionId = uiState.selectedSessionIds.firstOrNull()
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename recording") },
+            text = {
+                OutlinedTextField(
+                    value = renameText,
+                    onValueChange = { renameText = it },
+                    label = { Text("Title") },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (sessionId != null) viewModel.renameSession(sessionId, renameText)
+                    showRenameDialog = false
+                }) { Text("Rename") }
+            },
+            dismissButton = { TextButton(onClick = { showRenameDialog = false }) { Text("Cancel") } },
         )
     }
 }

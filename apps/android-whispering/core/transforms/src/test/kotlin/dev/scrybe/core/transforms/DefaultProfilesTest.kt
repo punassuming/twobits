@@ -7,8 +7,8 @@ import org.junit.Test
 
 class DefaultProfilesTest {
     @Test
-    fun `ALL contains exactly four profiles`() {
-        assertEquals(4, DefaultProfiles.ALL.size)
+    fun `ALL contains exactly six profiles`() {
+        assertEquals(6, DefaultProfiles.ALL.size)
     }
 
     @Test
@@ -29,6 +29,16 @@ class DefaultProfilesTest {
     @Test
     fun `TRANSLATE is not the default profile`() {
         assertFalse(DefaultProfiles.TRANSLATE.isDefault)
+    }
+
+    @Test
+    fun `MEETING_SUMMARY is linked to MEETING mode`() {
+        assertEquals(dev.scrybe.core.model.RecordingMode.MEETING, DefaultProfiles.MEETING_SUMMARY.mode)
+    }
+
+    @Test
+    fun `INTERVIEW_HIGHLIGHTS is linked to INTERVIEW mode`() {
+        assertEquals(dev.scrybe.core.model.RecordingMode.INTERVIEW, DefaultProfiles.INTERVIEW_HIGHLIGHTS.mode)
     }
 
     @Test

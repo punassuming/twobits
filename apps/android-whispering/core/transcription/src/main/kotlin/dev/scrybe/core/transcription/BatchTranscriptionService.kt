@@ -4,6 +4,8 @@ import android.util.Log
 import dev.scrybe.core.database.TranscriptChunkDao
 import dev.scrybe.core.database.TranscriptChunkEntity
 import dev.scrybe.core.model.ProviderType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,8 +32,9 @@ class BatchTranscriptionService
             options: TranscriptionOptions = TranscriptionOptions(),
         ): Result<BatchTranscriptResult> {
             val audioChunks =
-                runCatching { audioChunker.createChunksIfNeeded(audioFile) }
-                    .getOrElse { e -> return Result.failure(e) }
+                withContext(Dispatchers.IO) {
+                    runCatching { audioChunker.createChunksIfNeeded(audioFile) }
+                }.getOrElse { e -> return Result.failure(e) }
             val totalChunks = audioChunks.size
             val isSingleChunk = totalChunks == 1 && audioChunks.first().absolutePath == audioFile.absolutePath
 
@@ -48,67 +51,62 @@ class BatchTranscriptionService
                     }
             }
 
-            try {
-                for ((index, chunkFile) in audioChunks.withIndex()) {
-                    val existing = chunkDao.getChunkByIndex(sessionId, index)
-                    if (existing?.status == CHUNK_STATUS_DONE) {
-                        Log.d(TAG, "Session $sessionId chunk $index already done, skipping")
-                        continue
-                    }
-
-                    val chunkSessionId = "$sessionId/chunk/$index"
-                    val chunkResult =
-                        orchestrator.transcribe(chunkSessionId, chunkFile, providerType, options)
-
-                    if (chunkResult.isFailure) {
-                        Log.e(TAG, "Session $sessionId chunk $index failed", chunkResult.exceptionOrNull())
-                        val partialText = buildPartialText(sessionId)
-                        return Result.success(
-                            BatchTranscriptResult(
-                                text = partialText,
-                                isPartial = true,
-                                completedChunks =
-                                    chunkDao
-                                        .getChunksForSession(sessionId)
-                                        .count { it.status == CHUNK_STATUS_DONE },
-                                totalChunks = totalChunks,
-                            ),
-                        )
-                    }
-
-                    chunkDao.insertChunk(
-                        TranscriptChunkEntity(
-                            id = "$sessionId:$index",
-                            sessionId = sessionId,
-                            chunkIndex = index,
-                            totalChunks = totalChunks,
-                            status = CHUNK_STATUS_DONE,
-                            text = chunkResult.getOrNull()?.text,
-                            createdAt = System.currentTimeMillis(),
-                        ),
-                    )
-                }
-
-                val allChunks = chunkDao.getChunksForSession(sessionId)
-                val fullText =
-                    allChunks
-                        .sortedBy { it.chunkIndex }
-                        .mapNotNull { it.text }
-                        .joinToString("\n\n")
-
-                chunkDao.deleteForSession(sessionId)
-
-                return Result.success(
-                    BatchTranscriptResult(
-                        text = fullText.trim(),
-                        isPartial = false,
-                        completedChunks = totalChunks,
-                        totalChunks = totalChunks,
-                    ),
-                )
+            return try {
+                transcribeChunks(sessionId, audioChunks, totalChunks, providerType, options)
             } finally {
                 audioChunker.cleanupChunks(audioChunks, audioFile)
             }
+        }
+
+        private suspend fun transcribeChunks(
+            sessionId: String,
+            audioChunks: List<File>,
+            totalChunks: Int,
+            providerType: ProviderType,
+            options: TranscriptionOptions,
+        ): Result<BatchTranscriptResult> {
+            for ((index, chunkFile) in audioChunks.withIndex()) {
+                val existing = chunkDao.getChunkByIndex(sessionId, index)
+                if (existing?.status == CHUNK_STATUS_DONE) {
+                    Log.d(TAG, "Session $sessionId chunk $index already done, skipping")
+                    continue
+                }
+                val chunkResult =
+                    orchestrator.transcribe("$sessionId/chunk/$index", chunkFile, providerType, options)
+                if (chunkResult.isFailure) {
+                    Log.e(TAG, "Session $sessionId chunk $index failed", chunkResult.exceptionOrNull())
+                    return Result.success(
+                        BatchTranscriptResult(
+                            text = buildPartialText(sessionId),
+                            isPartial = true,
+                            completedChunks =
+                                chunkDao.getChunksForSession(sessionId).count { it.status == CHUNK_STATUS_DONE },
+                            totalChunks = totalChunks,
+                        ),
+                    )
+                }
+                chunkDao.insertChunk(
+                    TranscriptChunkEntity(
+                        id = "$sessionId:$index",
+                        sessionId = sessionId,
+                        chunkIndex = index,
+                        totalChunks = totalChunks,
+                        status = CHUNK_STATUS_DONE,
+                        text = chunkResult.getOrNull()?.text,
+                        createdAt = System.currentTimeMillis(),
+                    ),
+                )
+            }
+            val fullText =
+                chunkDao
+                    .getChunksForSession(sessionId)
+                    .sortedBy { it.chunkIndex }
+                    .mapNotNull { it.text }
+                    .joinToString("\n\n")
+            chunkDao.deleteForSession(sessionId)
+            return Result.success(
+                BatchTranscriptResult(text = fullText.trim(), isPartial = false, completedChunks = totalChunks, totalChunks = totalChunks),
+            )
         }
 
         suspend fun hasPartialProgress(sessionId: String): Boolean = chunkDao.getChunksForSession(sessionId).any { it.status == CHUNK_STATUS_DONE }

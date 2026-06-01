@@ -122,7 +122,7 @@ private fun FileManagerContent(
         if (state.recordings.isEmpty()) {
             item { EmptyState("No recording files found") }
         } else {
-            items(state.recordings, key = { it.absolutePath }) { entry ->
+            items(state.recordings.distinctBy { it.absolutePath }, key = { "rec:${it.absolutePath}" }) { entry ->
                 RecordingFileRow(
                     entry = entry,
                     onImport = { onImportOrphan(entry.absolutePath) },
@@ -141,7 +141,7 @@ private fun FileManagerContent(
         if (state.outputs.isEmpty()) {
             item { EmptyState("No saved copies or exports found") }
         } else {
-            items(state.outputs, key = { it.absolutePath }) { entry ->
+            items(state.outputs.distinctBy { it.absolutePath }, key = { "out:${it.absolutePath}" }) { entry ->
                 OutputFileRow(
                     entry = entry,
                     onDelete = { onDeleteFile(entry.absolutePath) },

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
@@ -67,6 +68,7 @@ internal fun PlaybackCard(
     onSkipForward: () -> Unit,
     onSeek: (Long) -> Unit,
     onSpeakerClick: (speakerId: String) -> Unit = {},
+    onManageSpeakers: (() -> Unit)? = null,
 ) {
     ScrybeSectionCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -152,7 +154,13 @@ internal fun PlaybackCard(
                 segments = state.speakerSegments,
                 persons = state.persons,
                 onSpeakerClick = onSpeakerClick,
+                onManageSpeakers = onManageSpeakers,
             )
+        } else if (onManageSpeakers != null) {
+            TextButton(onClick = onManageSpeakers) {
+                Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text("  Identify Speakers", style = MaterialTheme.typography.labelMedium)
+            }
         }
     }
 }
@@ -320,6 +328,7 @@ private fun SpeakerLegend(
     segments: List<SpeakerSegment>,
     persons: List<Person> = emptyList(),
     onSpeakerClick: (speakerId: String) -> Unit = {},
+    onManageSpeakers: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val speakerIds = segments.map { it.speakerId }.distinct().sorted()
@@ -327,25 +336,40 @@ private fun SpeakerLegend(
     val personMap = persons.associate { it.id to it.name }
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        speakerIds.forEachIndexed { idx, speakerId ->
-            val color = speakerColorForIndex(idx)
-            val label = speakerId.removePrefix("SPEAKER_").let { "Speaker $it" }
-            val seg = segments.first { it.speakerId == speakerId }
-            val personName = seg.personId?.let { personMap[it] }
-            Row(
-                modifier = Modifier.clickable { onSpeakerClick(speakerId) },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Canvas(modifier = Modifier.size(8.dp)) { drawCircle(color = color) }
-                Column {
-                    Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (personName != null) {
-                        Text(personName, style = MaterialTheme.typography.labelSmall, color = color)
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            speakerIds.forEachIndexed { idx, speakerId ->
+                val color = speakerColorForIndex(idx)
+                val label = speakerId.removePrefix("SPEAKER_").let { "Speaker $it" }
+                val seg = segments.first { it.speakerId == speakerId }
+                val personName = seg.personId?.let { personMap[it] }
+                Row(
+                    modifier = Modifier.clickable { onSpeakerClick(speakerId) },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Canvas(modifier = Modifier.size(8.dp)) { drawCircle(color = color) }
+                    Column {
+                        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (personName != null) {
+                            Text(personName, style = MaterialTheme.typography.labelSmall, color = color)
+                        }
                     }
                 }
+            }
+        }
+        if (onManageSpeakers != null) {
+            IconButton(onClick = onManageSpeakers, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Filled.RecordVoiceOver,
+                    contentDescription = "Manage speakers",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

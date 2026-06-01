@@ -49,11 +49,11 @@ import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -135,6 +135,7 @@ fun SessionDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val folders by viewModel.folders.collectAsState()
+    val analysisSuggestion by viewModel.analysisSuggestion.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     var showMoreSheet by remember { mutableStateOf(false) }
@@ -148,6 +149,7 @@ fun SessionDetailScreen(
     var transformResult by remember { mutableStateOf<SessionDetailEvent.TransformResult?>(null) }
     var showTransformSheet by remember { mutableStateOf(false) }
     var showFolderSheet by remember { mutableStateOf(false) }
+    var showSpeakerManageSheet by remember { mutableStateOf(false) }
     val transformSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var speakerAssignTarget by remember { mutableStateOf<String?>(null) }
 
@@ -334,16 +336,8 @@ fun SessionDetailScreen(
                             onSkipForward = viewModel::skipForward,
                             onSeek = viewModel::seekPlayback,
                             onSpeakerClick = { speakerId -> speakerAssignTarget = speakerId },
+                            onManageSpeakers = { showSpeakerManageSheet = true },
                         )
-                        if (state.speakerSegments.isEmpty()) {
-                            SpeakerSlotsCard(
-                                state = state,
-                                onAssignPerson = viewModel::assignPersonToSpeaker,
-                                onCreatePerson = viewModel::createPersonAndAssign,
-                                onFetchSpeakerInfo = viewModel::fetchSpeakerInfo,
-                                onMergeSpeakers = viewModel::mergeSpeakers,
-                            )
-                        }
                         TabRow(selectedTabIndex = activeTab) {
                             Tab(
                                 selected = activeTab == 0,
@@ -366,7 +360,9 @@ fun SessionDetailScreen(
                                 OutputTabContent(
                                     state = state,
                                     onOpenTransformSheet = { showTransformSheet = true },
+                                    onRunProfile = viewModel::transform,
                                     onAddToFolder = { showFolderSheet = true },
+                                    onAnalyze = viewModel::analyzeRecording,
                                     onSuggestTags = viewModel::suggestTags,
                                     onSaveTags = viewModel::saveTags,
                                     onClearTagSuggestions = viewModel::clearTagSuggestionState,
@@ -634,49 +630,68 @@ fun SessionDetailScreen(
             )
         }
     }
+    if (showSpeakerManageSheet && successForSpeaker != null) {
+        ModalBottomSheet(onDismissRequest = { showSpeakerManageSheet = false }) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
+                SpeakerSlotsCard(
+                    state = successForSpeaker,
+                    onAssignPerson = viewModel::assignPersonToSpeaker,
+                    onCreatePerson = viewModel::createPersonAndAssign,
+                    onFetchSpeakerInfo = viewModel::fetchSpeakerInfo,
+                    onMergeSpeakers = viewModel::mergeSpeakers,
+                )
+            }
+        }
+    }
+    analysisSuggestion?.let { analysis ->
+        ModalBottomSheet(onDismissRequest = viewModel::dismissAnalysis) {
+            AnalysisSuggestionSheet(
+                state = analysis,
+                onAcceptTitle = viewModel::acceptTitleSuggestion,
+                onAcceptTags = viewModel::acceptTagsSuggestion,
+                onAcceptMode = viewModel::acceptModeSuggestion,
+                onDismiss = viewModel::dismissAnalysis,
+            )
+        }
+    }
 }
 
 @Composable
 private fun OutputTabContent(
     state: SessionDetailUiState.Success,
     onOpenTransformSheet: () -> Unit,
+    onRunProfile: (String) -> Unit,
     onAddToFolder: () -> Unit,
+    onAnalyze: () -> Unit,
     onSuggestTags: () -> Unit,
     onSaveTags: (List<String>) -> Unit,
     onClearTagSuggestions: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing)) {
-        val transformedTranscript =
-            state.transcripts
-                .filter { it.type == TranscriptType.TRANSFORMED }
-                .maxByOrNull { it.createdAt }
-        if (transformedTranscript != null) {
-            ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                ScrybeSectionHeader(title = "Output", subtitle = "Most recent AI-generated output")
-                Text(
-                    text = transformedTranscript.content,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 8,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        } else {
-            ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
-                Text(
-                    text = "No output yet — transcribe and post-process to see AI summaries here.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        TransformedOutputCard(state.transcripts)
+        if (state.currentTranscript != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (state.profiles.isNotEmpty()) {
+                    OutlinedButton(modifier = Modifier.weight(1f), onClick = onOpenTransformSheet) {
+                        Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Post-process")
+                    }
+                }
+                OutlinedButton(modifier = Modifier.weight(1f), onClick = onAnalyze) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("✨ Analyze")
+                }
             }
         }
-        if (state.profiles.isNotEmpty() && state.currentTranscript != null) {
-            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = onOpenTransformSheet) {
-                Icon(Icons.Filled.AutoFixHigh, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Post-process transcript")
-            }
-        }
-        ExtendedActionsSection(onOpenTransformSheet = onOpenTransformSheet, onAddToFolder = onAddToFolder)
+        ProfileQuickActionsSection(
+            profiles = state.profiles,
+            hasTranscript = state.currentTranscript != null,
+            onRunProfile = onRunProfile,
+            onOpenTransformSheet = onOpenTransformSheet,
+            onAddToFolder = onAddToFolder,
+        )
         InlineTagsCard(
             tags = state.session.tags,
             tagSuggestionState = state.tagSuggestionState,
@@ -684,6 +699,33 @@ private fun OutputTabContent(
             onSuggestTags = onSuggestTags,
             onClear = onClearTagSuggestions,
         )
+    }
+}
+
+@Composable
+private fun TransformedOutputCard(transcripts: List<Transcript>) {
+    val transformedTranscript =
+        transcripts
+            .filter { it.type == TranscriptType.TRANSFORMED }
+            .maxByOrNull { it.createdAt }
+    if (transformedTranscript != null) {
+        ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            ScrybeSectionHeader(title = "Output", subtitle = "Most recent AI-generated output")
+            Text(
+                text = transformedTranscript.content,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 8,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    } else {
+        ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+            Text(
+                text = "No output yet — transcribe and post-process to see AI summaries here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -839,10 +881,15 @@ private fun AddTaskRow(onAdd: (String) -> Unit) {
 }
 
 @Composable
-private fun ExtendedActionsSection(
+private fun ProfileQuickActionsSection(
+    profiles: List<TransformProfile>,
+    hasTranscript: Boolean,
+    onRunProfile: (String) -> Unit,
     onOpenTransformSheet: () -> Unit,
     onAddToFolder: () -> Unit,
 ) {
+    val quickProfiles = profiles.take(3)
+    if (quickProfiles.isEmpty() && !hasTranscript) return
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = "Actions",
@@ -850,24 +897,24 @@ private fun ExtendedActionsSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 2.dp, top = 4.dp),
         )
-        ExtendedActionsTop(onOpenTransformSheet = onOpenTransformSheet)
-        ExtendedActionsBottom(onOpenTransformSheet = onOpenTransformSheet, onAddToFolder = onAddToFolder)
+        quickProfiles.forEach { profile ->
+            ExtendedActionCard(
+                icon = Icons.Filled.AutoFixHigh,
+                label = profile.name,
+                color = MaterialTheme.colorScheme.primary,
+                onClick = { if (hasTranscript) onRunProfile(profile.id) else onOpenTransformSheet() },
+            )
+        }
+        if (profiles.size > 3) {
+            ExtendedActionCard(
+                icon = Icons.Filled.MoreHoriz,
+                label = "More transforms…",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = onOpenTransformSheet,
+            )
+        }
+        ExtendedActionCard(icon = Icons.Filled.FolderOpen, label = "Add to folder", color = MaterialTheme.colorScheme.secondary, onClick = onAddToFolder)
     }
-}
-
-@Composable
-private fun ExtendedActionsTop(onOpenTransformSheet: () -> Unit) {
-    ExtendedActionCard(icon = Icons.Filled.AutoFixHigh, label = "Clean up transcript", color = MaterialTheme.colorScheme.primary, onClick = onOpenTransformSheet)
-    ExtendedActionCard(icon = Icons.Filled.AutoAwesome, label = "Analyze sentiment", color = MaterialTheme.colorScheme.secondary, onClick = onOpenTransformSheet)
-}
-
-@Composable
-private fun ExtendedActionsBottom(
-    onOpenTransformSheet: () -> Unit,
-    onAddToFolder: () -> Unit,
-) {
-    ExtendedActionCard(icon = Icons.Filled.Translate, label = "Translate", color = MaterialTheme.colorScheme.tertiary, onClick = onOpenTransformSheet)
-    ExtendedActionCard(icon = Icons.Filled.FolderOpen, label = "Add to folder", color = MaterialTheme.colorScheme.secondary, onClick = onAddToFolder)
 }
 
 @Composable
@@ -890,6 +937,57 @@ private fun ExtendedActionCard(
             Text(label, style = MaterialTheme.typography.bodyMedium, color = color, modifier = Modifier.weight(1f))
             Icon(Icons.Filled.ExpandMore, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+@Composable
+private fun AnalysisSuggestionSheet(
+    state: AnalysisSuggestionState,
+    onAcceptTitle: () -> Unit,
+    onAcceptTags: () -> Unit,
+    onAcceptMode: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("✨ Analysis", style = MaterialTheme.typography.titleMedium)
+        if (state.isLoading) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text("Analyzing recording…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            state.suggestedTitle?.let { title ->
+                SuggestionRow(label = "Title", value = "\"$title\"", onAccept = onAcceptTitle)
+            }
+            state.suggestedTags.takeIf { it.isNotEmpty() }?.let { tags ->
+                SuggestionRow(label = "Tags", value = tags.joinToString(", ") { "#$it" }, onAccept = onAcceptTags)
+            }
+            state.suggestedMode?.let { mode ->
+                SuggestionRow(label = "Type", value = mode.label, onAccept = onAcceptMode)
+            }
+            if (state.suggestedTitle == null && state.suggestedTags.isEmpty() && state.suggestedMode == null) {
+                Text("No suggestions available.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text("Done") }
+    }
+}
+
+@Composable
+private fun SuggestionRow(
+    label: String,
+    value: String,
+    onAccept: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.bodyMedium)
+        }
+        TextButton(onClick = onAccept) { Text("Use") }
     }
 }
 

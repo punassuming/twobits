@@ -1,6 +1,7 @@
 package dev.scrybe.core.transforms
 
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.TransformProfile
 
 object DefaultProfiles {
@@ -60,5 +61,35 @@ object DefaultProfiles {
             isDefault = false,
         )
 
-    val ALL = listOf(CLEANUP_DICTATION, SUMMARIZE, ACTION_ITEMS, TRANSLATE)
+    val MEETING_SUMMARY =
+        TransformProfile(
+            id = "default-meeting-summary",
+            name = "Meeting Summary",
+            description = "Produces a structured summary with decisions and action items.",
+            systemPrompt = "You are an expert meeting facilitator. From the transcript below produce: a brief summary (2-3 sentences), a bullet list of key decisions, and a bullet list of action items with owner names where mentioned. Use markdown headings.\n\nTranscript:\n{{transcript}}",
+            steps =
+                listOf(
+                    "You are an expert meeting facilitator. From the transcript below produce: a brief summary (2-3 sentences), a bullet list of key decisions, and a bullet list of action items with owner names where mentioned. Use markdown headings.\n\nTranscript:\n{{transcript}}",
+                ),
+            providerType = ProviderType.OPENAI,
+            isDefault = false,
+            mode = RecordingMode.MEETING,
+        )
+
+    val INTERVIEW_HIGHLIGHTS =
+        TransformProfile(
+            id = "default-interview-highlights",
+            name = "Interview Highlights",
+            description = "Extracts key questions, answers, and notable quotes.",
+            systemPrompt = "You are an interviewer's assistant. From the transcript below produce: a list of the most important questions asked, a concise answer summary for each, and 2-3 notable direct quotes. Use markdown headings.\n\nTranscript:\n{{transcript}}",
+            steps =
+                listOf(
+                    "You are an interviewer's assistant. From the transcript below produce: a list of the most important questions asked, a concise answer summary for each, and 2-3 notable direct quotes. Use markdown headings.\n\nTranscript:\n{{transcript}}",
+                ),
+            providerType = ProviderType.OPENAI,
+            isDefault = false,
+            mode = RecordingMode.INTERVIEW,
+        )
+
+    val ALL = listOf(CLEANUP_DICTATION, SUMMARIZE, ACTION_ITEMS, TRANSLATE, MEETING_SUMMARY, INTERVIEW_HIGHLIGHTS)
 }
