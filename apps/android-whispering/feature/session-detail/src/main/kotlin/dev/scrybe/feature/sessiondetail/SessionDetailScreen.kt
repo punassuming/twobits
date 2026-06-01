@@ -668,29 +668,7 @@ private fun OutputTabContent(
     onClearTagSuggestions: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing)) {
-        val transformedTranscript =
-            state.transcripts
-                .filter { it.type == TranscriptType.TRANSFORMED }
-                .maxByOrNull { it.createdAt }
-        if (transformedTranscript != null) {
-            ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
-                ScrybeSectionHeader(title = "Output", subtitle = "Most recent AI-generated output")
-                Text(
-                    text = transformedTranscript.content,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 8,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        } else {
-            ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
-                Text(
-                    text = "No output yet — transcribe and post-process to see AI summaries here.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        TransformedOutputCard(state.transcripts)
         if (state.currentTranscript != null) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (state.profiles.isNotEmpty()) {
@@ -721,6 +699,33 @@ private fun OutputTabContent(
             onSuggestTags = onSuggestTags,
             onClear = onClearTagSuggestions,
         )
+    }
+}
+
+@Composable
+private fun TransformedOutputCard(transcripts: List<Transcript>) {
+    val transformedTranscript =
+        transcripts
+            .filter { it.type == TranscriptType.TRANSFORMED }
+            .maxByOrNull { it.createdAt }
+    if (transformedTranscript != null) {
+        ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            ScrybeSectionHeader(title = "Output", subtitle = "Most recent AI-generated output")
+            Text(
+                text = transformedTranscript.content,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 8,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    } else {
+        ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+            Text(
+                text = "No output yet — transcribe and post-process to see AI summaries here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
