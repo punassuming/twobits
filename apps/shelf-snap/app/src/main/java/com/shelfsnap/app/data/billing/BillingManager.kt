@@ -4,9 +4,11 @@ import android.app.Activity
 import android.content.Context
 import com.revenuecat.purchases.CustomerInfo
 import com.revenuecat.purchases.Package
+import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
 import com.revenuecat.purchases.PurchasesError
+import com.revenuecat.purchases.interfaces.PurchaseCallback
 import com.revenuecat.purchases.interfaces.ReceiveCustomerInfoCallback
 import com.revenuecat.purchases.interfaces.ReceiveOfferingsCallback
 import com.revenuecat.purchases.models.StoreTransaction
@@ -93,15 +95,17 @@ class BillingManager @Inject constructor(
 
     private suspend fun purchasePackage(activity: Activity, pkg: Package): CustomerInfo =
         suspendCancellableCoroutine { cont ->
-            Purchases.sharedInstance.purchaseWith(
-                activity = activity,
-                packageToPurchase = pkg,
-                onError = { error, userCancelled ->
-                    val ex = if (userCancelled) PurchaseCancelledException()
-                    else Exception(error.message)
-                    cont.resumeWithException(ex)
+            Purchases.sharedInstance.purchase(
+                PurchaseParams.Builder(activity, pkg).build(),
+                object : PurchaseCallback {
+                    override fun onCompleted(storeTransaction: StoreTransaction, customerInfo: CustomerInfo) =
+                        cont.resume(customerInfo)
+                    override fun onError(error: PurchasesError, userCancelled: Boolean) {
+                        val ex = if (userCancelled) PurchaseCancelledException()
+                        else Exception(error.message)
+                        cont.resumeWithException(ex)
+                    }
                 },
-                onSuccess = { _: StoreTransaction, info: CustomerInfo -> cont.resume(info) }
             )
         }
 

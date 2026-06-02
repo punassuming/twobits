@@ -17,6 +17,8 @@
 
 ### Fixes
 
+* fix BillingManager compile error — replace removed purchaseWith() with RevenueCat 8.x purchase(PurchaseParams, PurchaseCallback) API in both Scrybe and Shelf Snap billing modules
+
 ## 0.29.0 (2026-06-01)
 
 ### Features
