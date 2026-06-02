@@ -390,8 +390,8 @@ class SettingsViewModel
 
         val uiState: StateFlow<SettingsUiState> =
             combine(
-                combine(settingsData, apiKeyValidation, profileSuggestionModelTestState) {
-                    s, v, m -> Triple(s, v, m)
+                combine(settingsData, apiKeyValidation, profileSuggestionModelTestState) { s, v, m ->
+                    Triple(s, v, m)
                 },
                 billingState,
             ) { (settingsData, validation, modelTestState), billing ->
