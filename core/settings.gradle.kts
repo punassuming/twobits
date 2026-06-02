@@ -23,3 +23,7 @@ dependencyResolutionManagement {
 rootProject.name = "twobits-core"
 
 include(":billing")
+include(":common")
+include(":api-keys")
+include(":network")
+include(":design")
