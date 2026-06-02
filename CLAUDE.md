@@ -1,14 +1,29 @@
-# Claude Code instructions for Scrybe
+# Claude Code instructions for this monorepo
 
-## Project layout
+## Repository layout
 
-Android app at `apps/android-whispering/`. All Gradle commands run from that directory.
+```
+apps/
+  scrybe/          — Scrybe Android app (voice recording + Whisper transcription)
+  shelf-snap/      — Shelf Snap Android app (camera inventory + price research)
+shared/            — Gradle composite build: shared library modules (billing, common, api-keys, network, design)
+cloudflare-worker/ — Managed-key API proxy (Cloudflare Workers, serves both apps)
+scrybe-re-think/   — Design exploration docs
+```
 
-17 modules: `:app` | `:core:{common,model,database,datastore,audio,network,transcription,transforms,export}` | `:feature:{capture,history,session-detail,profiles,settings}` | `:service:recording` | `:workers`
+Both Android apps share the same tech stack and billing infrastructure but are independently buildable Gradle projects.
+
+---
+
+## Scrybe Android app (`apps/scrybe/`)
+
+All Gradle commands run from `apps/scrybe/`.
+
+17 modules: `:app` | `:core:{common,model,database,datastore,audio,network,transcription,transforms,export,billing}` | `:feature:{capture,history,session-detail,profiles,settings}` | `:service:recording` | `:workers`
 
 Stack: Kotlin 1.9.25 · AGP 8.7.3 · Jetpack Compose · Hilt 2.51.1 · Room 2.6.1 · minSdk 26 / targetSdk 35
 
-## Session setup — run once after cloning
+### Session setup — run once after cloning
 
 ```bash
 git config core.hooksPath .githooks
@@ -16,9 +31,9 @@ git config core.hooksPath .githooks
 
 This activates the tracked pre-commit hook in `.githooks/pre-commit`, which runs changelog validation, manifest validation, and standalone `ktlint --format` + check on every staged `.kt`/`.kts` file — **no Android SDK required**. The hook self-installs ktlint 1.5.0 on first run if it is not already on PATH.
 
-## Verification — run before every commit
+### Verification — run before every commit
 
-From `apps/android-whispering/`:
+From `apps/scrybe/`:
 
 ```bash
 # Fast checks (no Android SDK required)
@@ -32,6 +47,26 @@ python3 scripts/validate-manifests.py
 `ktlintFormat` must come **before** `ktlintCheck` — format first, then verify.
 
 The CI runs `assembleDebug testDebugUnitTest lint ktlintCheck detekt` on every push to `main`, `copilot/**`, and `claude/**`. A failing CI blocks merges.
+
+---
+
+## Shelf Snap Android app (`apps/shelf-snap/`)
+
+All Gradle commands run from `apps/shelf-snap/`.
+
+Single module: `:app`
+
+Stack: Kotlin · AGP · Jetpack Compose · Hilt · Room · minSdk 26 / targetSdk 35
+
+### Verification
+
+From `apps/shelf-snap/`:
+
+```bash
+./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon
+```
+
+---
 
 ## Kotlin / Compose rules — these are the patterns that keep breaking CI
 
@@ -78,7 +113,7 @@ Same rule applies to `==`, `&&`, `||`, `+`, etc. when splitting across lines.
 
 **Always run `./gradlew ktlintFormat` to auto-fix before checking in.**
 
-### 2. Coroutine launches inside Composable animation callbacks
+### 3. Coroutine launches inside Composable animation callbacks
 
 Inside `LaunchedEffect` or `Animatable` effect blocks you are already in a coroutine, but `launch {}` at the top level of a lambda that is not itself a `CoroutineScope` receiver is unresolved.
 
@@ -98,7 +133,7 @@ LaunchedEffect(isActive) {
 }
 ```
 
-### 3. Missing Gradle module dependency (causes Hilt `error.NonExistentClass`)
+### 4. Missing Gradle module dependency (causes Hilt `error.NonExistentClass`)
 
 Every `import dev.scrybe.core.*` or `import dev.scrybe.feature.*` in a module requires a matching `implementation(project(":path:name"))` in that module's `build.gradle.kts`. Hilt does annotation processing at compile time and fails with `error.NonExistentClass` when the dependency is absent — the error message does not name the missing module.
 
@@ -108,9 +143,10 @@ Every `import dev.scrybe.core.*` or `import dev.scrybe.feature.*` in a module re
 3. Add `implementation(project(":X:Y"))` under `dependencies {}` if it is not already there.
 4. Run `./gradlew assembleDebug` to confirm.
 
-Module → Gradle path reference:
+Scrybe module → Gradle path reference:
 | Package prefix | Gradle module |
 |---|---|
+| `dev.scrybe.core.billing` | `:core:billing` |
 | `dev.scrybe.core.common` | `:core:common` |
 | `dev.scrybe.core.model` | `:core:model` |
 | `dev.scrybe.core.database` | `:core:database` |
@@ -126,7 +162,7 @@ Module → Gradle path reference:
 | `dev.scrybe.feature.session-detail` | `:feature:session-detail` |
 | `dev.scrybe.feature.settings` | `:feature:settings` |
 
-### 4. Android API existence — verify before using
+### 5. Android API existence — verify before using
 
 Do not use Android SDK members that sound plausible but do not exist. Known landmine:
 
@@ -142,9 +178,7 @@ val format = extractor.getTrackFormat(0)
 val channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
 ```
 
-When in doubt, check the [Android API reference](https://developer.android.com/reference) or grep the existing codebase for usage examples.
-
-### 5. `AnimatedVisibility` implicit-receiver ambiguity
+### 6. `AnimatedVisibility` implicit-receiver ambiguity
 
 `AnimatedVisibility` inside a `Box` that is itself inside a `Column` can trigger an "overload resolution ambiguity" compile error because both `ColumnScope` and `BoxScope` define it.
 
@@ -164,17 +198,17 @@ Column {
 }
 ```
 
-## Detekt rules (zero tolerance — `maxIssues = 0`)
+## Detekt rules (Scrybe — zero tolerance, `maxIssues = 0`)
 
 - Functions: ≤ 60 lines
 - Parameter lists: ≤ 8 items (functions and constructors)
 - Return statements per function: ≤ 4
 - Magic numbers: disabled (use named constants anyway for readability)
 
-## Changelog — required for every PR
+## Changelog — required for every Scrybe PR
 
 Update `CHANGELOG.md` `## Unreleased` section before preparing any commit destined for main. Add bullets under `### Features`, `### Improvements`, or `### Fixes` as appropriate.
 
 - Do **not** invent version numbers — the release workflow promotes `Unreleased` automatically.
 - The CI `changelog` job will block the PR if `CHANGELOG.md` was not updated when other tracked files changed.
-- Validate with: `python3 apps/android-whispering/scripts/manage-changelog.py validate --changelog CHANGELOG.md`
+- Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog CHANGELOG.md`

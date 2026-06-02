@@ -1,0 +1,166 @@
+name: Shelf Snap Tag & Release
+
+# When a commit lands on main, auto-increment the patch version, fold
+# apps/shelf-snap/CHANGELOG.md's [Unreleased] entries into a dated section,
+# stamp the app version, build the signed release APK/AAB, and publish a
+# GitHub Release. The version-bump commit is pushed back to main with
+# [skip ci] so it never re-triggers this workflow.
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'apps/shelf-snap/**'
+      - 'shared/**'
+  workflow_dispatch:
+
+concurrency:
+  group: shelf-snap-tag-release-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Tag & publish
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip release]') }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x apps/shelf-snap/gradlew
+
+      - name: Compute next version
+        id: ver
+        run: |
+          git fetch --tags --force
+          latest=$(git tag -l 'shelf-snap-v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n1)
+          if [ -z "$latest" ]; then
+            next="1.0.0"
+          else
+            ver=${latest#shelf-snap-v}
+            major=$(echo "$ver" | cut -d. -f1)
+            minor=$(echo "$ver" | cut -d. -f2)
+            patch=$(echo "$ver" | cut -d. -f3)
+            patch=$((patch + 1))
+            next="$major.$minor.$patch"
+          fi
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=shelf-snap-v$next" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          echo "Next release: shelf-snap-v$next"
+
+      - name: Update changelog
+        id: changelog
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          DATE: ${{ steps.ver.outputs.date }}
+        run: |
+          python3 - "$VERSION" "$DATE" <<'PY'
+          import sys, re, pathlib
+          version, date = sys.argv[1], sys.argv[2]
+          p = pathlib.Path("apps/shelf-snap/CHANGELOG.md")
+          notes_path = pathlib.Path("RELEASE_NOTES.md")
+          if not p.exists():
+              notes_path.write_text("Shelf Snap v%s\n" % version)
+              sys.exit(0)
+          text = p.read_text()
+          marker = "## [Unreleased]"
+          idx = text.find(marker)
+          if idx == -1:
+              notes_path.write_text("Shelf Snap v%s\n" % version)
+              sys.exit(0)
+          start = idx + len(marker)
+          rest = text[start:]
+          m = re.search(r"\n## ", rest)
+          body = rest[:m.start()] if m else rest
+          tail = rest[m.start():] if m else ""
+          if body.strip():
+              new = marker + "\n\n## [" + version + "] - " + date + "\n" + body
+              notes = body.strip()
+          else:
+              new = marker + "\n\n## [" + version + "] - " + date + "\n\n_Maintenance release._\n"
+              notes = "Maintenance release."
+          p.write_text(text[:idx] + new + tail)
+          notes_path.write_text(notes + "\n")
+          PY
+          echo "Wrote release notes:"; cat RELEASE_NOTES.md
+
+      - name: Bump app version
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          major=$(echo "$VERSION" | cut -d. -f1)
+          minor=$(echo "$VERSION" | cut -d. -f2)
+          patch=$(echo "$VERSION" | cut -d. -f3)
+          newcode=$((major * 1000000 + minor * 1000 + patch))
+          sed -i -E "s/versionName = \"[^\"]*\"/versionName = \"$VERSION\"/" apps/shelf-snap/app/build.gradle.kts
+          sed -i -E "s/versionCode = [0-9]+/versionCode = $newcode/" apps/shelf-snap/app/build.gradle.kts
+          echo "versionName -> $VERSION, versionCode -> $newcode (major*1M + minor*1K + patch)"
+
+      - name: Decode release keystore
+        id: keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          echo "path=$RUNNER_TEMP/release.keystore" >> "$GITHUB_OUTPUT"
+
+      - name: Build release APK and AAB
+        working-directory: apps/shelf-snap
+        env:
+          SIGNING_STORE_FILE: ${{ steps.keystore.outputs.path }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+
+      - name: Stage release assets
+        id: asset
+        run: |
+          src=$(ls apps/shelf-snap/app/build/outputs/apk/release/app-release*.apk | head -n1)
+          dest="shelf-snap-${{ steps.ver.outputs.tag }}.apk"
+          cp "$src" "$dest"
+          cp apps/shelf-snap/app/build/outputs/bundle/release/app-release.aab \
+             "shelf-snap-${{ steps.ver.outputs.tag }}.aab" || true
+          echo "path=$dest" >> "$GITHUB_OUTPUT"
+          echo "Packaged $dest (from $src)"
+
+      - name: Commit version bump to main
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/shelf-snap/CHANGELOG.md apps/shelf-snap/app/build.gradle.kts
+          if git diff --cached --quiet; then
+            echo "No version/changelog changes to commit."
+          else
+            git commit -m "chore(release): shelf-snap-${{ steps.ver.outputs.tag }} [skip ci]"
+            git push origin HEAD:main
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: main
+          name: Shelf Snap ${{ steps.ver.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            ${{ steps.asset.outputs.path }}
+            shelf-snap-${{ steps.ver.outputs.tag }}.aab

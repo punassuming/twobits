@@ -4,9 +4,38 @@
 
 ### Features
 
+* add ProGate composable to core:design — ModalBottomSheet paywall interceptor with two paths: "Go Pro" (purchase) and "Use your own API key" (navigate to settings); drop it anywhere an AI feature needs to be gated behind Pro or a BYOK key
+
 ### Improvements
 
+* fix composite build AndroidX property — add shared/gradle.properties with android.useAndroidX=true so the shared library modules (billing, design, etc.) resolve RevenueCat and Compose dependencies correctly; add pipefail to shelf-snap CI Gradle steps so build failures propagate correctly
+* fix SettingsScreen compile errors — add missing imports for CircularProgressIndicator, Spacer, and width used in the Pro subscription button; remove duplicate AutoAwesome import
+* align shelf-snap AGP to 8.7.3 — composite builds require a single AGP version across all included builds; shelf-snap was on 8.4.0 which conflicts with shared/ modules pinned to 8.7.3
+* fix BillingProviderModule KtLint violation — multiline BillingConfig(...) constructor call must start on a new line after the = operator per the multiline-expression-wrapping rule
+* migrate both app themes to shared design tokens — scrybe and shelf-snap now use TwoBitsTypography (DM Sans) and TwoBitsShapes from core:design; local Type.kt and Shape.kt become single-line aliases so existing symbol references continue to compile
+* add ThemeMode support to shelf-snap — ShelfSnapTheme now accepts ThemeMode (SYSTEM/LIGHT/DARK) from core:design, matching scrybe's existing dark-mode architecture; wiring a settings toggle reads ThemeMode from DataStore
+* both apps now rebuild when shared/** changes — android-ci.yml and shelf-snap-build.yml path filters now include shared/** alongside their respective app paths; shelf-snap tag-release also triggers on shared changes
+* align shelf-snap versionCode formula to scrybe — tag-release workflow now computes versionCode as major×1 000 000 + minor×1 000 + patch (e.g. 1.2.3 → 1002003) matching scrybe's formula; Play Store requires only monotonic increases so the jump from 2 is valid
+
+* add Pro subscription tier — users can upgrade to Scrybe Pro ($1.99/month) via Google Play for managed OpenAI API access without requiring a personal API key; subscription status is surfaced at the top of the Settings screen
+* add RevenueCat billing integration — core:billing module wraps RevenueCat Purchases SDK with a SubscriptionRepository and BillingManager providing subscription tier as a StateFlow; purchase, restore, and refresh flows are coroutine-based
+* add core:common shared module — Result<T> sealed interface, ReleaseNotesParser, AppDispatchers qualifier and enum, and a Hilt DispatchersModule providing IO and Default coroutine dispatchers under com.twobits.common
+* add core:api-keys shared module — ApiKeyProvider interface, KeystoreApiKeyProvider (DataStore-backed, keyed by ProviderType), ApiKeyValidator, ApiKeyRouter (routes BYOK vs. managed Pro keys via api.twobits.app), ProUserIdProvider interface, and a Hilt ApiKeysModule under com.twobits.apikeys
+* add core:network shared module — OkHttpClientFactory (configurable logging, AI-tuned timeouts), HttpErrorMapper for user-friendly HTTP error strings, and a Hilt NetworkModule providing a singleton OkHttpClient under com.twobits.network
+* add core:design shared module — DM Sans variable-font family, TwoBitsTypography (full Material 3 type scale), TwoBitsShapes (8/12/18/24/28dp radius scale), ThemeMode enum (SYSTEM/LIGHT/DARK), and shared Compose components: ApiKeyField, SubscriptionBanner, SettingsRow, ErrorCard, LoadingOverlay under com.twobits.design
+
+### Improvements
+
+* rebrand monorepo to Two Bits — Cloudflare worker renamed to twobits-proxy, custom domain api.twobits.app configured in wrangler.toml, worker setup docs updated with deployment URL
+* migrate to monorepo — Shelf Snap app moved into apps/shelf-snap alongside apps/scrybe; all CI workflows unified under .github/workflows with per-app path filters; CLAUDE.md updated for monorepo layout
+* rename app directory from apps/android-whispering to apps/scrybe for clarity within the monorepo
+* release workflow now builds both APK and AAB (App Bundle) artifacts — AAB is attached to GitHub Releases for direct Google Play upload
+* settings screen surfaces Pro subscription card at the top with upgrade, restore, and error dismissal actions
+
 ### Fixes
+
+* consolidate billing into shared core/billing module — BillingManager, SubscriptionRepository, SubscriptionTier, BillingConfig, and PurchaseCancelledException live once in core/billing under com.twobits.billing; both apps reference it via Gradle composite build (includeBuild); per-app Hilt BillingProviderModule supplies the RevenueCat key
+* fix BillingManager compile error — replace removed purchaseWith() with RevenueCat 8.x purchase(PurchaseParams, PurchaseCallback) API
 
 ## 0.29.0 (2026-06-01)
 

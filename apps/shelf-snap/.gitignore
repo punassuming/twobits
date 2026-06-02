@@ -1,0 +1,22 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+
+# Build outputs
+app/build/
+build/
+
+# Android Studio
+*.idea/
+
+# Gradle cache
+.gradle/
+app/src/main/assets/CHANGELOG.md
