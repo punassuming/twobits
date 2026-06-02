@@ -8,6 +8,8 @@
 
 ### Improvements
 
+* unify CI artifact output and triggers — android-ci.yml now uploads the Scrybe debug APK as a downloadable artifact (matching shelf-snap-build.yml behaviour) and triggers on claude/** and copilot/** feature branches in addition to main push; all four shelf-snap workflows upgraded from setup-android@v3 to @v4 with explicit platform and build-tools package selection
+
 * fix composite build AndroidX property — add shared/gradle.properties with android.useAndroidX=true so the shared library modules (billing, design, etc.) resolve RevenueCat and Compose dependencies correctly; add pipefail to shelf-snap CI Gradle steps so build failures propagate correctly
 * fix SettingsScreen compile errors — add missing imports for CircularProgressIndicator, Spacer, and width used in the Pro subscription button; remove duplicate AutoAwesome import
 * align shelf-snap AGP to 8.7.3 — composite builds require a single AGP version across all included builds; shelf-snap was on 8.4.0 which conflicts with shared/ modules pinned to 8.7.3

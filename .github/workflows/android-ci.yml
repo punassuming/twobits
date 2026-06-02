@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "copilot/**", "claude/**" ]
     paths:
       - 'CHANGELOG.md'
       - 'apps/scrybe/**'
@@ -193,6 +193,15 @@ jobs:
         working-directory: apps/scrybe
         shell: bash
         run: bash scripts/ci-gradle-retry.sh assembleDebug testDebugUnitTest lint ktlintCheck detekt
+
+      - name: Upload Scrybe debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrybe-debug-${{ github.sha }}
+          path: apps/scrybe/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Record android/verified commit status
         if: success()
