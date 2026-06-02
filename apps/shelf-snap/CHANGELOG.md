@@ -11,6 +11,10 @@ keep entries user-facing and concise.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-02
+
+_Maintenance release._
+
 ## [1.0.0] - 2026-06-01
 
 
