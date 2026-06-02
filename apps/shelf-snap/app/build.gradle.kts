@@ -151,7 +151,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     // Billing / subscriptions
-    implementation(libs.revenuecat.purchases)
+    implementation("com.twobits.core:billing")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

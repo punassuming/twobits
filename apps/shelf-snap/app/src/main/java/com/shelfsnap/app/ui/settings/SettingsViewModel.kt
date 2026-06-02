@@ -5,10 +5,10 @@ import android.content.Context
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shelfsnap.app.data.billing.BillingManager
-import com.shelfsnap.app.data.billing.PurchaseCancelledException
-import com.shelfsnap.app.data.billing.SubscriptionRepository
-import com.shelfsnap.app.data.billing.SubscriptionTier
+import com.twobits.billing.BillingManager
+import com.twobits.billing.PurchaseCancelledException
+import com.twobits.billing.SubscriptionRepository
+import com.twobits.billing.SubscriptionTier
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.data.repository.ItemRepository
 import com.shelfsnap.app.util.ApiKeyValidator

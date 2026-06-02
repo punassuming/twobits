@@ -1,8 +1,9 @@
-package com.shelfsnap.app.data.billing
+package com.twobits.billing
 
 import android.app.Activity
 import android.content.Context
 import com.revenuecat.purchases.CustomerInfo
+import com.revenuecat.purchases.Offerings
 import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
@@ -12,25 +13,22 @@ import com.revenuecat.purchases.interfaces.PurchaseCallback
 import com.revenuecat.purchases.interfaces.ReceiveCustomerInfoCallback
 import com.revenuecat.purchases.interfaces.ReceiveOfferingsCallback
 import com.revenuecat.purchases.models.StoreTransaction
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-@Singleton
-class BillingManager @Inject constructor(
-    @ApplicationContext context: Context,
+class BillingManager(
+    context: Context,
+    private val config: BillingConfig,
 ) {
     private val _tier = MutableStateFlow<SubscriptionTier>(SubscriptionTier.Free)
     val subscriptionTier: StateFlow<SubscriptionTier> = _tier.asStateFlow()
 
     init {
-        Purchases.configure(PurchasesConfiguration.Builder(context, REVENUECAT_PUBLIC_KEY).build())
+        Purchases.configure(PurchasesConfiguration.Builder(context, config.revenueCatPublicKey).build())
     }
 
     suspend fun refreshStatus() {
@@ -77,19 +75,18 @@ class BillingManager @Inject constructor(
                     override fun onReceived(customerInfo: CustomerInfo) = cont.resume(customerInfo)
                     override fun onError(error: PurchasesError) =
                         cont.resumeWithException(Exception(error.message))
-                }
+                },
             )
         }
 
-    private suspend fun fetchOfferings() =
+    private suspend fun fetchOfferings(): Offerings =
         suspendCancellableCoroutine { cont ->
             Purchases.sharedInstance.getOfferings(
                 object : ReceiveOfferingsCallback {
-                    override fun onReceived(offerings: com.revenuecat.purchases.Offerings) =
-                        cont.resume(offerings)
+                    override fun onReceived(offerings: Offerings) = cont.resume(offerings)
                     override fun onError(error: PurchasesError) =
                         cont.resumeWithException(Exception(error.message))
-                }
+                },
             )
         }
 
@@ -116,13 +113,11 @@ class BillingManager @Inject constructor(
                     override fun onReceived(customerInfo: CustomerInfo) = cont.resume(customerInfo)
                     override fun onError(error: PurchasesError) =
                         cont.resumeWithException(Exception(error.message))
-                }
+                },
             )
         }
 
     private fun CustomerInfo.toTier(): SubscriptionTier =
-        if (entitlements[ENTITLEMENT_PRO]?.isActive == true) SubscriptionTier.Pro
+        if (entitlements[config.proEntitlementId]?.isActive == true) SubscriptionTier.Pro
         else SubscriptionTier.Free
 }
-
-class PurchaseCancelledException : Exception("Purchase was cancelled")

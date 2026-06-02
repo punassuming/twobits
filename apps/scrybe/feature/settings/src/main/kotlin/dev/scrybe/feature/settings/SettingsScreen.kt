@@ -80,7 +80,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.scrybe.core.billing.SubscriptionTier
+import com.twobits.billing.SubscriptionTier
 import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard

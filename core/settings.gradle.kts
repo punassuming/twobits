@@ -11,6 +11,7 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -19,11 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-includeBuild("../../core") {
-    dependencySubstitution {
-        substitute(module("com.twobits.core:billing")).using(project(":billing"))
-    }
-}
+rootProject.name = "twobits-core"
 
-rootProject.name = "shelf-snap"
-include(":app")
+include(":billing")

@@ -67,12 +67,17 @@ dependencyResolutionManagement {
     }
 }
 
+includeBuild("../../core") {
+    dependencySubstitution {
+        substitute(module("com.twobits.core:billing")).using(project(":billing"))
+    }
+}
+
 rootProject.name = "scrybe-android"
 
 include(":app")
 
 // Core modules
-include(":core:billing")
 include(":core:local-ai")
 include(":core:common")
 include(":core:model")

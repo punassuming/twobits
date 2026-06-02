@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.BuildConfig
 import com.shelfsnap.app.R
-import com.shelfsnap.app.data.billing.SubscriptionTier
+import com.twobits.billing.SubscriptionTier
 import com.shelfsnap.app.data.remote.search.SearchProvider
 
 @Composable
