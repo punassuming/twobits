@@ -10,7 +10,7 @@ on:
     branches: [ "main" ]
     paths:
       - 'apps/shelf-snap/**'
-      - 'core/**'
+      - 'shared/**'
   workflow_dispatch:
 
 concurrency:

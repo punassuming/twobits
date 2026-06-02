@@ -6,7 +6,7 @@ on:
     paths:
       - 'CHANGELOG.md'
       - 'apps/scrybe/**'
-      - 'core/**'
+      - 'shared/**'
       - 'Dockerfile.dev'
       - 'docker-compose.yml'
       - '.dockerignore'
@@ -17,7 +17,7 @@ on:
     paths:
       - 'CHANGELOG.md'
       - 'apps/scrybe/**'
-      - 'core/**'
+      - 'shared/**'
       - 'Dockerfile.dev'
       - 'docker-compose.yml'
       - '.dockerignore'

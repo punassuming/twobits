@@ -67,7 +67,7 @@ dependencyResolutionManagement {
     }
 }
 
-includeBuild("../../core") {
+includeBuild("../../shared") {
     dependencySubstitution {
         substitute(module("com.twobits.core:billing")).using(project(":billing"))
         substitute(module("com.twobits.core:common")).using(project(":common"))

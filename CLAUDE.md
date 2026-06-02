@@ -6,6 +6,7 @@
 apps/
   scrybe/          — Scrybe Android app (voice recording + Whisper transcription)
   shelf-snap/      — Shelf Snap Android app (camera inventory + price research)
+shared/            — Gradle composite build: shared library modules (billing, common, api-keys, network, design)
 cloudflare-worker/ — Managed-key API proxy (Cloudflare Workers, serves both apps)
 scrybe-re-think/   — Design exploration docs
 ```
