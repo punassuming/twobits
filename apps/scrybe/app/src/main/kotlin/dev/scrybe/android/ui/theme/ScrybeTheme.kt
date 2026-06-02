@@ -6,6 +6,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.twobits.design.TwoBitsShapes
+import com.twobits.design.TwoBitsTypography
 
 private val DarkColorScheme =
     darkColorScheme(
@@ -98,8 +100,8 @@ fun ScrybeTheme(
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = ScrybeTypography,
-        shapes = ScrybeShapes,
+        typography = TwoBitsTypography,
+        shapes = TwoBitsShapes,
         content = content,
     )
 }

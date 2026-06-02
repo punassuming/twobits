@@ -7,6 +7,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.twobits.design.ThemeMode
+import com.twobits.design.TwoBitsShapes
+import com.twobits.design.TwoBitsTypography
 
 /** Composition-local that resolves to the correct EstimateLabel colour for the active theme. */
 val LocalEstimateLabel = staticCompositionLocalOf { EstimateLabel }
@@ -72,20 +75,23 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun ShelfSnapTheme(
-    // Follow the system light/dark setting. Dark mode uses the Scrybe-DS design tokens;
-    // light mode uses the forest-green light palette. Dynamic color is disabled so
-    // Shelf Snap's brand palette shows instead of the device wallpaper colors.
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    content: @Composable () -> Unit,
 ) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     val estimateLabelColor = if (darkTheme) DarkEstimateLabel else EstimateLabel
 
     CompositionLocalProvider(LocalEstimateLabel provides estimateLabelColor) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = AppTypography,
-            content = content
+            typography = TwoBitsTypography,
+            shapes = TwoBitsShapes,
+            content = content,
         )
     }
 }

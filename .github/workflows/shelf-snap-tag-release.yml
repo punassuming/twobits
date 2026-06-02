@@ -10,6 +10,7 @@ on:
     branches: [ "main" ]
     paths:
       - 'apps/shelf-snap/**'
+      - 'core/**'
   workflow_dispatch:
 
 concurrency:
@@ -103,11 +104,13 @@ jobs:
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
+          major=$(echo "$VERSION" | cut -d. -f1)
+          minor=$(echo "$VERSION" | cut -d. -f2)
+          patch=$(echo "$VERSION" | cut -d. -f3)
+          newcode=$((major * 1000000 + minor * 1000 + patch))
           sed -i -E "s/versionName = \"[^\"]*\"/versionName = \"$VERSION\"/" apps/shelf-snap/app/build.gradle.kts
-          code=$(grep -oE "versionCode = [0-9]+" apps/shelf-snap/app/build.gradle.kts | grep -oE "[0-9]+" | head -n1)
-          newcode=$((code + 1))
           sed -i -E "s/versionCode = [0-9]+/versionCode = $newcode/" apps/shelf-snap/app/build.gradle.kts
-          echo "versionName -> $VERSION, versionCode -> $newcode"
+          echo "versionName -> $VERSION, versionCode -> $newcode (major*1M + minor*1K + patch)"
 
       - name: Decode release keystore
         id: keystore

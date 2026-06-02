@@ -106,6 +106,7 @@ tasks.named("preBuild").configure {
 
 dependencies {
     implementation("com.twobits.core:billing")
+    implementation("com.twobits.core:design")
     implementation(project(":core:audio"))
     implementation(project(":core:local-ai"))
     implementation(project(":core:common"))

@@ -150,8 +150,9 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
-    // Billing / subscriptions
+    // Shared core modules
     implementation("com.twobits.core:billing")
+    implementation("com.twobits.core:design")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
