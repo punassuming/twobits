@@ -8,7 +8,7 @@
 
 ### Improvements
 
-* unify CI artifact output and triggers — android-ci.yml now uploads the Scrybe debug APK as a downloadable artifact (matching shelf-snap-build.yml behaviour) and triggers on claude/** and copilot/** feature branches in addition to main push; all four shelf-snap workflows upgraded from setup-android@v3 to @v4 with explicit platform and build-tools package selection
+* unify CI artifact output and triggers — android-ci.yml now uploads the Scrybe debug APK as a downloadable artifact and triggers on claude/** and copilot/** feature branches; shelf-snap-build.yml restructured to match Scrybe's single-Gradle-invocation pattern (lint + test + assembleDebug in one pass), drops redundant release APK build from CI (covered by shelf-snap-tag-release.yml on main), and reduces permissions to contents:read; all four shelf-snap workflows upgraded from setup-android@v3 to @v4 with explicit platform and build-tools package selection
 
 * fix composite build AndroidX property — add shared/gradle.properties with android.useAndroidX=true so the shared library modules (billing, design, etc.) resolve RevenueCat and Compose dependencies correctly; add pipefail to shelf-snap CI Gradle steps so build failures propagate correctly
 * fix SettingsScreen compile errors — add missing imports for CircularProgressIndicator, Spacer, and width used in the Pro subscription button; remove duplicate AutoAwesome import
