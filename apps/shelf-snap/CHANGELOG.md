@@ -1,10 +1,14 @@
 # Changelog
 
-The in-app **What's new** screen (Settings → What's new) renders this file.
-Keep entries user-facing and concise. The release workflow promotes the
-**Unreleased** section automatically — do not invent version numbers.
-
 ## Unreleased
+
+### Features
+
+### Improvements
+
+### Fixes
+
+## 1.0.1 (2026-06-03)
 
 ### Features
 
@@ -14,9 +18,11 @@ Keep entries user-facing and concise. The release workflow promotes the
 
 ### Fixes
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 ## 1.0.0 (2026-06-01)
 
