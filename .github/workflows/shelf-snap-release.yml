@@ -54,10 +54,12 @@ jobs:
         id: meta
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+            tag="${{ inputs.tag }}"
           else
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            tag="${GITHUB_REF_NAME}"
           fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#shelf-snap-v}" >> "$GITHUB_OUTPUT"
 
       - name: Decode release keystore
         id: keystore
@@ -97,7 +99,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
-          name: Shelf Snap ${{ steps.meta.outputs.tag }}
+          name: Shelf Snap v${{ steps.meta.outputs.version }}
           generate_release_notes: true
           prerelease: ${{ inputs.prerelease || false }}
           files: |

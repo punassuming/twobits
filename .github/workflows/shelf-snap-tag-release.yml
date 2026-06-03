@@ -158,7 +158,7 @@ jobs:
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           target_commitish: main
-          name: Shelf Snap ${{ steps.ver.outputs.tag }}
+          name: Shelf Snap v${{ steps.ver.outputs.version }}
           body_path: RELEASE_NOTES.md
           files: |
             ${{ steps.asset.outputs.path }}
