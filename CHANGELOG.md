@@ -4,6 +4,8 @@
 
 ### Features
 
+* add twobits GitHub Pages marketing site — four-page static site in docs/ (index.html, scrybe.html, shelf-snap.html, privacy.html) copied pixel-faithfully from the Claude Design handoff; shared site.css with full design token system (DM Sans, dark palette, signal/ember/brand color scheme); pages workflow deploys to GitHub Pages on push to main; all inter-page links use clean URL-friendly filenames; covers landing, Scrybe product + Play Store listing, Shelf-Snap product + Play Store listing, Privacy data tables + FAQ
+
 * add ProGate composable to core:design — ModalBottomSheet paywall interceptor with two paths: "Go Pro" (purchase) and "Use your own API key" (navigate to settings); drop it anywhere an AI feature needs to be gated behind Pro or a BYOK key
 
 ### Improvements

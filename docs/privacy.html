@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Overview — twobits</title>
+<meta name="description" content="twobits products are tools, not platforms. No cloud services, no user accounts, no data collection. Full data handling details for Scrybe and Shelf-Snap.">
+<link rel="stylesheet" href="site.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+  .hero-privacy {
+    padding: 100px 0 48px;
+    position: relative; overflow: hidden;
+  }
+  .hero-privacy::before {
+    content: '';
+    position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 600px; height: 400px;
+    background: radial-gradient(ellipse, var(--brand-glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-privacy p {
+    max-width: 560px; margin: 16px auto 0;
+    text-align: center; font-size: 18px; line-height: 1.7;
+    color: var(--t2); text-wrap: pretty;
+  }
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .principle {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 28px;
+    display: flex; flex-direction: column; gap: 12px;
+    transition: border-color 0.2s;
+  }
+  .principle:hover { border-color: var(--border-l); }
+  .principle-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .principle h3 { font-size: 17px; font-weight: 600; }
+  .principle p { font-size: 14px; color: var(--t2); line-height: 1.65; }
+  .product-privacy {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-xl); overflow: hidden; margin-bottom: 32px;
+  }
+  .product-privacy-header {
+    padding: 28px 32px;
+    display: flex; align-items: center; gap: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .product-privacy-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .product-privacy-header h3 { font-size: 20px; font-weight: 700; }
+  .product-privacy-header .sub { font-size: 13px; color: var(--t3); margin-top: 2px; }
+  .third-party-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .third-party {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 24px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .third-party h4 { font-size: 15px; font-weight: 600; }
+  .third-party p { font-size: 13px; color: var(--t2); line-height: 1.6; }
+  .third-party .when {
+    font-size: 12px; color: var(--t3);
+    display: flex; align-items: center; gap: 5px;
+  }
+  /* Pro architecture */
+  .arch-diagram {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-xl); padding: 32px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .arch-row {
+    display: flex; align-items: center; gap: 12px;
+    flex-wrap: wrap;
+  }
+  .arch-box {
+    background: var(--s2); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 12px 16px;
+    font-size: 13px; font-weight: 500;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .arch-arrow {
+    color: var(--t3); font-size: 18px;
+    display: flex; align-items: center;
+  }
+  /* FAQ */
+  .faq { display: flex; flex-direction: column; }
+  .faq-item { border-bottom: 1px solid var(--border); padding: 20px 0; }
+  .faq-item:first-child { border-top: 1px solid var(--border); }
+  .faq-q {
+    font-size: 16px; font-weight: 600; color: var(--t1);
+    cursor: pointer; display: flex; align-items: center; gap: 10px;
+  }
+  .faq-q .material-icons-round {
+    font-size: 20px; color: var(--t3);
+    transition: transform 0.2s; margin-left: auto;
+  }
+  .faq-a {
+    font-size: 14px; color: var(--t2); line-height: 1.7;
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s ease, margin-top 0.3s ease;
+    margin-top: 0;
+  }
+  .faq-item.open .faq-a { max-height: 400px; margin-top: 12px; }
+  .faq-item.open .faq-q .material-icons-round { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="index.html" class="site-logo"><span class="dot"></span> twobits</a>
+    <div class="site-nav-links">
+      <a href="scrybe.html">Scrybe</a>
+      <a href="shelf-snap.html">Shelf-Snap</a>
+      <a href="privacy.html" class="active">Privacy</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero-privacy">
+  <div class="wrap text-center">
+    <div class="pill" style="background: rgba(109,40,217,0.15); color: var(--brand-soft); margin: 0 auto 16px;">
+      <span class="material-icons-round" style="font-size: 14px;">shield</span>
+      Privacy
+    </div>
+    <h1 class="t-display">Your data stays yours</h1>
+    <p>
+      twobits products are tools, not platforms. We don't run cloud services, we don't have user accounts, and we don't collect data. Here's exactly how each product handles your information.
+    </p>
+  </div>
+</section>
+
+<!-- Core principles -->
+<section class="section-sm">
+  <div class="wrap">
+    <p class="t-label mb-16">Core principles</p>
+    <div class="principles reveal">
+      <div class="principle">
+        <div class="principle-icon" style="background: rgba(109,40,217,0.12);">
+          <span class="material-icons-round" style="color: var(--brand-soft); font-size: 22px;">vpn_key</span>
+        </div>
+        <h3>Bring your own key</h3>
+        <p>AI processing uses your API key, billed directly to your provider at their published rates. Your key is stored on-device in Android's local DataStore. We never see it server-side.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon" style="background: rgba(109,40,217,0.12);">
+          <span class="material-icons-round" style="color: var(--brand-soft); font-size: 22px;">workspace_premium</span>
+        </div>
+        <h3>Pro managed key</h3>
+        <p>Scrybe Pro ($1.99/mo via Google Play) routes AI calls through our Cloudflare worker proxy (api.twobits.app). The worker validates your RevenueCat subscription, then forwards to OpenAI. The OpenAI key stays server-side — never on your device.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon" style="background: var(--glow-dim);">
+          <span class="material-icons-round" style="color: var(--glow); font-size: 22px;">smartphone</span>
+        </div>
+        <h3>On-device AI</h3>
+        <p>Scrybe offers fully local processing: Whisper tiny/base/small for transcription (via Sherpa-ONNX), Gemma 2 2B for transforms (via MediaPipe). In local mode, zero data leaves your device.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon" style="background: var(--signal-dim);">
+          <span class="material-icons-round" style="color: var(--signal); font-size: 22px;">storage</span>
+        </div>
+        <h3>Local-first storage</h3>
+        <p>All user data — recordings, photos, transcripts, inventory — is stored on-device in Room databases and app-private file storage. We have no cloud backend, no sync service, no user database.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon" style="background: var(--ember-dim);">
+          <span class="material-icons-round" style="color: var(--ember); font-size: 22px;">visibility_off</span>
+        </div>
+        <h3>No telemetry</h3>
+        <p>No Firebase Analytics, no Mixpanel, no Amplitude, no Sentry, no Crashlytics. The only external reporting is anonymous crash reports via Google Play Console. We don't know who you are.</p>
+      </div>
+      <div class="principle">
+        <div class="principle-icon" style="background: rgba(196,171,255,0.12);">
+          <span class="material-icons-round" style="color: #C4ABFF; font-size: 22px;">delete_outline</span>
+        </div>
+        <h3>Delete means delete</h3>
+        <p>When you delete a recording, photo, or item from the app, it's gone from the device filesystem immediately. There's no cloud backup to purge. Uninstalling removes everything.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pro architecture -->
+<section class="section-sm">
+  <div class="wrap">
+    <p class="t-label mb-16">Pro subscription architecture</p>
+    <h2 class="t-h2 mb-24">How managed API access works</h2>
+    <div class="arch-diagram reveal">
+      <p class="t-body-sm" style="max-width: 560px;">
+        Scrybe Pro subscribers don't need their own OpenAI API key. Instead, AI calls route through a Cloudflare Worker at api.twobits.app. The worker validates the subscription via RevenueCat, then proxies the request to OpenAI using a server-side key. Your audio or text goes directly to OpenAI — we don't log, store, or inspect it.
+      </p>
+      <div class="arch-row">
+        <div class="arch-box">
+          <span class="material-icons-round" style="font-size: 16px; color: var(--signal);">smartphone</span>
+          Your phone
+        </div>
+        <div class="arch-arrow"><span class="material-icons-round">arrow_forward</span></div>
+        <div class="arch-box" style="border-color: rgba(109,40,217,0.3);">
+          <span class="material-icons-round" style="font-size: 16px; color: var(--brand-soft);">cloud</span>
+          api.twobits.app
+          <span style="font-size: 11px; color: var(--t3); font-weight: 400;">(Cloudflare Worker)</span>
+        </div>
+        <div class="arch-arrow"><span class="material-icons-round">arrow_forward</span></div>
+        <div class="arch-box">
+          <span class="material-icons-round" style="font-size: 16px; color: var(--glow);">auto_awesome</span>
+          OpenAI API
+        </div>
+      </div>
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <div style="font-size: 12px; color: var(--t3); display: flex; align-items: center; gap: 5px;">
+          <span class="material-icons-round" style="font-size: 14px;">check</span>
+          Subscription validated via RevenueCat
+        </div>
+        <div style="font-size: 12px; color: var(--t3); display: flex; align-items: center; gap: 5px;">
+          <span class="material-icons-round" style="font-size: 14px;">check</span>
+          OpenAI key never leaves Cloudflare
+        </div>
+        <div style="font-size: 12px; color: var(--t3); display: flex; align-items: center; gap: 5px;">
+          <span class="material-icons-round" style="font-size: 14px;">check</span>
+          No request logging or data retention
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Scrybe privacy -->
+<section class="section">
+  <div class="wrap">
+    <div class="product-privacy reveal">
+      <div class="product-privacy-header">
+        <div class="product-privacy-icon" style="background: var(--signal-dim);">
+          <span class="material-icons-round" style="font-size: 24px; color: var(--signal);">graphic_eq</span>
+        </div>
+        <div>
+          <h3 class="text-signal">Scrybe</h3>
+          <p class="sub">Voice to Document — data handling details</p>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Data type</th><th>Where it goes</th><th>Retention</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Audio recordings</td>
+            <td><span class="badge badge-local">On-device</span> Stored in app-private storage. Sent to your transcription provider only when you trigger transcription (or auto-transcribe is on).</td>
+            <td>Until you delete it. No auto-expiry unless you configure one.</td>
+          </tr>
+          <tr>
+            <td>Transcripts &amp; transforms</td>
+            <td><span class="badge badge-local">On-device</span> Generated text stored in Room database. The AI provider may retain prompts per their own policy.</td>
+            <td>Until you delete the session.</td>
+          </tr>
+          <tr>
+            <td>Tasks</td>
+            <td><span class="badge badge-local">On-device</span> Extracted action items stored in session_tasks table (Room DB). Assignee, due date, and status are local-only.</td>
+            <td>Until you delete the session or individual task.</td>
+          </tr>
+          <tr>
+            <td>Audio sent to AI</td>
+            <td><span class="badge badge-cloud">Your provider</span> Via HTTPS to OpenAI Whisper (BYOK) or via api.twobits.app (Pro). Long recordings are chunked (≤16 min per chunk).</td>
+            <td>OpenAI: 30 days by default (opt out in dashboard). Pro proxy: zero retention.</td>
+          </tr>
+          <tr>
+            <td>On-device AI</td>
+            <td><span class="badge badge-local">On-device</span> Whisper tiny/base/small via Sherpa-ONNX. Gemma 2 2B via MediaPipe. Models downloaded once, stored locally.</td>
+            <td>Models persist until you delete them in Settings.</td>
+          </tr>
+          <tr>
+            <td>API keys</td>
+            <td><span class="badge badge-local">On-device</span> Stored in Android DataStore. Pro users send a RevenueCat App User ID instead — no API key on device.</td>
+            <td>Until you remove them or uninstall.</td>
+          </tr>
+          <tr>
+            <td>Location data</td>
+            <td><span class="badge badge-local">On-device</span> Optional — coarse GPS captured at recording start, reverse-geocoded to "City, State." Requires explicit permission grant.</td>
+            <td>Until you delete the session or disable the setting.</td>
+          </tr>
+          <tr>
+            <td>Speaker profiles</td>
+            <td><span class="badge badge-local">On-device</span> Named person profiles and speaker assignments stored in Room. Used for diarization labels.</td>
+            <td>Until you delete them.</td>
+          </tr>
+          <tr>
+            <td>Crash reports</td>
+            <td><span class="badge badge-none">Play Console</span> Anonymous stack traces via Google Play. No user identifiers.</td>
+            <td>Per Google Play Console retention.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Shelf-Snap privacy -->
+    <div class="product-privacy reveal">
+      <div class="product-privacy-header">
+        <div class="product-privacy-icon" style="background: var(--ember-dim);">
+          <span class="material-icons-round" style="font-size: 24px; color: var(--ember);">photo_camera</span>
+        </div>
+        <div>
+          <h3 class="text-ember">Shelf-Snap</h3>
+          <p class="sub">Inventory &amp; Value — data handling details</p>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Data type</th><th>Where it goes</th><th>Retention</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Photos</td>
+            <td><span class="badge badge-local">On-device</span> Captured via CameraX, stored in app-private cache. Sent to OpenAI Vision for analysis. Cache copy purged after processing.</td>
+            <td>Ephemeral — deleted after analysis. Originals kept if "keep-original-photos" is on.</td>
+          </tr>
+          <tr>
+            <td>Inventory data</td>
+            <td><span class="badge badge-local">On-device</span> Item records (category, description, condition, value, listings) stored in local Room database.</td>
+            <td>Until you delete the item or uninstall.</td>
+          </tr>
+          <tr>
+            <td>Photos sent to AI</td>
+            <td><span class="badge badge-cloud">OpenAI Vision</span> Photos sent via HTTPS to GPT-4o using your API key. Returns structured JSON (category, description, condition, value, confidence).</td>
+            <td>Per OpenAI's data retention policy.</td>
+          </tr>
+          <tr>
+            <td>Market research</td>
+            <td><span class="badge badge-cloud">OpenAI + search</span> Item attributes and web snippets sent to gpt-4o-mini. Web search queries sent to Brave or DuckDuckGo (your choice).</td>
+            <td>Per each provider's policy. DuckDuckGo: no logging.</td>
+          </tr>
+          <tr>
+            <td>API keys</td>
+            <td><span class="badge badge-local">On-device</span> OpenAI key and optional Brave Search key stored in Android DataStore.</td>
+            <td>Until you remove them or uninstall.</td>
+          </tr>
+          <tr>
+            <td>Exported CSVs</td>
+            <td><span class="badge badge-none">Your choice</span> CSV files saved to app-scoped external storage. Shared via system chooser — we have no visibility.</td>
+            <td>Per the destination app.</td>
+          </tr>
+          <tr>
+            <td>Crash reports</td>
+            <td><span class="badge badge-none">Play Console</span> Anonymous stack traces only.</td>
+            <td>Per Google Play Console retention.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Third-party services -->
+<section class="section-sm">
+  <div class="wrap">
+    <p class="t-label mb-16">Third-party services</p>
+    <h2 class="t-h2 mb-24">What we connect to — and only when you ask</h2>
+    <div class="third-party-grid reveal">
+      <div class="third-party">
+        <h4>OpenAI (Whisper / GPT / Vision)</h4>
+        <p>Transcription (Scrybe), AI transforms (Scrybe), item analysis (Shelf-Snap), and price research (Shelf-Snap). Audio, text, or images sent directly from your device using your key — or via api.twobits.app for Pro users.</p>
+        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> Only when you trigger transcription, transform, analysis, or price research</div>
+      </div>
+      <div class="third-party">
+        <h4>RevenueCat</h4>
+        <p>Manages Scrybe Pro subscriptions. The app sends an anonymous App User ID to verify entitlement. RevenueCat does not receive any recording, transcript, or item data.</p>
+        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> On app launch (subscription check) and when purchasing Pro</div>
+      </div>
+      <div class="third-party">
+        <h4>Brave Search / DuckDuckGo</h4>
+        <p>Optional web search for Shelf-Snap market research. Search queries based on item attributes are sent to your chosen provider. DuckDuckGo works without a key; Brave requires one.</p>
+        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> Only when you tap "Research price" in Shelf-Snap Market tab</div>
+      </div>
+      <div class="third-party">
+        <h4>Google Play Console</h4>
+        <p>Android's built-in crash reporting. Sends anonymous stack traces when the app crashes. No user identifiers, no usage analytics, no content data.</p>
+        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> Automatic on crash — no user data included</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section">
+  <div class="wrap">
+    <h2 class="t-h2 mb-24">Common questions</h2>
+    <div class="faq reveal">
+      <div class="faq-item open">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Do you have access to my recordings or photos?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">No. We have no cloud backend, no sync service, and no way to access data on your device. When you use a cloud AI provider, your data goes directly from your device to the provider's API — we are not in the middle. Pro users' data passes through our Cloudflare worker but is not logged, stored, or inspected.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          How does Scrybe Pro work without my own API key?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">Pro subscribers' AI calls route through a Cloudflare Worker at api.twobits.app. The worker validates your subscription via RevenueCat, then proxies the request to OpenAI using a server-side API key. Your audio or text goes to OpenAI — we proxy it without logging or storing any content. The OpenAI key never touches your device.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          What happens in on-device mode?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">Nothing leaves your device. Whisper runs locally via Sherpa-ONNX for transcription, and Gemma 2 2B runs via MediaPipe for transforms. No internet connection is needed or used. Models are downloaded once and stored on your phone.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Does OpenAI keep my data?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">OpenAI retains API data for 30 days by default, but you can opt out in your OpenAI account settings. When using Scrybe Pro, the same OpenAI retention policy applies to the server-side key. We recommend reviewing OpenAI's data usage policy for API users.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          What does Shelf-Snap send to web search providers?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">When you tap "Research price," Shelf-Snap sends a search query based on the item's category, brand, and description to your chosen search provider (Brave Search or DuckDuckGo). The search results are then sent to OpenAI (gpt-4o-mini) for pricing analysis. No photos are sent to search providers — only text queries.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Do you use any analytics or tracking SDKs?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">No. No Firebase Analytics, no Mixpanel, no Amplitude, no Sentry, no Crashlytics. The only external reporting is Google Play Console's built-in crash reporting, which sends anonymous stack traces with no user identifiers.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          How do I delete all my data?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">Uninstall the app. All data is stored on-device in app-private storage — uninstalling removes recordings, photos, transcripts, inventory items, API keys, and settings. There is no cloud account to deactivate. For data already sent to AI providers, check their respective retention policies.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Is the code open source?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">The codebase lives at github.com/punassuming/twobits. Both apps are MIT licensed. You can read every line of code, verify every network call, and build from source. The monorepo includes both Android apps, shared modules, and the Cloudflare worker proxy.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-sm">
+  <div class="wrap text-center reveal">
+    <p class="t-body" style="max-width: 480px; margin: 0 auto;">
+      Questions about privacy? Reach out at
+      <a href="mailto:privacy@twobits.dev" style="color: var(--brand-soft); font-weight: 500;">privacy@twobits.dev</a>
+    </p>
+    <p class="t-caption mt-16">Last updated: June 2, 2026</p>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-col">
+      <a class="site-logo" href="index.html"><span class="dot"></span> twobits</a>
+      <span class="t-caption" style="margin-top: 4px;">AI tools that respect your intelligence.</span>
+    </div>
+    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a></div>
+    <div class="footer-col"><h5>Company</h5><a href="privacy.html">Privacy</a><a href="https://github.com/punassuming/twobits">GitHub</a></div>
+  </div>
+  <div class="footer-bottom">© 2026 twobits. All rights reserved.</div>
+</footer>
+
+<script>
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
