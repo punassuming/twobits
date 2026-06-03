@@ -8,6 +8,8 @@ Keep entries user-facing and concise. The release workflow promotes the
 
 ### Features
 
+* add vision model selector for BYOK users — choose from GPT-4o, GPT-4o mini, GPT-5.4, GPT-5.4 mini, or GPT-4.1 mini for item photo analysis; selection persists across sessions; Pro users use the managed API default
+
 ### Improvements
 
 ### Fixes

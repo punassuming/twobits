@@ -3,16 +3,29 @@ main = "worker.js"
 compatibility_date = "2024-01-01"
 
 # Custom domain — routes the worker to api.twobits.app
-# Requires twobits.app to be active in your Cloudflare account (it is).
+# Requires twobits.app to be active in your Cloudflare account.
 [[custom_domains]]
 pattern = "api.twobits.app"
 
-# KV namespace for subscription caching (create via: wrangler kv:namespace create SUBSCRIPTION_CACHE)
-# Replace <YOUR_KV_NAMESPACE_ID> with the ID returned by the command above.
+# KV namespace for subscription caching.
+# Create via: wrangler kv:namespace create SUBSCRIPTION_CACHE
+# Paste the returned ID below.
 [[kv_namespaces]]
 binding = "SUBSCRIPTION_CACHE"
 id = "<YOUR_KV_NAMESPACE_ID>"
 
-# Secrets (set via: wrangler secret put OPENAI_API_KEY)
-# OPENAI_API_KEY         — your OpenAI secret key
-# REVENUECAT_API_KEY     — your RevenueCat secret API key
+# Durable Object for serialized per-user spend tracking.
+# The SpendTracker DO eliminates the KV read-modify-write race condition.
+# No separate create step needed — Wrangler provisions the namespace on first deploy.
+[[durable_objects]]
+bindings = [
+  { name = "SPEND_TRACKER", class_name = "SpendTracker" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["SpendTracker"]
+
+# Secrets (set via wrangler secret put):
+#   OPENAI_API_KEY       — OpenAI secret key (never exposed to clients)
+#   REVENUECAT_API_KEY   — RevenueCat secret API key for subscription validation

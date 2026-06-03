@@ -43,7 +43,7 @@ class VisionAnalysisService @Inject constructor() {
      * Analyses [photoPaths] and returns a [DraftItemResult].
      * Returns a result with [DraftItemResult.error] set if the call fails.
      */
-    suspend fun analyse(photoPaths: List<String>, apiKey: String): DraftItemResult =
+    suspend fun analyse(photoPaths: List<String>, apiKey: String, model: String): DraftItemResult =
         withContext(Dispatchers.IO) {
             // Fail fast on a missing/obviously-invalid key — no network round-trip needed.
             if (!ApiKeyValidator.isValid(apiKey)) {
@@ -98,7 +98,7 @@ class VisionAnalysisService @Inject constructor() {
                 }
 
                 val requestBody = JsonObject().apply {
-                    addProperty("model", MODEL)
+                    addProperty("model", model)
                     add("messages", messages)
                     addProperty("max_tokens", 300)
                 }
@@ -193,9 +193,6 @@ class VisionAnalysisService @Inject constructor() {
 
     companion object {
         private const val TAG = "VisionAnalysisService"
-
-        /** Vision-capable model. Kept here so it can be swapped in one place. */
-        private const val MODEL = "gpt-4o"
 
         internal const val ERROR_INVALID_KEY =
             "Invalid or missing OpenAI API key. Check Settings."
