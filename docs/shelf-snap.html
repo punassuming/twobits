@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shelf-Snap — What you have, what you give</title>
+<meta name="description" content="Snap photos of your stuff — AI identifies each item, estimates its value, researches market prices, and helps you list it for sale or document it for donation.">
+<link rel="stylesheet" href="site.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+  .hero-product {
+    padding: 100px 0 64px;
+    position: relative; overflow: hidden;
+  }
+  .hero-product::before {
+    content: '';
+    position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 450px;
+    background: radial-gradient(ellipse, var(--ember-glow) 0%, transparent 70%);
+    pointer-events: none; opacity: 2;
+  }
+  .hero-product-inner {
+    display: flex; align-items: center; gap: 48px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .hero-text { max-width: 480px; }
+  .hero-text .tagline {
+    font-size: 20px; color: var(--t2); line-height: 1.6;
+    margin-top: 16px; text-wrap: pretty;
+  }
+  .hero-badges { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+
+  /* Phone mockup */
+  .phone-mock {
+    width: 220px; height: 440px;
+    background: var(--s1); border-radius: 28px;
+    border: 2px solid var(--border-l);
+    overflow: hidden; position: relative; flex-shrink: 0;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+  .phone-status {
+    height: 28px; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--t3); flex-shrink: 0;
+  }
+  .phone-body { flex: 1; overflow: hidden; }
+  .snap-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 40px; background: var(--s2);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 12px;
+  }
+  .snap-fab {
+    position: absolute; bottom: 48px; right: 16px;
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--ember); display: flex;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px var(--ember-glow);
+  }
+  .snap-item-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--s3); border-radius: 12px;
+    padding: 8px 10px; margin: 0 10px 6px;
+  }
+  .snap-thumb {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Steps */
+  .steps {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+    counter-reset: step;
+  }
+  @media (max-width: 768px) { .steps { grid-template-columns: 1fr; } }
+  .step {
+    counter-increment: step; padding: 28px;
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+  }
+  .step::before {
+    content: counter(step, decimal-leading-zero);
+    font-size: 48px; font-weight: 700;
+    color: var(--ember); opacity: 0.12;
+    line-height: 1; display: block; margin-bottom: 12px;
+  }
+  .step h4 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .step p { font-size: 14px; color: var(--t2); line-height: 1.6; }
+
+  /* Tabs mockup */
+  .tabs-demo {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+  }
+  @media (max-width: 768px) { .tabs-demo { grid-template-columns: 1fr; } }
+  .tab-card {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-lg); overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .tab-card:hover { border-color: var(--border-l); }
+  .tab-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 600;
+  }
+  .tab-body { padding: 20px; }
+  .tab-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0;
+    font-size: 13px; color: var(--t2);
+  }
+  .tab-row + .tab-row { border-top: 1px solid var(--border); }
+  .tab-row .material-icons-round { font-size: 16px; }
+
+  /* Platforms grid */
+  .platforms-grid {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  }
+  .platform-chip {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 14px 20px;
+    font-size: 14px; font-weight: 500;
+    display: flex; align-items: center; gap: 8px;
+    transition: border-color 0.2s;
+  }
+  .platform-chip:hover { border-color: var(--border-l); }
+  .platform-chip .material-icons-round { font-size: 18px; }
+
+  /* Price banner */
+  .price-banner {
+    background: linear-gradient(135deg, var(--ember-dim), #2A1508);
+    border: 1px solid rgba(255,182,149,0.15);
+    border-radius: var(--r-xl); padding: 36px;
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px;
+    align-items: center;
+  }
+  @media (max-width: 768px) { .price-banner { grid-template-columns: 1fr; } }
+  .price-banner h3 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .price-banner p { font-size: 14px; color: var(--t2); line-height: 1.6; }
+  .price-example {
+    background: rgba(255,255,255,0.04); border-radius: var(--r-sm);
+    padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .price-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px;
+  }
+  .price-row .label { color: var(--t2); }
+  .price-row .val { font-weight: 600; color: var(--t1); }
+  .price-row .source {
+    font-size: 11px; color: var(--t3); font-weight: 400;
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="index.html" class="site-logo"><span class="dot"></span> twobits</a>
+    <div class="site-nav-links">
+      <a href="scrybe.html">Scrybe</a>
+      <a href="shelf-snap.html" class="active">Shelf-Snap</a>
+      <a href="privacy.html">Privacy</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero-product">
+  <div class="wrap">
+    <div class="hero-product-inner">
+      <div class="hero-text">
+        <div class="pill" style="background: var(--ember-dim); color: var(--ember); margin-bottom: 16px;">
+          <span class="material-icons-round" style="font-size: 14px;">photo_camera</span>
+          Android · minSdk 26
+        </div>
+        <h1 class="t-display text-ember">Shelf-Snap</h1>
+        <p class="tagline">
+          What you have, what you give. Snap photos of your stuff — AI identifies each item, estimates its value, researches market prices, and helps you list it for sale or document it for donation.
+        </p>
+        <div class="hero-badges">
+          <a href="#play-listing" class="btn btn-ember">
+            <span class="material-icons-round" style="font-size: 18px;">play_arrow</span>
+            Google Play
+          </a>
+          <a href="privacy.html" class="btn btn-outline">
+            <span class="material-icons-round" style="font-size: 16px;">shield</span>
+            Privacy
+          </a>
+        </div>
+      </div>
+
+      <!-- Phone mockup — inventory list -->
+      <div class="phone-mock">
+        <div class="phone-status">
+          <span>9:41</span>
+          <span style="display: flex; gap: 4px; align-items: center;">
+            <span class="material-icons-round" style="font-size: 13px;">signal_cellular_alt</span>
+            <span class="material-icons-round" style="font-size: 13px;">battery_full</span>
+          </span>
+        </div>
+        <div class="phone-body">
+          <div style="padding: 8px 12px; display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 15px; font-weight: 700; color: var(--t1);">Shelf-Snap</span>
+            <span style="flex: 1;"></span>
+            <span class="material-icons-round" style="font-size: 16px; color: var(--t3);">search</span>
+            <span class="material-icons-round" style="font-size: 16px; color: var(--t3);">settings</span>
+          </div>
+          <!-- Filter chips -->
+          <div style="display: flex; gap: 4px; padding: 0 10px 8px;">
+            <span style="background: var(--ember-dim); color: var(--ember); font-size: 8px; font-weight: 500; padding: 2px 6px; border-radius: 99px;">All</span>
+            <span style="background: var(--s3); color: var(--t3); font-size: 8px; padding: 2px 6px; border-radius: 99px;">Listed</span>
+            <span style="background: var(--s3); color: var(--t3); font-size: 8px; padding: 2px 6px; border-radius: 99px;">Drafts</span>
+          </div>
+          <!-- Item rows -->
+          <div class="snap-item-row">
+            <div class="snap-thumb" style="background: var(--ember-dim);">
+              <span class="material-icons-round" style="font-size: 16px; color: var(--ember);">chair</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 10px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Mid-century desk lamp</div>
+              <div style="font-size: 8px; color: var(--t3);">Furniture · Good · ~$45</div>
+            </div>
+            <span style="background: var(--glow-dim); color: var(--glow); font-size: 7px; padding: 1px 5px; border-radius: 99px; font-weight: 500;">Listed</span>
+          </div>
+          <div class="snap-item-row">
+            <div class="snap-thumb" style="background: var(--signal-dim);">
+              <span class="material-icons-round" style="font-size: 16px; color: var(--signal);">devices</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 10px; font-weight: 600; color: var(--t1);">Kindle Paperwhite</div>
+              <div style="font-size: 8px; color: var(--t3);">Electronics · Good · ~$60</div>
+            </div>
+            <span style="background: var(--signal-dim); color: var(--signal); font-size: 7px; padding: 1px 5px; border-radius: 99px; font-weight: 500;">Sold</span>
+          </div>
+          <div class="snap-item-row">
+            <div class="snap-thumb" style="background: rgba(196,171,255,0.12);">
+              <span class="material-icons-round" style="font-size: 16px; color: #C4ABFF;">checkroom</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 10px; font-weight: 600; color: var(--t1);">Patagonia fleece (M)</div>
+              <div style="font-size: 8px; color: var(--t3);">Clothing · Like New · ~$55</div>
+            </div>
+            <span style="background: var(--ember-dim); color: var(--ember); font-size: 7px; padding: 1px 5px; border-radius: 99px; font-weight: 500;">Draft</span>
+          </div>
+          <div class="snap-item-row" style="opacity: 0.5;">
+            <div class="snap-thumb" style="background: var(--glow-dim);">
+              <span class="material-icons-round" style="font-size: 16px; color: var(--glow);">menu_book</span>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 10px; font-weight: 600; color: var(--t1);">Stack of textbooks (×4)</div>
+              <div style="font-size: 8px; color: var(--t3);">Books · Fair · ~$32</div>
+            </div>
+          </div>
+        </div>
+        <div class="snap-fab">
+          <span class="material-icons-round" style="font-size: 22px; color: var(--ember-dim);">add_a_photo</span>
+        </div>
+        <div class="snap-nav">
+          <span class="material-icons-round" style="font-size: 18px; color: var(--ember);">inventory_2</span>
+          <span class="material-icons-round" style="font-size: 18px; color: var(--t3);">volunteer_activism</span>
+          <span class="material-icons-round" style="font-size: 18px; color: var(--t3);">settings</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="section">
+  <div class="wrap">
+    <p class="t-label mb-16 text-center text-ember">How it works</p>
+    <h2 class="t-h1 text-center mb-24">Snap. Analyze. List or donate.</h2>
+    <div class="steps reveal">
+      <div class="step">
+        <h4>Capture one or more photos</h4>
+        <p>Open the camera and photograph any item — clothing, electronics, furniture, books, anything. CameraX captures multiple angles; thumbnails appear in a scrollable strip. Framing grid and flash toggle built in.</p>
+      </div>
+      <div class="step">
+        <h4>AI drafts the listing</h4>
+        <p>Photos go to OpenAI Vision (GPT-4o). The API returns category, description, condition, estimated value, and a confidence score — saved as a draft record you can review and edit.</p>
+      </div>
+      <div class="step">
+        <h4>Price, list, or donate</h4>
+        <p>The Market tab researches resale value with cited sources. The List tab lets you cross-list to selling platforms at platform-adjusted prices. Or export a donation summary with one-tap CSV.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Three tabs -->
+<section class="section-sm">
+  <div class="wrap">
+    <h2 class="t-h2 mb-24 text-center">Tabbed item detail</h2>
+    <div class="tabs-demo reveal">
+      <!-- Details tab -->
+      <div class="tab-card">
+        <div class="tab-header">
+          <span class="material-icons-round text-ember" style="font-size: 18px;">edit</span>
+          Details
+        </div>
+        <div class="tab-body">
+          <div class="tab-row"><span class="material-icons-round text-ember">category</span> Category, description, condition</div>
+          <div class="tab-row"><span class="material-icons-round text-ember">sell</span> Brand, model, size, color</div>
+          <div class="tab-row"><span class="material-icons-round text-ember">price_change</span> AI estimated value + confidence</div>
+          <div class="tab-row"><span class="material-icons-round text-ember">production_quantity_limits</span> Quantity, original price, tags</div>
+          <div class="tab-row"><span class="material-icons-round text-ember">photo_library</span> Numbered photo gallery + add slot</div>
+        </div>
+      </div>
+      <!-- Market tab -->
+      <div class="tab-card">
+        <div class="tab-header">
+          <span class="material-icons-round" style="font-size: 18px; color: var(--glow);">trending_up</span>
+          Market
+        </div>
+        <div class="tab-body">
+          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">search</span> Web search via Brave or DuckDuckGo</div>
+          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">auto_awesome</span> AI pricing analysis (gpt-4o-mini)</div>
+          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">bar_chart</span> Average sold price + range</div>
+          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">storefront</span> Per-platform suggested prices</div>
+          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">link</span> Comparable listings with cited sources</div>
+        </div>
+      </div>
+      <!-- List tab -->
+      <div class="tab-card">
+        <div class="tab-header">
+          <span class="material-icons-round text-signal" style="font-size: 18px;">sell</span>
+          List
+        </div>
+        <div class="tab-body">
+          <div class="tab-row"><span class="material-icons-round text-signal">storefront</span> eBay, Mercari, OfferUp</div>
+          <div class="tab-row"><span class="material-icons-round text-signal">groups</span> FB Marketplace, Craigslist</div>
+          <div class="tab-row"><span class="material-icons-round text-signal">tune</span> Platform-adjusted pricing</div>
+          <div class="tab-row"><span class="material-icons-round text-signal">check_circle</span> Listed / Sold status tracking</div>
+          <div class="tab-row"><span class="material-icons-round text-signal">smart_display</span> AI listing preview card</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="section">
+  <div class="wrap">
+    <h2 class="t-h2 mb-24">What's inside</h2>
+    <div class="feature-grid reveal">
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--ember-dim);">
+          <span class="material-icons-round" style="color: var(--ember);">photo_camera</span>
+        </div>
+        <h3 class="t-h3">Multi-photo capture</h3>
+        <p class="t-body-sm">CameraX with framing grid, reticle, capture flash, and dynamic hint text. Numbered photo strip shows all angles. Remove individual shots before analysis.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--glow-dim);">
+          <span class="material-icons-round" style="color: var(--glow);">auto_awesome</span>
+        </div>
+        <h3 class="t-h3">AI item analysis</h3>
+        <p class="t-body-sm">OpenAI Vision (GPT-4o) returns structured JSON: category, description, condition, estimated value, and confidence. Values are always labeled as estimates — never presented as authoritative.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--signal-dim);">
+          <span class="material-icons-round" style="color: var(--signal);">price_change</span>
+        </div>
+        <h3 class="t-h3">Market research</h3>
+        <p class="t-body-sm">The Market tab queries OpenAI (gpt-4o-mini) plus an optional web search (Brave or DuckDuckGo). It surfaces average sold price, a range, per-platform suggestions, and comparable listings with cited sources.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(196,171,255,0.12);">
+          <span class="material-icons-round" style="color: #C4ABFF;">storefront</span>
+        </div>
+        <h3 class="t-h3">Cross-listing</h3>
+        <p class="t-body-sm">Select selling platforms — eBay, Mercari, OfferUp, FB Marketplace, Craigslist — and record listings at platform-adjusted prices. Listed/Sold status badges on every inventory card.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(255,213,128,0.12);">
+          <span class="material-icons-round" style="color: var(--amber);">volunteer_activism</span>
+        </div>
+        <h3 class="t-h3">Donation summary</h3>
+        <p class="t-body-sm">A summary screen shows per-item subtotals and the total estimated donation value. One-tap CSV export creates a file in device storage, shareable via the system chooser.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(137,199,255,0.08);">
+          <span class="material-icons-round" style="color: var(--t2);">manage_search</span>
+        </div>
+        <h3 class="t-h3">Inventory management</h3>
+        <p class="t-body-sm">Search by category, brand, or description. Filter chips: All / Listed / Unlisted / Drafts. Category-specific icon fallbacks. Photo thumbnails on every row.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Platforms -->
+<section class="section-sm">
+  <div class="wrap text-center">
+    <h2 class="t-h2 mb-24">Cross-list anywhere</h2>
+    <div class="platforms-grid reveal">
+      <div class="platform-chip"><span class="material-icons-round text-ember">storefront</span> eBay</div>
+      <div class="platform-chip"><span class="material-icons-round text-signal">storefront</span> Mercari</div>
+      <div class="platform-chip"><span class="material-icons-round text-glow">storefront</span> OfferUp</div>
+      <div class="platform-chip"><span class="material-icons-round" style="color: #C4ABFF;">groups</span> FB Marketplace</div>
+      <div class="platform-chip"><span class="material-icons-round" style="color: var(--amber);">newspaper</span> Craigslist</div>
+    </div>
+  </div>
+</section>
+
+<!-- Market research example -->
+<section class="section">
+  <div class="wrap">
+    <div class="price-banner reveal">
+      <div>
+        <p class="t-label mb-16 text-ember">Market research</p>
+        <h3>Real prices, real sources</h3>
+        <p>Every price estimate comes with cited comparable listings. AI inference is augmented with live web search (Brave or DuckDuckGo) so you see where the numbers come from — not just a model's guess.</p>
+      </div>
+      <div class="price-example">
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Kindle Paperwhite (2021)</div>
+        <div class="price-row">
+          <span class="label">Average sold price</span>
+          <span class="val">$58</span>
+        </div>
+        <div class="price-row">
+          <span class="label">Price range</span>
+          <span class="val">$42 – $75</span>
+        </div>
+        <div style="border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px;">
+          <div class="price-row" style="margin-bottom: 4px;">
+            <span class="label">eBay</span>
+            <span class="val">$55 <span class="source">(avg. 23 sold)</span></span>
+          </div>
+          <div class="price-row" style="margin-bottom: 4px;">
+            <span class="label">Mercari</span>
+            <span class="val">$50 <span class="source">(avg. 11 sold)</span></span>
+          </div>
+          <div class="price-row">
+            <span class="label">OfferUp</span>
+            <span class="val">$60 <span class="source">(local est.)</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Google Play Listing -->
+<section class="section" id="play-listing">
+  <div class="wrap">
+    <p class="t-label mb-16 text-center text-ember">Google Play</p>
+    <h2 class="t-h1 text-center mb-24">Store listing</h2>
+
+    <div class="play-store reveal">
+      <div class="play-header">
+        <div class="play-icon" style="background: linear-gradient(135deg, var(--ember-dim), #2A1508);">
+          <span class="material-icons-round" style="font-size: 36px; color: var(--ember);">photo_camera</span>
+        </div>
+        <div class="play-meta">
+          <h3>Shelf-Snap — Inventory &amp; Value</h3>
+          <span class="dev">twobits</span>
+          <div style="display: flex; gap: 16px; margin-top: 8px; align-items: center;">
+            <div class="stars">
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
+              <span class="material-icons-round empty" style="font-size: 16px; color: var(--s4);">star</span>
+              <span style="font-size: 13px; color: var(--t2); margin-left: 4px;">4.2</span>
+            </div>
+            <button class="play-install-btn" style="background: var(--ember); color: var(--ember-dim);">Install</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="play-stats">
+        <div class="play-stat"><div class="val">4.2 ★</div><div class="lbl">38 reviews</div></div>
+        <div class="play-stat"><div class="val">500+</div><div class="lbl">Downloads</div></div>
+        <div class="play-stat"><div class="val">3+</div><div class="lbl">Rated for</div></div>
+        <div class="play-stat"><div class="val">62 MB</div><div class="lbl">Size</div></div>
+      </div>
+
+      <!-- Screenshots -->
+      <div class="play-screenshots">
+        <!-- SS1: Inventory -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 12px; color: var(--ember);">photo_camera</span> Shelf-Snap</div>
+            <div style="display: flex; gap: 3px; padding: 0 8px 4px;">
+              <span style="background: var(--ember-dim); color: var(--ember); font-size: 7px; padding: 1px 4px; border-radius: 99px; font-weight: 500;">All</span>
+              <span style="background: var(--s3); color: var(--t3); font-size: 7px; padding: 1px 4px; border-radius: 99px;">Listed</span>
+              <span style="background: var(--s3); color: var(--t3); font-size: 7px; padding: 1px 4px; border-radius: 99px;">Drafts</span>
+            </div>
+            <div class="ss-card" style="flex-direction: row; align-items: center; gap: 6px;">
+              <div style="width: 22px; height: 22px; border-radius: 5px; background: var(--ember-dim); display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="font-size: 11px; color: var(--ember);">chair</span></div>
+              <div style="flex: 1;"><div style="font-size: 9px; font-weight: 600;">Desk lamp</div><div style="font-size: 7px; color: var(--t3);">Furniture · ~$45</div></div>
+              <span class="ss-pill-sm" style="background: var(--glow-dim); color: var(--glow);">Listed</span>
+            </div>
+            <div class="ss-card" style="flex-direction: row; align-items: center; gap: 6px;">
+              <div style="width: 22px; height: 22px; border-radius: 5px; background: var(--signal-dim); display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="font-size: 11px; color: var(--signal);">devices</span></div>
+              <div style="flex: 1;"><div style="font-size: 9px; font-weight: 600;">Kindle</div><div style="font-size: 7px; color: var(--t3);">Electronics · ~$60</div></div>
+              <span class="ss-pill-sm" style="background: var(--signal-dim); color: var(--signal);">Sold</span>
+            </div>
+            <div class="ss-card" style="flex-direction: row; align-items: center; gap: 6px; opacity: 0.6;">
+              <div style="width: 22px; height: 22px; border-radius: 5px; background: rgba(196,171,255,0.12); display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="font-size: 11px; color: #C4ABFF;">checkroom</span></div>
+              <div style="flex: 1;"><div style="font-size: 9px; font-weight: 600;">Patagonia fleece</div><div style="font-size: 7px; color: var(--t3);">Clothing · ~$55</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- SS2: Camera -->
+        <div class="play-screenshot">
+          <div class="ss" style="background: #080C12;">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 10px; color: var(--t3);">arrow_back</span> Capture</div>
+            <div style="flex: 1; margin: 4px 8px; background: #060A10; border-radius: 10px; position: relative; display: flex; align-items: center; justify-content: center;">
+              <!-- Grid lines -->
+              <div style="position: absolute; left: 33%; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.06);"></div>
+              <div style="position: absolute; left: 66%; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.06);"></div>
+              <div style="position: absolute; top: 33%; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.06);"></div>
+              <div style="position: absolute; top: 66%; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.06);"></div>
+              <!-- Reticle -->
+              <div style="width: 20px; height: 20px; border: 1.5px solid var(--ember); border-radius: 50%; opacity: 0.6;"></div>
+              <div style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); font-size: 8px; color: var(--ember); opacity: 0.7;">Point at item</div>
+            </div>
+            <!-- Photo strip -->
+            <div style="display: flex; gap: 4px; padding: 6px 8px; align-items: center;">
+              <div style="width: 28px; height: 28px; border-radius: 6px; background: var(--s3); border: 1px solid var(--ember); display: flex; align-items: center; justify-content: center;"><span style="font-size: 8px; color: var(--ember); font-weight: 600;">1</span></div>
+              <div style="width: 28px; height: 28px; border-radius: 6px; background: var(--s3); border: 1px dashed var(--border-l); display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="font-size: 10px; color: var(--t3);">add</span></div>
+            </div>
+            <!-- Shutter -->
+            <div style="display: flex; justify-content: center; align-items: center; gap: 20px; padding: 8px 0 10px;">
+              <span class="material-icons-round" style="font-size: 16px; color: var(--t3);">flash_off</span>
+              <div style="width: 36px; height: 36px; border-radius: 50%; border: 2.5px solid var(--ember); display: flex; align-items: center; justify-content: center;"><div style="width: 28px; height: 28px; border-radius: 50%; background: var(--ember);"></div></div>
+              <span class="material-icons-round" style="font-size: 16px; color: var(--t3);">flip_camera_android</span>
+            </div>
+          </div>
+        </div>
+        <!-- SS3: Item detail -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 10px; color: var(--t3);">arrow_back</span> Desk lamp</div>
+            <div style="display: flex; gap: 3px; padding: 0 8px 4px;">
+              <span style="background: var(--ember-dim); color: var(--ember); font-size: 7px; padding: 1px 5px; border-radius: 99px; font-weight: 500;">Details</span>
+              <span style="background: var(--s3); color: var(--t3); font-size: 7px; padding: 1px 5px; border-radius: 99px;">Market</span>
+              <span style="background: var(--s3); color: var(--t3); font-size: 7px; padding: 1px 5px; border-radius: 99px;">List</span>
+            </div>
+            <div style="padding: 0 8px;">
+              <div class="ss-card">
+                <div style="display: flex; justify-content: space-between;"><span style="font-size: 8px; color: var(--t3);">CATEGORY</span><span style="font-size: 8px; color: var(--t1);">Furniture</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="font-size: 8px; color: var(--t3);">CONDITION</span>
+                  <div style="display: flex; gap: 2px;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--glow);"></span>
+                    <span style="font-size: 8px; color: var(--glow);">Good</span>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between;"><span style="font-size: 8px; color: var(--t3);">EST. VALUE</span><span style="font-size: 8px; color: var(--ember); font-weight: 600;">~$45</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="font-size: 8px; color: var(--t3);">CONFIDENCE</span><span style="font-size: 8px; color: var(--t2);">82%</span></div>
+              </div>
+              <div class="ss-card">
+                <span style="font-size: 8px; color: var(--t3);">DESCRIPTION</span>
+                <span style="font-size: 8px; color: var(--t2); line-height: 1.3;">Mid-century modern desk lamp with adjustable brass arm and walnut base…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- SS4: Donation summary -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 12px; color: var(--glow);">volunteer_activism</span> Donation</div>
+            <div style="padding: 4px 8px; display: flex; flex-direction: column; gap: 4px;">
+              <div class="ss-card" style="flex-direction: row; justify-content: space-between;">
+                <span style="font-size: 9px;">Desk lamp</span>
+                <span style="font-size: 9px; font-weight: 600;">$45</span>
+              </div>
+              <div class="ss-card" style="flex-direction: row; justify-content: space-between;">
+                <span style="font-size: 9px;">Patagonia fleece</span>
+                <span style="font-size: 9px; font-weight: 600;">$55</span>
+              </div>
+              <div class="ss-card" style="flex-direction: row; justify-content: space-between;">
+                <span style="font-size: 9px;">Textbooks (×4)</span>
+                <span style="font-size: 9px; font-weight: 600;">$32</span>
+              </div>
+              <div style="padding: 8px 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; margin-top: 2px;">
+                <span style="font-size: 10px; font-weight: 600;">Total estimated</span>
+                <span style="font-size: 10px; font-weight: 700; color: var(--ember);">$132</span>
+              </div>
+              <div style="background: var(--ember); border-radius: 8px; padding: 7px; text-align: center; font-size: 9px; font-weight: 600; color: var(--ember-dim); margin-top: 4px;">
+                Export CSV
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="play-section">
+        <h4>About this app</h4>
+        <p class="play-desc">Shelf-Snap helps you document, value, and export a donation or resale inventory using your camera and AI.
+
+Snap photos of any item — clothing, electronics, furniture, books, kitchenware. OpenAI Vision (GPT-4o) analyzes each photo and returns a structured draft: category, description, condition, estimated value, and confidence score. All values are clearly labeled as estimates.
+
+Use the Market tab to research real resale prices. Shelf-Snap queries an AI model (gpt-4o-mini) plus an optional web search (Brave or DuckDuckGo) and surfaces average sold prices, price ranges, per-platform suggestions, and comparable listings with cited sources.
+
+Ready to sell? The List tab lets you select platforms — eBay, Mercari, OfferUp, FB Marketplace, Craigslist — and record listings at platform-adjusted prices. Track Listed and Sold status from your inventory.
+
+Donating instead? The summary screen shows per-item subtotals and total estimated donation value. One-tap CSV export creates a sharable file for tax documentation.
+
+Like all twobits apps, Shelf-Snap uses your OpenAI API key — billed directly to your account. Photos are sent to OpenAI for analysis and web-search snippets are sent to your chosen search provider only when you tap "Research price." Nothing else leaves your device.</p>
+      </div>
+
+      <div class="play-section">
+        <h4>Data safety</h4>
+        <p class="t-body-sm mb-16">The developer says this app follows Play's data safety guidelines.</p>
+        <div class="safety-grid">
+          <div class="safety-item"><span class="material-icons-round">photo_camera</span><div><p style="color: var(--t1); font-weight: 500;">Photos processed, not stored remotely</p><p style="margin-top: 2px;">Images sent to OpenAI Vision for analysis, then cache copy purged</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">smartphone</span><div><p style="color: var(--t1); font-weight: 500;">Inventory stored on-device only</p><p style="margin-top: 2px;">Item data lives in a local Room database on your phone</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">lock</span><div><p style="color: var(--t1); font-weight: 500;">Data encrypted in transit</p><p style="margin-top: 2px;">All API calls use TLS; keys stored in local DataStore</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">vpn_key</span><div><p style="color: var(--t1); font-weight: 500;">Your API key, your account</p><p style="margin-top: 2px;">OpenAI and web-search costs billed directly to your provider</p></div></div>
+        </div>
+      </div>
+
+      <div class="play-section">
+        <h4>What's new</h4>
+        <p class="t-body-sm" style="color: var(--t3); margin-bottom: 6px;">v1.0.0 — June 1, 2026</p>
+        <p class="t-body-sm">
+          • Shared ItemThumb with category-specific icon fallbacks<br>
+          • Photo thumbnails on every inventory and donation row<br>
+          • Color-coded condition selector in item detail<br>
+          • Market price-range bar with platform filter chips<br>
+          • Camera: numbered strip, framing grid, flash toggle<br>
+          • Settings: auto-analyze, keep-original-photos toggles
+        </p>
+      </div>
+
+      <div class="play-section">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">photo_camera</span> Inventory</span>
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">auto_awesome</span> AI</span>
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">volunteer_activism</span> Donation</span>
+          <span class="play-chip">Resale</span>
+          <span class="play-chip">Tools</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section-sm">
+  <div class="wrap text-center reveal">
+    <h2 class="t-h2 mb-16">Know what you have. Know what it's worth.</h2>
+    <p class="t-body mb-24" style="max-width: 520px; margin-left: auto; margin-right: auto;">
+      Free to use. AI analysis costs pennies per item via your own OpenAI key.
+    </p>
+    <a href="#" class="btn btn-ember" style="font-size: 17px; padding: 14px 32px;">
+      <span class="material-icons-round" style="font-size: 20px;">play_arrow</span>
+      Get Shelf-Snap on Google Play
+    </a>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-col">
+      <a class="site-logo" href="index.html"><span class="dot"></span> twobits</a>
+      <span class="t-caption" style="margin-top: 4px;">AI tools that respect your intelligence.</span>
+    </div>
+    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a></div>
+    <div class="footer-col"><h5>Company</h5><a href="privacy.html">Privacy</a><a href="https://github.com/punassuming/twobits">GitHub</a></div>
+  </div>
+  <div class="footer-bottom">© 2026 twobits. All rights reserved.</div>
+</footer>
+
+<script>
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>

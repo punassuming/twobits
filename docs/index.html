@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>twobits — AI tools that respect your intelligence</title>
+<meta name="description" content="twobits builds small, focused Android utilities that use AI to save you time — without harvesting your data, locking you into a subscription, or making decisions you didn't ask for.">
+<link rel="stylesheet" href="site.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+  .hero { position: relative; padding: 120px 0 80px; overflow: hidden; }
+  .hero::before {
+    content: '';
+    position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 500px;
+    background: radial-gradient(ellipse, rgba(109,40,217,0.14) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-sub {
+    max-width: 600px; margin: 20px auto 0;
+    text-align: center; font-size: 18px; line-height: 1.7;
+    color: var(--t2); text-wrap: pretty;
+  }
+  .hero-ctas {
+    display: flex; gap: 12px; justify-content: center;
+    margin-top: 40px; flex-wrap: wrap;
+  }
+  .products-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+  }
+  @media (max-width: 768px) { .products-grid { grid-template-columns: 1fr; } }
+  .product-card {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-xl); padding: 40px 36px;
+    display: flex; flex-direction: column; gap: 20px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .product-card:hover { border-color: var(--border-l); transform: translateY(-3px); }
+  .product-card::after {
+    content: ''; position: absolute; top: 0; right: 0;
+    width: 200px; height: 200px; border-radius: 50%;
+    filter: blur(80px); pointer-events: none; opacity: 0.08;
+  }
+  .product-card.scrybe::after { background: var(--signal); }
+  .product-card.snap::after { background: var(--ember); }
+  .product-icon-wrap {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .product-name { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .product-tagline { font-size: 15px; color: var(--t2); line-height: 1.6; }
+  .product-features { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .product-feat {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; color: var(--t2);
+  }
+  .product-feat .material-icons-round { font-size: 17px; }
+  .product-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 15px; font-weight: 600; margin-top: auto;
+    padding-top: 8px; transition: gap 0.2s;
+  }
+  .product-link:hover { gap: 10px; }
+  .product-link .material-icons-round { font-size: 18px; }
+  .privacy-strip {
+    background: var(--brand-grad);
+    border: 1px solid rgba(109,40,217,0.2);
+    border-radius: var(--r-xl); padding: 48px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px;
+  }
+  @media (max-width: 768px) { .privacy-strip { grid-template-columns: 1fr; padding: 32px 28px; } }
+  .privacy-pillar { display: flex; flex-direction: column; gap: 10px; }
+  .privacy-pillar-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .privacy-pillar h4 { font-size: 16px; font-weight: 600; }
+  .privacy-pillar p { font-size: 14px; color: var(--t2); line-height: 1.6; }
+  .about-grid {
+    display: grid; grid-template-columns: 1fr 1.2fr;
+    gap: 48px; align-items: center;
+  }
+  @media (max-width: 768px) { .about-grid { grid-template-columns: 1fr; } }
+  .about-mark {
+    font-size: 72px; font-weight: 700; letter-spacing: -3px;
+    color: var(--brand); opacity: 0.25; line-height: 1;
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="index.html" class="site-logo"><span class="dot"></span> twobits</a>
+    <div class="site-nav-links">
+      <a href="scrybe.html">Scrybe</a>
+      <a href="shelf-snap.html">Shelf-Snap</a>
+      <a href="privacy.html">Privacy</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="wrap text-center">
+    <p class="t-label mb-16" style="color: var(--brand-soft);">From the workshop</p>
+    <h1 class="t-display">AI tools that respect<br>your intelligence</h1>
+    <p class="hero-sub">
+      twobits builds small, focused Android utilities that use AI to save you time — without harvesting your data, locking you into a subscription, or making decisions you didn't ask for.
+    </p>
+    <div class="hero-ctas">
+      <a href="scrybe.html" class="btn btn-signal">Meet Scrybe</a>
+      <a href="shelf-snap.html" class="btn btn-ember">Meet Shelf-Snap</a>
+    </div>
+  </div>
+</section>
+
+<section class="section-sm">
+  <div class="wrap">
+    <div class="products-grid">
+
+      <div class="product-card scrybe reveal">
+        <div class="product-icon-wrap" style="background: var(--signal-dim);">
+          <span class="material-icons-round" style="font-size: 28px; color: var(--signal);">graphic_eq</span>
+        </div>
+        <div class="product-name text-signal">Scrybe</div>
+        <p class="product-tagline">
+          Voice-to-document pipeline that lives on your phone. Record a conversation, get back a clean transcript, summary, and action items — powered by AI you control.
+        </p>
+        <div class="product-features">
+          <div class="product-feat">
+            <span class="material-icons-round text-signal">mic</span>
+            Seven recording modes — Meeting, Idea, Tasks, Journal, and more
+          </div>
+          <div class="product-feat">
+            <span class="material-icons-round text-signal">record_voice_over</span>
+            Speaker diarization with color-coded waveform
+          </div>
+          <div class="product-feat">
+            <span class="material-icons-round text-signal">smartphone</span>
+            On-device Whisper + Gemma — no internet required
+          </div>
+          <div class="product-feat">
+            <span class="material-icons-round text-signal">vpn_key</span>
+            BYOK or subscribe to Pro ($1.99/mo) for managed access
+          </div>
+        </div>
+        <a href="scrybe.html" class="product-link text-signal">
+          Learn more <span class="material-icons-round">arrow_forward</span>
+        </a>
+      </div>
+
+      <div class="product-card snap reveal">
+        <div class="product-icon-wrap" style="background: var(--ember-dim);">
+          <span class="material-icons-round" style="font-size: 28px; color: var(--ember);">photo_camera</span>
+        </div>
+        <div class="product-name text-ember">Shelf-Snap</div>
+        <p class="product-tagline">
+          Document, value, and list your stuff. Snap a photo of any item — AI identifies it, estimates its value, researches market prices, and helps you list or donate it.
+        </p>
+        <div class="product-features">
+          <div class="product-feat">
+            <span class="material-icons-round text-ember">auto_awesome</span>
+            Photo → AI draft: category, condition, estimated value
+          </div>
+          <div class="product-feat">
+            <span class="material-icons-round text-ember">price_change</span>
+            Market research with real sold-price citations
+          </div>
+          <div class="product-feat">
+            <span class="material-icons-round text-ember">storefront</span>
+            Cross-list to eBay, Mercari, OfferUp, FB Marketplace
+          </div>
+          <div class="product-feat">
+            <span class="material-icons-round text-ember">volunteer_activism</span>
+            Donation summary with CSV export
+          </div>
+        </div>
+        <a href="shelf-snap.html" class="product-link text-ember">
+          Learn more <span class="material-icons-round">arrow_forward</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Privacy strip -->
+<section class="section">
+  <div class="wrap">
+    <p class="t-label mb-16 text-center" style="color: var(--brand-soft);">Our commitment</p>
+    <h2 class="t-h1 text-center mb-24">Your data, your keys, your choice</h2>
+    <div class="privacy-strip reveal">
+      <div class="privacy-pillar">
+        <div class="privacy-pillar-icon">
+          <span class="material-icons-round" style="color: var(--brand-soft); font-size: 20px;">vpn_key</span>
+        </div>
+        <h4>Bring your own key</h4>
+        <p>AI processing uses your API key, billed directly to your provider. Or subscribe to Pro and we handle the key — routed through our Cloudflare proxy so it never touches your device.</p>
+      </div>
+      <div class="privacy-pillar">
+        <div class="privacy-pillar-icon">
+          <span class="material-icons-round" style="color: var(--brand-soft); font-size: 20px;">smartphone</span>
+        </div>
+        <h4>On-device AI</h4>
+        <p>Scrybe runs Whisper and Gemma locally on your phone. Shelf-Snap stores everything in a local Room database. No cloud backend, no sync service.</p>
+      </div>
+      <div class="privacy-pillar">
+        <div class="privacy-pillar-icon">
+          <span class="material-icons-round" style="color: var(--brand-soft); font-size: 20px;">visibility_off</span>
+        </div>
+        <h4>No tracking</h4>
+        <p>No analytics SDKs. No ad networks. No telemetry beyond anonymous Play Console crash reports. We don't know who you are.</p>
+      </div>
+    </div>
+    <p class="text-center mt-24">
+      <a href="privacy.html" class="btn btn-outline">
+        <span class="material-icons-round" style="font-size: 18px;">shield</span>
+        Read our privacy overview
+      </a>
+    </p>
+  </div>
+</section>
+
+<!-- About -->
+<section class="section-sm">
+  <div class="wrap">
+    <div class="about-grid reveal">
+      <div>
+        <div class="about-mark">2b</div>
+      </div>
+      <div>
+        <p class="t-label mb-16">About twobits</p>
+        <h2 class="t-h2 mb-16">A small workshop.<br>Two good tools.</h2>
+        <p class="t-body" style="max-width: 480px;">
+          twobits is an independent software studio. Both apps live in a single monorepo, share a design system (DM Sans, Material 3 tokens), billing infrastructure (RevenueCat), and a Cloudflare worker proxy for Pro subscribers — but are independently buildable and independently useful.
+        </p>
+        <p class="t-body mt-16" style="max-width: 480px;">
+          Kotlin, Jetpack Compose, Hilt, Room. minSdk 26, targetSdk 35. MIT licensed. You can read every line of code and verify every network call.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-col">
+      <a class="site-logo" href="index.html"><span class="dot"></span> twobits</a>
+      <span class="t-caption" style="margin-top: 4px;">AI tools that respect your intelligence.</span>
+    </div>
+    <div class="footer-col">
+      <h5>Products</h5>
+      <a href="scrybe.html">Scrybe</a>
+      <a href="shelf-snap.html">Shelf-Snap</a>
+    </div>
+    <div class="footer-col">
+      <h5>Company</h5>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/punassuming/twobits">GitHub</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 twobits. All rights reserved.</div>
+</footer>
+
+<script>
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>

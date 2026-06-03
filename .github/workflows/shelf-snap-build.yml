@@ -24,13 +24,62 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Lint, test & build APKs
+  changelog:
+    name: Changelog
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
-      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate changelog structure
+        run: python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md
+
+      - name: Require changelog update for main-bound changes
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_ref="${{ github.event.pull_request.base.sha }}"
+            head_ref="${{ github.event.pull_request.head.sha }}"
+          else
+            base_ref="${{ github.event.before }}"
+            head_ref="${{ github.sha }}"
+          fi
+
+          python3 apps/scrybe/scripts/manage-changelog.py \
+            check-updated \
+            --base-ref "$base_ref" \
+            --head-ref "$head_ref" \
+            --changelog apps/shelf-snap/CHANGELOG.md
+
+  validate:
+    name: Validate Configuration
+    runs-on: ubuntu-latest
+    needs: changelog
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate AndroidManifest.xml files
+        run: python3 apps/scrybe/scripts/validate-manifests.py --root apps/shelf-snap
+
+  build:
+    name: Lint, test & build debug APK
+    runs-on: ubuntu-latest
+    needs: [changelog, validate]
+    permissions:
+      contents: read
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -44,21 +93,22 @@ jobs:
           cache: gradle
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
 
       - name: Grant execute permission for gradlew
         run: chmod +x apps/shelf-snap/gradlew
 
-      - name: Compute build metadata
-        id: meta
-        run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-
-      - name: Android Lint
+      # Single Gradle invocation: lint + tests + debug build share one configuration
+      # phase and dependency resolution pass, matching the scrybe android-ci.yml pattern.
+      # Release APK/AAB are only built by shelf-snap-tag-release.yml on main pushes.
+      - name: Build, lint & test
         working-directory: apps/shelf-snap
         shell: bash
         run: |
-          set -o pipefail
-          ./gradlew :app:lintDebug --no-daemon --stacktrace 2>&1 | tee -a build.log
+          set -euo pipefail
+          ./gradlew lintDebug testDebugUnitTest assembleDebug --no-daemon --stacktrace
 
       - name: Upload lint report
         if: always()
@@ -69,13 +119,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Unit tests
-        working-directory: apps/shelf-snap
-        shell: bash
-        run: |
-          set -o pipefail
-          ./gradlew :app:test --no-daemon --stacktrace 2>&1 | tee -a build.log
-
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,66 +127,11 @@ jobs:
           path: apps/shelf-snap/app/build/reports/tests/
           retention-days: 14
 
-      - name: Build debug APK
-        working-directory: apps/shelf-snap
-        shell: bash
-        run: |
-          set -o pipefail
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee -a build.log
-
-      - name: Prepare install APK
-        run: cp apps/shelf-snap/app/build/outputs/apk/debug/app-debug.apk apps/shelf-snap/app/build/outputs/apk/debug/shelf-snap-install.apk
-
-      - name: Upload install APK
+      - name: Upload debug APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: shelf-snap-install-${{ steps.meta.outputs.sha }}
-          path: apps/shelf-snap/app/build/outputs/apk/debug/shelf-snap-install.apk
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Decode release keystore
-        id: keystore
-        env:
-          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-        if: ${{ env.KEYSTORE_B64 != '' }}
-        run: |
-          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
-          echo "path=$RUNNER_TEMP/release.keystore" >> "$GITHUB_OUTPUT"
-
-      - name: Build release APK and AAB
-        working-directory: apps/shelf-snap
-        env:
-          SIGNING_STORE_FILE: ${{ steps.keystore.outputs.path }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace 2>&1 | tee -a build.log
-
-      - name: Report build failure on PR
-        if: failure() && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          ERRORS=$(grep -nE "^e: |^w: |error:|FAILURE:|What went wrong|> Task .* FAILED|Execution failed|Caused by:|AAPT|Unresolved reference|None of the following" apps/shelf-snap/build.log | head -n 80 || true)
-          if [ -z "$ERRORS" ]; then
-            ERRORS=$(tail -n 80 apps/shelf-snap/build.log)
-          fi
-          BODY=$(printf '🔴 **Shelf Snap CI diagnostic** for `%s` (run %s)\n\n```\n%s\n```' \
-            "${GITHUB_SHA::7}" "$GITHUB_RUN_ID" "$ERRORS")
-          jq -n --arg b "$BODY" '{body: $b}' > payload.json
-          curl -sS -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments" \
-            -d @payload.json > /dev/null
-
-      - name: Upload release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: shelf-snap-release-${{ steps.meta.outputs.sha }}
-          path: apps/shelf-snap/app/build/outputs/apk/release/app-release*.apk
+          name: shelf-snap-debug-${{ github.sha }}
+          path: apps/shelf-snap/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14

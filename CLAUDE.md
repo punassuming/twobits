@@ -212,3 +212,11 @@ Update `CHANGELOG.md` `## Unreleased` section before preparing any commit destin
 - Do **not** invent version numbers — the release workflow promotes `Unreleased` automatically.
 - The CI `changelog` job will block the PR if `CHANGELOG.md` was not updated when other tracked files changed.
 - Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog CHANGELOG.md`
+
+## Changelog — required for every Shelf Snap PR
+
+Update `apps/shelf-snap/CHANGELOG.md` `## Unreleased` section before preparing any commit destined for main. Add bullets under `### Features`, `### Improvements`, or `### Fixes` as appropriate. The format is identical to the Scrybe changelog.
+
+- Do **not** invent version numbers — the release workflow promotes `Unreleased` automatically.
+- The CI `changelog` job will block the PR if `apps/shelf-snap/CHANGELOG.md` was not updated when other tracked files changed.
+- Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md`

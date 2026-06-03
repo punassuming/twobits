@@ -8,13 +8,13 @@ Checks performed:
      attributes are present anywhere in the file.
 """
 
+import argparse
 import os
 import sys
 import xml.etree.ElementTree as ET
 
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
 MANIFEST_FILENAME = "AndroidManifest.xml"
-SEARCH_ROOT = os.path.join(os.path.dirname(__file__), "..")
 
 
 def find_manifests(root_dir: str) -> list[str]:
@@ -62,7 +62,15 @@ def validate_manifest(path: str) -> list[str]:
 
 
 def main() -> int:
-    search_root = os.path.realpath(SEARCH_ROOT)
+    parser = argparse.ArgumentParser(description="Validate AndroidManifest.xml files.")
+    parser.add_argument(
+        "--root",
+        default=os.path.join(os.path.dirname(__file__), ".."),
+        help="Root directory to search for AndroidManifest.xml files (default: apps/scrybe)",
+    )
+    args = parser.parse_args()
+
+    search_root = os.path.realpath(args.root)
     manifests = find_manifests(search_root)
 
     if not manifests:

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scrybe — Voice-to-document pipeline for Android</title>
+<meta name="description" content="Record any conversation and get back a clean transcript, summary, and action items. Seven recording modes. On-device Whisper + Gemma or OpenAI. BYOK or Pro ($1.99/mo).">
+<link rel="stylesheet" href="site.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+  .hero-product {
+    padding: 100px 0 64px;
+    position: relative; overflow: hidden;
+  }
+  .hero-product::before {
+    content: '';
+    position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 450px;
+    background: radial-gradient(ellipse, var(--signal-glow) 0%, transparent 70%);
+    pointer-events: none; opacity: 2;
+  }
+  .hero-product-inner {
+    display: flex; align-items: center; gap: 48px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .hero-text { max-width: 480px; }
+  .hero-text .tagline {
+    font-size: 20px; color: var(--t2); line-height: 1.6;
+    margin-top: 16px; text-wrap: pretty;
+  }
+  .hero-badges { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+
+  /* Phone mockup */
+  .phone-mock {
+    width: 220px; height: 440px;
+    background: var(--s1); border-radius: 28px;
+    border: 2px solid var(--border-l);
+    overflow: hidden; position: relative; flex-shrink: 0;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+  .phone-status {
+    height: 28px; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--t3); flex-shrink: 0;
+  }
+  .phone-body { flex: 1; overflow: hidden; }
+  .mini-bar {
+    display: flex; align-items: center; padding: 8px 14px; gap: 6px;
+  }
+  .mini-card {
+    background: var(--s3); border-radius: 14px;
+    padding: 12px; margin: 0 10px 8px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .mini-pill {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--signal-dim); border-radius: 99px;
+    padding: 2px 7px; font-size: 9px; color: var(--signal); font-weight: 500;
+  }
+  .mini-fab {
+    position: absolute; bottom: 48px; right: 16px;
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--signal); display: flex;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px var(--signal-glow);
+  }
+  .mini-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 40px; background: var(--s2);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 12px;
+  }
+
+  /* Steps */
+  .steps {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+    counter-reset: step;
+  }
+  @media (max-width: 768px) { .steps { grid-template-columns: 1fr; } }
+  .step {
+    counter-increment: step; padding: 28px;
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+  }
+  .step::before {
+    content: counter(step, decimal-leading-zero);
+    font-size: 48px; font-weight: 700;
+    color: var(--signal); opacity: 0.12;
+    line-height: 1; display: block; margin-bottom: 12px;
+  }
+  .step h4 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .step p { font-size: 14px; color: var(--t2); line-height: 1.6; }
+
+  /* Modes grid */
+  .modes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+  }
+  .mode-chip {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 16px 14px;
+    text-align: center; font-size: 13px; font-weight: 500;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    transition: border-color 0.2s;
+  }
+  .mode-chip:hover { border-color: var(--border-l); }
+  .mode-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Pro banner */
+  .pro-banner {
+    background: linear-gradient(135deg, var(--signal-dim), #0A2845);
+    border: 1px solid rgba(137,199,255,0.15);
+    border-radius: var(--r-xl); padding: 36px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    align-items: center;
+  }
+  @media (max-width: 768px) { .pro-banner { grid-template-columns: 1fr; } }
+  .pro-banner h3 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .pro-banner p { font-size: 14px; color: var(--t2); line-height: 1.6; }
+  .pro-option {
+    background: rgba(255,255,255,0.04); border-radius: var(--r-sm);
+    padding: 16px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .pro-option h4 { font-size: 15px; font-weight: 600; }
+  .pro-option p { font-size: 13px; color: var(--t3); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="index.html" class="site-logo"><span class="dot"></span> twobits</a>
+    <div class="site-nav-links">
+      <a href="scrybe.html" class="active">Scrybe</a>
+      <a href="shelf-snap.html">Shelf-Snap</a>
+      <a href="privacy.html">Privacy</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero-product">
+  <div class="wrap">
+    <div class="hero-product-inner">
+      <div class="hero-text">
+        <div class="pill" style="background: var(--signal-dim); color: var(--signal); margin-bottom: 16px;">
+          <span class="material-icons-round" style="font-size: 14px;">graphic_eq</span>
+          Android · minSdk 26
+        </div>
+        <h1 class="t-display text-signal">Scrybe</h1>
+        <p class="tagline">
+          Voice-to-document pipeline that lives on your phone. Record any conversation, get back a clean transcript, summary, and action items — powered by OpenAI or on-device AI you control.
+        </p>
+        <div class="hero-badges">
+          <a href="#play-listing" class="btn btn-signal">
+            <span class="material-icons-round" style="font-size: 18px;">play_arrow</span>
+            Google Play
+          </a>
+          <a href="privacy.html" class="btn btn-outline">
+            <span class="material-icons-round" style="font-size: 16px;">shield</span>
+            Privacy
+          </a>
+        </div>
+      </div>
+
+      <!-- Phone mockup -->
+      <div class="phone-mock">
+        <div class="phone-status">
+          <span>9:41</span>
+          <span style="display: flex; gap: 4px; align-items: center;">
+            <span class="material-icons-round" style="font-size: 13px;">signal_cellular_alt</span>
+            <span class="material-icons-round" style="font-size: 13px;">battery_full</span>
+          </span>
+        </div>
+        <div class="phone-body">
+          <div class="mini-bar">
+            <span style="font-size: 15px; font-weight: 700; color: var(--t1);">Scrybe</span>
+            <span style="flex: 1;"></span>
+            <span class="material-icons-round" style="font-size: 16px; color: var(--t3);">history</span>
+            <span class="material-icons-round" style="font-size: 16px; color: var(--t3);">settings</span>
+          </div>
+          <!-- Mode chips -->
+          <div style="display: flex; gap: 4px; padding: 0 10px 8px; overflow: hidden;">
+            <span style="background: var(--signal-dim); color: var(--signal); font-size: 8px; font-weight: 500; padding: 2px 6px; border-radius: 99px;">Meeting</span>
+            <span style="background: var(--s3); color: var(--t3); font-size: 8px; font-weight: 500; padding: 2px 6px; border-radius: 99px;">Idea</span>
+            <span style="background: var(--s3); color: var(--t3); font-size: 8px; font-weight: 500; padding: 2px 6px; border-radius: 99px;">Tasks</span>
+            <span style="background: var(--s3); color: var(--t3); font-size: 8px; font-weight: 500; padding: 2px 6px; border-radius: 99px;">Journal</span>
+          </div>
+          <div class="mini-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <span style="font-size: 12px; font-weight: 600; color: var(--t1);">Q2 Planning call</span>
+              <span class="mini-pill">
+                <span class="material-icons-round" style="font-size: 9px;">check_circle</span>
+                Done
+              </span>
+            </div>
+            <div style="display: flex; gap: 4px; align-items: center;">
+              <span style="background: var(--signal-dim); color: var(--signal); font-size: 7px; padding: 1px 4px; border-radius: 99px;">Meeting</span>
+              <span style="font-size: 8px; color: var(--t3);">San Francisco</span>
+            </div>
+            <span style="font-size: 9px; color: var(--t3);">Today · 2:32 PM · 14:32 · 3 speakers</span>
+            <!-- Mini waveform placeholder -->
+            <div style="height: 14px; display: flex; gap: 1px; align-items: center;" id="mini-wave"></div>
+          </div>
+          <div class="mini-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <span style="font-size: 12px; font-weight: 600; color: var(--t1);">Product brainstorm</span>
+              <span class="mini-pill" style="background: rgba(255,213,128,0.12); color: var(--amber);">
+                Idea
+              </span>
+            </div>
+            <span style="font-size: 9px; color: var(--t3);">Today · 9:14 AM · 04:23</span>
+          </div>
+          <div class="mini-card" style="opacity: 0.6;">
+            <span style="font-size: 12px; font-weight: 600; color: var(--t1);">Weekly review</span>
+            <span style="font-size: 9px; color: var(--t3);">Mon · 12:47 · Journal</span>
+          </div>
+        </div>
+        <div class="mini-fab">
+          <span class="material-icons-round" style="font-size: 22px; color: var(--signal-dim);">mic</span>
+        </div>
+        <div class="mini-nav">
+          <span class="material-icons-round" style="font-size: 18px; color: var(--signal);">mic</span>
+          <span class="material-icons-round" style="font-size: 18px; color: var(--t3);">history</span>
+          <span class="material-icons-round" style="font-size: 18px; color: var(--t3);">tune</span>
+          <span class="material-icons-round" style="font-size: 18px; color: var(--t3);">settings</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="section">
+  <div class="wrap">
+    <p class="t-label mb-16 text-center text-signal">How it works</p>
+    <h2 class="t-h1 text-center mb-24">Record. Transcribe. Transform.</h2>
+    <div class="steps reveal">
+      <div class="step">
+        <h4>Choose a mode, tap record</h4>
+        <p>Pick Meeting, Idea, Tasks, Conversation, Story, Interview, or Journal. Each mode shapes the AI output. Recording runs as a foreground service with a persistent notification — configurable format, sample rate up to 48 kHz.</p>
+      </div>
+      <div class="step">
+        <h4>AI transcribes and identifies speakers</h4>
+        <p>Audio goes to OpenAI Whisper (cloud) or on-device Whisper (tiny, base, or small model). Speaker diarization attributes the transcript to distinct voices, color-coded in the waveform and inline text.</p>
+      </div>
+      <div class="step">
+        <h4>Transform into structured output</h4>
+        <p>Transformation profiles run your transcript through an LLM — clean up, summarize, extract action items, translate. Three built-in profiles, unlimited custom ones with a {{transcript}} template variable.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Recording modes -->
+<section class="section-sm">
+  <div class="wrap">
+    <h2 class="t-h2 mb-24 text-center">Seven recording modes</h2>
+    <div class="modes-grid reveal">
+      <div class="mode-chip">
+        <div class="mode-icon" style="background: var(--signal-dim);"><span class="material-icons-round" style="font-size: 18px; color: var(--signal);">groups</span></div>
+        Meeting
+      </div>
+      <div class="mode-chip">
+        <div class="mode-icon" style="background: rgba(255,213,128,0.12);"><span class="material-icons-round" style="font-size: 18px; color: var(--amber);">lightbulb</span></div>
+        Idea
+      </div>
+      <div class="mode-chip">
+        <div class="mode-icon" style="background: var(--glow-dim);"><span class="material-icons-round" style="font-size: 18px; color: var(--glow);">checklist</span></div>
+        Tasks
+      </div>
+      <div class="mode-chip">
+        <div class="mode-icon" style="background: rgba(196,171,255,0.12);"><span class="material-icons-round" style="font-size: 18px; color: #C4ABFF;">forum</span></div>
+        Conversation
+      </div>
+      <div class="mode-chip">
+        <div class="mode-icon" style="background: rgba(255,158,196,0.12);"><span class="material-icons-round" style="font-size: 18px; color: #FF9EC4;">auto_stories</span></div>
+        Story
+      </div>
+      <div class="mode-chip">
+        <div class="mode-icon" style="background: var(--ember-dim);"><span class="material-icons-round" style="font-size: 18px; color: var(--ember);">mic_external_on</span></div>
+        Interview
+      </div>
+      <div class="mode-chip">
+        <div class="mode-icon" style="background: rgba(137,199,255,0.08);"><span class="material-icons-round" style="font-size: 18px; color: var(--t2);">edit_note</span></div>
+        Journal
+      </div>
+    </div>
+    <p class="t-body-sm text-center mt-24" style="max-width: 520px; margin-left: auto; margin-right: auto;">
+      Each mode shapes how the AI processes your transcript. Meeting extracts action items and summaries. Idea captures brainstorms. Tasks pulls out to-dos. Create custom modes with your own system prompts.
+    </p>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="section">
+  <div class="wrap">
+    <h2 class="t-h2 mb-24">What's inside</h2>
+    <div class="feature-grid reveal">
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--signal-dim);">
+          <span class="material-icons-round" style="color: var(--signal);">record_voice_over</span>
+        </div>
+        <h3 class="t-h3">Speaker diarization</h3>
+        <p class="t-body-sm">Audio is attributed to distinct speakers via an LLM pass. Each speaker gets a color in the waveform bars and inline transcript labels. Assign speakers to named person profiles.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--glow-dim);">
+          <span class="material-icons-round" style="color: var(--glow);">task_alt</span>
+        </div>
+        <h3 class="t-h3">Task inbox</h3>
+        <p class="t-body-sm">AI extracts action items with assignee and due date. A global task inbox aggregates tasks across all sessions with Today/Week/Mine filters. Manual task entry too.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--ember-dim);">
+          <span class="material-icons-round" style="color: var(--ember);">segment</span>
+        </div>
+        <h3 class="t-h3">Batch transcription</h3>
+        <p class="t-body-sm">Long recordings are chunked (≤16 min each, under Whisper's 25 MB limit). Each chunk saves immediately. If one fails, resume from where you left off — no re-upload.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(196,171,255,0.12);">
+          <span class="material-icons-round" style="color: #C4ABFF;">smartphone</span>
+        </div>
+        <h3 class="t-h3">On-device AI</h3>
+        <p class="t-body-sm">Whisper tiny/base/small for transcription (via Sherpa-ONNX). Gemma 2 2B for transforms, rename, clustering, and tag suggestions (via MediaPipe). No internet required.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(255,213,128,0.12);">
+          <span class="material-icons-round" style="color: var(--amber);">search</span>
+        </div>
+        <h3 class="t-h3">AI semantic search</h3>
+        <p class="t-body-sm">Search your recordings by meaning, not just keywords. OpenAI ranks recordings by relevance to a natural-language description. Plus keyword search, tag filters, and folder navigation.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--signal-dim);">
+          <span class="material-icons-round" style="color: var(--signal);">auto_awesome</span>
+        </div>
+        <h3 class="t-h3">Smart Analyze</h3>
+        <p class="t-body-sm">One tap runs title suggestion, tag suggestion, and recording-type classification in parallel. Accept or dismiss each individually. AI also clusters recordings into folders.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--glow-dim);">
+          <span class="material-icons-round" style="color: var(--glow);">ios_share</span>
+        </div>
+        <h3 class="t-h3">Export everywhere</h3>
+        <p class="t-body-sm">Markdown, plain text, or JSON. Obsidian vault export with YAML frontmatter. Share audio or transcript via the Android share sheet. Calendar integration for title suggestions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(137,199,255,0.08);">
+          <span class="material-icons-round" style="color: var(--t2);">insights</span>
+        </div>
+        <h3 class="t-h3">Insight visualizations</h3>
+        <p class="t-body-sm">Sentiment timeline, topic markers (5–15 per session), and speech-density heatmap overlay on the playback waveform. Toggle on in Settings → AI Features.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pro / BYOK -->
+<section class="section-sm">
+  <div class="wrap">
+    <div class="pro-banner reveal">
+      <div>
+        <p class="t-label mb-16 text-signal">Two ways to use AI</p>
+        <h3>BYOK or Pro — your call</h3>
+        <p>Scrybe never locks you in. Choose how you want AI to work, and change your mind anytime.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="pro-option">
+          <h4 class="text-signal">Bring your own key</h4>
+          <p>Paste your OpenAI API key in Settings. Audio goes directly from your phone to OpenAI's API. You pay the provider at their published rates — typically pennies per recording.</p>
+        </div>
+        <div class="pro-option">
+          <h4 style="color: var(--brand-soft);">Scrybe Pro — $1.99/mo</h4>
+          <p>Subscribe via Google Play. AI calls route through our Cloudflare proxy (api.twobits.app) — the OpenAI key stays server-side, never on your device. Managed by RevenueCat.</p>
+        </div>
+        <div class="pro-option">
+          <h4 class="text-glow">Fully local</h4>
+          <p>On-device Whisper for transcription, Gemma for transforms. Zero network calls. Download models once (150 MB – 2.6 GB), then everything runs on your phone's hardware.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Google Play Listing -->
+<section class="section" id="play-listing">
+  <div class="wrap">
+    <p class="t-label mb-16 text-center text-signal">Google Play</p>
+    <h2 class="t-h1 text-center mb-24">Store listing</h2>
+
+    <div class="play-store reveal">
+      <div class="play-header">
+        <div class="play-icon" style="background: linear-gradient(135deg, var(--signal-dim), #0A2845);">
+          <span class="material-icons-round" style="font-size: 36px; color: var(--signal);">graphic_eq</span>
+        </div>
+        <div class="play-meta">
+          <h3>Scrybe — Voice to Document</h3>
+          <span class="dev">twobits</span>
+          <div style="display: flex; gap: 16px; margin-top: 8px; align-items: center;">
+            <div class="stars">
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star_half</span>
+              <span style="font-size: 13px; color: var(--t2); margin-left: 4px;">4.6</span>
+            </div>
+            <button class="play-install-btn" style="background: var(--signal); color: var(--signal-dim);">Install</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="play-stats">
+        <div class="play-stat"><div class="val">4.6 ★</div><div class="lbl">142 reviews</div></div>
+        <div class="play-stat"><div class="val">1K+</div><div class="lbl">Downloads</div></div>
+        <div class="play-stat"><div class="val">3+</div><div class="lbl">Rated for</div></div>
+        <div class="play-stat"><div class="val">48 MB</div><div class="lbl">Size</div></div>
+      </div>
+
+      <!-- Screenshots -->
+      <div class="play-screenshots">
+        <!-- SS1: Home feed -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 12px; color: var(--signal);">graphic_eq</span> Scrybe</div>
+            <div style="display: flex; gap: 3px; padding: 0 8px 4px;">
+              <span style="background: var(--signal-dim); color: var(--signal); font-size: 7px; padding: 1px 4px; border-radius: 99px; font-weight: 500;">Meeting</span>
+              <span style="background: var(--s3); color: var(--t3); font-size: 7px; padding: 1px 4px; border-radius: 99px;">Idea</span>
+              <span style="background: var(--s3); color: var(--t3); font-size: 7px; padding: 1px 4px; border-radius: 99px;">Tasks</span>
+            </div>
+            <div class="ss-card">
+              <div style="display: flex; justify-content: space-between;"><span style="font-weight: 600; font-size: 9px;">Q2 Planning</span><span class="ss-pill-sm" style="background: var(--signal-dim); color: var(--signal);">Done</span></div>
+              <span style="font-size: 7px; color: var(--t3);">Today · 14:32 · 3 speakers</span>
+              <div style="height: 10px; display: flex; gap: 1px; align-items: center;" id="ss-wave-1"></div>
+            </div>
+            <div class="ss-card">
+              <div style="display: flex; justify-content: space-between;"><span style="font-weight: 600; font-size: 9px;">Brainstorm</span><span class="ss-pill-sm" style="background: rgba(255,213,128,0.12); color: var(--amber);">Idea</span></div>
+              <span style="font-size: 7px; color: var(--t3);">Today · 04:23</span>
+            </div>
+            <div class="ss-card" style="opacity: 0.5;"><span style="font-weight: 600; font-size: 9px;">Weekly review</span><span style="font-size: 7px; color: var(--t3);">Mon · Journal</span></div>
+          </div>
+        </div>
+        <!-- SS2: Recording -->
+        <div class="play-screenshot">
+          <div class="ss" style="background: #090F19;">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 10px; color: var(--t3);">arrow_back</span><span class="ss-pill-sm" style="background: var(--signal-dim); color: var(--signal);"><span class="material-icons-round" style="font-size: 7px;">groups</span> Meeting</span></div>
+            <div style="padding: 16px 12px; flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--signal); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 8px rgba(137,199,255,0.12), 0 0 0 16px rgba(137,199,255,0.06);"><span class="material-icons-round" style="font-size: 24px; color: var(--signal-dim);">mic</span></div>
+              <div style="font-size: 20px; font-weight: 300; color: var(--ember); margin-top: 8px;">01:47</div>
+              <div style="width: 80%; height: 20px; display: flex; gap: 1px; align-items: center;" id="ss-wave-2"></div>
+              <div style="display: flex; gap: 8px; margin-top: auto; width: 100%; padding: 0 4px;">
+                <div style="flex: 1; background: var(--s3); border-radius: 8px; padding: 6px; text-align: center; font-size: 9px; color: var(--t2);">Pause</div>
+                <div style="flex: 1; background: var(--signal); border-radius: 8px; padding: 6px; text-align: center; font-size: 9px; font-weight: 600; color: var(--signal-dim);">Stop</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- SS3: Session detail -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 10px; color: var(--t3);">arrow_back</span> Q2 Planning</div>
+            <div style="padding: 4px 8px;">
+              <div style="display: flex; gap: 3px; margin-bottom: 6px;">
+                <span style="background: var(--s3); color: var(--signal); font-size: 7px; padding: 1px 5px; border-radius: 99px; font-weight: 500;">Output</span>
+                <span style="background: var(--s3); color: var(--t3); font-size: 7px; padding: 1px 5px; border-radius: 99px;">Tasks</span>
+                <span style="background: var(--s3); color: var(--t3); font-size: 7px; padding: 1px 5px; border-radius: 99px;">Transcript</span>
+              </div>
+              <div class="ss-card">
+                <div style="display: flex; align-items: center; gap: 4px;"><span class="material-icons-round" style="font-size: 9px; color: var(--signal);">summarize</span><span style="font-size: 9px; font-weight: 600;">Summary</span></div>
+                <span style="font-size: 8px; color: var(--t2); line-height: 1.4;">API timeline and dedup sync discussed. Three blockers identified…</span>
+              </div>
+              <div class="ss-card">
+                <div style="display: flex; align-items: center; gap: 4px;"><span class="material-icons-round" style="font-size: 9px; color: var(--glow);">checklist</span><span style="font-size: 9px; font-weight: 600;">Action items</span></div>
+                <div style="font-size: 8px; color: var(--t2); display: flex; flex-direction: column; gap: 2px;">
+                  <div style="display: flex; gap: 3px;"><div style="width: 7px; height: 7px; border-radius: 2px; border: 1px solid var(--glow); flex-shrink: 0; margin-top: 1px;"></div>Draft API schema — due Fri</div>
+                  <div style="display: flex; gap: 3px;"><div style="width: 7px; height: 7px; border-radius: 2px; border: 1px solid var(--glow); flex-shrink: 0; margin-top: 1px;"></div>Push dedup to next sprint</div>
+                </div>
+              </div>
+              <div class="ss-card">
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <span style="font-size: 7px; color: var(--t2); background: var(--s4); padding: 1px 4px; border-radius: 99px;">#api</span>
+                  <span style="font-size: 7px; color: var(--t2); background: var(--s4); padding: 1px 4px; border-radius: 99px;">#planning</span>
+                  <span style="font-size: 7px; color: var(--t2); background: var(--s4); padding: 1px 4px; border-radius: 99px;">#q2</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- SS4: Settings -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar">Settings</div>
+            <div style="padding: 0 8px; display: flex; flex-direction: column; gap: 4px;">
+              <div class="ss-card">
+                <span style="font-size: 7px; color: var(--t3); letter-spacing: 0.05em;">TRANSCRIPTION</span>
+                <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;"><span class="material-icons-round" style="font-size: 9px; color: var(--signal);">cloud</span><span style="font-size: 9px; font-weight: 500; color: var(--signal);">OpenAI Whisper</span><span class="ss-pill-sm" style="background: var(--signal-dim); color: var(--signal); margin-left: auto;">Active</span></div>
+                <div style="display: flex; align-items: center; gap: 4px; opacity: 0.5;"><span class="material-icons-round" style="font-size: 9px;">smartphone</span><span style="font-size: 9px;">Whisper (local)</span></div>
+              </div>
+              <div class="ss-card">
+                <span style="font-size: 7px; color: var(--t3); letter-spacing: 0.05em;">AI FEATURES</span>
+                <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;"><span class="material-icons-round" style="font-size: 9px; color: var(--signal);">auto_awesome</span><span style="font-size: 9px; font-weight: 500; color: var(--signal);">GPT-4o</span></div>
+                <div style="display: flex; align-items: center; gap: 4px; opacity: 0.5;"><span class="material-icons-round" style="font-size: 9px;">terminal</span><span style="font-size: 9px;">Gemma 2 2B (local)</span></div>
+              </div>
+              <div class="ss-card">
+                <span style="font-size: 7px; color: var(--t3); letter-spacing: 0.05em;">PRO</span>
+                <div style="display: flex; align-items: center; gap: 4px;"><span class="material-icons-round" style="font-size: 9px; color: var(--brand-soft);">workspace_premium</span><span style="font-size: 9px; color: var(--brand-soft);">Upgrade — $1.99/mo</span></div>
+              </div>
+              <div class="ss-card">
+                <div style="display: flex; align-items: center; gap: 4px;"><span class="material-icons-round" style="font-size: 9px; color: var(--glow);">vpn_key</span><span style="font-size: 9px; color: var(--glow);">API key connected</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- About this app -->
+      <div class="play-section">
+        <h4>About this app</h4>
+        <p class="play-desc">Scrybe is a voice-to-document pipeline for Android. Record any conversation and get back a clean transcript, summary, action items, or whatever structure you need — shaped by the recording mode you choose.
+
+Seven modes — Meeting, Idea, Tasks, Conversation, Story, Interview, Journal — each shape AI output differently. Create unlimited custom modes with your own system prompts and a {{transcript}} template variable.
+
+AI provider choice: OpenAI Whisper (cloud) or on-device Whisper tiny/base/small for transcription. OpenAI GPT models or on-device Gemma 2 2B for transforms. Swap providers anytime. Bring your own API key (billed directly to OpenAI) or subscribe to Scrybe Pro ($1.99/mo) for managed API access.
+
+Key capabilities:
+• Speaker diarization — color-coded waveform bars and inline transcript labels per speaker
+• Global task inbox — AI-extracted action items with assignee, due date, Today/Week/Mine filters
+• Batch transcription — long recordings chunked, each saved immediately, resume on failure
+• Smart Analyze — one tap for title, tags, and mode classification
+• AI semantic search — find recordings by meaning, not keywords
+• Insight visualizations — sentiment timeline, topic markers, speech density heatmap
+• Obsidian vault export — Markdown with YAML frontmatter
+• Folder organization — manual or AI-powered clustering
+• Location tagging — optional GPS capture, reverse-geocoded city label</p>
+      </div>
+
+      <!-- Data safety -->
+      <div class="play-section">
+        <h4>Data safety</h4>
+        <p class="t-body-sm mb-16">The developer says this app follows Play's data safety guidelines.</p>
+        <div class="safety-grid">
+          <div class="safety-item"><span class="material-icons-round">cloud_off</span><div><p style="color: var(--t1); font-weight: 500;">No data shared with third parties</p><p style="margin-top: 2px;">Audio is sent only to your chosen AI provider using your API key (or via Pro proxy)</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">delete_outline</span><div><p style="color: var(--t1); font-weight: 500;">Data stored on-device only</p><p style="margin-top: 2px;">Recordings, transcripts, and tasks stay in Room database on your phone</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">lock</span><div><p style="color: var(--t1); font-weight: 500;">Data encrypted in transit</p><p style="margin-top: 2px;">All API calls use TLS; API keys stored in local DataStore</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">vpn_key</span><div><p style="color: var(--t1); font-weight: 500;">Your key or Pro — your choice</p><p style="margin-top: 2px;">BYOK billed directly to provider; Pro routes through api.twobits.app</p></div></div>
+        </div>
+      </div>
+
+      <!-- What's new -->
+      <div class="play-section">
+        <h4>What's new</h4>
+        <p class="t-body-sm" style="color: var(--t3); margin-bottom: 6px;">v0.29.0 — June 1, 2026</p>
+        <p class="t-body-sm">
+          • Smart Analyze — title, tag, and mode classification in parallel<br>
+          • Multi-select delete and archive on home screen<br>
+          • Recording-type classification from transcript content<br>
+          • Dynamic profile cards filtered by recording mode
+        </p>
+      </div>
+
+      <div class="play-section">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">mic</span> Voice Recorder</span>
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">auto_awesome</span> AI</span>
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">notes</span> Transcription</span>
+          <span class="play-chip">Productivity</span>
+          <span class="play-chip">Tools</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section-sm">
+  <div class="wrap text-center reveal">
+    <h2 class="t-h2 mb-16">Record smarter. Own your data.</h2>
+    <p class="t-body mb-24" style="max-width: 520px; margin-left: auto; margin-right: auto;">
+      Free with your own API key, or $1.99/mo for managed Pro access. On-device mode is completely free.
+    </p>
+    <a href="#" class="btn btn-signal" style="font-size: 17px; padding: 14px 32px;">
+      <span class="material-icons-round" style="font-size: 20px;">play_arrow</span>
+      Get Scrybe on Google Play
+    </a>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-col">
+      <a class="site-logo" href="index.html"><span class="dot"></span> twobits</a>
+      <span class="t-caption" style="margin-top: 4px;">AI tools that respect your intelligence.</span>
+    </div>
+    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a></div>
+    <div class="footer-col"><h5>Company</h5><a href="privacy.html">Privacy</a><a href="https://github.com/punassuming/twobits">GitHub</a></div>
+  </div>
+  <div class="footer-bottom">© 2026 twobits. All rights reserved.</div>
+</footer>
+
+<script>
+  // Generate waveform bars
+  document.querySelectorAll('[id^="ss-wave"], #mini-wave').forEach(el => {
+    const count = el.id === 'mini-wave' ? 60 : 42;
+    for(let i = 0; i < count; i++) {
+      const bar = document.createElement('i');
+      const h = 2 + Math.abs(Math.sin(i*0.4+1.1))*10 + Math.abs(Math.sin(i*0.9))*6;
+      const color = el.id === 'ss-wave-2' ? 'var(--ember)' : 'var(--signal)';
+      bar.style.cssText = `display:block;width:1.5px;height:${h}px;background:${color};opacity:${0.15+i/count*0.5};border-radius:1px;flex-shrink:0;`;
+      el.appendChild(bar);
+    }
+  });
+  // Reveal
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>
