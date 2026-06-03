@@ -13,7 +13,7 @@
  *   4. wrangler deploy
  *
  * Endpoints proxied (same contract as OpenAI):
- *   POST /v1/chat/completions     — Chat Completions (streaming + non-streaming)
+ *   POST /v1/chat/completions     — Chat Completions (streaming + non-streaming + vision)
  *   POST /v1/audio/transcriptions — Whisper transcription
  *
  * Auth: Authorization: Bearer <RevenueCat App User ID>
@@ -27,22 +27,28 @@ const MONTHLY_BUDGET_USD = 2.00;
 // Pricing per 1M tokens (input / output).
 // Must stay in sync with OpenAiTransformModel.kt and OpenAiProfileSuggestionModel.kt.
 // Verify against https://openai.com/pricing when OpenAI updates rates.
+//
+// Vision note: image tokens are reported inside prompt_tokens in the OpenAI usage
+// response, so vision calls through /v1/chat/completions are billed correctly
+// by the same pricing entries — no separate vision pricing is needed.
+// OpenAI image token formula (high detail): 85 base + 170 per 512x512 tile.
+// A typical resized phone photo costs ~800–1500 image tokens.
 const CHAT_PRICING = {
-  // GPT-5 family
+  // GPT-5 family (Scrybe transforms, diarization, Smart Analyze)
   "gpt-5-nano":    { input: 0.10,  output:  0.80 },
-  "gpt-5-mini":    { input: 0.25,  output:  2.00 },
+  "gpt-5-mini":    { input: 0.25,  output:  2.00 }, // default transform model
   "gpt-5":         { input: 1.25,  output: 10.00 },
   "gpt-5.1":       { input: 0.63,  output:  5.00 },
   "gpt-5.4-mini":  { input: 0.75,  output:  4.50 },
-  "gpt-5.4":       { input: 2.50,  output: 15.00 },
-  // GPT-4.1 family
+  "gpt-5.4":       { input: 2.50,  output: 15.00 }, // March 2026 flagship
+  // GPT-4.1 family (Scrybe fallbacks)
   "gpt-4.1-nano":  { input: 0.10,  output:  0.40 },
   "gpt-4.1-mini":  { input: 0.40,  output:  1.60 },
-  // Legacy GPT-4o (Shelf Snap vision analysis + price research)
-  "gpt-4o-mini":   { input: 0.15,  output:  0.60 },
-  "gpt-4o":        { input: 2.50,  output: 10.00 },
+  // GPT-4o family (Shelf Snap: vision analysis + price research; both support vision)
+  "gpt-4o-mini":   { input: 0.15,  output:  0.60 }, // price research + vision capable
+  "gpt-4o":        { input: 2.50,  output: 10.00 }, // item photo analysis (vision)
 };
-const WHISPER_PRICE_PER_MIN = 0.006; // $0.006 / minute
+const WHISPER_PRICE_PER_MIN = 0.006; // $0.006 / minute (Scrybe transcription)
 
 export default {
   async fetch(request, env, ctx) {
