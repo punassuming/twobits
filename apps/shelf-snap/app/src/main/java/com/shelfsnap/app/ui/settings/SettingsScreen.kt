@@ -1,7 +1,15 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,10 +19,38 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,7 +116,7 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
                 .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             ProSubscriptionCard(
                 tier = uiState.subscriptionTier,
@@ -91,170 +127,163 @@ fun SettingsScreen(
                 onDismissError = viewModel::dismissPurchaseError,
             )
 
-            HorizontalDivider()
-
-            Text(
-                text = stringResource(R.string.api_key_label),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = stringResource(R.string.api_key_explanation),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            OutlinedTextField(
-                value = uiState.editApiKey,
-                onValueChange = viewModel::onApiKeyChange,
-                label = { Text(stringResource(R.string.api_key_label)) },
-                placeholder = { Text(stringResource(R.string.api_key_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                isError = uiState.isKeyInvalid,
-                supportingText = { if (uiState.isKeyInvalid) Text(stringResource(R.string.api_key_invalid)) },
-                visualTransformation = if (showKey) VisualTransformation.None
-                    else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                trailingIcon = {
-                    TextButton(
-                        onClick = { showKey = !showKey },
-                        modifier = Modifier.semantics {
-                            contentDescription = toggleVisibilityLabel
-                        }
-                    ) {
-                        Text(stringResource(if (showKey) R.string.hide else R.string.show))
-                    }
-                }
-            )
-            Button(
-                onClick = viewModel::save,
-                modifier = Modifier.fillMaxWidth()
+            // ── API key ────────────────────────────────────────────────────
+            SettingsSectionCard(
+                icon = Icons.Default.Key,
+                title = stringResource(R.string.api_key_label),
             ) {
-                Icon(Icons.Default.Check, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.save))
-            }
-
-            if (uiState.subscriptionTier is SubscriptionTier.Free) {
                 Text(
-                    text = stringResource(R.string.vision_model_section_subtitle),
+                    text = stringResource(R.string.api_key_explanation),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                VisionModelDropdown(
-                    selected = uiState.visionModel,
-                    onSelected = viewModel::onVisionModelChange
-                )
-            }
-
-            HorizontalDivider()
-
-            // ── Web search for price research ──────────────────────────────
-            Text(
-                text = stringResource(R.string.search_section_title),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = stringResource(R.string.search_section_subtitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            SearchProviderDropdown(
-                selected = uiState.searchProvider,
-                onSelected = viewModel::onSearchProviderChange
-            )
-
-            // The API key field only matters for providers that require one (Brave).
-            if (uiState.searchProvider == SearchProvider.BRAVE) {
-                var showSearchKey by remember { mutableStateOf(false) }
                 OutlinedTextField(
-                    value = uiState.editSearchApiKey,
-                    onValueChange = viewModel::onSearchApiKeyChange,
-                    label = { Text(stringResource(R.string.search_api_key_label)) },
-                    supportingText = { Text(stringResource(R.string.search_api_key_hint)) },
+                    value = uiState.editApiKey,
+                    onValueChange = viewModel::onApiKeyChange,
+                    label = { Text(stringResource(R.string.api_key_label)) },
+                    placeholder = { Text(stringResource(R.string.api_key_hint)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    visualTransformation = if (showSearchKey) VisualTransformation.None
+                    isError = uiState.isKeyInvalid,
+                    supportingText = { if (uiState.isKeyInvalid) Text(stringResource(R.string.api_key_invalid)) },
+                    visualTransformation = if (showKey) VisualTransformation.None
                         else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
                         TextButton(
-                            onClick = { showSearchKey = !showSearchKey },
-                            modifier = Modifier.semantics { contentDescription = toggleVisibilityLabel }
+                            onClick = { showKey = !showKey },
+                            modifier = Modifier.semantics {
+                                contentDescription = toggleVisibilityLabel
+                            }
                         ) {
-                            Text(stringResource(if (showSearchKey) R.string.hide else R.string.show))
+                            Text(stringResource(if (showKey) R.string.hide else R.string.show))
                         }
                     }
                 )
                 Button(
-                    onClick = viewModel::saveSearchSettings,
+                    onClick = viewModel::save,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Search, contentDescription = null)
+                    Icon(Icons.Default.Check, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.save))
                 }
+
+                if (uiState.subscriptionTier is SubscriptionTier.Free) {
+                    Text(
+                        text = stringResource(R.string.vision_model_section_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    VisionModelDropdown(
+                        selected = uiState.visionModel,
+                        onSelected = viewModel::onVisionModelChange
+                    )
+                }
             }
 
-            HorizontalDivider()
+            // ── Web search ─────────────────────────────────────────────────
+            SettingsSectionCard(
+                icon = Icons.Default.Search,
+                title = stringResource(R.string.search_section_title),
+            ) {
+                Text(
+                    text = stringResource(R.string.search_section_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                SearchProviderDropdown(
+                    selected = uiState.searchProvider,
+                    onSelected = viewModel::onSearchProviderChange
+                )
+                if (uiState.searchProvider == SearchProvider.BRAVE) {
+                    var showSearchKey by remember { mutableStateOf(false) }
+                    OutlinedTextField(
+                        value = uiState.editSearchApiKey,
+                        onValueChange = viewModel::onSearchApiKeyChange,
+                        label = { Text(stringResource(R.string.search_api_key_label)) },
+                        supportingText = { Text(stringResource(R.string.search_api_key_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = if (showSearchKey) VisualTransformation.None
+                            else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        trailingIcon = {
+                            TextButton(
+                                onClick = { showSearchKey = !showSearchKey },
+                                modifier = Modifier.semantics { contentDescription = toggleVisibilityLabel }
+                            ) {
+                                Text(stringResource(if (showSearchKey) R.string.hide else R.string.show))
+                            }
+                        }
+                    )
+                    Button(
+                        onClick = viewModel::saveSearchSettings,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.save))
+                    }
+                }
+            }
 
             // ── Capture & storage ──────────────────────────────────────────
-            Text(
-                text = stringResource(R.string.capture_storage_section),
-                style = MaterialTheme.typography.titleMedium
-            )
-            SettingToggle(
-                title = stringResource(R.string.auto_analyze_title),
-                subtitle = stringResource(R.string.auto_analyze_subtitle),
-                checked = uiState.autoAnalyze,
-                onCheckedChange = viewModel::onAutoAnalyzeChange
-            )
-            SettingToggle(
-                title = stringResource(R.string.keep_photos_title),
-                subtitle = stringResource(R.string.keep_photos_subtitle),
-                checked = uiState.keepPhotos,
-                onCheckedChange = viewModel::onKeepPhotosChange
-            )
-
-            StorageBreakdownCard(storage = uiState.storage)
-
-            HorizontalDivider()
+            SettingsSectionCard(
+                icon = Icons.Default.PhotoCamera,
+                title = stringResource(R.string.capture_storage_section),
+            ) {
+                SettingToggle(
+                    title = stringResource(R.string.auto_analyze_title),
+                    subtitle = stringResource(R.string.auto_analyze_subtitle),
+                    checked = uiState.autoAnalyze,
+                    onCheckedChange = viewModel::onAutoAnalyzeChange
+                )
+                SettingToggle(
+                    title = stringResource(R.string.keep_photos_title),
+                    subtitle = stringResource(R.string.keep_photos_subtitle),
+                    checked = uiState.keepPhotos,
+                    onCheckedChange = viewModel::onKeepPhotosChange
+                )
+                StorageBreakdownCard(storage = uiState.storage)
+            }
 
             // ── About ──────────────────────────────────────────────────────
-            Text(
-                text = stringResource(R.string.about_section),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = stringResource(R.string.about_privacy),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Surface(
-                onClick = onWhatsNew,
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.fillMaxWidth()
+            SettingsSectionCard(
+                icon = Icons.Default.Info,
+                title = stringResource(R.string.about_section),
             ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Text(
+                    text = stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = stringResource(R.string.about_privacy),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Surface(
+                    onClick = onWhatsNew,
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.NewReleases, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.whats_new), style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            text = stringResource(R.string.whats_new_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(Icons.Default.NewReleases, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.whats_new), style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = stringResource(R.string.whats_new_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -270,7 +299,7 @@ private fun ProSubscriptionCard(
     onRestore: () -> Unit,
     onDismissError: () -> Unit,
 ) {
-    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+    ElevatedCard(shape = MaterialTheme.shapes.large) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -370,43 +399,41 @@ private fun SettingToggle(
 
 @Composable
 private fun StorageBreakdownCard(storage: StorageInfo) {
-    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val total = storage.totalBytes.coerceAtLeast(1L)
+    val photoFraction = (storage.photosBytes.toFloat() / total).coerceIn(0f, 1f)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.storage_usage),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        @Suppress("DEPRECATION")
+        LinearProgressIndicator(
+            progress = photoFraction,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text(
-                text = stringResource(R.string.storage_usage),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+                text = stringResource(R.string.storage_photos) + " · " + formatBytes(storage.photosBytes),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            val total = storage.totalBytes.coerceAtLeast(1L)
-            val photoFraction = (storage.photosBytes.toFloat() / total).coerceIn(0f, 1f)
-            @Suppress("DEPRECATION")
-            LinearProgressIndicator(
-                progress = photoFraction,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = stringResource(R.string.storage_photos) + " · " + formatBytes(storage.photosBytes),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = stringResource(R.string.storage_database) + " · " + formatBytes(storage.dbBytes),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
             Text(
-                text = stringResource(R.string.storage_total, formatBytes(storage.totalBytes)),
-                style = MaterialTheme.typography.bodySmall
+                text = stringResource(R.string.storage_database) + " · " + formatBytes(storage.dbBytes),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        Text(
+            text = stringResource(R.string.storage_total, formatBytes(storage.totalBytes)),
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 

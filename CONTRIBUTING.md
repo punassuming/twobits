@@ -43,7 +43,7 @@ scrybe/
 ├── README.md
 ├── CONTRIBUTING.md
 └── apps/
-    └── android-whispering/          ← Gradle root project
+    └── scrybe/          ← Gradle root project
         ├── app/                      ← :app module (entry point)
         ├── core/
         │   ├── audio/                ← :core:audio
@@ -74,7 +74,7 @@ scrybe/
         └── settings.gradle.kts       ← Module declarations
 ```
 
-All Android source lives under `apps/android-whispering/`. New modules must be declared in `settings.gradle.kts`.
+All Android source lives under `apps/scrybe/`. New modules must be declared in `settings.gradle.kts`.
 
 ---
 
@@ -86,13 +86,13 @@ git clone https://github.com/punassuming/scrybe.git
 cd scrybe
 
 # 2. Open in Android Studio
-#    File → Open → select apps/android-whispering/
+#    File → Open → select apps/scrybe/
 
 # 3. Let Gradle sync finish (first sync downloads ~200 MB of dependencies)
 
 # 4. (Optional) Run the project on a device or emulator via Android Studio
 #    or from the command line:
-cd apps/android-whispering
+cd apps/scrybe
 ./gradlew installDebug
 ```
 
@@ -114,7 +114,7 @@ docker compose run --rm android-dev ./gradlew testDebugUnitTest
 docker compose run --rm android-dev python3 scripts/validate-manifests.py
 ```
 
-The `android-dev` service mounts the repository into `/workspace`, uses `apps/android-whispering/` as its working directory, and persists the Gradle cache in a named Docker volume. The image provides Gradle 8.9 on JDK 17 together with the Android SDK platform tools, API 35, and build-tools 35.0.0.
+The `android-dev` service mounts the repository into `/workspace`, uses `apps/scrybe/` as its working directory, and persists the Gradle cache in a named Docker volume. The image provides Gradle 8.9 on JDK 17 together with the Android SDK platform tools, API 35, and build-tools 35.0.0.
 
 If your environment blocks Gradle wrapper downloads, you can replace `./gradlew` with `gradle` inside the container because the matching Gradle version is preinstalled.
 
@@ -132,7 +132,7 @@ org.gradle.java.home=/path/to/jdk17
 
 ## 4. Build, lint, and test
 
-All commands are run from `apps/android-whispering/`.
+All commands are run from `apps/scrybe/`.
 
 | Task | Command | Notes |
 |------|---------|-------|
@@ -157,7 +157,7 @@ For Windows and other shells where you want the Android toolchain paths pinned e
 
 ```powershell
 cd C:\drive\dev\android\scrybe
-. .\apps\android-whispering\scripts\android-env.ps1
+. .\apps\scrybe\scripts\android-env.ps1
 ```
 
 Recommended direct commands:
@@ -193,7 +193,7 @@ If you want one command surface for the common local tasks, use the repo-root he
 | Filtered app/runtime logcat | `.\scripts\android.ps1 logcat` |
 | Raw Gradle passthrough | `.\scripts\android.ps1 gradle assembleDebug --stacktrace` |
 
-The helper wraps `apps/android-whispering/scripts/android-env.ps1`, uses the checked-in Gradle wrapper, and forces `--console=plain --info` so long-running Gradle work stays visible in the terminal.
+The helper wraps `apps/scrybe/scripts/android-env.ps1`, uses the checked-in Gradle wrapper, and forces `--console=plain --info` so long-running Gradle work stays visible in the terminal.
 
 ### Build troubleshooting
 
@@ -207,7 +207,7 @@ Recommended order of operations:
 
 1. Reset the shell environment and run Gradle directly:
    ```powershell
-   . .\apps\android-whispering\scripts\android-env.ps1
+   . .\apps\scrybe\scripts\android-env.ps1
    & "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" help --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
    ```
 2. If only the recording service lint is failing, isolate it:
@@ -246,7 +246,7 @@ while ((adb shell getprop sys.boot_completed).Trim() -ne "1") { Start-Sleep -Sec
 Build, install, and launch the app:
 
 ```powershell
-cd apps\android-whispering
+cd apps\scrybe
 .\gradlew.bat assembleDebug
 .\gradlew.bat installDebug
 adb shell am start -n dev.scrybe.android/.MainActivity
@@ -404,7 +404,7 @@ The pattern mirrors the transcription provider above.
 ### Step 1 – Create the module directory
 
 ```
-apps/android-whispering/feature/my-feature/
+apps/scrybe/feature/my-feature/
     build.gradle.kts
     src/main/
         AndroidManifest.xml
@@ -473,7 +473,7 @@ The project enforces style automatically via **KtLint** and **Detekt**.
 
 Run `./gradlew ktlintFormat` to auto-fix formatting issues before committing.
 
-Configuration file: `apps/android-whispering/detekt.yml`.
+Configuration file: `apps/scrybe/detekt.yml`.
 
 ---
 

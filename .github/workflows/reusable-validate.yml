@@ -1,0 +1,71 @@
+name: Validate Changelog & Manifests
+
+# Shared validation logic for all Android apps.
+# Called by scrybe-ci.yml and shelf-snap-ci.yml.
+on:
+  workflow_call:
+    inputs:
+      changelog_path:
+        description: 'Path to CHANGELOG.md relative to repo root'
+        type: string
+        required: true
+      app_root:
+        description: 'App root dir for manifest validation (e.g. apps/scrybe)'
+        type: string
+        required: true
+      require_changelog_update:
+        description: 'Enforce that changelog was updated (pass true for PR and main pushes)'
+        type: boolean
+        required: false
+        default: false
+      base_sha:
+        description: 'Base commit SHA for changelog update diff'
+        type: string
+        required: false
+        default: ''
+      head_sha:
+        description: 'Head commit SHA for changelog update diff'
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  changelog:
+    name: Changelog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate changelog structure
+        run: python3 apps/scrybe/scripts/manage-changelog.py validate --changelog ${{ inputs.changelog_path }}
+
+      - name: Require changelog update for main-bound changes
+        if: inputs.require_changelog_update && inputs.base_sha != '' && inputs.head_sha != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 apps/scrybe/scripts/manage-changelog.py \
+            check-updated \
+            --base-ref "${{ inputs.base_sha }}" \
+            --head-ref "${{ inputs.head_sha }}" \
+            --changelog ${{ inputs.changelog_path }}
+
+  manifests:
+    name: Validate Configuration
+    runs-on: ubuntu-latest
+    needs: changelog
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate AndroidManifest.xml files
+        run: python3 apps/scrybe/scripts/validate-manifests.py --root ${{ inputs.app_root }}

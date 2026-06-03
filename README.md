@@ -1,10 +1,33 @@
-# Scrybe
+# TwoBits
 
-[![Android CI](https://github.com/punassuming/scrybe/actions/workflows/android-ci.yml/badge.svg)](https://github.com/punassuming/scrybe/actions/workflows/android-ci.yml)
+[![Scrybe CI](https://github.com/punassuming/twobits/actions/workflows/scrybe-ci.yml/badge.svg)](https://github.com/punassuming/twobits/actions/workflows/scrybe-ci.yml)
+[![Shelf Snap CI](https://github.com/punassuming/twobits/actions/workflows/shelf-snap-ci.yml/badge.svg)](https://github.com/punassuming/twobits/actions/workflows/shelf-snap-ci.yml)
 [![Kotlin](https://img.shields.io/badge/kotlin-1.9.25-blue.svg?logo=kotlin)](https://kotlinlang.org)
 [![Min SDK](https://img.shields.io/badge/min%20sdk-26%20(Android%208.0)-brightgreen.svg)](https://developer.android.com/about/versions/oreo)
 [![Target SDK](https://img.shields.io/badge/target%20sdk-35%20(Android%2015)-brightgreen.svg)](https://developer.android.com/about/versions/15)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+TwoBits is a monorepo for two Android apps — **Scrybe** and **Shelf Snap** — backed by a shared billing library and a managed API key proxy. Both apps use AI to do useful things with your phone's microphone and camera.
+
+```
+Scrybe / Shelf Snap apps
+  └─ Authorization: Bearer <RevenueCat User ID>
+       └─ api.twobits.app  (punassuming/twobits-worker)
+            └─ OpenAI API  (key never leaves the proxy)
+```
+
+| App | What it does |
+|-----|-------------|
+| [Scrybe](apps/scrybe/) | Voice recording → Whisper transcription → LLM transformation → structured notes |
+| [Shelf Snap](apps/shelf-snap/) | Camera capture → GPT-4o vision analysis → inventory valuation + price research |
+
+The `shared/` directory contains Gradle modules used by both apps: billing, common utilities, API-key management, networking, and design tokens (typography, shapes).
+
+The managed API key proxy lives in **[punassuming/twobits-worker](https://github.com/punassuming/twobits-worker)** and is deployed independently to Cloudflare Workers.
+
+---
+
+## Scrybe
 
 Scrybe is an Android application for recording audio, transcribing it with AI, and transforming the resulting text into structured notes. Think of it as a voice-to-document pipeline that lives entirely on your phone.
 
@@ -158,7 +181,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full environment setup and developer 
 ```bash
 # Clone the repository
 git clone https://github.com/punassuming/scrybe.git
-cd scrybe/apps/android-whispering
+cd scrybe/apps/scrybe
 
 # Build a debug APK
 ./gradlew assembleDebug
@@ -171,7 +194,7 @@ If you are on Windows and want to pin the Android toolchain paths explicitly, do
 
 ```powershell
 cd C:\drive\dev\android\scrybe
-. .\apps\android-whispering\scripts\android-env.ps1
+. .\apps\scrybe\scripts\android-env.ps1
 & "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" assembleDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
 & "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" :service:recording:lintDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
 ```
@@ -214,29 +237,29 @@ Container notes:
 
 ## CI / CD
 
-### Continuous integration
+Each app has its own CI and release workflow. Both share `reusable-validate.yml` for changelog and manifest validation.
 
-GitHub Actions runs four jobs on every push to `main` or any `copilot/**` branch, and on every pull request targeting `main`:
+### Scrybe
 
-| Job | Command |
-|-----|---------|
-| Changelog | `python3 apps/android-whispering/scripts/manage-changelog.py validate --changelog CHANGELOG.md` plus diff enforcement for `main`-bound changes |
-| Validate | `python3 scripts/validate-manifests.py` |
-| Build | `./gradlew assembleDebug` |
-| Lint | `./gradlew lint` |
-| Unit Tests | `./gradlew testDebugUnitTest` |
+| Workflow | Trigger | What it does |
+|----------|---------|-------------|
+| `scrybe-ci.yml` | Push to `main`/`copilot/**`/`claude/**`, PRs to `main` | Changelog + manifest validation → assembleDebug, testDebugUnitTest, lint, ktlintCheck, detekt |
+| `scrybe-release.yml` | Successful `scrybe-ci.yml` on `main` | Computes next version, promotes changelog, bumps version, creates tag + GitHub Release with signed APK/AAB |
 
-### Release automation
+### Shelf Snap
 
-Every push to `main` triggers the release workflow:
+| Workflow | Trigger | What it does |
+|----------|---------|-------------|
+| `shelf-snap-ci.yml` | Push to `main`/`copilot/**`/`claude/**`, PRs to `main` | Changelog + manifest validation → assembleDebug, testDebugUnitTest, lintDebug |
+| `shelf-snap-release.yml` | Successful `shelf-snap-ci.yml` on `main` | Computes next version, promotes changelog, bumps version, creates tag + GitHub Release with signed APK/AAB |
 
-1. Changes headed to `main` are expected to update the root `CHANGELOG.md` `## Unreleased` section before merge.
-2. The next semantic version is computed automatically from [conventional commits](https://www.conventionalcommits.org/) since the last tag (`feat:` → minor, `fix:` / `chore:` / etc. → patch, `BREAKING CHANGE` → major).
-3. The release workflow promotes `## Unreleased` into the new versioned release section and uses that promoted section as the GitHub Release body.
-4. A git tag and a GitHub Release are created directly — **no separate release PR is opened**.
-5. A release APK is built and attached to the GitHub Release.
+### Release automation (both apps)
 
-The built-in `GITHUB_TOKEN` is used; no additional secrets are required.
+1. PRs must update the app's `CHANGELOG.md` `## Unreleased` section before merge.
+2. Next version computed automatically from [conventional commits](https://www.conventionalcommits.org/) since the last tag.
+3. `## Unreleased` is promoted into a dated versioned section used as the GitHub Release body.
+4. A git tag and GitHub Release are created directly — **no separate release PR**.
+5. Signing secrets (`SIGNING_KEYSTORE_BASE64`, `SIGNING_KEYSTORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`) are optional; a one-off keystore is generated if absent so the APK remains installable.
 
 ---
 
