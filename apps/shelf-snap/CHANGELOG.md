@@ -8,6 +8,14 @@ Keep entries user-facing and concise. The release workflow promotes the
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 1.0.1 (2026-06-03)
+
+### Features
+
 * add Shelf-Snap product page to twobits GitHub Pages site — shelf-snap.html with phone mockup, "Snap. Analyze. List or donate." how-it-works steps, tabbed item detail (Details/Market/List), feature grid, cross-listing platform chips, market research price example, and Google Play store listing mockup
 
 ### Improvements
