@@ -1,7 +1,7 @@
 name: Shelf Snap Tag & Release
 
 # When a commit lands on main, auto-increment the patch version, fold
-# apps/shelf-snap/CHANGELOG.md's [Unreleased] entries into a dated section,
+# apps/shelf-snap/CHANGELOG.md's Unreleased entries into a dated section,
 # stamp the app version, build the signed release APK/AAB, and publish a
 # GitHub Release. The version-bump commit is pushed back to main with
 # [skip ci] so it never re-triggers this workflow.
@@ -66,43 +66,36 @@ jobs:
           echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
           echo "Next release: shelf-snap-v$next"
 
-      - name: Update changelog
+      - name: Check unreleased changelog content
+        id: changelog_ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/shelf-snap/CHANGELOG.md)"
+          echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
+          if [ "$has_bullets" != "true" ]; then
+            echo "Skipping release — no unreleased bullets in apps/shelf-snap/CHANGELOG.md"
+          fi
+
+      - name: Promote changelog release section
+        if: steps.changelog_ready.outputs.has_bullets == 'true'
         id: changelog
         env:
           VERSION: ${{ steps.ver.outputs.version }}
           DATE: ${{ steps.ver.outputs.date }}
+        shell: bash
         run: |
-          python3 - "$VERSION" "$DATE" <<'PY'
-          import sys, re, pathlib
-          version, date = sys.argv[1], sys.argv[2]
-          p = pathlib.Path("apps/shelf-snap/CHANGELOG.md")
-          notes_path = pathlib.Path("RELEASE_NOTES.md")
-          if not p.exists():
-              notes_path.write_text("Shelf Snap v%s\n" % version)
-              sys.exit(0)
-          text = p.read_text()
-          marker = "## [Unreleased]"
-          idx = text.find(marker)
-          if idx == -1:
-              notes_path.write_text("Shelf Snap v%s\n" % version)
-              sys.exit(0)
-          start = idx + len(marker)
-          rest = text[start:]
-          m = re.search(r"\n## ", rest)
-          body = rest[:m.start()] if m else rest
-          tail = rest[m.start():] if m else ""
-          if body.strip():
-              new = marker + "\n\n## [" + version + "] - " + date + "\n" + body
-              notes = body.strip()
-          else:
-              new = marker + "\n\n## [" + version + "] - " + date + "\n\n_Maintenance release._\n"
-              notes = "Maintenance release."
-          p.write_text(text[:idx] + new + tail)
-          notes_path.write_text(notes + "\n")
-          PY
-          echo "Wrote release notes:"; cat RELEASE_NOTES.md
+          set -euo pipefail
+          python3 apps/scrybe/scripts/manage-changelog.py \
+            promote-release \
+            --changelog apps/shelf-snap/CHANGELOG.md \
+            --version "$VERSION" \
+            --date "$DATE" \
+            --release-notes-output RELEASE_NOTES.md
+          echo "Release notes:"; cat RELEASE_NOTES.md
 
       - name: Bump app version
+        if: steps.changelog_ready.outputs.has_bullets == 'true'
         env:
           VERSION: ${{ steps.ver.outputs.version }}
         run: |
@@ -118,12 +111,13 @@ jobs:
         id: keystore
         env:
           KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-        if: ${{ env.KEYSTORE_B64 != '' }}
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && env.KEYSTORE_B64 != ''
         run: |
           echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
           echo "path=$RUNNER_TEMP/release.keystore" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK and AAB
+        if: steps.changelog_ready.outputs.has_bullets == 'true'
         working-directory: apps/shelf-snap
         env:
           SIGNING_STORE_FILE: ${{ steps.keystore.outputs.path }}
@@ -133,6 +127,7 @@ jobs:
         run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
 
       - name: Stage release assets
+        if: steps.changelog_ready.outputs.has_bullets == 'true'
         id: asset
         run: |
           src=$(ls apps/shelf-snap/app/build/outputs/apk/release/app-release*.apk | head -n1)
@@ -144,6 +139,7 @@ jobs:
           echo "Packaged $dest (from $src)"
 
       - name: Commit version bump to main
+        if: steps.changelog_ready.outputs.has_bullets == 'true'
         continue-on-error: true
         run: |
           git config user.name "github-actions[bot]"
@@ -157,6 +153,7 @@ jobs:
           fi
 
       - name: Publish GitHub Release
+        if: steps.changelog_ready.outputs.has_bullets == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
