@@ -6,9 +6,18 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.3.0 (2026-06-03)
+
+### Features
+
+### Improvements
+
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
 
 ### Fixes
+
 
 ## 1.2.0 (2026-06-03)
 
