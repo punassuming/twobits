@@ -157,6 +157,10 @@
     <string name="nav_summary">Summary</string>
     <string name="nav_settings">Settings</string>
 
+    <!-- v2: settings — vision model (BYOK) -->
+    <string name="vision_model_label">Vision model (BYOK)</string>
+    <string name="vision_model_section_subtitle">Choose the AI model used to analyse your item photos.</string>
+
     <!-- v2: settings — web search for pricing -->
     <string name="search_section_title">Price research search</string>
     <string name="search_section_subtitle">Choose a web-search provider to gather comparable listings for price estimates.</string>

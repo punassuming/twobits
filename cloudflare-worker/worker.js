@@ -8,9 +8,11 @@
  * Setup:
  *   1. wrangler kv:namespace create SUBSCRIPTION_CACHE
  *      Paste the returned ID into wrangler.toml.
- *   2. wrangler secret put OPENAI_API_KEY
- *   3. wrangler secret put REVENUECAT_API_KEY
- *   4. wrangler deploy
+ *   2. wrangler durable-object namespace create SPEND_TRACKER
+ *      Paste the returned ID into wrangler.toml.
+ *   3. wrangler secret put OPENAI_API_KEY
+ *   4. wrangler secret put REVENUECAT_API_KEY
+ *   5. wrangler deploy
  *
  * Endpoints proxied (same contract as OpenAI):
  *   POST /v1/chat/completions     — Chat Completions (streaming + non-streaming + vision)
@@ -33,6 +35,9 @@ const MONTHLY_BUDGET_USD = 2.00;
 // by the same pricing entries — no separate vision pricing is needed.
 // OpenAI image token formula (high detail): 85 base + 170 per 512x512 tile.
 // A typical resized phone photo costs ~800–1500 image tokens.
+//
+// Unknown models: requests specifying a model not in this table are rejected with 422.
+// Never fall back to a cheap default — an unlisted model may cost far more.
 const CHAT_PRICING = {
   // GPT-5 family (Scrybe transforms, diarization, Smart Analyze)
   "gpt-5-nano":    { input: 0.10,  output:  0.80 },
@@ -49,6 +54,16 @@ const CHAT_PRICING = {
   "gpt-4o":        { input: 2.50,  output: 10.00 }, // item photo analysis (vision)
 };
 const WHISPER_PRICE_PER_MIN = 0.006; // $0.006 / minute (Scrybe transcription)
+
+// Conservative pessimistic cost ceiling per request used to pre-reserve budget
+// in the SpendTracker Durable Object before forwarding to OpenAI.
+// Based on 4 096 input + 8 192 output tokens at each model's rates.
+// Audio uses 25 minutes (the OpenAI per-file maximum).
+function reservationCost(model) {
+  const p = CHAT_PRICING[model];
+  return (4_096 / 1_000_000) * p.input + (8_192 / 1_000_000) * p.output;
+}
+const AUDIO_RESERVATION_USD = 25 * WHISPER_PRICE_PER_MIN; // ~$0.15
 
 export default {
   async fetch(request, env, ctx) {
@@ -67,42 +82,63 @@ export default {
       return corsResponse(jsonError("Pro subscription required", 403));
     }
 
-    // --- Monthly spend gate ---
-    const spent = await getMonthlySpend(appUserId, env);
-    if (spent >= MONTHLY_BUDGET_USD) {
+    // --- Build upstream request ---
+    const url     = new URL(request.url);
+    const isAudio = url.pathname.startsWith("/v1/audio/");
+
+    let model      = null;
+    let isStreaming = false;
+    let upstreamBody;
+
+    if (isAudio) {
+      upstreamBody = request.body;
+    } else {
+      const raw = await request.text();
+      try {
+        const parsed = JSON.parse(raw);
+        model = parsed.model ?? null;
+
+        // Reject any model not in the pricing table so unlisted or newly added
+        // expensive models are never silently charged as the cheapest fallback.
+        if (!model || !CHAT_PRICING[model]) {
+          return corsResponse(jsonError(
+            `Model "${model ?? "(unspecified)"}" is not supported by this proxy. ` +
+            `Allowed models: ${Object.keys(CHAT_PRICING).join(", ")}.`,
+            422,
+          ));
+        }
+
+        isStreaming = parsed.stream === true;
+        if (isStreaming) {
+          parsed.stream_options = { ...(parsed.stream_options ?? {}), include_usage: true };
+        }
+        upstreamBody = JSON.stringify(parsed);
+      } catch {
+        return corsResponse(jsonError("Invalid JSON request body", 400));
+      }
+    }
+
+    // --- Atomic monthly spend gate + reservation via Durable Object ---
+    // SpendTracker serializes all spend mutations for this user so concurrent
+    // requests cannot each read the same KV total and undercount charges.
+    const reservation = isAudio ? AUDIO_RESERVATION_USD : reservationCost(model);
+    const spend       = spendStub(appUserId, env);
+    const month       = monthKey();
+
+    const gateResp = await spend.fetch("http://internal/reserve", {
+      method: "POST",
+      body:   JSON.stringify({ month, amount: reservation, budget: MONTHLY_BUDGET_USD }),
+    });
+    const { ok: allowed } = await gateResp.json();
+
+    if (!allowed) {
       return corsResponse(jsonError(
         `Monthly usage limit of $${MONTHLY_BUDGET_USD.toFixed(2)} reached. Resets on the 1st of next month.`,
         429,
       ));
     }
 
-    // --- Build upstream request ---
-    const url     = new URL(request.url);
-    const isAudio = url.pathname.startsWith("/v1/audio/");
-
-    let model      = "gpt-5-mini"; // fallback for cost estimation
-    let isStreaming = false;
-    let upstreamBody;
-
-    if (isAudio) {
-      // Multipart — stream through without buffering
-      upstreamBody = request.body;
-    } else {
-      const raw = await request.text();
-      try {
-        const parsed = JSON.parse(raw);
-        model       = parsed.model ?? model;
-        isStreaming  = parsed.stream === true;
-        // Inject include_usage so we can read token counts from the stream
-        if (isStreaming) {
-          parsed.stream_options = { ...(parsed.stream_options ?? {}), include_usage: true };
-        }
-        upstreamBody = JSON.stringify(parsed);
-      } catch {
-        upstreamBody = raw;
-      }
-    }
-
+    // --- Forward to OpenAI ---
     const upstreamHeaders = new Headers(request.headers);
     upstreamHeaders.set("Authorization", `Bearer ${env.OPENAI_API_KEY}`);
     upstreamHeaders.delete("cf-connecting-ip");
@@ -114,8 +150,9 @@ export default {
       body:    upstreamBody,
     });
 
-    // Pass non-2xx errors straight through
+    // Pass non-2xx errors through; refund the full reservation.
     if (!upstream.ok) {
+      ctx.waitUntil(settleSpend(spend, month, 0, reservation));
       const errText = await upstream.text();
       return corsResponse(new Response(errText, {
         status:  upstream.status,
@@ -123,16 +160,17 @@ export default {
       }));
     }
 
-    // --- Forward response and track spend ---
+    // --- Forward response and settle actual spend ---
 
     if (isAudio) {
-      // Whisper returns small JSON with a `duration` field (seconds)
       const body = await upstream.text();
       try {
-        const json    = JSON.parse(body);
-        const costUsd = json.duration ? (json.duration / 60) * WHISPER_PRICE_PER_MIN : 0;
-        ctx.waitUntil(addSpend(appUserId, costUsd, env));
-      } catch { /* ignore parse errors */ }
+        const json   = JSON.parse(body);
+        const actual = json.duration ? (json.duration / 60) * WHISPER_PRICE_PER_MIN : 0;
+        ctx.waitUntil(settleSpend(spend, month, actual, reservation));
+      } catch {
+        ctx.waitUntil(settleSpend(spend, month, 0, reservation));
+      }
       return corsResponse(new Response(body, {
         status:  upstream.status,
         headers: upstream.headers,
@@ -140,23 +178,25 @@ export default {
     }
 
     if (!isStreaming) {
-      // Non-streaming: buffer, extract usage, forward
       const body = await upstream.text();
       try {
-        const json = JSON.parse(body);
-        if (json.usage) ctx.waitUntil(addSpend(appUserId, chatCost(model, json.usage), env));
-      } catch { /* ignore */ }
+        const json   = JSON.parse(body);
+        const actual = json.usage ? chatCost(model, json.usage) : 0;
+        ctx.waitUntil(settleSpend(spend, month, actual, reservation));
+      } catch {
+        ctx.waitUntil(settleSpend(spend, month, 0, reservation));
+      }
       return corsResponse(new Response(body, {
         status:  upstream.status,
         headers: upstream.headers,
       }));
     }
 
-    // Streaming: tee — forward one branch to client, drain the other for usage
+    // Streaming: tee — forward one branch to client, drain the other for usage.
     const [forClient, forTracking] = upstream.body.tee();
     ctx.waitUntil(
       drainStreamForUsage(forTracking, model)
-        .then(costUsd => addSpend(appUserId, costUsd, env)),
+        .then(actual => settleSpend(spend, month, actual, reservation)),
     );
     return corsResponse(new Response(forClient, {
       status:  upstream.status,
@@ -166,11 +206,68 @@ export default {
 };
 
 // ---------------------------------------------------------------------------
-// Cost tracking
+// SpendTracker Durable Object
+//
+// One instance per user (keyed by userId). All spend operations for a given
+// user are serialized through this single instance, eliminating the
+// read-modify-write race that KV's eventual consistency allows.
+//
+// /reserve  — atomically check budget and pre-deduct the pessimistic estimate.
+// /settle   — replace reservation with actual cost (delta may be negative).
 // ---------------------------------------------------------------------------
 
+export class SpendTracker {
+  constructor(state, env) {
+    this.state = state;
+  }
+
+  async fetch(request) {
+    const { month, amount, budget } = await request.json();
+    const key     = `m:${month}`;
+    const current = (await this.state.storage.get(key)) ?? 0;
+    const url     = new URL(request.url);
+
+    if (url.pathname === "/reserve") {
+      if (current >= budget) {
+        return Response.json({ ok: false, total: current });
+      }
+      const next = current + amount;
+      await this.state.storage.put(key, next);
+      return Response.json({ ok: true, total: next });
+    }
+
+    if (url.pathname === "/settle") {
+      // amount = actual - reserved (negative when actual < reserved → refund).
+      const next = Math.max(0, current + amount);
+      await this.state.storage.put(key, next);
+      return Response.json({ ok: true, total: next });
+    }
+
+    return new Response("Not found", { status: 404 });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cost tracking helpers
+// ---------------------------------------------------------------------------
+
+function spendStub(userId, env) {
+  const id = env.SPEND_TRACKER.idFromName(userId);
+  return env.SPEND_TRACKER.get(id);
+}
+
+/** Settles a request by adjusting reserved → actual cost. */
+async function settleSpend(stub, month, actualUsd, reservedUsd) {
+  const delta = actualUsd - reservedUsd;
+  if (Math.abs(delta) < 0.000_001) return;
+  await stub.fetch("http://internal/settle", {
+    method: "POST",
+    body:   JSON.stringify({ month, amount: delta }),
+  });
+}
+
 function chatCost(model, usage) {
-  const p = CHAT_PRICING[model] ?? CHAT_PRICING["gpt-5-mini"];
+  const p = CHAT_PRICING[model];
   return (usage.prompt_tokens     / 1_000_000) * p.input
        + (usage.completion_tokens / 1_000_000) * p.output;
 }
@@ -201,22 +298,6 @@ async function drainStreamForUsage(stream, model) {
 function monthKey() {
   const d = new Date();
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-async function getMonthlySpend(userId, env) {
-  const val = await env.SUBSCRIPTION_CACHE.get(`spend:${userId}:${monthKey()}`);
-  return val ? parseFloat(val) : 0;
-}
-
-async function addSpend(userId, costUsd, env) {
-  if (costUsd <= 0) return;
-  const key     = `spend:${userId}:${monthKey()}`;
-  const current = await env.SUBSCRIPTION_CACHE.get(key);
-  const next    = (current ? parseFloat(current) : 0) + costUsd;
-  // TTL 35 days — outlasts any calendar month so keys expire automatically
-  await env.SUBSCRIPTION_CACHE.put(key, next.toFixed(8), {
-    expirationTtl: 35 * 24 * 60 * 60,
-  });
 }
 
 // ---------------------------------------------------------------------------

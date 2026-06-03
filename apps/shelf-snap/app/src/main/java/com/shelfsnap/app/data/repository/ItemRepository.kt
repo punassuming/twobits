@@ -9,6 +9,7 @@ import com.shelfsnap.app.data.local.ItemDao
 import com.shelfsnap.app.data.local.toDomain
 import com.shelfsnap.app.data.local.toEntity
 import com.shelfsnap.app.data.model.Item
+import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
@@ -34,6 +35,7 @@ class ItemRepository @Inject constructor(
         private val KEY_SEARCH_API_KEY = stringPreferencesKey("search_api_key")
         private val KEY_AUTO_ANALYZE = booleanPreferencesKey("auto_analyze")
         private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
+        private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
     }
 
     // ── Inventory ─────────────────────────────────────────────────────────────
@@ -60,7 +62,8 @@ class ItemRepository @Inject constructor(
      */
     suspend fun analysePhotos(photoPaths: List<String>): DraftItemResult {
         val apiKey = getApiKey()
-        return visionService.analyse(photoPaths, apiKey)
+        val model = getVisionModel()
+        return visionService.analyse(photoPaths, apiKey, model.apiName)
     }
 
     // ── Price research ──────────────────────────────────────────────────────────
@@ -131,5 +134,17 @@ class ItemRepository @Inject constructor(
 
     suspend fun saveKeepPhotos(enabled: Boolean) {
         dataStore.edit { it[KEY_KEEP_PHOTOS] = enabled }
+    }
+
+    // ── Settings: vision model for BYOK users ───────────────────────────────────
+
+    fun observeVisionModel(): Flow<VisionModel> =
+        dataStore.data.map { VisionModel.fromApiName(it[KEY_VISION_MODEL]) }
+
+    suspend fun getVisionModel(): VisionModel =
+        VisionModel.fromApiName(dataStore.data.firstOrNull()?.get(KEY_VISION_MODEL))
+
+    suspend fun saveVisionModel(model: VisionModel) {
+        dataStore.edit { it[KEY_VISION_MODEL] = model.apiName }
     }
 }

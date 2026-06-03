@@ -30,8 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.BuildConfig
 import com.shelfsnap.app.R
-import com.twobits.billing.SubscriptionTier
+import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.SearchProvider
+import com.twobits.billing.SubscriptionTier
 
 @Composable
 fun SettingsScreen(
@@ -131,6 +132,18 @@ fun SettingsScreen(
                 Icon(Icons.Default.Check, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.save))
+            }
+
+            if (uiState.subscriptionTier is SubscriptionTier.Free) {
+                Text(
+                    text = stringResource(R.string.vision_model_section_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                VisionModelDropdown(
+                    selected = uiState.visionModel,
+                    onSelected = viewModel::onVisionModelChange
+                )
             }
 
             HorizontalDivider()
@@ -408,6 +421,51 @@ private fun formatBytes(bytes: Long): String {
         unitIndex++
     }
     return "%.1f %s".format(value, units[unitIndex])
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VisionModelDropdown(
+    selected: VisionModel,
+    onSelected: (VisionModel) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selected.displayName,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.vision_model_label)) },
+            supportingText = { Text(selected.supportingText) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            VisionModel.entries.forEach { model ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(model.displayName)
+                            Text(
+                                text = model.supportingText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    onClick = {
+                        onSelected(model)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

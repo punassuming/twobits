@@ -5,13 +5,14 @@ import android.content.Context
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shelfsnap.app.data.model.VisionModel
+import com.shelfsnap.app.data.remote.search.SearchProvider
+import com.shelfsnap.app.data.repository.ItemRepository
+import com.shelfsnap.app.util.ApiKeyValidator
 import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseCancelledException
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
-import com.shelfsnap.app.data.remote.search.SearchProvider
-import com.shelfsnap.app.data.repository.ItemRepository
-import com.shelfsnap.app.util.ApiKeyValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +42,7 @@ data class SettingsUiState(
     val savedSearchApiKey: String = "",
     val editSearchApiKey: String = "",
     val isSearchSaved: Boolean = false,
+    val visionModel: VisionModel = VisionModel.default,
     val autoAnalyze: Boolean = false,
     val keepPhotos: Boolean = true,
     val storage: StorageInfo = StorageInfo(),
@@ -88,8 +90,9 @@ class SettingsViewModel @Inject constructor(
         repository.observeSearchApiKey(),
         _editSearchKey,
         _isSearchSaved,
-    ) { provider, savedKey, editKey, saved ->
-        SearchState(provider, savedKey, editKey, saved)
+        repository.observeVisionModel(),
+    ) { provider, savedKey, editKey, saved, visionModel ->
+        SearchState(provider, savedKey, editKey, saved, visionModel)
     }
 
     private val prefsFlow = combine(
@@ -116,6 +119,7 @@ class SettingsViewModel @Inject constructor(
             savedSearchApiKey = search.savedKey,
             editSearchApiKey = search.editKey.ifBlank { search.savedKey },
             isSearchSaved = search.saved,
+            visionModel = search.visionModel,
             autoAnalyze = prefs.autoAnalyze,
             keepPhotos = prefs.keepPhotos,
             storage = prefs.storage,
@@ -150,6 +154,10 @@ class SettingsViewModel @Inject constructor(
             _isKeyInvalid.update { false }
             _isSaved.update { true }
         }
+    }
+
+    fun onVisionModelChange(model: VisionModel) {
+        viewModelScope.launch { repository.saveVisionModel(model) }
     }
 
     fun onSearchProviderChange(provider: SearchProvider) {
@@ -243,6 +251,7 @@ class SettingsViewModel @Inject constructor(
         val savedKey: String,
         val editKey: String,
         val saved: Boolean,
+        val visionModel: VisionModel,
     )
 
     private data class PrefsState(
