@@ -40,14 +40,24 @@ jobs:
           git fetch origin main --tags
           main_sha="$(git rev-parse origin/main)"
 
-          if [ "$main_sha" != "$head_sha" ]; then
-            echo "stale=true" >> "$GITHUB_OUTPUT"
-            echo "Skipping release for stale SHA $head_sha because origin/main is now $main_sha."
+          if [ "$main_sha" = "$head_sha" ]; then
+            git checkout -B main "$head_sha"
+            echo "stale=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          git checkout -B main "$head_sha"
-          echo "stale=false" >> "$GITHUB_OUTPUT"
+          # Main moved ahead. Only mark stale if Scrybe-relevant files changed
+          # after head_sha — a concurrent shelf-snap version bump pushed to main
+          # should not suppress a valid Scrybe release.
+          scrybe_ahead="$(git log "${head_sha}..origin/main" -- CHANGELOG.md apps/scrybe/ shared/ --oneline)"
+          if [ -n "$scrybe_ahead" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping release for stale SHA $head_sha — newer Scrybe commits on main."
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+            echo "Main advanced with non-Scrybe commits only; rebasing release onto current main."
+            git checkout -B main origin/main
+          fi
 
       # Computes the next semantic version from conventional commits since the
       # last tag without creating the tag yet. The tag is created after the
@@ -140,7 +150,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "$build_file" CHANGELOG.md
           git diff --staged --quiet || git commit -m "chore: prepare release ${version_name} (${version_code}) [skip ci]"
-          git push origin HEAD:main
+          git push origin HEAD:main || {
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          }
 
       - name: Create release tag
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
