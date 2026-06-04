@@ -236,6 +236,20 @@ git push -u origin <branch-name> --force-with-lease
 
 Never push a branch that diverged from a stale base. If the rebase produces a conflict, resolve it, `git add` the affected files, and run `git rebase --continue` before pushing.
 
+### Changelog reconciliation after rebasing over a release commit
+
+When a release workflow fires on `main`, it promotes `## Unreleased` bullets to a versioned section and commits that back to `main` (e.g. `## 1.6.0 (2026-06-04)`). If your feature branch was rebased onto that main _after_ the release commit landed, the rebase can preserve your old `## Unreleased` bullets verbatim — even though those exact bullets are now in the versioned section. The release workflow will see them and fire a duplicate release.
+
+**After every rebase, check:**
+
+```bash
+git log --oneline origin/main | head -5   # look for a "chore: prepare release" commit
+```
+
+If a release was cut since your branch diverged, open the relevant `CHANGELOG.md` and manually remove any `## Unreleased` bullets that already appear in a versioned section below. Leave only bullets that are genuinely new in your branch. If there are no new bullets, add a real one before merging so the release workflow has something to promote.
+
+The `has-new-unreleased-since-tag` check in both release workflows enforces this automatically, but fixing it in the branch before merge produces a cleaner changelog history.
+
 ---
 
 ## Mandatory changelog updates

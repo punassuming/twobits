@@ -69,10 +69,25 @@ jobs:
           set -euo pipefail
 
           has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/scrybe/CHANGELOG.md)"
+
+          # Guard against duplicate releases: if all bullets were already
+          # present at the last Scrybe tag (e.g. a rebase preserved stale
+          # ## Unreleased content), treat the release as already done.
+          if [ "$has_bullets" = "true" ]; then
+            latest_tag="$(git tag -l 'scrybe-v*' --sort=-v:refname | head -1)"
+            if [ -n "$latest_tag" ]; then
+              has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py \
+                has-new-unreleased-since-tag \
+                --changelog apps/scrybe/CHANGELOG.md \
+                --tag "$latest_tag" \
+                --fallback-changelog CHANGELOG.md)"
+            fi
+          fi
+
           echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
 
           if [ "$has_bullets" != "true" ]; then
-            echo "Skipping release because apps/scrybe/CHANGELOG.md has no unreleased bullets."
+            echo "Skipping release because apps/scrybe/CHANGELOG.md has no new unreleased bullets since the last tag."
           fi
 
       # Computes the next semantic version from conventional commits since the

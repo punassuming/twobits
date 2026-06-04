@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
+
 ### Fixes
 
 ## 1.6.0 (2026-06-04)
