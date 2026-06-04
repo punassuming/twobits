@@ -27,7 +27,7 @@ def main() -> int:
     validate_parser = subparsers.add_parser(
         "validate", help="Validate changelog structure."
     )
-    validate_parser.add_argument("--changelog", default="../../CHANGELOG.md")
+    validate_parser.add_argument("--changelog", default="../CHANGELOG.md")
 
     check_parser = subparsers.add_parser(
         "check-updated",

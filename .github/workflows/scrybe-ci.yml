@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main", "copilot/**", "claude/**" ]
     paths:
-      - 'CHANGELOG.md'
+      - 'apps/scrybe/CHANGELOG.md'
       - 'apps/scrybe/**'
       - 'shared/**'
       - 'Dockerfile.dev'
@@ -16,7 +16,7 @@ on:
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'CHANGELOG.md'
+      - 'apps/scrybe/CHANGELOG.md'
       - 'apps/scrybe/**'
       - 'shared/**'
       - 'Dockerfile.dev'
@@ -35,7 +35,7 @@ jobs:
     name: Validate
     uses: ./.github/workflows/reusable-validate.yml
     with:
-      changelog_path: CHANGELOG.md
+      changelog_path: apps/scrybe/CHANGELOG.md
       app_root: apps/scrybe
       require_changelog_update: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
       base_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
@@ -82,7 +82,7 @@ jobs:
 
           if [ "${#changed[@]}" -eq 0 ]; then exit 0; fi
 
-          allowed=("CHANGELOG.md" "apps/scrybe/app/build.gradle.kts")
+          allowed=("apps/scrybe/CHANGELOG.md" "apps/scrybe/app/build.gradle.kts")
           version_only=true
           for f in "${changed[@]}"; do
             matched=false

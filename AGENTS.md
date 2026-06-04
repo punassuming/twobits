@@ -40,7 +40,7 @@ This activates the tracked pre-commit hook in `.githooks/pre-commit`. It runs ch
 cd apps/scrybe
 
 # 1. Validate changelog structure
-python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md
+python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md
 
 # 2. Validate all AndroidManifest.xml files
 python3 scripts/validate-manifests.py
@@ -67,7 +67,7 @@ python3 scripts/validate-manifests.py
 One-liner:
 
 ```bash
-python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md && \
+python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md && \
   python3 scripts/validate-manifests.py && \
   ./gradlew ktlintFormat assembleDebug testDebugUnitTest lint ktlintCheck detekt --no-daemon
 ```
@@ -215,9 +215,18 @@ Column {
 
 ---
 
-## Branch management — always rebase onto origin/main before pushing
+## Branch management — always rebase onto origin/main before starting work AND before pushing
 
-Always fetch `origin/main` and rebase the working branch onto it before pushing:
+**At the start of every session**, before writing any code, fetch and rebase onto `origin/main`:
+
+```bash
+git fetch origin main
+git rebase origin/main
+```
+
+Skipping this step causes merge conflicts on the PR even when the code itself is correct. Always establish a clean base first, then make changes.
+
+**Before every push**, rebase again to pick up any commits that landed on main while you were working:
 
 ```bash
 git fetch origin main
@@ -232,9 +241,9 @@ Never push a branch that diverged from a stale base. If the rebase produces a co
 ## Mandatory changelog updates
 
 ### Scrybe
-Update `CHANGELOG.md` (repo root) `## Unreleased` section before any commit destined for `main`. Add bullets under `### Features`, `### Improvements`, or `### Fixes`.
+Update `apps/scrybe/CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Add bullets under `### Features`, `### Improvements`, or `### Fixes`.
 
-Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog CHANGELOG.md`
+Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md`
 
 ### Shelf Snap
 Update `apps/shelf-snap/CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Format is identical to the Scrybe changelog.

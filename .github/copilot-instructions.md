@@ -1,4 +1,4 @@
-# GitHub Copilot instructions for Scrybe
+# GitHub Copilot instructions for TwoBits
 
 ## Session setup — run once after cloning
 
@@ -12,17 +12,28 @@ This activates the tracked pre-commit hook in `.githooks/pre-commit`. It enforce
 
 ## Pre-commit checks (mandatory)
 
-Before every `git commit`, run the following from `apps/android-whispering/` and ensure **all checks pass**. Do not commit code that fails any of these.
+Before every `git commit`, run the following and ensure **all checks pass**. Do not commit code that fails any of these.
+
+### Scrybe (`apps/scrybe/`)
 
 ```bash
-cd apps/android-whispering
+cd apps/scrybe
 
 # Validate changelog and manifests
-python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md
+python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md
 python3 scripts/validate-manifests.py
 
 # Auto-fix formatting FIRST, then build + test + lint
 ./gradlew ktlintFormat assembleDebug testDebugUnitTest lint ktlintCheck detekt --no-daemon
+```
+
+### Shelf Snap (`apps/shelf-snap/`)
+
+```bash
+cd apps/shelf-snap
+
+python3 ../scrybe/scripts/manage-changelog.py validate --changelog CHANGELOG.md
+./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon
 ```
 
 `ktlintFormat` **must come before** `ktlintCheck` — format first, then verify.
@@ -70,7 +81,7 @@ val showBar =
 
 Applies to `in`, `==`, `&&`, `||`, `+`, etc. Run `./gradlew ktlintFormat` to auto-fix.
 
-### 2. Coroutine launches inside `LaunchedEffect`
+### 3. Coroutine launches inside `LaunchedEffect`
 
 Bare `launch {}` inside a `LaunchedEffect` requires a `CoroutineScope` receiver. Use `coroutineScope {}`.
 
@@ -90,13 +101,13 @@ LaunchedEffect(key) {
 }
 ```
 
-### 3. Missing Gradle module dependency → `error.NonExistentClass`
+### 4. Missing Gradle module dependency → `error.NonExistentClass`
 
 Every `import dev.scrybe.X.Y.*` needs `implementation(project(":X:Y"))` in the importing module's `build.gradle.kts`. Hilt fails silently with `error.NonExistentClass` when the dep is absent.
 
 Package → module: `core.common`→`:core:common` · `core.model`→`:core:model` · `core.database`→`:core:database` · `core.datastore`→`:core:datastore` · `core.audio`→`:core:audio` · `core.network`→`:core:network` · `core.transcription`→`:core:transcription` · `core.transforms`→`:core:transforms` · `core.export`→`:core:export` · `feature.capture`→`:feature:capture` · `feature.history`→`:feature:history` · `feature.profiles`→`:feature:profiles` · `feature.session-detail`→`:feature:session-detail` · `feature.settings`→`:feature:settings`
 
-### 4. Non-existent Android API members
+### 5. Non-existent Android API members
 
 Verify constants in the Android API reference before use. Example of a landmine:
 
@@ -108,7 +119,7 @@ MediaMetadataRetriever.METADATA_KEY_CHANNEL_COUNT
 extractor.getTrackFormat(0).getInteger(MediaFormat.KEY_CHANNEL_COUNT)
 ```
 
-### 5. `AnimatedVisibility` inside Column > Box
+### 6. `AnimatedVisibility` inside Column > Box
 
 Qualify with the inner scope to resolve the `ColumnScope`/`BoxScope` ambiguity:
 
@@ -124,15 +135,20 @@ Column { Box { this@Box.AnimatedVisibility(visible) { ... } } }
 
 ## Changelog (required for every PR)
 
-Update `CHANGELOG.md` `## Unreleased` → `### Features`, `### Improvements`, or `### Fixes` before any commit targeting `main`. The CI changelog job will block the PR otherwise.
+Each app has its own changelog:
+- Scrybe: `apps/scrybe/CHANGELOG.md`
+- Shelf Snap: `apps/shelf-snap/CHANGELOG.md`
+
+Update the relevant `## Unreleased` section under `### Features`, `### Improvements`, or `### Fixes` before any commit targeting `main`. The CI changelog job will block the PR otherwise.
 
 ---
 
 ## Architecture reference
 
-- Android project root: `apps/android-whispering/`
-- 17 modules: `:app`, `:core:{common,model,database,datastore,audio,network,transcription,transforms,export}`, `:feature:{capture,history,session-detail,profiles,settings}`, `:service:recording`, `:workers`
+- Scrybe project root: `apps/scrybe/`
+- Shelf Snap project root: `apps/shelf-snap/`
+- Scrybe modules (17): `:app`, `:core:{common,model,database,datastore,audio,network,transcription,transforms,export}`, `:feature:{capture,history,session-detail,profiles,settings}`, `:service:recording`, `:workers`
 - Hilt 2.51.1 · Kotlin 1.9.25 · AGP 8.7.3 · minSdk 26 / targetSdk 35 · Jetpack Compose
 - Detekt: zero tolerance (`maxIssues = 0`) — functions ≤ 60 lines, params ≤ 8, returns ≤ 4
 
-See `CONTRIBUTING.md` for full setup and PR checklist.
+See `CONTRIBUTING.md` and `AGENTS.md` for full setup and PR checklist.

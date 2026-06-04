@@ -1,237 +1,96 @@
-# TwoBits
+# TwoBits — AI tools that respect your intelligence
 
 [![Scrybe CI](https://github.com/punassuming/twobits/actions/workflows/scrybe-ci.yml/badge.svg)](https://github.com/punassuming/twobits/actions/workflows/scrybe-ci.yml)
 [![Shelf Snap CI](https://github.com/punassuming/twobits/actions/workflows/shelf-snap-ci.yml/badge.svg)](https://github.com/punassuming/twobits/actions/workflows/shelf-snap-ci.yml)
 [![Kotlin](https://img.shields.io/badge/kotlin-1.9.25-blue.svg?logo=kotlin)](https://kotlinlang.org)
 [![Min SDK](https://img.shields.io/badge/min%20sdk-26%20(Android%208.0)-brightgreen.svg)](https://developer.android.com/about/versions/oreo)
-[![Target SDK](https://img.shields.io/badge/target%20sdk-35%20(Android%2015)-brightgreen.svg)](https://developer.android.com/about/versions/15)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-TwoBits is a monorepo for two Android apps — **Scrybe** and **Shelf Snap** — backed by a shared billing library and a managed API key proxy. Both apps use AI to do useful things with your phone's microphone and camera.
+TwoBits is an independent software studio building small, focused Android utilities that use AI to save you time — without harvesting your data, locking you into a subscription, or making decisions you didn't ask for.
+
+Both apps live in this monorepo. They share a design system, billing infrastructure, and a managed API key proxy — but are independently buildable and independently useful. You can read every line of code and verify every network call.
+
+---
+
+## Apps
+
+| App | Tagline | What it does |
+|-----|---------|-------------|
+| [Scrybe](apps/scrybe/) | Voice to Document | Record any conversation → Whisper transcription → LLM transformation → structured notes. Seven recording modes shape AI output differently. On-device Whisper + Gemma or cloud GPT. BYOK or Pro ($1.99/mo). |
+| [Shelf Snap](apps/shelf-snap/) | What you have, what you give | Snap a photo → GPT-4o vision analysis → inventory draft with category, condition, and estimated value → market research with cited sources → cross-list or donate. |
+
+---
+
+## The project
+
+TwoBits started as a single app (Scrybe) and grew into a shared platform. The monorepo structure reflects what the apps actually share:
+
+- **Design system** — `shared/design/` provides `TwoBitsTypography` (DM Sans), `TwoBitsShapes`, and a unified color palette across all three accent families (Signal blue, Glow teal, Ember orange) with Mist/Ink/Slate surfaces. Both apps use Material 3 with the same token layer.
+- **Billing** — `shared/billing/` wraps RevenueCat. Both apps use the same Pro entitlement check and the same subscription status flow.
+- **API key management** — `shared/api-keys/` provides a consistent encrypted-storage and validation pattern for OpenAI and other provider keys.
+- **Networking** — `shared/network/` provides the configured OkHttp client and Retrofit setup consumed by both apps.
+
+The managed API key proxy (`api.twobits.app`, deployed from [punassuming/twobits-worker](https://github.com/punassuming/twobits-worker)) is a Cloudflare Worker that validates RevenueCat Pro subscriptions, enforces a per-user $2.00/month spend cap via a Durable Object, and routes requests to OpenAI — so the API key never reaches user devices.
+
+---
+
+## AI provider model
+
+Both apps support three tiers:
+
+| Tier | Description |
+|------|-------------|
+| **BYOK** | Paste your own OpenAI key. Requests go directly from your phone to OpenAI. You pay provider rates. |
+| **Pro ($1.99/mo)** | Requests route through `api.twobits.app`. Your key never touches your device. $2/month spend cap enforced atomically server-side. |
+| **Fully local** (Scrybe) | On-device Whisper (Sherpa-ONNX) for transcription; Gemma 2 2B (MediaPipe) for transforms. Zero network calls. |
 
 ```
-Scrybe / Shelf Snap apps
+Android app (Pro tier)
   └─ Authorization: Bearer <RevenueCat User ID>
-       └─ api.twobits.app  (punassuming/twobits-worker)
-            └─ OpenAI API  (key never leaves the proxy)
+       └─ api.twobits.app  (punassuming/twobits-worker — Cloudflare Worker)
+            ├─ RevenueCat API  ──► subscription check (cached 5 min in KV)
+            ├─ SpendTracker DO ──► atomic per-user monthly spend gate
+            └─ OpenAI API     ──► forward request, stream response back
 ```
 
-| App | What it does |
-|-----|-------------|
-| [Scrybe](apps/scrybe/) | Voice recording → Whisper transcription → LLM transformation → structured notes |
-| [Shelf Snap](apps/shelf-snap/) | Camera capture → GPT-4o vision analysis → inventory valuation + price research |
-
-The `shared/` directory contains Gradle modules used by both apps: billing, common utilities, API-key management, networking, and design tokens (typography, shapes).
-
-The managed API key proxy lives in **[punassuming/twobits-worker](https://github.com/punassuming/twobits-worker)** and is deployed independently to Cloudflare Workers.
+Free / BYOK users send requests directly to `api.openai.com` — the worker is never involved.
 
 ---
 
-## Scrybe
+## Privacy commitments
 
-Scrybe is an Android application for recording audio, transcribing it with AI, and transforming the resulting text into structured notes. Think of it as a voice-to-document pipeline that lives entirely on your phone.
+**Bring your own key** — AI processing uses your API key, billed directly to your provider. Or subscribe to Pro and we handle the key through the Cloudflare proxy.
 
----
+**On-device AI** — Scrybe runs Whisper and Gemma locally. Shelf Snap stores everything in a local Room database. No cloud backend, no sync service.
 
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| 🎙️ **Recording** | One-tap foreground recording with a persistent notification; configurable format, sample rate (up to 48 kHz), bitrate, and channel count |
-| 📝 **Transcription** | AI-powered speech-to-text via the OpenAI Whisper API; optional auto-transcribe on save; deduplication prevents redundant re-transcriptions |
-| ✨ **Transformation** | Post-process transcripts with LLM prompts (clean-up, summarise, extract action items); three built-in profiles, unlimited custom ones |
-| 🔊 **Playback** | In-session audio playback with real-time waveform visualizer and draggable seek control |
-| 📂 **History** | Browse, search, rename, and delete every past session |
-| 🔀 **Profiles** | Create and manage reusable transformation profiles with custom system prompts and a `{{transcript}}` template variable |
-| 📤 **Export** | Export sessions as Markdown, plain text, or JSON; files saved to on-device storage |
-| 🔗 **Sharing** | Share the original audio file or the latest transcript with any app via the standard Android share sheet |
-| 🔑 **API validation** | Live OpenAI API key validation with a real-time connection status indicator (valid / validating / invalid) |
-| 🎨 **Themes** | System-default, light, and dark mode |
-| 📣 **Release notes** | Automatic "What's New" popup on first launch after an update, with a categorised history available in Settings |
-| ⚙️ **Settings** | Configure OpenAI API key (with live validation), default provider, recording quality, auto-transcribe, theme, and view usage statistics |
+**No tracking** — No analytics SDKs. No ad networks. No telemetry beyond anonymous Play Console crash reports.
 
 ---
 
-## Architecture
-
-Scrybe follows the [Now in Android](https://github.com/android/nowinandroid) multi-module architecture pattern.
+## Repository layout
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  :app  (entry point – MainActivity, navigation, Hilt setup)     │
-├─────────────────────────────────────────────────────────────────┤
-│  :feature:*  (Compose screens + ViewModels)                     │
-│   capture │ history │ session-detail │ profiles │ settings      │
-├─────────────────────────────────────────────────────────────────┤
-│  :service:recording  (foreground service + notification)        │
-│  :workers            (WorkManager jobs – deferred transcription)│
-├─────────────────────────────────────────────────────────────────┤
-│  :core:*  (business logic, data access, provider abstractions)  │
-│   audio │ transcription │ transforms │ export                   │
-│   database │ datastore │ network │ model │ common               │
-└─────────────────────────────────────────────────────────────────┘
+apps/
+  scrybe/          — Scrybe Android app (multi-module Gradle project)
+  shelf-snap/      — Shelf Snap Android app (single-module Gradle project)
+shared/
+  billing/         — RevenueCat billing wrapper
+  common/          — Shared utilities (ScrybeSectionCard, result extensions)
+  api-keys/        — Encrypted key storage and provider validation
+  network/         — OkHttp + Retrofit setup
+  design/          — TwoBitsTypography, TwoBitsShapes, color tokens
+docs/              — GitHub Pages marketing site (twobits.app)
 ```
 
-### Data flow
-
-#### Capture (write path)
-
-```
-Microphone
-  │
-  ▼
-AudioRecorder  ──────────────────►  RecordedAudio (file path, duration)
-  │                                         │
-  │                                         ▼
-  │                              TranscriptionOrchestrator
-  │                                (routes by ProviderType;
-  │                                 deduplicates concurrent requests)
-  │                                         │
-  │                                         ▼
-  │                              TranscriptionProvider
-  │                               (OpenAI Whisper API)
-  │                                         │
-  │                                         ▼
-  │                              TransformationPipeline
-  │                               (LLM with system prompt)
-  │                                         │
-  │                           ┌─────────────┴─────────────┐
-  │                           ▼                           ▼
-  │                  ExportCoordinator            Android share sheet
-  │               (Markdown / Text / JSON)     (audio file or transcript)
-  │
-  ▼
-Room Database  ◄───── DAO ◄──── RecordingSessionEntity
-DataStore            ◄──── TranscriptEntity
-                     ◄──── TransformProfileEntity
-```
-
-#### Playback (read path)
-
-```
-Room Database  ──────────────────►  RecordingSessionEntity
-                                    TranscriptEntity
-                                         │
-                                         ▼
-                                   AudioPlayer
-                              (waveform visualizer,
-                               seek control, position flow)
-```
-
----
-
-## Module map
-
-| Module | Layer | Responsibility |
-|--------|-------|---------------|
-| `:app` | Application | Single activity, navigation graph, Hilt bootstrap, "What's New" popup |
-| `:feature:capture` | Feature | Recording UI – start / stop, animated waveform visualizer, live elapsed time |
-| `:feature:history` | Feature | Searchable, filterable list of past sessions; rename and delete |
-| `:feature:session-detail` | Feature | Full session view – audio playback, waveform seek, transcripts, transforms, sharing, and export |
-| `:feature:profiles` | Feature | Create / edit / delete transformation profiles; mark a default |
-| `:feature:settings` | Feature | API key with live validation, theme, recording quality defaults, auto-transcribe, usage statistics, release notes |
-| `:service:recording` | Service | `RecordingForegroundService` + persistent notification |
-| `:workers` | Workers | WorkManager-based deferred tasks (background transcription) |
-| `:core:audio` | Core | `AudioRecorder` / `AndroidMediaRecorder`; `AudioPlayer` with waveform and position flow |
-| `:core:transcription` | Core | `TranscriptionProvider`, `TranscriptionOrchestrator` (dedup), OpenAI Whisper implementation |
-| `:core:transforms` | Core | `TransformationProvider`, `TransformationPipeline`, three built-in `DefaultProfiles` |
-| `:core:export` | Core | `ExportCoordinator`, Markdown / Text / JSON exporters |
-| `:core:database` | Core | Room database, entities, DAOs |
-| `:core:datastore` | Core | DataStore preferences (API keys, theme, recording defaults) |
-| `:core:network` | Core | `OkHttpClient`, `Retrofit`, JSON serialisation config, `OpenAiApiKeyValidator` |
-| `:core:model` | Core | Shared domain models and enums |
-| `:core:common` | Core | Coroutine dispatcher qualifiers, `Result` extensions, release-notes parser |
+The worker lives in the separate **[punassuming/twobits-worker](https://github.com/punassuming/twobits-worker)** repository and deploys independently to Cloudflare Workers on push to `main`.
 
 ---
 
 ## Tech stack
 
-| Technology | Version | Role |
-|------------|---------|------|
-| Kotlin | 1.9.25 | Language |
-| Jetpack Compose | BOM 2024.12.01 | UI framework |
-| Hilt | 2.51.1 | Dependency injection |
-| Room | 2.6.1 | Local database |
-| DataStore | 1.1.1 | Preferences storage |
-| OkHttp | 4.12.0 | HTTP client |
-| Retrofit | 2.11.0 | REST abstraction |
-| Kotlinx Serialization | 1.6.3 | JSON serialisation |
-| Kotlinx Coroutines | 1.9.0 | Async / Flow |
-| KSP | 1.9.25-1.0.20 | Annotation processing |
-| Detekt | 1.23.7 | Static analysis |
-| KtLint | 12.1.1 | Code formatting |
-| Android Gradle Plugin | 8.7.3 | Build tooling |
-| Min SDK | 26 (Android 8.0) | Device support |
-| Target SDK | 35 (Android 15) | Target platform |
+Kotlin · Jetpack Compose · Hilt · Room · DataStore · OkHttp · Retrofit · Kotlinx Coroutines/Flow · Material 3. minSdk 26, targetSdk 35. MIT licensed.
 
----
-
-## Quick start
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for full environment setup and developer onboarding.
-
-### Prerequisites
-
-* **JDK 17** (Temurin recommended)
-* **Android Studio Ladybug** or later (or any IDE with Android plugin support)
-* An **OpenAI API key** to enable transcription
-
-### Build & run
-
-```bash
-# Clone the repository
-git clone https://github.com/punassuming/scrybe.git
-cd scrybe/apps/scrybe
-
-# Build a debug APK
-./gradlew assembleDebug
-
-# Install on a connected device / emulator
-./gradlew installDebug
-```
-
-If you are on Windows and want to pin the Android toolchain paths explicitly, dot-source the environment bootstrap once and then run Gradle directly:
-
-```powershell
-cd C:\drive\dev\android\scrybe
-. .\apps\scrybe\scripts\android-env.ps1
-& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" assembleDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
-& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" :service:recording:lintDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
-```
-
-The bootstrap script keeps Gradle state under the repo root, exports the checked-in wrapper path as `SCRYBE_ANDROID_GRADLEW`, and keeps `--info` enabled so long-running builds stay chatty on stdout.
-
-If you want a single command entrypoint instead of remembering Gradle and ADB commands, use the repo helper from the repo root:
-
-```powershell
-.\scripts\android.ps1 build
-.\scripts\android.ps1 install
-.\scripts\android.ps1 run
-.\scripts\android.ps1 lint
-.\scripts\android.ps1 test
-.\scripts\android.ps1 emulator -Avd scrybe-api35
-.\scripts\android.ps1 verify
-```
-
-The helper wraps `android-env.ps1`, uses the checked-in Gradle wrapper, keeps output on stdout with `--console=plain --info`, and also exposes ADB / emulator shortcuts such as `devices`, `emulators`, `logcat`, `stop-app`, and raw `gradle` passthrough.
-
-After first launch, open **Settings**, enter your OpenAI API key, and tap **Save** — the app validates the key against the OpenAI API and shows a live connection status before storing it.
-
-### Containerized development
-
-If you do not want to install the Android toolchain locally, a Docker-based development environment is available at the repository root:
-
-```bash
-docker compose build android-dev
-docker compose run --rm android-dev ./gradlew assembleDebug
-docker compose run --rm android-dev ./gradlew testDebugUnitTest
-```
-
-Container notes:
-
-* Includes Gradle 8.9 on JDK 17 plus the Android SDK platform tools, API 35, and build-tools 35.0.0.
-* If your network blocks Gradle wrapper downloads, you can substitute `gradle` for `./gradlew` inside the container because the matching Gradle version is already installed.
-* Device and emulator workflows still require host-side ADB / emulator access.
+Scrybe also uses Sherpa-ONNX (on-device Whisper) and MediaPipe (Gemma 2 2B).
 
 ---
 
@@ -239,30 +98,25 @@ Container notes:
 
 Each app has its own CI and release workflow. Both share `reusable-validate.yml` for changelog and manifest validation.
 
-### Scrybe
+| Workflow | App | Trigger | What it does |
+|----------|-----|---------|-------------|
+| `scrybe-ci.yml` | Scrybe | Push/PR | Changelog validation → assembleDebug, tests, lint, ktlintCheck, detekt |
+| `scrybe-release.yml` | Scrybe | CI success on `main` | Version bump, changelog promotion, tag, GitHub Release with APK/AAB |
+| `shelf-snap-ci.yml` | Shelf Snap | Push/PR | Changelog validation → assembleDebug, tests, lintDebug |
+| `shelf-snap-release.yml` | Shelf Snap | CI success on `main` | Version bump, changelog promotion, tag, GitHub Release with APK/AAB |
+| `reusable-validate.yml` | Both | Called by CI | Shared changelog + manifest validation logic |
+| `pages.yml` | — | Push to `main` | Deploy `docs/` to GitHub Pages |
 
-| Workflow | Trigger | What it does |
-|----------|---------|-------------|
-| `scrybe-ci.yml` | Push to `main`/`copilot/**`/`claude/**`, PRs to `main` | Changelog + manifest validation → assembleDebug, testDebugUnitTest, lint, ktlintCheck, detekt |
-| `scrybe-release.yml` | Successful `scrybe-ci.yml` on `main` | Computes next version, promotes changelog, bumps version, creates tag + GitHub Release with signed APK/AAB |
-
-### Shelf Snap
-
-| Workflow | Trigger | What it does |
-|----------|---------|-------------|
-| `shelf-snap-ci.yml` | Push to `main`/`copilot/**`/`claude/**`, PRs to `main` | Changelog + manifest validation → assembleDebug, testDebugUnitTest, lintDebug |
-| `shelf-snap-release.yml` | Successful `shelf-snap-ci.yml` on `main` | Computes next version, promotes changelog, bumps version, creates tag + GitHub Release with signed APK/AAB |
-
-### Release automation (both apps)
-
-1. PRs must update the app's `CHANGELOG.md` `## Unreleased` section before merge.
-2. Next version computed automatically from [conventional commits](https://www.conventionalcommits.org/) since the last tag.
-3. `## Unreleased` is promoted into a dated versioned section used as the GitHub Release body.
-4. A git tag and GitHub Release are created directly — **no separate release PR**.
-5. Signing secrets (`SIGNING_KEYSTORE_BASE64`, `SIGNING_KEYSTORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`) are optional; a one-off keystore is generated if absent so the APK remains installable.
+Release automation uses [conventional commits](https://www.conventionalcommits.org/). `## Unreleased` in each app's `CHANGELOG.md` is promoted automatically — no manual version bumping.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) for developer setup, coding standards, and CI requirements.
+
+Each app maintains its own changelog:
+- Scrybe: `apps/scrybe/CHANGELOG.md`
+- Shelf Snap: `apps/shelf-snap/CHANGELOG.md`
+
+Update the relevant changelog before any commit destined for `main`.

@@ -75,51 +75,31 @@ error-message mapping, platform/listing logic, and the price-research error mapp
 
 ---
 
-## CI / Building a test APK
+## CI / CD
 
 Every push to `main`, `copilot/**`, or `claude/**` (and every PR to `main`) runs
-`.github/workflows/build.yml`, which:
+`shelf-snap-ci.yml`, which:
 
-1. Runs **Android Lint** (`:app:lintDebug`) and the **unit tests** (`:app:test`) as gates.
-2. Builds and uploads an install-ready **debug** APK — artifact `shelf-snap-install-v1.0-<sha>` (file: `shelf-snap-install.apk`).
-3. Builds and uploads the raw **debug** APK — artifact `shelf-snap-debug-v1.0-<sha>`.
-4. Builds and uploads the raw **release** APK — artifact `shelf-snap-release-v1.0-<sha>`.
-5. Builds and uploads an install-ready **release** APK — artifact `shelf-snap-release-install-v1.0-<sha>` (file: `shelf-snap-release-install.apk`).
+1. Validates changelog structure and manifest files.
+2. Runs **unit tests** and **Android Lint** as gates.
+3. Builds a debug APK — artifact `shelf-snap-debug-<sha>`.
 
-Download any of these from the **Artifacts** section of the workflow run in the GitHub
-Actions tab, then install it on a device:
+Download the artifact from the **Artifacts** section of the workflow run in the GitHub Actions tab, then install it on a device:
 
 ```bash
-adb install shelf-snap-install.apk          # debug build
-adb install shelf-snap-release-install.apk  # release build (signed if secrets are set)
+adb install app-debug.apk
 ```
 
-> **Note:** Workflow artifacts require a GitHub sign-in to download and expire after
-> 14 days. For permanent, publicly downloadable builds, use a **Release** (below).
+> **Note:** Workflow artifacts require a GitHub sign-in to download and expire after 14 days.
 
----
+`shelf-snap-release.yml` runs automatically after a successful `shelf-snap-ci.yml` on `main`. It:
 
-## Publishing a Release
+1. Computes the next semantic version from [conventional commits](https://www.conventionalcommits.org/) since the last tag.
+2. Promotes `## Unreleased` in `CHANGELOG.md` to a dated version section.
+3. Bumps `versionName`/`versionCode` in `build.gradle.kts`.
+4. Creates a git tag and GitHub Release with the signed APK and AAB attached.
 
-`.github/workflows/release.yml` publishes the release APK as a **GitHub Release**
-asset — a permanent, public download on the repo's [Releases page](../../releases).
-It runs when either:
-
-- **A version tag is pushed** (official, versioned release):
-
-  ```bash
-  git tag v1.0.0
-  git push origin v1.0.0
-  ```
-
-- **It's triggered manually** from the **Actions → Publish Release APK → Run
-  workflow** menu, where you supply the tag to create (and optionally mark it a
-  pre-release).
-
-Either way it builds `assembleRelease`, attaches the APK as
-`shelf-snap-<tag>.apk` with auto-generated release notes, and signs it with the
-release keystore when the signing secrets are present (debug-signed fallback
-otherwise). Download it from the Releases page and `adb install shelf-snap-<tag>.apk`.
+Release automation uses conventional commit prefixes: `feat:` bumps minor, `fix:`/`chore:` bump patch, `BREAKING CHANGE` bumps major. The `## Unreleased` section is promoted automatically — no manual version bumping.
 
 ### Release signing
 

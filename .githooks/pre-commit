@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Scrybe pre-commit hook — lives in .githooks/ so it is tracked by git.
+# pre-commit hook — lives in .githooks/ so it is tracked by git.
 #
 # Activate once per clone:
 #   git config core.hooksPath .githooks
@@ -8,7 +8,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-ANDROID_DIR="$REPO_ROOT/apps/android-whispering"
+SCRYBE_DIR="$REPO_ROOT/apps/scrybe"
+SHELF_SNAP_DIR="$REPO_ROOT/apps/shelf-snap"
 KTLINT_VERSION="1.5.0"
 DETEKT_VERSION="1.23.7"
 
@@ -22,30 +23,49 @@ warn() { echo -e "${YELLOW}PRE-COMMIT WARN:${NC} $*" >&2; }
 ok()   { echo -e "${GREEN}PRE-COMMIT OK:${NC}   $*"; }
 
 # ── 1. Changelog structure ────────────────────────────────────────────────────
-python3 "$ANDROID_DIR/scripts/manage-changelog.py" \
-    validate --changelog "$REPO_ROOT/CHANGELOG.md" \
-    || fail "CHANGELOG.md structure is invalid."
-ok "Changelog structure"
+python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+    validate --changelog "$SCRYBE_DIR/CHANGELOG.md" \
+    || fail "apps/scrybe/CHANGELOG.md structure is invalid."
+ok "Scrybe changelog structure"
+
+python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+    validate --changelog "$SHELF_SNAP_DIR/CHANGELOG.md" \
+    || fail "apps/shelf-snap/CHANGELOG.md structure is invalid."
+ok "Shelf Snap changelog structure"
 
 # ── 1b. Changelog update required for code changes ───────────────────────────
-# Mirrors the CI `check-updated` gate: if any tracked code file is staged,
-# CHANGELOG.md must also be staged.
+# If any tracked code file is staged for a given app, that app's CHANGELOG.md
+# must also be staged.
 STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACM)
-STAGED_CODE=$(echo "$STAGED_ALL" | grep -E \
-    "^apps/android-whispering/|^Dockerfile\.dev$|^docker-compose\.yml$|^\.dockerignore$|^\.github/workflows/" \
-    || true)
-STAGED_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "CHANGELOG.md" || true)
 
-if [[ -n "$STAGED_CODE" && -z "$STAGED_CHANGELOG" ]]; then
-    echo -e "${RED}CHANGELOG.md must be updated when code files change.${NC}" >&2
-    echo "Staged code files with no changelog entry:" >&2
-    echo "$STAGED_CODE" | sed 's/^/  - /' >&2
-    fail "Stage a CHANGELOG.md update and re-commit."
+STAGED_SCRYBE_CODE=$(echo "$STAGED_ALL" | grep -E \
+    "^apps/scrybe/|^shared/|^Dockerfile\.dev$|^docker-compose\.yml$|^\.dockerignore$|^\.github/workflows/scrybe" \
+    || true)
+STAGED_SCRYBE_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/scrybe/CHANGELOG.md" || true)
+
+if [[ -n "$STAGED_SCRYBE_CODE" && -z "$STAGED_SCRYBE_CHANGELOG" ]]; then
+    echo -e "${RED}apps/scrybe/CHANGELOG.md must be updated when Scrybe code files change.${NC}" >&2
+    echo "Staged Scrybe code files with no changelog entry:" >&2
+    echo "$STAGED_SCRYBE_CODE" | sed 's/^/  - /' >&2
+    fail "Stage an apps/scrybe/CHANGELOG.md update and re-commit."
 fi
-ok "Changelog update required"
+ok "Scrybe changelog update check"
+
+STAGED_SHELF_SNAP_CODE=$(echo "$STAGED_ALL" | grep -E \
+    "^apps/shelf-snap/|^\.github/workflows/shelf-snap" \
+    || true)
+STAGED_SHELF_SNAP_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/shelf-snap/CHANGELOG.md" || true)
+
+if [[ -n "$STAGED_SHELF_SNAP_CODE" && -z "$STAGED_SHELF_SNAP_CHANGELOG" ]]; then
+    echo -e "${RED}apps/shelf-snap/CHANGELOG.md must be updated when Shelf Snap code files change.${NC}" >&2
+    echo "Staged Shelf Snap code files with no changelog entry:" >&2
+    echo "$STAGED_SHELF_SNAP_CODE" | sed 's/^/  - /' >&2
+    fail "Stage an apps/shelf-snap/CHANGELOG.md update and re-commit."
+fi
+ok "Shelf Snap changelog update check"
 
 # ── 2. AndroidManifest.xml files ─────────────────────────────────────────────
-(cd "$ANDROID_DIR" && python3 scripts/validate-manifests.py) \
+(cd "$SCRYBE_DIR" && python3 scripts/validate-manifests.py) \
     || fail "AndroidManifest.xml validation failed."
 ok "AndroidManifest.xml files"
 
@@ -70,9 +90,9 @@ else
     KTLINT="$KTLINT_CACHE"
 fi
 
-# Collect staged .kt / .kts files within the Android project.
+# Collect staged .kt / .kts files within both app directories.
 STAGED_KT=$(git diff --cached --name-only --diff-filter=ACM \
-    | grep -E "^apps/android-whispering/.*\.kts?$" || true)
+    | grep -E "^apps/(scrybe|shelf-snap)/.*\.kts?$" || true)
 
 if [[ -z "$STAGED_KT" ]]; then
     ok "Kotlin formatting (no .kt/.kts files staged)"
@@ -81,14 +101,14 @@ else
 
     # Auto-fix in place.
     (cd "$REPO_ROOT" && echo "$STAGED_KT" \
-        | xargs "$KTLINT" --editorconfig="$ANDROID_DIR/.editorconfig" --format 2>&1) || true
+        | xargs "$KTLINT" --editorconfig="$SCRYBE_DIR/.editorconfig" --format 2>&1) || true
 
     # Re-stage any files ktlint modified so the formatted version is committed.
     echo "$STAGED_KT" | xargs git add --
 
     # Verify no violations remain after auto-fix.
     KTLINT_OUT=$(cd "$REPO_ROOT" && echo "$STAGED_KT" \
-        | xargs "$KTLINT" --editorconfig="$ANDROID_DIR/.editorconfig" 2>&1 || true)
+        | xargs "$KTLINT" --editorconfig="$SCRYBE_DIR/.editorconfig" 2>&1 || true)
 
     if echo "$KTLINT_OUT" | grep -qE ":\s.*\(standard:"; then
         echo "$KTLINT_OUT" >&2
@@ -170,7 +190,7 @@ STAGED_GRADLE=$(echo "$STAGED_ALL" \
     | grep -E "build\.gradle\.kts$|libs\.versions\.toml$" || true)
 if [[ -n "$STAGED_GRADLE" ]]; then
     echo "Checking external dependency URLs…"
-    python3 "$ANDROID_DIR/scripts/validate-external-urls.py" \
+    python3 "$SCRYBE_DIR/scripts/validate-external-urls.py" \
         || fail "One or more dependency download URLs are unreachable. Fix the URL and re-commit."
     ok "External dependency URLs"
 fi
@@ -199,7 +219,7 @@ if [[ -n "$STAGED_KT_SOURCES" ]]; then
 
     DETEKT_EXIT=0
     java -jar "$DETEKT_JAR" \
-        --config "$ANDROID_DIR/detekt.yml" \
+        --config "$SCRYBE_DIR/detekt.yml" \
         --input "$DETEKT_INPUT" \
         --base-path "$REPO_ROOT" \
         2>&1 || DETEKT_EXIT=$?

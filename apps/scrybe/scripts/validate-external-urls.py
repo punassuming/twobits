@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ANDROID_DIR = REPO_ROOT / "apps" / "android-whispering"
+ANDROID_DIR = REPO_ROOT / "apps" / "scrybe"
 LIBS_TOML = ANDROID_DIR / "gradle" / "libs.versions.toml"
 
 ASSET_EXTENSIONS = (r"\.aar", r"\.jar", r"\.zip", r"\.tar\.bz2", r"\.tar\.gz")

@@ -51,7 +51,7 @@ jobs:
           # Main moved ahead. Only mark stale if Scrybe-relevant files changed
           # after head_sha — a concurrent shelf-snap version bump pushed to main
           # should not suppress a valid Scrybe release.
-          scrybe_ahead="$(git log "${head_sha}..origin/main" -- CHANGELOG.md apps/scrybe/ shared/ --oneline)"
+          scrybe_ahead="$(git log "${head_sha}..origin/main" -- apps/scrybe/CHANGELOG.md apps/scrybe/ shared/ --oneline)"
           if [ -n "$scrybe_ahead" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
             echo "Skipping release for stale SHA $head_sha — newer Scrybe commits on main."
@@ -68,11 +68,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog CHANGELOG.md)"
+          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/scrybe/CHANGELOG.md)"
           echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
 
           if [ "$has_bullets" != "true" ]; then
-            echo "Skipping release because CHANGELOG.md has no unreleased bullets."
+            echo "Skipping release because apps/scrybe/CHANGELOG.md has no unreleased bullets."
           fi
 
       # Computes the next semantic version from conventional commits since the
@@ -118,7 +118,7 @@ jobs:
           release_notes_path="${{ runner.temp }}/release-notes.md"
           python3 apps/scrybe/scripts/manage-changelog.py \
             promote-release \
-            --changelog CHANGELOG.md \
+            --changelog apps/scrybe/CHANGELOG.md \
             --version "${{ steps.version.outputs.new_version }}" \
             --date "$(date -u +%Y-%m-%d)" \
             --release-notes-output "$release_notes_path"
@@ -145,7 +145,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$build_file" CHANGELOG.md
+          git add "$build_file" apps/scrybe/CHANGELOG.md
           git diff --staged --quiet || git commit -m "chore: prepare release ${version_name} (${version_code}) [skip ci]"
           git push origin HEAD:main || {
             git fetch origin main

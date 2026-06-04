@@ -8,7 +8,7 @@ plugins {
 }
 
 val releaseKeystorePath: String? = System.getenv("KEYSTORE_PATH")
-val repositoryChangelog = projectDir.resolve("../../../CHANGELOG.md")
+val repositoryChangelog = projectDir.resolve("../CHANGELOG.md")
 val generatedChangelogAssetsDir = layout.buildDirectory.dir("generated/assets/changelog")
 val bundleChangelogAsset =
     tasks.register<Copy>("bundleChangelogAsset") {
