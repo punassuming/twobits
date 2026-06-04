@@ -92,11 +92,11 @@ android {
     }
 }
 
-// Bundle the root CHANGELOG.md into the app's assets so the in-app "What's new"
+// Bundle apps/shelf-snap/CHANGELOG.md into the app's assets so the in-app "What's new"
 // screen renders the same source of truth that CI maintains. The generated copy
 // is git-ignored; it's refreshed before every build.
 val copyChangelogToAssets by tasks.registering(Copy::class) {
-    val changelog = rootProject.file("CHANGELOG.md")
+    val changelog = rootProject.file("apps/shelf-snap/CHANGELOG.md")
     onlyIf { changelog.exists() }
     from(changelog)
     into(layout.projectDirectory.dir("src/main/assets"))
