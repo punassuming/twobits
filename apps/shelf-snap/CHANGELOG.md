@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
+
 ### Fixes
 
 ## 1.1.2 (2026-06-04)
