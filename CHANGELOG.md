@@ -6,10 +6,19 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.5.0 (2026-06-04)
+
+### Features
+
+### Improvements
+
 * consolidate CI/CD workflows — shared `reusable-validate.yml` for changelog and manifest validation; rename `android-ci.yml` → `scrybe-ci.yml` and `release.yml` → `scrybe-release.yml`; standardise signing secret names to `SIGNING_*` across both apps; add `workflow_dispatch` trigger to release workflows
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
 
 ### Fixes
+
 
 ## 1.4.0 (2026-06-03)
 
@@ -25,6 +34,7 @@
 ### Fixes
 
 
+
 ## 1.3.0 (2026-06-03)
 
 ### Features
@@ -34,6 +44,7 @@
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
 
 ### Fixes
+
 
 
 
