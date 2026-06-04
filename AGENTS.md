@@ -215,9 +215,18 @@ Column {
 
 ---
 
-## Branch management — always rebase onto origin/main before pushing
+## Branch management — always rebase onto origin/main before starting work AND before pushing
 
-Always fetch `origin/main` and rebase the working branch onto it before pushing:
+**At the start of every session**, before writing any code, fetch and rebase onto `origin/main`:
+
+```bash
+git fetch origin main
+git rebase origin/main
+```
+
+Skipping this step causes merge conflicts on the PR even when the code itself is correct. Always establish a clean base first, then make changes.
+
+**Before every push**, rebase again to pick up any commits that landed on main while you were working:
 
 ```bash
 git fetch origin main
