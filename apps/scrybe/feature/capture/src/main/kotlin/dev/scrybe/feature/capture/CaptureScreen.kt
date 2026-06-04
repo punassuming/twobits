@@ -1357,7 +1357,7 @@ private fun modeAccentColor(mode: RecordingMode): Color =
     when (mode) {
         RecordingMode.MEETING -> Color(0xFF89C7FF)
         RecordingMode.IDEA -> Color(0xFFFFD580)
-        RecordingMode.TASKS -> Color(0xFF88D7A8)
+        RecordingMode.TASKS -> Color(0xFF7DD4DC)
         RecordingMode.CONVERSATION -> Color(0xFFC4ABFF)
         RecordingMode.STORY -> Color(0xFFFF9EC4)
         RecordingMode.INTERVIEW -> Color(0xFFFFB695)

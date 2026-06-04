@@ -1,17 +1,18 @@
-name: Release
+name: Scrybe Release
 
 on:
   workflow_run:
     workflows:
-      - Android CI
+      - Scrybe CI
     types:
       - completed
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-main
+  group: scrybe-release-main
   cancel-in-progress: false
 
 jobs:
@@ -19,16 +20,17 @@ jobs:
     name: Tag, Release, and Build APK
     runs-on: ubuntu-latest
     if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Verify release target
         id: release_target
@@ -36,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          head_sha="${{ github.event.workflow_run.head_sha }}"
+          head_sha="${{ github.event.workflow_run.head_sha || github.sha }}"
           git fetch origin main --tags
           main_sha="$(git rev-parse origin/main)"
 
@@ -59,14 +61,6 @@ jobs:
             git checkout -B main origin/main
           fi
 
-      # Computes the next semantic version from conventional commits since the
-      # last tag without creating the tag yet. The tag is created after the
-      # changelog and app version commit so release tags point at the exact
-      # source used to build the uploaded APK.
-      # Version bumping rules:
-      #   feat:       → minor bump
-      #   fix:, chore:, etc. → patch bump (default_bump)
-      #   BREAKING CHANGE    → major bump
       - name: Check unreleased changelog content
         if: steps.release_target.outputs.stale != 'true'
         id: changelog_ready
@@ -81,6 +75,11 @@ jobs:
             echo "Skipping release because CHANGELOG.md has no unreleased bullets."
           fi
 
+      # Computes the next semantic version from conventional commits since the
+      # last tag without creating the tag yet. Version bumping rules:
+      #   feat:           → minor bump
+      #   fix:, chore:, etc. → patch bump (default_bump)
+      #   BREAKING CHANGE → major bump
       - name: Compute next version
         if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
         id: version
@@ -126,12 +125,10 @@ jobs:
 
           echo "release_notes_path=$release_notes_path" >> "$GITHUB_OUTPUT"
 
-      # Updates app version metadata in source so the repository always reflects
-      # the latest released version. versionCode is derived from semantic
-      # versioning as major * 1,000,000 + minor * 1,000 + patch, which keeps it
-      # monotonic for Android installs and tied directly to the release tag.
-      # The commit is tagged [skip ci] to prevent the push from re-triggering
-      # this workflow.
+      # Updates app version metadata so the repository always reflects the
+      # latest released version. versionCode is derived from semantic versioning
+      # as major * 1,000,000 + minor * 1,000 + patch (monotonic for Android installs).
+      # Tagged [skip ci] to prevent the push from re-triggering this workflow.
       - name: Bump app version in build.gradle.kts
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         shell: bash
@@ -165,17 +162,9 @@ jobs:
           git tag "${{ steps.version.outputs.new_tag }}"
           git push origin "${{ steps.version.outputs.new_tag }}"
 
-      # Sets up APK signing. If KEYSTORE_BASE64, STORE_PASSWORD, KEY_ALIAS, and
-      # KEY_PASSWORD secrets are all configured in the repository, the release
-      # APK is signed with that keystore. If any of the four secrets is absent,
-      # a one-off keystore is generated so the APK is still signed and
-      # installable (users must uninstall before upgrading when no persistent
-      # keystore secret is used).
-      #
-      # All four signing variables (KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS,
-      # KEY_PASSWORD) are written to GITHUB_ENV so the subsequent build step
-      # uses the exact same credentials that were used to set up the keystore —
-      # preventing a password mismatch when only a subset of secrets is set.
+      # If all four SIGNING_* secrets are configured, the release APK is signed
+      # with that keystore. Otherwise a one-off keystore is generated so the APK
+      # is still signed and installable.
       - name: Set up release signing
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         run: |
@@ -185,9 +174,6 @@ jobs:
             echo "KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
           else
-            # PKCS12 keystores (Java 9+) normalise the key password to the store
-            # password, so both values must be identical to avoid a decryption
-            # error when the AGP reads back the key entry.
             keytool -genkeypair -v -storetype PKCS12 \
               -keystore "${{ runner.temp }}/scrybe-release.jks" \
               -alias scrybe \
@@ -202,13 +188,11 @@ jobs:
           fi
           echo "KEYSTORE_PATH=${{ runner.temp }}/scrybe-release.jks" >> "$GITHUB_ENV"
         env:
-          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
-          STORE_PASS: ${{ secrets.STORE_PASSWORD }}
-          KEY_ALIAS_VAL: ${{ secrets.KEY_ALIAS }}
-          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          KEY_ALIAS_VAL: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.SIGNING_KEY_PASSWORD }}
 
-      # Fail fast on bad keystore secrets instead of spending several minutes
-      # compiling before APK packaging hits the signing error.
       - name: Validate release signing inputs
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         shell: bash
@@ -235,18 +219,11 @@ jobs:
 
           rm -f "${{ runner.temp }}/keystore-validation.p12"
 
-      # Normal Android CI now validates compile, unit tests, lint, ktlint, and
-      # detekt through a single debug-focused verification job. The release
-      # workflow remains the only place that assembles the signed release APK.
       - name: Build release APK and AAB
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         working-directory: apps/scrybe
         shell: bash
         run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
-        # KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD are set in
-        # GITHUB_ENV by the "Set up release signing" step above, ensuring the
-        # build always uses the same credentials that were used to configure the
-        # keystore (real secrets or fallback defaults).
 
       - name: Create GitHub Release and upload artifacts
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''

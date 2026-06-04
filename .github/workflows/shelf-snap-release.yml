@@ -1,41 +1,72 @@
-name: Shelf Snap Publish Release APK
+name: Shelf Snap Release
 
-# Publishes the Shelf Snap release APK as a GitHub Release asset.
-#  - Push a version tag (e.g. shelf-snap-v1.0, shelf-snap-v1.2.3) for an
-#    official, versioned release.
-#  - Or trigger manually from the Actions tab (workflow_dispatch).
 on:
-  push:
-    tags:
-      - "shelf-snap-v*"
+  workflow_run:
+    workflows:
+      - Shelf Snap CI
+    types:
+      - completed
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag to create/publish (e.g. shelf-snap-v1.0.1)"
-        required: true
-        default: "shelf-snap-v1.0.0"
-      prerelease:
-        description: "Mark this release as a pre-release"
-        type: boolean
-        required: false
-        default: false
+
+permissions:
+  contents: write
 
 concurrency:
-  group: shelf-snap-release-${{ github.ref_name }}-${{ inputs.tag }}
+  group: shelf-snap-release-main
   cancel-in-progress: false
 
 jobs:
   release:
-    name: Build & publish release APK
+    name: Tag, Release, and Build APK
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Align to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --tags
+          git checkout -B main origin/main
+
+      - name: Check unreleased changelog content
+        id: changelog_ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/shelf-snap/CHANGELOG.md)"
+          echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
+          if [ "$has_bullets" != "true" ]; then
+            echo "Skipping release — no unreleased bullets in apps/shelf-snap/CHANGELOG.md"
+          fi
+
+      # Computes the next semantic version from conventional commits since the
+      # last shelf-snap tag. Version bumping rules:
+      #   feat:           → minor bump
+      #   fix:, chore:, etc. → patch bump (default_bump)
+      #   BREAKING CHANGE → major bump
+      - name: Compute next version
+        if: steps.changelog_ready.outputs.has_bullets == 'true'
+        id: version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
+          tag_prefix: shelf-snap-v
+          dry_run: true
 
       - name: Set up JDK 17
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -43,76 +74,119 @@ jobs:
           cache: gradle
 
       - name: Set up Android SDK
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         uses: android-actions/setup-android@v4
         with:
           packages: "platforms;android-35 build-tools;35.0.0"
 
       - name: Grant execute permission for gradlew
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         run: chmod +x apps/shelf-snap/gradlew
 
-      - name: Resolve release tag
-        id: meta
+      - name: Promote changelog release section
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
+        id: changelog
+        shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag }}"
-          else
-            tag="${GITHUB_REF_NAME}"
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=${tag#shelf-snap-v}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          release_notes_path="${{ runner.temp }}/release-notes.md"
+          python3 apps/scrybe/scripts/manage-changelog.py \
+            promote-release \
+            --changelog apps/shelf-snap/CHANGELOG.md \
+            --version "${{ steps.version.outputs.new_version }}" \
+            --date "$(date -u +%Y-%m-%d)" \
+            --release-notes-output "$release_notes_path"
+          echo "release_notes_path=$release_notes_path" >> "$GITHUB_OUTPUT"
 
-      - name: Decode release keystore
+      # versionCode: major * 1,000,000 + minor * 1,000 + patch (matches Scrybe convention).
+      # Tagged [skip ci] to prevent the push from re-triggering this workflow.
+      - name: Bump app version in build.gradle.kts
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version_name="${{ steps.version.outputs.new_version }}"
+          IFS='.' read -r major minor patch <<< "$version_name"
+          version_code="$((major * 1000000 + minor * 1000 + patch))"
+          build_file="apps/shelf-snap/app/build.gradle.kts"
+
+          sed -Ei "s/versionName = \"[^\"]*\"/versionName = \"${version_name}\"/" "$build_file"
+          sed -Ei "s/versionCode = [0-9]+/versionCode = ${version_code}/" "$build_file"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$build_file" apps/shelf-snap/CHANGELOG.md
+          git diff --staged --quiet || git commit -m "chore(release): shelf-snap-${{ steps.version.outputs.new_tag }} [skip ci]"
+          git push origin HEAD:main || {
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          }
+
+      - name: Create release tag
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          git tag "${{ steps.version.outputs.new_tag }}"
+          git push origin "${{ steps.version.outputs.new_tag }}"
+
+      # If all four SIGNING_* secrets are configured, the release APK is signed
+      # with that keystore. Otherwise a one-off keystore is generated.
+      - name: Set up release signing
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         id: keystore
         env:
           KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-        if: ${{ env.KEYSTORE_B64 != '' }}
+          STORE_PASS: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          KEY_ALIAS_VAL: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
-          echo "path=$RUNNER_TEMP/release.keystore" >> "$GITHUB_OUTPUT"
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS_VAL" ] && [ -n "$KEY_PASS" ]; then
+            printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "$RUNNER_TEMP/release.keystore"
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+          else
+            keytool -genkeypair -v -storetype PKCS12 \
+              -keystore "$RUNNER_TEMP/release.keystore" \
+              -alias shelf-snap \
+              -keyalg RSA -keysize 2048 \
+              -validity 36500 \
+              -storepass shelf_ks_pass \
+              -keypass shelf_ks_pass \
+              -dname "CN=ShelfSnap, O=ShelfSnap, C=US" -noprompt
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=shelf_ks_pass" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=shelf-snap" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=shelf_ks_pass" >> "$GITHUB_ENV"
+          fi
 
       - name: Build release APK and AAB
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         working-directory: apps/shelf-snap
-        env:
-          SIGNING_STORE_FILE: ${{ steps.keystore.outputs.path }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease bundleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleRelease bundleRelease --no-daemon
 
       - name: Stage release assets
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         id: asset
         run: |
           src=$(ls apps/shelf-snap/app/build/outputs/apk/release/app-release*.apk | head -n1)
-          dest="shelf-snap-${{ steps.meta.outputs.tag }}.apk"
+          dest="shelf-snap-${{ steps.version.outputs.new_tag }}.apk"
           cp "$src" "$dest"
-          echo "Packaged release asset: $dest (from $src)"
-          if [[ "$src" == *unsigned* ]]; then
-            echo "signed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "signed=true" >> "$GITHUB_OUTPUT"
-          fi
-          echo "path=$dest" >> "$GITHUB_OUTPUT"
           cp apps/shelf-snap/app/build/outputs/bundle/release/app-release.aab \
-             "shelf-snap-${{ steps.meta.outputs.tag }}.aab" || true
+             "shelf-snap-${{ steps.version.outputs.new_tag }}.aab" || true
+          echo "path=$dest" >> "$GITHUB_OUTPUT"
 
-      - name: Publish GitHub Release
+      - name: Create GitHub Release and upload artifacts
+        if: steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.meta.outputs.tag }}
-          name: Shelf Snap v${{ steps.meta.outputs.version }}
-          generate_release_notes: true
-          prerelease: ${{ inputs.prerelease || false }}
+          tag_name: ${{ steps.version.outputs.new_tag }}
+          name: Shelf Snap v${{ steps.version.outputs.new_version }}
+          body_path: ${{ steps.changelog.outputs.release_notes_path }}
           files: |
             ${{ steps.asset.outputs.path }}
-            shelf-snap-${{ steps.meta.outputs.tag }}.aab
-          body: |
-            ### Shelf Snap ${{ steps.meta.outputs.tag }}
-
-            Download **`${{ steps.asset.outputs.path }}`** below to sideload on
-            Android (API 26+), or use the `.aab` bundle to publish to Google Play.
-
-            ```bash
-            adb install ${{ steps.asset.outputs.path }}
-            ```
-
-            > APK signing: **${{ steps.asset.outputs.signed == 'true' && 'signed with the release keystore' || 'debug-signed (release signing secrets not configured)' }}**.
+            shelf-snap-${{ steps.version.outputs.new_tag }}.aab

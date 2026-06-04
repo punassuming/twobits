@@ -552,7 +552,6 @@ fun SettingsScreen(
                 SettingsSectionCard(
                     title = "Recording Defaults",
                     icon = Icons.Filled.Storage,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
                     Text(
                         text = "Format",
@@ -650,7 +649,6 @@ fun SettingsScreen(
                 SettingsSectionCard(
                     title = "Recording Automation",
                     icon = Icons.Filled.AutoAwesome,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
                     Text(
                         text = "Default transform profile: ${uiState.defaultTransformProfileName ?: "None selected"}",
@@ -699,14 +697,13 @@ fun SettingsScreen(
                     Text(
                         text = "You can change the default prompt profile from the Profiles screen.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
                 SettingsSectionCard(
                     title = "Recording Feedback",
                     icon = Icons.Filled.Notifications,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),

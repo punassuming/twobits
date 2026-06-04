@@ -1,4 +1,4 @@
-name: Android CI
+name: Scrybe CI
 
 on:
   push:
@@ -10,8 +10,9 @@ on:
       - 'Dockerfile.dev'
       - 'docker-compose.yml'
       - '.dockerignore'
-      - '.github/workflows/android-ci.yml'
-      - '.github/workflows/release.yml'
+      - '.github/workflows/scrybe-ci.yml'
+      - '.github/workflows/scrybe-release.yml'
+      - '.github/workflows/reusable-validate.yml'
   pull_request:
     branches: [ "main" ]
     paths:
@@ -21,62 +22,24 @@ on:
       - 'Dockerfile.dev'
       - 'docker-compose.yml'
       - '.dockerignore'
-      - '.github/workflows/android-ci.yml'
-      - '.github/workflows/release.yml'
+      - '.github/workflows/scrybe-ci.yml'
+      - '.github/workflows/scrybe-release.yml'
+      - '.github/workflows/reusable-validate.yml'
 
 concurrency:
-  group: android-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: scrybe-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  changelog:
-    name: Changelog
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Validate changelog structure
-        run: python3 apps/scrybe/scripts/manage-changelog.py validate --changelog CHANGELOG.md
-
-      - name: Require changelog update for main-bound changes
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base_ref="${{ github.event.pull_request.base.sha }}"
-            head_ref="${{ github.event.pull_request.head.sha }}"
-          else
-            base_ref="${{ github.event.before }}"
-            head_ref="${{ github.sha }}"
-          fi
-
-          python3 apps/scrybe/scripts/manage-changelog.py \
-            check-updated \
-            --base-ref "$base_ref" \
-            --head-ref "$head_ref" \
-            --changelog CHANGELOG.md
-
   validate:
-    name: Validate Configuration
-    runs-on: ubuntu-latest
-    needs: changelog
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate AndroidManifest.xml files
-        run: python3 apps/scrybe/scripts/validate-manifests.py --root apps/scrybe
+    name: Validate
+    uses: ./.github/workflows/reusable-validate.yml
+    with:
+      changelog_path: CHANGELOG.md
+      app_root: apps/scrybe
+      require_changelog_update: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+      base_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      head_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
   detect-changes:
     name: Detect Changes
@@ -152,20 +115,19 @@ jobs:
 
           echo "skip_android=true" >> "$GITHUB_OUTPUT"
 
-  verify-android:
-    name: Verify Android
+  build:
+    name: Build & Verify
     runs-on: ubuntu-latest
-    needs: [changelog, validate, detect-changes]
+    needs: [validate, detect-changes]
     permissions:
       contents: read
       statuses: write
     timeout-minutes: 45
     if: >-
       always() &&
-      needs.changelog.result == 'success' &&
       needs.validate.result == 'success' &&
-      (needs['detect-changes'].result == 'success' || needs['detect-changes'].result == 'skipped') &&
-      needs['detect-changes'].outputs.skip_android != 'true'
+      (needs.detect-changes.result == 'success' || needs.detect-changes.result == 'skipped') &&
+      needs.detect-changes.outputs.skip_android != 'true'
 
     steps:
       - name: Checkout
@@ -186,15 +148,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x apps/scrybe/gradlew
 
-      # Run all Android verification in one Gradle invocation so the runner
-      # reuses a single environment setup, configuration phase, and dependency
-      # resolution pass instead of paying for three separate build cycles.
-      - name: Run Android verification
+      # Single Gradle invocation so the runner reuses one environment setup,
+      # configuration phase, and dependency resolution pass.
+      - name: Build, lint & test
         working-directory: apps/scrybe
         shell: bash
         run: bash scripts/ci-gradle-retry.sh assembleDebug testDebugUnitTest lint ktlintCheck detekt
 
-      - name: Upload Scrybe debug APK
+      - name: Upload debug APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
