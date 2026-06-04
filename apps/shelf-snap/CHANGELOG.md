@@ -6,9 +6,18 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.1.2 (2026-06-04)
+
+### Features
+
+### Improvements
+
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
 
 ### Fixes
+
 
 ## 1.1.1 (2026-06-04)
 
@@ -20,6 +29,7 @@
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
 
 ### Fixes
+
 
 
 ## 1.1.0 (2026-06-04)
@@ -35,6 +45,7 @@
 
 
 
+
 ## 1.0.2 (2026-06-03)
 
 ### Features
@@ -44,6 +55,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -61,9 +73,11 @@
 
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 
