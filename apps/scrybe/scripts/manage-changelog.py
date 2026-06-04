@@ -43,6 +43,26 @@ def main() -> int:
     )
     has_bullets_parser.add_argument("--changelog", default="CHANGELOG.md")
 
+    new_since_tag_parser = subparsers.add_parser(
+        "has-new-unreleased-since-tag",
+        help=(
+            "Print 'true' only if ## Unreleased contains bullets that were NOT "
+            "present at the given git tag. Prevents duplicate releases when a "
+            "feature branch is rebased onto a main that already cut a release."
+        ),
+    )
+    new_since_tag_parser.add_argument("--changelog", required=True)
+    new_since_tag_parser.add_argument(
+        "--tag",
+        required=True,
+        help="Git tag to compare against (e.g. scrybe-v1.6.0).",
+    )
+    new_since_tag_parser.add_argument(
+        "--fallback-changelog",
+        default=None,
+        help="Fallback path inside the repo to try if --changelog is absent at the tag (e.g. CHANGELOG.md).",
+    )
+
     promote_parser = subparsers.add_parser(
         "promote-release",
         help="Convert the Unreleased section into a versioned release section.",
@@ -67,6 +87,16 @@ def main() -> int:
     if args.command == "has-unreleased-bullets":
         changelog_path = resolve_path(args.changelog)
         print("true" if has_unreleased_bullets(changelog_path) else "false")
+        return 0
+
+    if args.command == "has-new-unreleased-since-tag":
+        changelog_path = resolve_path(args.changelog)
+        result = has_new_unreleased_since_tag(
+            changelog_path=changelog_path,
+            tag=args.tag,
+            fallback_changelog=args.fallback_changelog,
+        )
+        print("true" if result else "false")
         return 0
 
     if args.command == "promote-release":
@@ -229,6 +259,55 @@ def render_section(section: Section) -> str:
 
 def render_section_lines(section: Section) -> list[str]:
     return [section.heading, *section.body]
+
+
+def has_new_unreleased_since_tag(
+    changelog_path: Path,
+    tag: str,
+    fallback_changelog: str | None,
+) -> bool:
+    """Return True only if ## Unreleased has bullets not already in a versioned section.
+
+    The `tag` parameter is accepted for CLI consistency but the authoritative
+    check compares against the current changelog file's versioned sections, not
+    git history. After a `promote-release` run the ## Unreleased section at any
+    tag is always empty, so a git-based diff would incorrectly treat every
+    stale bullet as new. Instead: a bullet is a duplicate if it already appears
+    verbatim in any versioned section (## X.Y.Z ...) of the CURRENT file.
+    """
+    validate_changelog(changelog_path)
+    sections = read_sections(changelog_path)
+
+    unreleased = next(section for section in sections if section.heading == UNRELEASED_HEADING)
+    unreleased_bullets = {
+        line.strip()
+        for line in unreleased.body
+        if line.strip().startswith(("* ", "- "))
+    }
+
+    if not unreleased_bullets:
+        return False
+
+    released_bullets: set[str] = set()
+    for section in sections:
+        if section.heading == UNRELEASED_HEADING:
+            continue
+        released_bullets.update(
+            line.strip()
+            for line in section.body
+            if line.strip().startswith(("* ", "- "))
+        )
+
+    new_bullets = unreleased_bullets - released_bullets
+    if new_bullets:
+        return True
+
+    print(
+        f"All {len(unreleased_bullets)} bullet(s) in ## Unreleased already appear in a "
+        "versioned section — skipping to avoid a duplicate release.",
+        file=sys.stderr,
+    )
+    return False
 
 
 def git_output(*args: str) -> str:

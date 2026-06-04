@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
+
 ### Fixes
 
 ## 1.1.1 (2026-06-04)
