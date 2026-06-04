@@ -13,7 +13,7 @@ services:
     volumes:
       - .:/workspace
       - gradle-cache:/home/gradle/.gradle
-    working_dir: /workspace/apps/android-whispering
+    working_dir: /workspace/apps/scrybe
 
 volumes:
   gradle-cache:

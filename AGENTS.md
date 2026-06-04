@@ -40,7 +40,7 @@ This activates the tracked pre-commit hook in `.githooks/pre-commit`. It runs ch
 cd apps/scrybe
 
 # 1. Validate changelog structure
-python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md
+python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md
 
 # 2. Validate all AndroidManifest.xml files
 python3 scripts/validate-manifests.py
@@ -67,7 +67,7 @@ python3 scripts/validate-manifests.py
 One-liner:
 
 ```bash
-python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md && \
+python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md && \
   python3 scripts/validate-manifests.py && \
   ./gradlew ktlintFormat assembleDebug testDebugUnitTest lint ktlintCheck detekt --no-daemon
 ```
@@ -232,9 +232,9 @@ Never push a branch that diverged from a stale base. If the rebase produces a co
 ## Mandatory changelog updates
 
 ### Scrybe
-Update `CHANGELOG.md` (repo root) `## Unreleased` section before any commit destined for `main`. Add bullets under `### Features`, `### Improvements`, or `### Fixes`.
+Update `apps/scrybe/CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Add bullets under `### Features`, `### Improvements`, or `### Fixes`.
 
-Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog CHANGELOG.md`
+Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md`
 
 ### Shelf Snap
 Update `apps/shelf-snap/CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Format is identical to the Scrybe changelog.

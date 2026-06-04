@@ -1,9 +1,9 @@
 .idea/
 *.iml
 
-apps/android-whispering/.gradle-user-home/
-apps/android-whispering/.gradle-user-home-*/
-apps/android-whispering/.gradle-user-home-ci/
+apps/scrybe/.gradle-user-home/
+apps/scrybe/.gradle-user-home-*/
+apps/scrybe/.gradle-user-home-ci/
 
 **/build/
 **/.gradle/
