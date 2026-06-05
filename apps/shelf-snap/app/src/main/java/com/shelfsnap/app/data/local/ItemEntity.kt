@@ -29,7 +29,8 @@ data class ItemEntity(
     val marketResearch: MarketResearch = MarketResearch(),
     val listings: List<PlatformListing> = emptyList(),
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val primaryPhotoIndex: Int = 0
 )
 
 fun ItemEntity.toDomain() = Item(
@@ -51,7 +52,8 @@ fun ItemEntity.toDomain() = Item(
     marketResearch = marketResearch,
     listings = listings,
     createdAt = createdAt,
-    updatedAt = updatedAt
+    updatedAt = updatedAt,
+    primaryPhotoIndex = primaryPhotoIndex
 )
 
 fun Item.toEntity() = ItemEntity(
@@ -73,5 +75,6 @@ fun Item.toEntity() = ItemEntity(
     marketResearch = marketResearch,
     listings = listings,
     createdAt = createdAt,
-    updatedAt = updatedAt
+    updatedAt = updatedAt,
+    primaryPhotoIndex = primaryPhotoIndex
 )

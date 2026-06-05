@@ -4,7 +4,19 @@
 
 ### Features
 
+**Session Playback** — PlaybackCard visual redesign:
+* speaker colour palette updated to design tokens — signal blue `#89C7FF`, glow green `#88D7A8`, ember `#FFB695`, purple `#C6A0F6`
+* centred transport controls (skip‑10s / play‑pause / skip‑10s) with `Arrangement.Center`
+* waveform card height reduced to 80dp; `ScrybeSectionHeader` removed from playback
+
+**Capture** — RecordingActiveView content area:
+* recent-session mini-list replaces the empty spacer between the waveform card and stop controls
+* each row shows mode badge, session title, duration, and status chip
+* tapping a row navigates to that session while the recording continues in the background
+
 ### Improvements
+
+* fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
 
 ### Fixes
 

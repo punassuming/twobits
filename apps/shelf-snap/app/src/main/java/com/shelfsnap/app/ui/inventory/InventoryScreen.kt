@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -43,8 +45,17 @@ fun InventoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.my_inventory)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 actions = {
+                    IconButton(onClick = { /* sort — no-op for now */ }) {
+                        Icon(Icons.Default.Sort, contentDescription = "Sort")
+                    }
                     IconButton(onClick = onSummaryClick) {
                         Icon(Icons.Default.Summarize, contentDescription = stringResource(R.string.donation_summary))
                     }
@@ -94,6 +105,16 @@ fun InventoryScreen(
                 )
             }
 
+            // Summary banner — shown when there are items
+            if (!uiState.isLoading && uiState.items.isNotEmpty()) {
+                val totalEstimate = uiState.items.sumOf { it.estimatedValue }
+                SummaryBanner(
+                    itemCount = uiState.items.size,
+                    totalEstimate = totalEstimate,
+                    onSummaryClick = onSummaryClick,
+                )
+            }
+
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     CircularProgressIndicator()
@@ -103,34 +124,15 @@ fun InventoryScreen(
                     Modifier.fillMaxSize(),
                     Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Inventory2,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
+                    if (uiState.searchQuery.isNotBlank()) {
                         Text(
-                            text = if (uiState.searchQuery.isNotBlank())
-                                stringResource(R.string.no_items_match_search)
-                            else
-                                stringResource(R.string.no_items),
+                            text = stringResource(R.string.no_items_match_search),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(32.dp)
                         )
-                        // Nudge users to configure the API key before they hit an
-                        // analysis error on their first capture.
-                        if (!uiState.hasApiKey) {
-                            FilledTonalButton(onClick = onSettingsClick) {
-                                Icon(Icons.Default.Settings, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.setup_api_key_nudge))
-                            }
-                        }
+                    } else {
+                        InventoryWalkthrough(onSettingsClick = onSettingsClick)
                     }
                 }
 
@@ -147,6 +149,68 @@ fun InventoryScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun InventoryWalkthrough(onSettingsClick: () -> Unit) {
+    val steps = listOf(
+        Triple(Icons.Default.PhotoCamera, R.string.walkthrough_step1_title, R.string.walkthrough_step1_body),
+        Triple(Icons.Default.AutoAwesome, R.string.walkthrough_step2_title, R.string.walkthrough_step2_body),
+        Triple(Icons.Default.Sell, R.string.walkthrough_step3_title, R.string.walkthrough_step3_body),
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.walkthrough_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        steps.forEach { (icon, titleRes, bodyRes) ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(titleRes),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(bodyRes),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        FilledTonalButton(onClick = onSettingsClick) {
+            Icon(Icons.Default.Settings, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.go_to_settings))
         }
     }
 }
@@ -198,61 +262,63 @@ private fun InventoryItemCard(
             ItemThumb(item = item, size = 64.dp, showCount = true)
 
             // Details
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Title row: name on left, estimate+confidence on right
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Text(
-                        text = item.category.ifBlank { "—" },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = item.category.ifBlank { "—" },
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (item.brand.isNotBlank()) {
+                            Text(
+                                text = if (item.model.isNotBlank()) "${item.brand} ${item.model}" else item.brand,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End, modifier = Modifier) {
+                        Text(
+                            text = "$" + "%.0f".format(item.estimatedValue),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = estimateColor,
+                        )
+                        if (item.confidencePercent > 0) {
+                            Text(
+                                text = "${item.confidencePercent}% conf.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                // Badges row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ConditionBadge(condition = item.condition)
                     if (item.isDraft) {
                         Badge(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        ) { Text(stringResource(R.string.draft_label)) }
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ) {
+                            Text(stringResource(R.string.draft_label))
+                        }
                     }
                     ListingStatusPill(item = item)
-                }
-                // Brand · Model subtitle
-                if (item.brand.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = if (item.model.isNotBlank()) "${item.brand} · ${item.model}" else item.brand,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else if (item.description.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = item.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Condition as colored chip
-                    ConditionBadge(condition = item.condition)
-                    // Story 4 – Valuation suggestion, labeled as estimate
-                    Text(
-                        text = "$" + "%.2f".format(item.estimatedValue) + " *",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = estimateColor,
-                        fontWeight = FontWeight.SemiBold
-                    )
                     Spacer(Modifier.weight(1f))
                     PlatformDots(item = item)
                 }
@@ -376,6 +442,55 @@ fun conditionColor(condition: Condition): androidx.compose.ui.graphics.Color = w
     Condition.GOOD -> ConditionGood
     Condition.FAIR -> ConditionFair
     Condition.POOR -> ConditionPoor
+}
+
+@Composable
+private fun SummaryBanner(
+    itemCount: Int,
+    totalEstimate: Double,
+    onSummaryClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable(onClick = onSummaryClick),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                Icons.Default.Inventory2,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = buildString {
+                    append(itemCount)
+                    append(" item")
+                    if (itemCount != 1) append("s")
+                    append("  ·  Est. total: ")
+                    append("$")
+                    append(totalEstimate.toInt())
+                },
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
 }
 
 /** Displays the item condition as a small colored chip. */

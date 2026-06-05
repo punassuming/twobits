@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Forward10
@@ -21,7 +24,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -46,7 +48,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import dev.scrybe.core.common.ScrybeSectionCard
-import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SentimentSegment
 import dev.scrybe.core.model.SpeakerSegment
@@ -73,52 +74,11 @@ internal fun PlaybackCard(
     ScrybeSectionCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        ScrybeSectionHeader(
-            title = "Playback",
-            trailing = {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onSkipBack) {
-                        Icon(
-                            imageVector = Icons.Filled.Replay10,
-                            contentDescription = "Skip back 10 seconds",
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    IconButton(onClick = onTogglePlayback) {
-                        Icon(
-                            imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (state.isPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    IconButton(onClick = onSkipForward) {
-                        Icon(
-                            imageVector = Icons.Filled.Forward10,
-                            contentDescription = "Skip forward 10 seconds",
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                    IconButton(
-                        onClick = onStopPlayback,
-                        enabled = state.isPlaying || state.playbackPositionMs > 0L,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Stop,
-                            contentDescription = "Stop",
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
-            },
-        )
         Box(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .height(80.dp),
         ) {
             WaveformTimeline(
                 samples = state.session.waveformSamples,
@@ -148,6 +108,46 @@ internal fun PlaybackCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onSkipBack, modifier = Modifier.size(44.dp)) {
+                Icon(
+                    Icons.Filled.Replay10,
+                    contentDescription = "Skip back 10s",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Surface(
+                onClick = onTogglePlayback,
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+                shadowElevation = 2.dp,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        modifier = Modifier.size(26.dp),
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            IconButton(onClick = onSkipForward, modifier = Modifier.size(44.dp)) {
+                Icon(
+                    Icons.Filled.Forward10,
+                    contentDescription = "Skip forward 10s",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         if (state.speakerSegments.isNotEmpty()) {
             SpeakerLegend(
@@ -411,10 +411,14 @@ private fun densitySmoothed(
 
 internal val speakerColorPalette =
     listOf(
-        Color(0xFF2196F3),
-        Color(0xFFF44336),
-        Color(0xFFFF9800),
-        Color(0xFF9C27B0),
+        // signal blue
+        Color(0xFF89C7FF),
+        // glow green
+        Color(0xFF88D7A8),
+        // ember
+        Color(0xFFFFB695),
+        // purple
+        Color(0xFFC6A0F6),
     )
 
 internal fun speakerColorForIndex(index: Int): Color = speakerColorPalette[index.mod(speakerColorPalette.size)]
