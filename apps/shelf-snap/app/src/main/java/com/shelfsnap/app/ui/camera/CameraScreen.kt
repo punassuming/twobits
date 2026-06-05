@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -323,6 +324,42 @@ private fun CameraContent(
         }
 
         // Photo strip – numbered, removable, with an "add another" hint slot
+        var previewPath by remember { mutableStateOf<String?>(null) }
+        previewPath?.let { path ->
+            Dialog(onDismissRequest = { previewPath = null }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Black)
+                ) {
+                    AsyncImage(
+                        model = File(path),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 480.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    IconButton(
+                        onClick = { previewPath = null },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(32.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.close),
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
         if (capturedPaths.isNotEmpty()) {
             LazyRow(
                 modifier = Modifier
@@ -332,20 +369,21 @@ private fun CameraContent(
             ) {
                 items(capturedPaths) { path ->
                     val index = capturedPaths.indexOf(path)
-                    Box(modifier = Modifier.size(64.dp)) {
+                    Box(modifier = Modifier.size(96.dp)) {
                         AsyncImage(
                             model = File(path),
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(12.dp)),
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable { previewPath = path },
                             contentScale = ContentScale.Crop
                         )
                         IconButton(
                             onClick = { onRemovePhoto(path) },
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .size(20.dp)
+                                .size(22.dp)
                                 .background(
                                     MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
                                     CircleShape
@@ -361,10 +399,10 @@ private fun CameraContent(
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(2.dp)
+                                .padding(4.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(Color.Black.copy(alpha = 0.5f))
-                                .padding(horizontal = 4.dp)
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
                         ) {
                             Text(
                                 text = "${index + 1}",
@@ -472,8 +510,8 @@ private fun AddAnotherHint() {
     val outline = Color.White.copy(alpha = 0.4f)
     Box(
         modifier = Modifier
-            .size(64.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .size(96.dp)
+            .clip(RoundedCornerShape(14.dp))
             .drawBehind {
                 drawRoundRect(
                     color = outline,

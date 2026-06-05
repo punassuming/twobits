@@ -40,6 +40,30 @@ class VisionAnalysisService @Inject constructor() {
     private val json = "application/json; charset=utf-8".toMediaType()
 
     /**
+     * Sends a lightweight GET /v1/models request to verify that [apiKey] is accepted by
+     * OpenAI. Returns [Result.success] or [Result.failure] with a user-facing message.
+     */
+    suspend fun testKey(apiKey: String): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!ApiKeyValidator.isValid(apiKey)) {
+            return@withContext Result.failure(IOException(ERROR_INVALID_KEY))
+        }
+        runCatching {
+            val request = Request.Builder()
+                .url("https://api.openai.com/v1/models")
+                .addHeader("Authorization", "Bearer $apiKey")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IOException(friendlyHttpError(response.code))
+                }
+            }
+        }.recoverCatching { e ->
+            val friendly = if (e is IOException && e.message != null) e.message!! else friendlyNetworkError(e)
+            throw IOException(friendly)
+        }
+    }
+
+    /**
      * Analyses [photoPaths] and returns a [DraftItemResult].
      * Returns a result with [DraftItemResult.error] set if the call fails.
      */

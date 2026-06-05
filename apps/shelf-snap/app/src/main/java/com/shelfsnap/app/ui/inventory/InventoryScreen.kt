@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -103,34 +105,15 @@ fun InventoryScreen(
                     Modifier.fillMaxSize(),
                     Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Inventory2,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
+                    if (uiState.searchQuery.isNotBlank()) {
                         Text(
-                            text = if (uiState.searchQuery.isNotBlank())
-                                stringResource(R.string.no_items_match_search)
-                            else
-                                stringResource(R.string.no_items),
+                            text = stringResource(R.string.no_items_match_search),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(32.dp)
                         )
-                        // Nudge users to configure the API key before they hit an
-                        // analysis error on their first capture.
-                        if (!uiState.hasApiKey) {
-                            FilledTonalButton(onClick = onSettingsClick) {
-                                Icon(Icons.Default.Settings, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.setup_api_key_nudge))
-                            }
-                        }
+                    } else {
+                        InventoryWalkthrough(onSettingsClick = onSettingsClick)
                     }
                 }
 
@@ -147,6 +130,68 @@ fun InventoryScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun InventoryWalkthrough(onSettingsClick: () -> Unit) {
+    val steps = listOf(
+        Triple(Icons.Default.PhotoCamera, R.string.walkthrough_step1_title, R.string.walkthrough_step1_body),
+        Triple(Icons.Default.AutoAwesome, R.string.walkthrough_step2_title, R.string.walkthrough_step2_body),
+        Triple(Icons.Default.Sell, R.string.walkthrough_step3_title, R.string.walkthrough_step3_body),
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.walkthrough_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        steps.forEach { (icon, titleRes, bodyRes) ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(titleRes),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(bodyRes),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        FilledTonalButton(onClick = onSettingsClick) {
+            Icon(Icons.Default.Settings, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.go_to_settings))
         }
     }
 }

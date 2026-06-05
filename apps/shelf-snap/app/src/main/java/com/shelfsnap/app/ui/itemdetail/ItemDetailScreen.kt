@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -227,7 +228,7 @@ private fun DetailsTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Photos — numbered gallery with an "Add photo" slot
+        // Photos — numbered gallery with primary-star selector and "Add photo" slot
         Text(
             text = stringResource(R.string.photos),
             style = MaterialTheme.typography.titleSmall,
@@ -238,6 +239,7 @@ private fun DetailsTab(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item.photoPaths.forEachIndexed { index, path ->
+                val isPrimary = index == uiState.editPrimaryPhotoIndex
                 Box(modifier = Modifier.size(80.dp)) {
                     AsyncImage(
                         model = File(path),
@@ -248,6 +250,27 @@ private fun DetailsTab(
                             .clickable { onPhotoClick(index) },
                         contentScale = ContentScale.Crop
                     )
+                    // Star tap zone — top-left corner
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(3.dp)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.45f))
+                            .clickable { viewModel.setPrimaryPhoto(index) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isPrimary) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = if (isPrimary)
+                                stringResource(R.string.primary_photo)
+                            else
+                                stringResource(R.string.set_as_primary),
+                            tint = if (isPrimary) Color(0xFFFFD580) else Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)

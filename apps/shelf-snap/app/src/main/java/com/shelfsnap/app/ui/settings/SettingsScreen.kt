@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.NewReleases
@@ -66,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.BuildConfig
 import com.shelfsnap.app.R
+import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionTier
@@ -162,11 +164,60 @@ fun SettingsScreen(
                 )
                 Button(
                     onClick = viewModel::save,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isVerifyingKey
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.save))
+                    if (uiState.isVerifyingKey) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.api_key_testing))
+                    } else {
+                        Icon(Icons.Default.Check, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.save))
+                    }
+                }
+
+                when (uiState.isKeyVerified) {
+                    true -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.api_key_verified),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    false -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = if (uiState.keyVerifyError != null)
+                                stringResource(R.string.api_key_test_failed, uiState.keyVerifyError)
+                            else stringResource(R.string.api_key_test_failed, "Unknown error"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    null -> Unit
                 }
 
                 if (uiState.subscriptionTier is SubscriptionTier.Free) {
@@ -178,6 +229,15 @@ fun SettingsScreen(
                     VisionModelDropdown(
                         selected = uiState.visionModel,
                         onSelected = viewModel::onVisionModelChange
+                    )
+                    Text(
+                        text = stringResource(R.string.reasoning_model_section_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    ReasoningModelDropdown(
+                        selected = uiState.reasoningModel,
+                        onSelected = viewModel::onReasoningModelChange
                     )
                 }
             }
@@ -522,6 +582,51 @@ private fun SearchProviderDropdown(
                     text = { Text(provider.displayName) },
                     onClick = {
                         onSelected(provider)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReasoningModelDropdown(
+    selected: ReasoningModel,
+    onSelected: (ReasoningModel) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selected.displayName,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.reasoning_model_label)) },
+            supportingText = { Text(selected.supportingText) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            ReasoningModel.entries.forEach { model ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(model.displayName)
+                            Text(
+                                text = model.supportingText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    onClick = {
+                        onSelected(model)
                         expanded = false
                     }
                 )

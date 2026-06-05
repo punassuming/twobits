@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.data.repository.ItemRepository
@@ -38,11 +39,16 @@ data class SettingsUiState(
     val editApiKey: String = "",
     val isSaved: Boolean = false,
     val isKeyInvalid: Boolean = false,
+    val isVerifyingKey: Boolean = false,
+    /** null = not yet tested; true = verified OK; false = test failed */
+    val isKeyVerified: Boolean? = null,
+    val keyVerifyError: String? = null,
     val searchProvider: SearchProvider = SearchProvider.NONE,
     val savedSearchApiKey: String = "",
     val editSearchApiKey: String = "",
     val isSearchSaved: Boolean = false,
     val visionModel: VisionModel = VisionModel.default,
+    val reasoningModel: ReasoningModel = ReasoningModel.default,
     val autoAnalyze: Boolean = false,
     val keepPhotos: Boolean = true,
     val storage: StorageInfo = StorageInfo(),
@@ -62,6 +68,9 @@ class SettingsViewModel @Inject constructor(
     private val _editKey = MutableStateFlow("")
     private val _isSaved = MutableStateFlow(false)
     private val _isKeyInvalid = MutableStateFlow(false)
+    private val _isVerifyingKey = MutableStateFlow(false)
+    private val _isKeyVerified = MutableStateFlow<Boolean?>(null)
+    private val _keyVerifyError = MutableStateFlow<String?>(null)
     private val _editSearchKey = MutableStateFlow("")
     private val _isSearchSaved = MutableStateFlow(false)
     private val _storage = MutableStateFlow(StorageInfo())
@@ -85,6 +94,12 @@ class SettingsViewModel @Inject constructor(
         CoreState(savedKey, editKey, isSaved, isKeyInvalid, tier)
     }
 
+    private val keyVerifyFlow = combine(
+        _isVerifyingKey,
+        _isKeyVerified,
+        _keyVerifyError,
+    ) { verifying, verified, error -> KeyVerifyState(verifying, verified, error) }
+
     private val searchFlow = combine(
         repository.observeSearchProvider(),
         repository.observeSearchApiKey(),
@@ -94,6 +109,11 @@ class SettingsViewModel @Inject constructor(
     ) { provider, savedKey, editKey, saved, visionModel ->
         SearchState(provider, savedKey, editKey, saved, visionModel)
     }
+
+    private val modelsFlow = combine(
+        repository.observeVisionModel(),
+        repository.observeReasoningModel(),
+    ) { vision, reasoning -> ModelsState(vision, reasoning) }
 
     private val prefsFlow = combine(
         repository.observeAutoAnalyze(),
@@ -109,17 +129,23 @@ class SettingsViewModel @Inject constructor(
         coreFlow,
         searchFlow,
         prefsFlow,
-    ) { core, search, prefs ->
+        keyVerifyFlow,
+        modelsFlow,
+    ) { core, search, prefs, keyVerify, models ->
         SettingsUiState(
             savedApiKey = core.savedKey,
             editApiKey = core.editKey.ifBlank { core.savedKey },
             isSaved = core.isSaved,
             isKeyInvalid = core.isKeyInvalid,
+            isVerifyingKey = keyVerify.isVerifying,
+            isKeyVerified = keyVerify.isVerified,
+            keyVerifyError = keyVerify.error,
             searchProvider = search.provider,
             savedSearchApiKey = search.savedKey,
             editSearchApiKey = search.editKey.ifBlank { search.savedKey },
             isSearchSaved = search.saved,
-            visionModel = search.visionModel,
+            visionModel = models.visionModel,
+            reasoningModel = models.reasoningModel,
             autoAnalyze = prefs.autoAnalyze,
             keepPhotos = prefs.keepPhotos,
             storage = prefs.storage,
@@ -137,6 +163,8 @@ class SettingsViewModel @Inject constructor(
         _editKey.update { value }
         _isSaved.update { false }
         _isKeyInvalid.update { false }
+        _isKeyVerified.update { null }
+        _keyVerifyError.update { null }
     }
 
     fun onSavedShown() {
@@ -153,11 +181,27 @@ class SettingsViewModel @Inject constructor(
             repository.saveApiKey(key)
             _isKeyInvalid.update { false }
             _isSaved.update { true }
+            // Test the key immediately after saving
+            _isVerifyingKey.update { true }
+            _isKeyVerified.update { null }
+            _keyVerifyError.update { null }
+            val result = repository.testApiKey()
+            _isVerifyingKey.update { false }
+            if (result.isSuccess) {
+                _isKeyVerified.update { true }
+            } else {
+                _isKeyVerified.update { false }
+                _keyVerifyError.update { result.exceptionOrNull()?.message }
+            }
         }
     }
 
     fun onVisionModelChange(model: VisionModel) {
         viewModelScope.launch { repository.saveVisionModel(model) }
+    }
+
+    fun onReasoningModelChange(model: ReasoningModel) {
+        viewModelScope.launch { repository.saveReasoningModel(model) }
     }
 
     fun onSearchProviderChange(provider: SearchProvider) {
@@ -246,12 +290,23 @@ class SettingsViewModel @Inject constructor(
         val tier: SubscriptionTier,
     )
 
+    private data class KeyVerifyState(
+        val isVerifying: Boolean,
+        val isVerified: Boolean?,
+        val error: String?,
+    )
+
     private data class SearchState(
         val provider: SearchProvider,
         val savedKey: String,
         val editKey: String,
         val saved: Boolean,
         val visionModel: VisionModel,
+    )
+
+    private data class ModelsState(
+        val visionModel: VisionModel,
+        val reasoningModel: ReasoningModel,
     )
 
     private data class PrefsState(

@@ -9,6 +9,7 @@ import com.shelfsnap.app.data.local.ItemDao
 import com.shelfsnap.app.data.local.toDomain
 import com.shelfsnap.app.data.local.toEntity
 import com.shelfsnap.app.data.model.Item
+import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.PriceResearchResult
@@ -36,6 +37,7 @@ class ItemRepository @Inject constructor(
         private val KEY_AUTO_ANALYZE = booleanPreferencesKey("auto_analyze")
         private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
         private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
+        private val KEY_REASONING_MODEL = stringPreferencesKey("reasoning_model")
     }
 
     // ── Inventory ─────────────────────────────────────────────────────────────
@@ -77,9 +79,13 @@ class ItemRepository @Inject constructor(
             item = item,
             openAiKey = getApiKey(),
             searchProvider = getSearchProvider(),
-            searchKey = getSearchApiKey()
+            searchKey = getSearchApiKey(),
+            model = getReasoningModel().apiName
         )
     }
+
+    /** Verifies that the saved OpenAI API key is accepted by the API. */
+    suspend fun testApiKey(): Result<Unit> = visionService.testKey(getApiKey())
 
     // ── Settings ──────────────────────────────────────────────────────────────
 
@@ -146,5 +152,15 @@ class ItemRepository @Inject constructor(
 
     suspend fun saveVisionModel(model: VisionModel) {
         dataStore.edit { it[KEY_VISION_MODEL] = model.apiName }
+    }
+
+    fun observeReasoningModel(): Flow<ReasoningModel> =
+        dataStore.data.map { ReasoningModel.fromApiName(it[KEY_REASONING_MODEL]) }
+
+    suspend fun getReasoningModel(): ReasoningModel =
+        ReasoningModel.fromApiName(dataStore.data.firstOrNull()?.get(KEY_REASONING_MODEL))
+
+    suspend fun saveReasoningModel(model: ReasoningModel) {
+        dataStore.edit { it[KEY_REASONING_MODEL] = model.apiName }
     }
 }

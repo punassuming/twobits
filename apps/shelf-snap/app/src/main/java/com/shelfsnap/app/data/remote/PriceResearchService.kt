@@ -66,12 +66,14 @@ class PriceResearchService @Inject constructor(
      * @param openAiKey OpenAI API key (required).
      * @param searchProvider which web-search backend to use for evidence (may be NONE).
      * @param searchKey API key for the search provider (blank for keyless/NONE).
+     * @param model OpenAI model to use for price synthesis; defaults to [MODEL].
      */
     suspend fun research(
         item: Item,
         openAiKey: String,
         searchProvider: SearchProvider,
-        searchKey: String
+        searchKey: String,
+        model: String = MODEL,
     ): PriceResearchResult = withContext(Dispatchers.IO) {
         if (!ApiKeyValidator.isValid(openAiKey)) {
             return@withContext PriceResearchResult(error = ERROR_INVALID_KEY)
@@ -82,7 +84,7 @@ class PriceResearchService @Inject constructor(
 
         // Step 2 — synthesize via the model.
         runCatching {
-            val requestBody = buildRequest(item, evidence)
+            val requestBody = buildRequest(item, evidence, model)
             val request = Request.Builder()
                 .url("https://api.openai.com/v1/chat/completions")
                 .addHeader("Authorization", "Bearer $openAiKey")
@@ -123,7 +125,7 @@ class PriceResearchService @Inject constructor(
             .filter { it.isNotBlank() }
             .joinToString(" ")
 
-    private fun buildRequest(item: Item, evidence: List<WebSearchResult>): JsonObject {
+    private fun buildRequest(item: Item, evidence: List<WebSearchResult>, model: String = MODEL): JsonObject {
         val platformKeys = Platform.entries.joinToString(", ") { it.key }
         val systemPrompt = """
             You are a reselling price-research assistant. Using the item details and any
@@ -180,7 +182,7 @@ class PriceResearchService @Inject constructor(
         }
 
         return JsonObject().apply {
-            addProperty("model", MODEL)
+            addProperty("model", model)
             add("messages", messages)
             addProperty("max_tokens", 900)
             addProperty("temperature", 0.2)

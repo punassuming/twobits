@@ -43,7 +43,8 @@ data class ItemDetailUiState(
     val editTags: List<String> = emptyList(),
     val editEstimatedValue: String = "0.00",
     val showPhotoViewer: Boolean = false,
-    val viewerPhotoIndex: Int = 0
+    val viewerPhotoIndex: Int = 0,
+    val editPrimaryPhotoIndex: Int = 0
 )
 
 @HiltViewModel
@@ -78,7 +79,8 @@ class ItemDetailViewModel @Inject constructor(
         editQuantity = item.quantity.toString(),
         editOriginalPrice = if (item.originalPrice > 0) "%.2f".format(item.originalPrice) else "",
         editTags = item.tags,
-        editEstimatedValue = "%.2f".format(item.estimatedValue)
+        editEstimatedValue = "%.2f".format(item.estimatedValue),
+        editPrimaryPhotoIndex = item.primaryPhotoIndex
     )
 
     fun selectTab(tab: DetailTab) = _uiState.update { it.copy(tab = tab) }
@@ -174,7 +176,8 @@ class ItemDetailViewModel @Inject constructor(
             quantity = state.editQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
             originalPrice = state.editOriginalPrice.toDoubleOrNull() ?: 0.0,
             tags = state.editTags,
-            estimatedValue = state.editEstimatedValue.toDoubleOrNull() ?: 0.0
+            estimatedValue = state.editEstimatedValue.toDoubleOrNull() ?: 0.0,
+            primaryPhotoIndex = state.editPrimaryPhotoIndex
         )
     }
 
@@ -225,6 +228,9 @@ class ItemDetailViewModel @Inject constructor(
             _uiState.update { it.copy(isDeleted = true) }
         }
     }
+
+    fun setPrimaryPhoto(index: Int) =
+        _uiState.update { it.copy(editPrimaryPhotoIndex = index) }
 
     fun openPhotoViewer(index: Int) =
         _uiState.update { it.copy(showPhotoViewer = true, viewerPhotoIndex = index) }

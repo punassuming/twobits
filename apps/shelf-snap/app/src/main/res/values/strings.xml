@@ -6,7 +6,7 @@
     <string name="my_inventory">My Inventory</string>
     <string name="no_items">No items yet. Tap + to add your first donation item.</string>
     <string name="search_items">Search items…</string>
-    <string name="donation_summary">Donation Summary</string>
+    <string name="donation_summary">Total Summary</string>
     <string name="export_csv">Export CSV</string>
     <string name="settings">Settings</string>
     <string name="api_key_label">OpenAI API Key</string>
@@ -25,7 +25,7 @@
     <string name="draft_label">Draft</string>
     <string name="confirmed_label">Confirmed</string>
     <string name="subtotal">Subtotal</string>
-    <string name="total_donation_value">Total Estimated Donation Value</string>
+    <string name="total_donation_value">Total Estimated Value</string>
     <string name="items_count">%1$d item(s)</string>
     <string name="exported_successfully">Exported successfully to %1$s</string>
     <string name="export_failed">Export failed: %1$s</string>
@@ -158,8 +158,29 @@
     <string name="nav_settings">Settings</string>
 
     <!-- v2: settings — vision model (BYOK) -->
-    <string name="vision_model_label">Vision model (BYOK)</string>
+    <string name="vision_model_label">Vision model (photo analysis)</string>
     <string name="vision_model_section_subtitle">Choose the AI model used to analyse your item photos.</string>
+    <string name="reasoning_model_label">Reasoning model (price research)</string>
+    <string name="reasoning_model_section_subtitle">Choose the AI model used for price research and market analysis.</string>
+
+    <!-- API key verification -->
+    <string name="api_key_testing">Testing key…</string>
+    <string name="api_key_verified">Key verified ✓</string>
+    <string name="api_key_test_failed">Key test failed: %1$s</string>
+
+    <!-- Primary photo -->
+    <string name="primary_photo">Primary</string>
+    <string name="set_as_primary">Set as primary</string>
+
+    <!-- Inventory walkthrough empty state -->
+    <string name="walkthrough_title">Welcome to Shelf Snap</string>
+    <string name="walkthrough_step1_title">Snap photos</string>
+    <string name="walkthrough_step1_body">Take one or more photos of any item you want to catalog or resell.</string>
+    <string name="walkthrough_step2_title">AI does the work</string>
+    <string name="walkthrough_step2_body">AI identifies the item, estimates its value, and fills in the details automatically.</string>
+    <string name="walkthrough_step3_title">Track &amp; sell</string>
+    <string name="walkthrough_step3_body">Research market prices and cross-list across eBay, Mercari, Facebook Marketplace, and more.</string>
+    <string name="go_to_settings">Open Settings</string>
 
     <!-- v2: settings — web search for pricing -->
     <string name="search_section_title">Price research search</string>
