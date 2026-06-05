@@ -14,6 +14,8 @@ class RecordingSessionEvents
         val completedSessions: SharedFlow<String> = _completedSessions.asSharedFlow()
         private val _recordingErrors = MutableSharedFlow<String>(extraBufferCapacity = 1)
         val recordingErrors: SharedFlow<String> = _recordingErrors.asSharedFlow()
+        private val _liveTranscriptUpdates = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 8)
+        val liveTranscriptUpdates: SharedFlow<String> = _liveTranscriptUpdates.asSharedFlow()
 
         fun onSessionCompleted(sessionId: String) {
             _completedSessions.tryEmit(sessionId)
@@ -21,5 +23,9 @@ class RecordingSessionEvents
 
         fun onRecordingError(message: String) {
             _recordingErrors.tryEmit(message)
+        }
+
+        fun onLiveTranscriptUpdate(text: String) {
+            _liveTranscriptUpdates.tryEmit(text)
         }
     }

@@ -4,7 +4,17 @@
 
 ### Features
 
+* add custom recording types — users can create named recording modes with a custom AI system prompt; accessible via a "My types" section in the mode picker; long-press to delete; auto-transforms after transcription using the custom prompt
+* add live transcription during recording — real-time speech-to-text draft appears in the recording view using Android SpeechRecognizer; cleared when recording stops
+* navigate away from recording view — back button during recording collapses to the main session list; a status banner shows the active recording mode and elapsed time; tap to return to the full recording view
+* populate recording view with content — recent sessions list and live transcript draft replace the empty spacer below the waveform card
+* mode-aware auto-transform after transcription — MEETING, IDEA, TASKS, CONVERSATION, STORY, and INTERVIEW modes automatically run their matching transform profile after transcription completes; JOURNAL skips auto-transform
+
 ### Improvements
+
+* search in folder mode — searching while in folder view now filters sessions within their folder groupings instead of switching to a flat list; all folders expand automatically during search
+* fix transcript edit button — tapping Edit on any transcript in the session detail output tab now opens the dialog with that transcript's content, not always the raw transcript
+* expand single transcript by default — when there is only one transcript output, it starts expanded; collapsing only applies when multiple outputs are present
 
 ### Fixes
 

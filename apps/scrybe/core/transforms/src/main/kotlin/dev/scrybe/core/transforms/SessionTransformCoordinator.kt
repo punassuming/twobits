@@ -1,6 +1,7 @@
 package dev.scrybe.core.transforms
 
 import dev.scrybe.core.common.TransformStepsCodec
+import dev.scrybe.core.database.CustomRecordingTypeDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TranscriptEntity
@@ -11,6 +12,7 @@ import dev.scrybe.core.database.TransformRunEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformStatus
 import kotlinx.coroutines.flow.first
@@ -39,7 +41,55 @@ class SessionTransformCoordinator
         private val transformRunDao: TransformRunDao,
         private val transformationPipeline: TransformationPipeline,
         private val appPreferencesDataStore: AppPreferencesDataStore,
+        private val customRecordingTypeDao: CustomRecordingTypeDao,
     ) {
+        suspend fun autoTransformForMode(sessionId: String): Result<TranscriptEntity?> {
+            val session = recordingSessionDao.getSessionByIdOnce(sessionId)
+                ?: return Result.failure(IllegalArgumentException("Session $sessionId not found"))
+
+            val mode = session.mode ?: return Result.success(null)
+
+            // JOURNAL = plain transcript — no transform needed, the transcript is the output.
+            if (mode == RecordingMode.JOURNAL.name) return Result.success(null)
+
+            val profile = transformProfileDao.getProfileForMode(mode)
+                ?: return Result.success(null)
+
+            return transformLatestRawTranscript(sessionId, profile.id).map { it }
+        }
+
+        suspend fun autoTransformForCustomType(
+            sessionId: String,
+            customTypeId: String,
+        ): Result<TranscriptEntity?> {
+            val customType = customRecordingTypeDao.getTypeById(customTypeId)
+                ?: return Result.success(null)
+            val source = loadSessionTranscriptSource(sessionId)
+                ?: return Result.failure(IllegalStateException("No transcript available"))
+            val syntheticProfile = TransformProfileEntity(
+                id = "custom-type-$customTypeId",
+                name = customType.name,
+                description = customType.outputDescription,
+                systemPrompt = customType.systemPrompt,
+                steps = customType.systemPrompt,
+                providerType = ProviderType.OPENAI.name,
+                isDefault = false,
+                modelName = null,
+                iconName = "MIC",
+                colorName = "BLUE",
+                mode = null,
+            )
+            return runProfileTransform(
+                anchorSessionId = source.sessionId,
+                inputTranscriptId = source.inputTranscript.id,
+                transcriptText = source.rawTranscript.content,
+                currentText = source.inputTranscript.content,
+                combinedTranscriptText = null,
+                sourceTranscriptId = source.inputTranscript.id,
+                profile = syntheticProfile,
+            ).map { it }
+        }
+
         suspend fun transformLatestRawTranscript(
             sessionId: String,
             profileId: String,

@@ -26,6 +26,7 @@ import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
+import dev.scrybe.core.transforms.SessionTransformCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +54,7 @@ class RecordingForegroundService : Service() {
     @Inject lateinit var notificationFactory: RecordingNotificationFactory
 
     @Inject lateinit var sessionTranscriptionCoordinator: SessionTranscriptionCoordinator
+    @Inject lateinit var sessionTransformCoordinator: SessionTransformCoordinator
 
     @Inject lateinit var recordingSessionEvents: RecordingSessionEvents
 
@@ -66,6 +68,8 @@ class RecordingForegroundService : Service() {
     private var telemetryJob: Job? = null
     private var locationDeferred: Deferred<Triple<Double, Double, String?>?>? = null
     private var pendingMode: String = RecordingMode.JOURNAL.name
+    private var pendingCustomTypeId: String? = null
+    private var liveTranscriptionHelper: LiveTranscriptionHelper? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -80,6 +84,7 @@ class RecordingForegroundService : Service() {
         pendingMode =
             intent?.getStringExtra(RecordingServiceActions.EXTRA_RECORDING_MODE)
                 ?: RecordingMode.JOURNAL.name
+        pendingCustomTypeId = intent?.getStringExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID)
         when (intent?.action) {
             RecordingServiceActions.ACTION_START -> handleStart()
             RecordingServiceActions.ACTION_STOP -> handleStop()
@@ -120,6 +125,11 @@ class RecordingForegroundService : Service() {
                     }
                 }
             }
+        liveTranscriptionHelper = LiveTranscriptionHelper(this) { text ->
+            recordingSessionEvents.onLiveTranscriptUpdate(text)
+        }
+        liveTranscriptionHelper?.start()
+
         serviceScope.launch {
             val config =
                 RecordingConfig(
@@ -140,6 +150,9 @@ class RecordingForegroundService : Service() {
     }
 
     private fun handleStop() {
+        liveTranscriptionHelper?.stop()
+        liveTranscriptionHelper = null
+        recordingSessionEvents.onLiveTranscriptUpdate("")
         serviceScope.launch {
             playRecordingFeedback()
             audioRecorder
@@ -157,14 +170,30 @@ class RecordingForegroundService : Service() {
                                 recordingSessionEvents.onRecordingError(SHORT_AUTO_TRANSCRIBE_MESSAGE)
                                 return@launch
                             }
-                            sessionTranscriptionCoordinator
+                            val transcriptionResult = sessionTranscriptionCoordinator
                                 .autoTranscribeIfEnabled(sessionId)
-                                .onFailure {
-                                    android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
-                                    recordingSessionEvents.onRecordingError(
-                                        it.message ?: "Auto-transcription failed",
-                                    )
+                            transcriptionResult.onFailure {
+                                android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
+                                recordingSessionEvents.onRecordingError(
+                                    it.message ?: "Auto-transcription failed",
+                                )
+                            }
+                            if (transcriptionResult.getOrDefault(false)) {
+                                val customTypeId = pendingCustomTypeId
+                                if (customTypeId != null) {
+                                    sessionTransformCoordinator
+                                        .autoTransformForCustomType(sessionId, customTypeId)
+                                        .onFailure {
+                                            android.util.Log.w(TAG, "Auto-transform failed for custom type in session $sessionId", it)
+                                        }
+                                } else {
+                                    sessionTransformCoordinator
+                                        .autoTransformForMode(sessionId)
+                                        .onFailure {
+                                            android.util.Log.w(TAG, "Auto-transform failed for session $sessionId", it)
+                                        }
                                 }
+                            }
                         }
                     }.onFailure { error ->
                         android.util.Log.e(TAG, "Failed to save recording", error)
@@ -180,15 +209,23 @@ class RecordingForegroundService : Service() {
     }
 
     private fun handleCancel() {
+        liveTranscriptionHelper?.stop()
+        liveTranscriptionHelper = null
         audioRecorder.cancelRecording()
+        recordingSessionEvents.onLiveTranscriptUpdate("")
         cleanupAfterRecordingCommand()
     }
 
     private fun handlePause() {
+        liveTranscriptionHelper?.stop()
         serviceScope.launch { audioRecorder.pauseRecording() }
     }
 
     private fun handleResume() {
+        liveTranscriptionHelper = LiveTranscriptionHelper(this) { text ->
+            recordingSessionEvents.onLiveTranscriptUpdate(text)
+        }
+        liveTranscriptionHelper?.start()
         serviceScope.launch { audioRecorder.resumeRecording() }
     }
 
@@ -254,6 +291,7 @@ class RecordingForegroundService : Service() {
                 locationLng = location?.second,
                 locationLabel = location?.third,
                 mode = pendingMode,
+                customTypeId = pendingCustomTypeId,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
             ),

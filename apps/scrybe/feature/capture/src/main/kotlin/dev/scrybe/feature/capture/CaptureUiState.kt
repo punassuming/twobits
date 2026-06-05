@@ -1,5 +1,6 @@
 package dev.scrybe.feature.capture
 
+import dev.scrybe.core.model.CustomRecordingType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 
@@ -16,6 +17,10 @@ data class CaptureUiState(
     val activeMode: RecordingMode = RecordingMode.JOURNAL,
     val folderNames: Map<String, String> = emptyMap(),
     val selectedSessionIds: Set<String> = emptySet(),
+    val isRecordingViewVisible: Boolean = true,
+    val liveTranscriptDraft: String = "",
+    val customRecordingTypes: List<CustomRecordingType> = emptyList(),
+    val showCreateCustomTypeSheet: Boolean = false,
 ) {
     val isSelecting: Boolean get() = selectedSessionIds.isNotEmpty()
 }

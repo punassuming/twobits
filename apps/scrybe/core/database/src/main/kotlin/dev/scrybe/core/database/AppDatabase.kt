@@ -15,8 +15,9 @@ import androidx.room.RoomDatabase
         PersonEntity::class,
         TranscriptChunkEntity::class,
         SessionTaskEntity::class,
+        CustomRecordingTypeEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -39,4 +40,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun transcriptChunkDao(): TranscriptChunkDao
 
     abstract fun sessionTaskDao(): SessionTaskDao
+
+    abstract fun customRecordingTypeDao(): CustomRecordingTypeDao
 }

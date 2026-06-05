@@ -10,6 +10,8 @@ import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.database.CustomRecordingTypeDao
+import dev.scrybe.core.database.CustomRecordingTypeEntity
 import dev.scrybe.core.database.FolderDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.SessionTaskDao
@@ -17,6 +19,7 @@ import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.CustomRecordingType
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
@@ -51,6 +54,7 @@ class CaptureViewModel
         private val sessionTaskDao: SessionTaskDao,
         private val folderDao: FolderDao,
         private val transformProfileDao: TransformProfileDao,
+        private val customRecordingTypeDao: CustomRecordingTypeDao,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val recordingSessionEvents: RecordingSessionEvents,
@@ -114,6 +118,8 @@ class CaptureViewModel
                                 elapsedMs = 0L,
                                 currentAmplitudeRatio = 0f,
                                 amplitudeHistory = emptyList(),
+                                liveTranscriptDraft = "",
+                                isRecordingViewVisible = true,
                             )
                     }
                 }
@@ -133,6 +139,25 @@ class CaptureViewModel
                             amplitudeHistory = emptyList(),
                             errorMessage = message,
                         )
+                }
+            }
+            viewModelScope.launch {
+                recordingSessionEvents.liveTranscriptUpdates.collectLatest { text ->
+                    _uiState.value = _uiState.value.copy(liveTranscriptDraft = text)
+                }
+            }
+            viewModelScope.launch {
+                customRecordingTypeDao.getAllTypes().collectLatest { entities ->
+                    val types = entities.map { e ->
+                        CustomRecordingType(
+                            id = e.id,
+                            name = e.name,
+                            outputDescription = e.outputDescription,
+                            systemPrompt = e.systemPrompt,
+                            createdAt = e.createdAt,
+                        )
+                    }
+                    _uiState.value = _uiState.value.copy(customRecordingTypes = types)
                 }
             }
             viewModelScope.launch {
@@ -217,6 +242,7 @@ class CaptureViewModel
                         keepScreenOn = _uiState.value.keepScreenOn,
                         showModePickerSheet = false,
                         activeMode = mode,
+                        isRecordingViewVisible = true,
                     )
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
@@ -225,6 +251,67 @@ class CaptureViewModel
                     }
                 context.startForegroundService(intent)
             }
+        }
+
+        fun startRecordingWithCustomType(customType: CustomRecordingType) {
+            viewModelScope.launch {
+                _uiState.value =
+                    CaptureUiState(
+                        phase = CapturePhase.RECORDING,
+                        keepScreenOn = _uiState.value.keepScreenOn,
+                        showModePickerSheet = false,
+                        activeMode = RecordingMode.JOURNAL,
+                        isRecordingViewVisible = true,
+                    )
+                val intent =
+                    Intent(context, RecordingForegroundService::class.java).apply {
+                        action = RecordingServiceActions.ACTION_START
+                        putExtra(RecordingServiceActions.EXTRA_RECORDING_MODE, RecordingMode.JOURNAL.name)
+                        putExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID, customType.id)
+                    }
+                context.startForegroundService(intent)
+            }
+        }
+
+        fun showCreateCustomTypeSheet() {
+            _uiState.value = _uiState.value.copy(showCreateCustomTypeSheet = true)
+        }
+
+        fun dismissCreateCustomTypeSheet() {
+            _uiState.value = _uiState.value.copy(showCreateCustomTypeSheet = false)
+        }
+
+        fun createCustomType(
+            name: String,
+            outputDescription: String,
+            systemPrompt: String,
+        ) {
+            viewModelScope.launch {
+                customRecordingTypeDao.insertType(
+                    CustomRecordingTypeEntity(
+                        id = java.util.UUID.randomUUID().toString(),
+                        name = name.trim(),
+                        outputDescription = outputDescription.trim(),
+                        systemPrompt = systemPrompt.trim(),
+                        createdAt = System.currentTimeMillis(),
+                    ),
+                )
+                _uiState.value = _uiState.value.copy(showCreateCustomTypeSheet = false)
+            }
+        }
+
+        fun deleteCustomType(id: String) {
+            viewModelScope.launch {
+                customRecordingTypeDao.deleteType(id)
+            }
+        }
+
+        fun hideRecordingView() {
+            _uiState.value = _uiState.value.copy(isRecordingViewVisible = false)
+        }
+
+        fun showRecordingView() {
+            _uiState.value = _uiState.value.copy(isRecordingViewVisible = true)
         }
 
         fun pauseRecording() {

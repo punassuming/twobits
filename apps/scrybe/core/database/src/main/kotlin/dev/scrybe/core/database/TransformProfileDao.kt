@@ -17,6 +17,9 @@ interface TransformProfileDao {
     @Query("SELECT * FROM transform_profiles WHERE isDefault = 1 LIMIT 1")
     suspend fun getDefaultProfile(): TransformProfileEntity?
 
+    @Query("SELECT * FROM transform_profiles WHERE mode = :mode ORDER BY isDefault DESC LIMIT 1")
+    suspend fun getProfileForMode(mode: String): TransformProfileEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProfile(profile: TransformProfileEntity)
 

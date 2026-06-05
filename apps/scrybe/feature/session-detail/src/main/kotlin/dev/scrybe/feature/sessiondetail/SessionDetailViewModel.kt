@@ -772,10 +772,21 @@ class SessionDetailViewModel
             }
         }
 
-        fun saveTranscriptEdit(content: String) {
+        fun saveTranscriptEdit(content: String, sourceTranscriptId: String? = null) {
             val trimmed = content.trim()
             if (trimmed.isBlank()) return
             viewModelScope.launch {
+                val sourceTranscript = sourceTranscriptId?.let { transcriptDao.getTranscriptById(it) }
+                val sourceType = sourceTranscript?.type?.let { runCatching { TranscriptType.valueOf(it) }.getOrNull() }
+
+                // For TRANSFORMED or EDITED transcripts, update the content in-place.
+                if (sourceType == TranscriptType.TRANSFORMED || sourceType == TranscriptType.EDITED) {
+                    transcriptDao.insertTranscript(sourceTranscript!!.copy(content = trimmed))
+                    _events.emit(SessionDetailEvent.Message("Transcript saved"))
+                    return@launch
+                }
+
+                // For RAW transcripts (or no specific transcript), save as EDITED type.
                 val existingEdited = transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.EDITED.name)
                 val rawTranscript = transcriptDao.getLatestTranscriptByType(sessionId, TranscriptType.RAW.name)
                 if (rawTranscript == null) {

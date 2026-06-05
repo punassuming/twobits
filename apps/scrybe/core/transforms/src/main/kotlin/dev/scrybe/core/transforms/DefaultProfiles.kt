@@ -76,6 +76,66 @@ object DefaultProfiles {
             mode = RecordingMode.MEETING,
         )
 
+    val IDEA_BRAINSTORM =
+        TransformProfile(
+            id = "default-idea-brainstorm",
+            name = "Brainstorm List",
+            description = "Organises raw ideas into a structured brainstorm list.",
+            systemPrompt = "You are a creative thinking coach. From the transcript below extract and organise all ideas into a bulleted brainstorm list, grouping related ideas under short headings where appropriate. Return only the list.\n\nTranscript:\n{{transcript}}",
+            steps =
+                listOf(
+                    "You are a creative thinking coach. From the transcript below extract and organise all ideas into a bulleted brainstorm list, grouping related ideas under short headings where appropriate. Return only the list.\n\nTranscript:\n{{transcript}}",
+                ),
+            providerType = ProviderType.OPENAI,
+            isDefault = false,
+            mode = RecordingMode.IDEA,
+        )
+
+    val TASKS_LIST =
+        TransformProfile(
+            id = "default-tasks-list",
+            name = "Task List",
+            description = "Extracts actionable tasks from the transcript.",
+            systemPrompt = "You are a productivity assistant. From the transcript below extract every actionable task or to-do item as a checkbox list (- [ ] task). Include owner names and deadlines where mentioned. Return only the task list.\n\nTranscript:\n{{transcript}}",
+            steps =
+                listOf(
+                    "You are a productivity assistant. From the transcript below extract every actionable task or to-do item as a checkbox list (- [ ] task). Include owner names and deadlines where mentioned. Return only the task list.\n\nTranscript:\n{{transcript}}",
+                ),
+            providerType = ProviderType.OPENAI,
+            isDefault = false,
+            mode = RecordingMode.TASKS,
+        )
+
+    val CONVERSATION_SUMMARY =
+        TransformProfile(
+            id = "default-conversation-summary",
+            name = "Conversation Summary",
+            description = "Summarises a multi-party dialogue with key points per speaker.",
+            systemPrompt = "You are a conversation analyst. From the transcript below produce a concise summary that captures: the main topic, each participant's key points, and any agreements or next steps. Use markdown headings.\n\nTranscript:\n{{transcript}}",
+            steps =
+                listOf(
+                    "You are a conversation analyst. From the transcript below produce a concise summary that captures: the main topic, each participant's key points, and any agreements or next steps. Use markdown headings.\n\nTranscript:\n{{transcript}}",
+                ),
+            providerType = ProviderType.OPENAI,
+            isDefault = false,
+            mode = RecordingMode.CONVERSATION,
+        )
+
+    val STORY_NARRATIVE =
+        TransformProfile(
+            id = "default-story-narrative",
+            name = "Narrative Write-up",
+            description = "Transforms spoken story fragments into a polished narrative.",
+            systemPrompt = "You are a skilled writer and editor. From the transcript below craft a polished, engaging narrative in prose form. Preserve the speaker's voice, fix grammatical issues, and organise the story with a clear beginning, middle, and end. Return only the narrative.\n\nTranscript:\n{{transcript}}",
+            steps =
+                listOf(
+                    "You are a skilled writer and editor. From the transcript below craft a polished, engaging narrative in prose form. Preserve the speaker's voice, fix grammatical issues, and organise the story with a clear beginning, middle, and end. Return only the narrative.\n\nTranscript:\n{{transcript}}",
+                ),
+            providerType = ProviderType.OPENAI,
+            isDefault = false,
+            mode = RecordingMode.STORY,
+        )
+
     val INTERVIEW_HIGHLIGHTS =
         TransformProfile(
             id = "default-interview-highlights",
@@ -91,5 +151,8 @@ object DefaultProfiles {
             mode = RecordingMode.INTERVIEW,
         )
 
-    val ALL = listOf(CLEANUP_DICTATION, SUMMARIZE, ACTION_ITEMS, TRANSLATE, MEETING_SUMMARY, INTERVIEW_HIGHLIGHTS)
+    val ALL = listOf(
+        CLEANUP_DICTATION, SUMMARIZE, ACTION_ITEMS, TRANSLATE,
+        MEETING_SUMMARY, IDEA_BRAINSTORM, TASKS_LIST, CONVERSATION_SUMMARY, STORY_NARRATIVE, INTERVIEW_HIGHLIGHTS,
+    )
 }

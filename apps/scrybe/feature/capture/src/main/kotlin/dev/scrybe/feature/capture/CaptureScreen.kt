@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Book
@@ -58,6 +59,7 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -109,6 +111,7 @@ import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.common.scrybeContentWidth
+import dev.scrybe.core.model.CustomRecordingType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 
@@ -128,6 +131,7 @@ fun CaptureScreen(
     var searchOpen by remember { mutableStateOf(false) }
     var filterMode by remember { mutableStateOf<RecordingMode?>(null) }
     var pendingMode by remember { mutableStateOf(RecordingMode.JOURNAL) }
+    var pendingCustomType by remember { mutableStateOf<CustomRecordingType?>(null) }
     var folderModeEnabled by remember { mutableStateOf(false) }
     var expandedFolderIds by remember { mutableStateOf(emptySet<String>()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -156,7 +160,15 @@ fun CaptureScreen(
                 results[Manifest.permission.RECORD_AUDIO] == true ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
                     PackageManager.PERMISSION_GRANTED
-            if (audioGranted) viewModel.startRecordingWithMode(pendingMode)
+            if (audioGranted) {
+                val ct = pendingCustomType
+                if (ct != null) {
+                    pendingCustomType = null
+                    viewModel.startRecordingWithCustomType(ct)
+                } else {
+                    viewModel.startRecordingWithMode(pendingMode)
+                }
+            }
         }
 
     DisposableEffect(view, uiState.phase, uiState.keepScreenOn) {
@@ -178,8 +190,8 @@ fun CaptureScreen(
             }
         }
 
-    BackHandler(enabled = uiState.phase != CapturePhase.IDLE) {
-        // No-op: keep user on screen while recording; foreground service continues.
+    BackHandler(enabled = uiState.phase != CapturePhase.IDLE && uiState.isRecordingViewVisible) {
+        viewModel.hideRecordingView()
     }
     BackHandler(enabled = uiState.isSelecting) {
         viewModel.clearSelection()
@@ -242,17 +254,19 @@ fun CaptureScreen(
         },
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            if (uiState.phase != CapturePhase.IDLE) {
+            if (uiState.phase != CapturePhase.IDLE && uiState.isRecordingViewVisible) {
                 RecordingActiveView(
                     state = uiState,
                     paddingValues = paddingValues,
                     onStop = viewModel::stopRecording,
-                    onBack = {},
+                    onBack = viewModel::hideRecordingView,
                     onCancel = viewModel::cancelRecording,
                     onPause = viewModel::pauseRecording,
                     onResume = viewModel::resumeRecording,
+                    onNavigateToSession = onNavigateToSessionDetail,
                 )
-            } else {
+            }
+            if (uiState.phase == CapturePhase.IDLE || !uiState.isRecordingViewVisible) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding =
@@ -317,16 +331,18 @@ fun CaptureScreen(
                     ) {
                         item(key = "intro") { IntroGuidanceSection() }
                     }
-                    if (folderModeEnabled && searchQuery.isBlank()) {
+                    if (folderModeEnabled) {
                         val grouped = filteredSessions.groupBy { it.folderId }
                         val folderIds =
                             grouped.keys
                                 .filterNotNull()
                                 .sortedBy { uiState.folderNames[it] ?: it }
                         val unfiled = grouped[null] ?: emptyList()
+                        // Auto-expand all folders when searching so results are visible.
+                        val effectiveExpanded = if (searchQuery.isNotBlank()) grouped.keys.filterNotNull().toSet() else expandedFolderIds
                         folderIds.forEach { folderId ->
                             val name = uiState.folderNames[folderId] ?: folderId
-                            val expanded = folderId in expandedFolderIds
+                            val expanded = folderId in effectiveExpanded
                             val sessions = grouped[folderId] ?: emptyList()
                             item(key = "folder-$folderId") {
                                 FolderSectionHeader(
@@ -363,7 +379,7 @@ fun CaptureScreen(
                         }
                         if (unfiled.isNotEmpty()) {
                             item(key = "folder-unfiled") {
-                                val expanded = "unfiled" in expandedFolderIds
+                                val expanded = "unfiled" in effectiveExpanded
                                 FolderSectionHeader(
                                     name = "No folder",
                                     count = unfiled.size,
@@ -378,7 +394,7 @@ fun CaptureScreen(
                                     },
                                 )
                             }
-                            if ("unfiled" in expandedFolderIds) {
+                            if ("unfiled" in effectiveExpanded) {
                                 items(unfiled, key = { "u-${it.id}" }) { session ->
                                     HomeSessionCard(
                                         session = session,
@@ -415,30 +431,61 @@ fun CaptureScreen(
                     }
                     item(key = "bottom-spacer") { Spacer(Modifier.height(80.dp)) }
                 }
-                FloatingActionButton(
-                    onClick = viewModel::showModePicker,
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp),
-                ) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Start recording")
+                if (uiState.phase == CapturePhase.IDLE) {
+                    FloatingActionButton(
+                        onClick = viewModel::showModePicker,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp),
+                    ) {
+                        Icon(Icons.Filled.Mic, contentDescription = "Start recording")
+                    }
+                } else {
+                    RecordingStatusBanner(
+                        state = uiState,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        onClick = viewModel::showRecordingView,
+                    )
                 }
-            } // end IDLE branch
+            } // end list branch
         }
     }
 
     if (uiState.showModePickerSheet) {
         ModePickerSheet(
+            customTypes = uiState.customRecordingTypes,
             onStartRecording = { mode ->
                 if (hasRequiredPermissions) {
                     viewModel.startRecordingWithMode(mode)
                 } else {
                     pendingMode = mode
+                    pendingCustomType = null
                     permissionLauncher.launch(requiredPermissions.toTypedArray())
                 }
             },
+            onStartWithCustomType = { customType ->
+                if (hasRequiredPermissions) {
+                    viewModel.startRecordingWithCustomType(customType)
+                } else {
+                    pendingCustomType = customType
+                    permissionLauncher.launch(requiredPermissions.toTypedArray())
+                }
+            },
+            onDeleteCustomType = viewModel::deleteCustomType,
+            onCreateCustomType = viewModel::showCreateCustomTypeSheet,
             onDismiss = viewModel::dismissModePicker,
+        )
+    }
+
+    if (uiState.showCreateCustomTypeSheet) {
+        CreateRecordingTypeSheet(
+            onSave = { name, outputDescription, systemPrompt ->
+                viewModel.createCustomType(name, outputDescription, systemPrompt)
+            },
+            onDismiss = viewModel::dismissCreateCustomTypeSheet,
         )
     }
 
@@ -520,6 +567,7 @@ private fun RecordingActiveView(
     onCancel: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
+    onNavigateToSession: (String) -> Unit = {},
 ) {
     val isStopping = state.phase == CapturePhase.STOPPING
     val isPaused = state.phase == CapturePhase.PAUSED
@@ -547,13 +595,127 @@ private fun RecordingActiveView(
                 RecordingTimerRow(elapsedMs = state.elapsedMs, isStopping = isStopping, isPaused = isPaused)
             }
         }
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(8.dp))
+        RecordingContentArea(
+            state = state,
+            modifier = Modifier.weight(1f),
+            onNavigateToSession = onNavigateToSession,
+        )
         RecordingStopButtons(
             modeName = state.activeMode.label,
             enabled = !isStopping,
             onStop = onStop,
             onCancel = onCancel,
         )
+    }
+}
+
+@Composable
+private fun RecordingContentArea(
+    state: CaptureUiState,
+    modifier: Modifier = Modifier,
+    onNavigateToSession: (String) -> Unit,
+) {
+    Column(modifier = modifier.padding(horizontal = 16.dp)) {
+        if (state.liveTranscriptDraft.isNotBlank()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Live draft (preview)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    Text(
+                        text = state.liveTranscriptDraft,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        maxLines = 6,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        if (state.recentSessions.isNotEmpty()) {
+            Text(
+                text = "Recent recordings",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                items(state.recentSessions.take(8), key = { it.id }) { session ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToSession(session.id) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        ),
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = session.title,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = session.createdAtLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordingStatusBanner(
+    state: CaptureUiState,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val isPaused = state.phase == CapturePhase.PAUSED
+    val elapsedSec = state.elapsedMs / 1000
+    val minutes = elapsedSec / 60
+    val seconds = elapsedSec % 60
+    val timerLabel = "%d:%02d".format(minutes, seconds)
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        onClick = onClick,
+        tonalElevation = 4.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = if (isPaused) Icons.Filled.Pause else Icons.Filled.Mic,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = if (isPaused) "Paused · $timerLabel" else "Recording · $timerLabel",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            ModeBadge(mode = state.activeMode)
+        }
     }
 }
 
@@ -760,11 +922,16 @@ private fun formatElapsed(ms: Long): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ModePickerSheet(
+    customTypes: List<CustomRecordingType>,
     onStartRecording: (RecordingMode) -> Unit,
+    onStartWithCustomType: (CustomRecordingType) -> Unit,
+    onDeleteCustomType: (String) -> Unit,
+    onCreateCustomType: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedMode by remember { mutableStateOf(RecordingMode.JOURNAL) }
+    var selectedCustomType by remember { mutableStateOf<CustomRecordingType?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -792,17 +959,103 @@ private fun ModePickerSheet(
                     row.forEach { mode ->
                         ModeCard(
                             mode = mode,
-                            isSelected = mode == selectedMode,
-                            onClick = { selectedMode = mode },
+                            isSelected = mode == selectedMode && selectedCustomType == null,
+                            onClick = {
+                                selectedMode = mode
+                                selectedCustomType = null
+                            },
                             modifier = Modifier.weight(1f),
                         )
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
-            ModeOutputPreview(selectedMode = selectedMode)
+            if (selectedCustomType == null) {
+                ModeOutputPreview(selectedMode = selectedMode)
+            }
+            if (customTypes.isNotEmpty()) {
+                HorizontalDivider()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "My types",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    IconButton(onClick = onCreateCustomType) {
+                        Icon(Icons.Filled.Add, contentDescription = "Create custom type")
+                    }
+                }
+                customTypes.forEach { ct ->
+                    val isSelected = selectedCustomType?.id == ct.id
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = { selectedCustomType = if (isSelected) null else ct },
+                                onLongClick = { onDeleteCustomType(ct.id) },
+                            ),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        ),
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(ct.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            if (ct.outputDescription.isNotBlank()) {
+                                Text(
+                                    ct.outputDescription,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (selectedCustomType != null) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(
+                            text = "Will produce: ${selectedCustomType!!.outputDescription.ifBlank { selectedCustomType!!.name }}",
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "My types",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = onCreateCustomType) {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.size(4.dp))
+                        Text("Create")
+                    }
+                }
+            }
             Button(
-                onClick = { onStartRecording(selectedMode) },
+                onClick = {
+                    val ct = selectedCustomType
+                    if (ct != null) onStartWithCustomType(ct) else onStartRecording(selectedMode)
+                },
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -811,6 +1064,68 @@ private fun ModePickerSheet(
                 Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
                 Text("Start recording")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CreateRecordingTypeSheet(
+    onSave: (name: String, outputDescription: String, systemPrompt: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var name by remember { mutableStateOf("") }
+    var outputDescription by remember { mutableStateOf("") }
+    var systemPrompt by remember { mutableStateOf("") }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Create recording type",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = outputDescription,
+                onValueChange = { outputDescription = it },
+                label = { Text("Output description (e.g. Meeting summary)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = systemPrompt,
+                onValueChange = { systemPrompt = it },
+                label = { Text("AI system prompt") },
+                minLines = 4,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = {
+                    if (name.isNotBlank() && systemPrompt.isNotBlank()) {
+                        onSave(name, outputDescription, systemPrompt)
+                    }
+                },
+                enabled = name.isNotBlank() && systemPrompt.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Save")
             }
         }
     }

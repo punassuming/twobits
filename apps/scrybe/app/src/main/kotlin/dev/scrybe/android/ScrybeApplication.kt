@@ -29,6 +29,7 @@ class ScrybeApplication : Application() {
             DefaultProfiles.ALL.forEach { profile ->
                 if (profile.id in deletedIds) return@forEach
                 val existingProfile = transformProfileDao.getProfileById(profile.id)
+                val modeValue = profile.mode?.name
                 if (existingProfile == null) {
                     transformProfileDao.insertProfile(
                         TransformProfileEntity(
@@ -39,6 +40,7 @@ class ScrybeApplication : Application() {
                             steps = TransformStepsCodec.encode(profile.steps),
                             providerType = profile.providerType.name,
                             isDefault = profile.isDefault,
+                            mode = modeValue,
                         ),
                     )
                 } else if (existingProfile.systemPrompt == LEGACY_PROFILE_PROMPTS[profile.id]) {
@@ -49,8 +51,11 @@ class ScrybeApplication : Application() {
                             systemPrompt = profile.systemPrompt,
                             steps = TransformStepsCodec.encode(profile.steps),
                             providerType = profile.providerType.name,
+                            mode = modeValue,
                         ),
                     )
+                } else if (existingProfile.mode != modeValue) {
+                    transformProfileDao.insertProfile(existingProfile.copy(mode = modeValue))
                 }
             }
         }

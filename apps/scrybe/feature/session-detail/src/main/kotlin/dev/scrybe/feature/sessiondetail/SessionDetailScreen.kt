@@ -141,7 +141,7 @@ fun SessionDetailScreen(
     var showMoreSheet by remember { mutableStateOf(false) }
     var showEcosystemSheet by remember { mutableStateOf(false) }
     var activeTab by remember { mutableStateOf(0) }
-    var isEditingTranscript by remember { mutableStateOf(false) }
+    var editingTranscript by remember { mutableStateOf<Transcript?>(null) }
     var isEditingTags by remember { mutableStateOf(false) }
     var deleteTranscriptTarget by remember { mutableStateOf<Transcript?>(null) }
     var showRenameDialog by remember { mutableStateOf(false) }
@@ -380,7 +380,7 @@ fun SessionDetailScreen(
                             else ->
                                 TranscriptTabContent(
                                     state = state,
-                                    onEditTranscript = { isEditingTranscript = true },
+                                    onEditTranscript = { t -> editingTranscript = t },
                                     onDeleteTranscript = { deleteTranscriptTarget = it },
                                     onResumeTranscription = viewModel::transcribe,
                                 )
@@ -531,13 +531,13 @@ fun SessionDetailScreen(
         )
     }
 
-    if (isEditingTranscript && successState != null) {
+    editingTranscript?.let { target ->
         EditTranscriptDialog(
-            initialValue = successState.currentTranscript?.content.orEmpty(),
-            onDismiss = { isEditingTranscript = false },
-            onSave = {
-                viewModel.saveTranscriptEdit(it)
-                isEditingTranscript = false
+            initialValue = target.content,
+            onDismiss = { editingTranscript = null },
+            onSave = { newContent ->
+                viewModel.saveTranscriptEdit(newContent, target.id)
+                editingTranscript = null
             },
         )
     }
@@ -1114,7 +1114,7 @@ private fun TagSuggestionPanel(
 @Composable
 private fun TranscriptTabContent(
     state: SessionDetailUiState.Success,
-    onEditTranscript: () -> Unit,
+    onEditTranscript: (dev.scrybe.core.model.Transcript) -> Unit,
     onDeleteTranscript: (dev.scrybe.core.model.Transcript) -> Unit,
     onResumeTranscription: () -> Unit,
 ) {
@@ -1615,7 +1615,7 @@ private fun TransformProfileRow(
 @Composable
 private fun TranscriptSection(
     state: SessionDetailUiState.Success,
-    onEditTranscript: () -> Unit,
+    onEditTranscript: (Transcript) -> Unit,
     onDeleteTranscript: (Transcript) -> Unit,
     onResumeTranscription: () -> Unit = {},
 ) {
@@ -1663,11 +1663,17 @@ private fun TranscriptSection(
     }
 
     val rawTranscripts = listOfNotNull(state.currentTranscript)
+    val originalIfDifferent = state.originalTranscript
+        ?.takeIf { original -> state.currentTranscript?.id != original.id }
     val transformedTranscripts =
         transcripts
             .filter { it.type != TranscriptType.RAW }
             .filter { it.type != TranscriptType.EDITED }
             .sortedByDescending { it.createdAt }
+
+    val totalCount = rawTranscripts.size +
+        (if (originalIfDifferent != null) 1 else 0) +
+        transformedTranscripts.size
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (rawTranscripts.isNotEmpty()) {
@@ -1677,22 +1683,22 @@ private fun TranscriptSection(
                     titleOverride = if (transcript.type == TranscriptType.EDITED) "Edited" else null,
                     speakerSegments = state.speakerSegments,
                     durationMs = state.session.durationMs,
+                    startExpanded = totalCount <= 1,
                     onDelete = { onDeleteTranscript(transcript) },
-                    onEdit = onEditTranscript,
+                    onEdit = { onEditTranscript(transcript) },
                 )
             }
-            state.originalTranscript
-                ?.takeIf { original -> state.currentTranscript?.id != original.id }
-                ?.let { original ->
-                    TranscriptCard(
-                        transcript = original,
-                        titleOverride = "Original",
-                        speakerSegments = emptyList(),
-                        durationMs = state.session.durationMs,
-                        onDelete = { onDeleteTranscript(original) },
-                        onEdit = onEditTranscript,
-                    )
-                }
+            originalIfDifferent?.let { original ->
+                TranscriptCard(
+                    transcript = original,
+                    titleOverride = "Original",
+                    speakerSegments = emptyList(),
+                    durationMs = state.session.durationMs,
+                    startExpanded = totalCount <= 1,
+                    onDelete = { onDeleteTranscript(original) },
+                    onEdit = { onEditTranscript(original) },
+                )
+            }
         }
         if (transformedTranscripts.isNotEmpty()) {
             Text("Transforms", style = MaterialTheme.typography.labelLarge)
@@ -1702,8 +1708,9 @@ private fun TranscriptSection(
                     titleOverride = transcript.type.name,
                     speakerSegments = emptyList(),
                     durationMs = state.session.durationMs,
+                    startExpanded = totalCount <= 1,
                     onDelete = { onDeleteTranscript(transcript) },
-                    onEdit = onEditTranscript,
+                    onEdit = { onEditTranscript(transcript) },
                 )
             }
         }
@@ -1769,10 +1776,11 @@ private fun TranscriptCard(
     titleOverride: String?,
     speakerSegments: List<SpeakerSegment>,
     durationMs: Long,
+    startExpanded: Boolean = false,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
 ) {
-    var expanded by remember(transcript.id) { mutableStateOf(false) }
+    var expanded by remember(transcript.id) { mutableStateOf(startExpanded) }
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
