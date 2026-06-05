@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
+
 ### Fixes
 
 ## 1.6.1 (2026-06-04)
