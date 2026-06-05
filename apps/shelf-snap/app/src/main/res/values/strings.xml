@@ -129,10 +129,11 @@
     <!-- v2: gallery / camera capture -->
     <string name="add_photo">Add</string>
     <string name="analyze">Analyze</string>
+    <string name="analyse_count">Analyse (%1$d)</string>
     <string name="toggle_flash">Toggle flash</string>
     <string name="add_to_item">Add %1$d photo(s)</string>
-    <string name="hint_center_item">Center your donation item</string>
-    <string name="hint_photos_captured">%1$d photo(s) captured</string>
+    <string name="hint_center_item">Centre the item · good lighting helps AI</string>
+    <string name="hint_photos_captured">%1$d photo(s) · tap to analyse</string>
 
     <!-- v2: settings — capture, storage, about -->
     <string name="capture_storage_section">Capture &amp; storage</string>
