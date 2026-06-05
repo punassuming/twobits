@@ -216,9 +216,10 @@ fun SettingsScreen(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = if (uiState.keyVerifyError != null)
-                                stringResource(R.string.api_key_test_failed, uiState.keyVerifyError)
-                            else stringResource(R.string.api_key_test_failed, "Unknown error"),
+                            text = stringResource(
+                                R.string.api_key_test_failed,
+                                uiState.keyVerifyError ?: "Unknown error",
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )

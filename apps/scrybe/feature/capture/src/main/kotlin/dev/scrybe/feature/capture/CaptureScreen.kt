@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1119,15 +1118,20 @@ private fun HomeSessionCardFooter(session: RecentCaptureSession) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (isArchived) {
-                Icon(Icons.Filled.Archive, contentDescription = "Archived",
-                     modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
+                Icon(
+                    Icons.Filled.Archive,
+                    contentDescription = "Archived",
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.tertiary,
+                )
             }
             if (hasSpecialStatus) {
-                val icon = when (session.status) {
-                    SessionStatus.FAILED -> Icons.Filled.Error
-                    SessionStatus.TRANSCRIBING -> Icons.Filled.HourglassEmpty
-                    else -> Icons.Filled.Description
-                }
+                val icon =
+                    when (session.status) {
+                        SessionStatus.FAILED -> Icons.Filled.Error
+                        SessionStatus.TRANSCRIBING -> Icons.Filled.HourglassEmpty
+                        else -> Icons.Filled.Description
+                    }
                 Icon(icon, contentDescription = session.status.name, modifier = Modifier.size(14.dp))
             }
             if (hasMultipleSpeakers) {
@@ -1137,12 +1141,17 @@ private fun HomeSessionCardFooter(session: RecentCaptureSession) {
                         horizontalArrangement = Arrangement.spacedBy(3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Filled.PersonSearch, contentDescription = null,
-                             modifier = Modifier.size(10.dp),
-                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("${session.speakerCount} spk",
-                             style = MaterialTheme.typography.labelSmall,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Filled.PersonSearch,
+                            contentDescription = null,
+                            modifier = Modifier.size(10.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            "${session.speakerCount} spk",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
@@ -1401,14 +1410,15 @@ private fun modeIcon(mode: RecordingMode): ImageVector =
 
 @Composable
 private fun SessionStatusChip(status: SessionStatus) {
-    val (label, color) = when (status) {
-        SessionStatus.TRANSCRIBING -> "Transcribing" to MaterialTheme.colorScheme.tertiary
-        SessionStatus.TRANSCRIBED -> "Done" to MaterialTheme.colorScheme.primary
-        SessionStatus.FAILED -> "Failed" to MaterialTheme.colorScheme.error
-        SessionStatus.QUEUED -> "Queued" to MaterialTheme.colorScheme.onSurfaceVariant
-        SessionStatus.PARTIAL_TRANSCRIPTION -> "Partial" to MaterialTheme.colorScheme.tertiary
-        else -> return
-    }
+    val (label, color) =
+        when (status) {
+            SessionStatus.TRANSCRIBING -> "Transcribing" to MaterialTheme.colorScheme.tertiary
+            SessionStatus.TRANSCRIBED -> "Done" to MaterialTheme.colorScheme.primary
+            SessionStatus.FAILED -> "Failed" to MaterialTheme.colorScheme.error
+            SessionStatus.QUEUED -> "Queued" to MaterialTheme.colorScheme.onSurfaceVariant
+            SessionStatus.PARTIAL_TRANSCRIPTION -> "Partial" to MaterialTheme.colorScheme.tertiary
+            else -> return
+        }
     Surface(shape = CircleShape, color = color.copy(alpha = 0.14f)) {
         Text(
             text = label,
@@ -1422,9 +1432,10 @@ private fun SessionStatusChip(status: SessionStatus) {
 @Composable
 private fun RecentSessionMiniRow(session: RecentCaptureSession) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -1438,11 +1449,12 @@ private fun RecentSessionMiniRow(session: RecentCaptureSession) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = buildString {
-                    if (session.durationMs > 0L) append(formatCardDuration(session.durationMs))
-                    if (session.durationMs > 0L) append(" · ")
-                    append(session.createdAtLabel)
-                },
+                text =
+                    buildString {
+                        if (session.durationMs > 0L) append(formatCardDuration(session.durationMs))
+                        if (session.durationMs > 0L) append(" · ")
+                        append(session.createdAtLabel)
+                    },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
