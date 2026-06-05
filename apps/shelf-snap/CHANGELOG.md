@@ -4,8 +4,14 @@
 
 ### Features
 
+* redesign CameraScreen — overlay close/flash controls on viewfinder, teal L-bracket corner guides, AI tip pill, white ring shutter in dark bottom panel, Analyse pill, gallery thumbnail, full-screen animated AnalysingView with 5-step progress
+* add AI configuration navigation card to Settings — prominent primaryContainer card opens AI config screen (key, models, Pro)
+* update InventoryScreen — app name as TopAppBar title, Sort button, SummaryBanner showing item count + total estimate between filter chips and list, refactored InventoryItemCard with category/brand layout and confidence badge
+* Scrybe: update speaker colour palette to design tokens (signal blue, glow green, ember, purple); restructure PlaybackCard with centred transport controls and no section header
+
 ### Improvements
 
+* ItemDetailScreen — brand · model subtitle uses middle-dot separator; AI confidence badge replaced with primaryContainer pill + "GPT-4o analysis" annotation
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
 ### Fixes
