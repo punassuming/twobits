@@ -547,7 +547,24 @@ private fun RecordingActiveView(
                 RecordingTimerRow(elapsedMs = state.elapsedMs, isStopping = isStopping, isPaused = isPaused)
             }
         }
-        Spacer(Modifier.weight(1f))
+        // Recent recordings section
+        Column(modifier = Modifier.weight(1f)) {
+            if (state.recentSessions.isNotEmpty()) {
+                Text(
+                    text = "Recent recordings",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
+                )
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(state.recentSessions.take(4)) { session ->
+                        RecentSessionMiniRow(session = session)
+                    }
+                }
+            } else {
+                Spacer(Modifier.fillMaxSize())
+            }
+        }
         RecordingStopButtons(
             modeName = state.activeMode.label,
             enabled = !isStopping,
@@ -1075,7 +1092,6 @@ private fun formatCardDuration(durationMs: Long): String {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HomeSessionCardFooter(session: RecentCaptureSession) {
     val hasMultipleSpeakers = session.speakerCount > 1
@@ -1092,56 +1108,64 @@ private fun HomeSessionCardFooter(session: RecentCaptureSession) {
             hasSpecialStatus ||
             session.tags.isNotEmpty()
     if (!hasContent) return
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (isArchived) {
-            Icon(
-                Icons.Filled.Archive,
-                contentDescription = "Archived",
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.tertiary,
-            )
-        }
-        if (hasSpecialStatus) {
-            val icon =
-                when (session.status) {
+        // Left section: status + speaker count + open tasks
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isArchived) {
+                Icon(Icons.Filled.Archive, contentDescription = "Archived",
+                     modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
+            }
+            if (hasSpecialStatus) {
+                val icon = when (session.status) {
                     SessionStatus.FAILED -> Icons.Filled.Error
                     SessionStatus.TRANSCRIBING -> Icons.Filled.HourglassEmpty
                     else -> Icons.Filled.Description
                 }
-            Icon(icon, contentDescription = session.status.name, modifier = Modifier.size(14.dp))
-        }
-        if (hasMultipleSpeakers) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Filled.PersonSearch,
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    "${session.speakerCount} speakers",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Icon(icon, contentDescription = session.status.name, modifier = Modifier.size(14.dp))
+            }
+            if (hasMultipleSpeakers) {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.PersonSearch, contentDescription = null,
+                             modifier = Modifier.size(10.dp),
+                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${session.speakerCount} spk",
+                             style = MaterialTheme.typography.labelSmall,
+                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            if (hasOpenTasks) {
+                SessionTasksChip(count = session.openTaskCount)
             }
         }
-        if (hasOpenTasks) {
-            SessionTasksChip(count = session.openTaskCount)
-        }
-        session.tags.take(3).forEach { tag ->
-            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                Text(
-                    text = "#$tag",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        // Right section: tags
+        if (session.tags.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                session.tags.take(3).forEach { tag ->
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                        Text(
+                            text = "#$tag",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
             }
         }
     }
@@ -1374,6 +1398,58 @@ private fun modeIcon(mode: RecordingMode): ImageVector =
         RecordingMode.INTERVIEW -> Icons.Filled.PersonSearch
         RecordingMode.JOURNAL -> Icons.Filled.Book
     }
+
+@Composable
+private fun SessionStatusChip(status: SessionStatus) {
+    val (label, color) = when (status) {
+        SessionStatus.TRANSCRIBING -> "Transcribing" to MaterialTheme.colorScheme.tertiary
+        SessionStatus.TRANSCRIBED -> "Done" to MaterialTheme.colorScheme.primary
+        SessionStatus.FAILED -> "Failed" to MaterialTheme.colorScheme.error
+        SessionStatus.QUEUED -> "Queued" to MaterialTheme.colorScheme.onSurfaceVariant
+        SessionStatus.PARTIAL_TRANSCRIPTION -> "Partial" to MaterialTheme.colorScheme.tertiary
+        else -> return
+    }
+    Surface(shape = CircleShape, color = color.copy(alpha = 0.14f)) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+        )
+    }
+}
+
+@Composable
+private fun RecentSessionMiniRow(session: RecentCaptureSession) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        ModeBadge(mode = session.mode)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = session.title,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = buildString {
+                    if (session.durationMs > 0L) append(formatCardDuration(session.durationMs))
+                    if (session.durationMs > 0L) append(" · ")
+                    append(session.createdAtLabel)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        SessionStatusChip(status = session.status)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

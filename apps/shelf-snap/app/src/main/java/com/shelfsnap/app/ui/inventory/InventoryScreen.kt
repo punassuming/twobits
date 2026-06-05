@@ -45,8 +45,17 @@ fun InventoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.my_inventory)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
                 actions = {
+                    IconButton(onClick = { /* sort — no-op for now */ }) {
+                        Icon(Icons.Default.Sort, contentDescription = "Sort")
+                    }
                     IconButton(onClick = onSummaryClick) {
                         Icon(Icons.Default.Summarize, contentDescription = stringResource(R.string.donation_summary))
                     }
@@ -93,6 +102,16 @@ fun InventoryScreen(
                     listedCount = uiState.listedCount,
                     draftCount = uiState.draftCount,
                     onFilterChange = viewModel::onFilterChange
+                )
+            }
+
+            // Summary banner — shown when there are items
+            if (!uiState.isLoading && uiState.items.isNotEmpty()) {
+                val totalEstimate = uiState.items.sumOf { it.estimatedValue }
+                SummaryBanner(
+                    itemCount = uiState.items.size,
+                    totalEstimate = totalEstimate,
+                    onSummaryClick = onSummaryClick,
                 )
             }
 
@@ -243,61 +262,63 @@ private fun InventoryItemCard(
             ItemThumb(item = item, size = 64.dp, showCount = true)
 
             // Details
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Title row: name on left, estimate+confidence on right
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Text(
-                        text = item.category.ifBlank { "—" },
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = item.category.ifBlank { "—" },
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (item.brand.isNotBlank()) {
+                            Text(
+                                text = if (item.model.isNotBlank()) "${item.brand} ${item.model}" else item.brand,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.End, modifier = Modifier) {
+                        Text(
+                            text = "$" + "%.0f".format(item.estimatedValue),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = estimateColor,
+                        )
+                        if (item.confidencePercent > 0) {
+                            Text(
+                                text = "${item.confidencePercent}% conf.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                // Badges row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ConditionBadge(condition = item.condition)
                     if (item.isDraft) {
                         Badge(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        ) { Text(stringResource(R.string.draft_label)) }
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ) {
+                            Text(stringResource(R.string.draft_label))
+                        }
                     }
                     ListingStatusPill(item = item)
-                }
-                // Brand · Model subtitle
-                if (item.brand.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = if (item.model.isNotBlank()) "${item.brand} · ${item.model}" else item.brand,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else if (item.description.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = item.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Condition as colored chip
-                    ConditionBadge(condition = item.condition)
-                    // Story 4 – Valuation suggestion, labeled as estimate
-                    Text(
-                        text = "$" + "%.2f".format(item.estimatedValue) + " *",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = estimateColor,
-                        fontWeight = FontWeight.SemiBold
-                    )
                     Spacer(Modifier.weight(1f))
                     PlatformDots(item = item)
                 }
@@ -421,6 +442,55 @@ fun conditionColor(condition: Condition): androidx.compose.ui.graphics.Color = w
     Condition.GOOD -> ConditionGood
     Condition.FAIR -> ConditionFair
     Condition.POOR -> ConditionPoor
+}
+
+@Composable
+private fun SummaryBanner(
+    itemCount: Int,
+    totalEstimate: Double,
+    onSummaryClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clickable(onClick = onSummaryClick),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                Icons.Default.Inventory2,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = buildString {
+                    append(itemCount)
+                    append(" item")
+                    if (itemCount != 1) append("s")
+                    append("  ·  Est. total: ")
+                    append("$")
+                    append(totalEstimate.toInt())
+                },
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    }
 }
 
 /** Displays the item condition as a small colored chip. */
