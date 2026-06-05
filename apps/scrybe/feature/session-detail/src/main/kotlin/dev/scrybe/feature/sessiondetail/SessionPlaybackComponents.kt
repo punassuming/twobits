@@ -115,9 +115,12 @@ internal fun PlaybackCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onSkipBack, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Filled.Replay10, contentDescription = "Skip back 10s",
-                     modifier = Modifier.size(24.dp),
-                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(
+                    Icons.Filled.Replay10,
+                    contentDescription = "Skip back 10s",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Spacer(Modifier.width(16.dp))
             Surface(
@@ -138,9 +141,12 @@ internal fun PlaybackCard(
             }
             Spacer(Modifier.width(16.dp))
             IconButton(onClick = onSkipForward, modifier = Modifier.size(44.dp)) {
-                Icon(Icons.Filled.Forward10, contentDescription = "Skip forward 10s",
-                     modifier = Modifier.size(24.dp),
-                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(
+                    Icons.Filled.Forward10,
+                    contentDescription = "Skip forward 10s",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         if (state.speakerSegments.isNotEmpty()) {
@@ -405,10 +411,14 @@ private fun densitySmoothed(
 
 internal val speakerColorPalette =
     listOf(
-        Color(0xFF89C7FF),  // signal blue
-        Color(0xFF88D7A8),  // glow green
-        Color(0xFFFFB695),  // ember
-        Color(0xFFC6A0F6),  // purple
+        // signal blue
+        Color(0xFF89C7FF),
+        // glow green
+        Color(0xFF88D7A8),
+        // ember
+        Color(0xFFFFB695),
+        // purple
+        Color(0xFFC6A0F6),
     )
 
 internal fun speakerColorForIndex(index: Int): Color = speakerColorPalette[index.mod(speakerColorPalette.size)]
