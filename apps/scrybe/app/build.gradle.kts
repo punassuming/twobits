@@ -58,7 +58,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -70,6 +71,12 @@ android {
                     signingConfigs.getByName("debug")
                 }
         }
+    }
+
+    bundle {
+        language { enableSplit = true }
+        density { enableSplit = true }
+        abi { enableSplit = true }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -96,6 +103,9 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // Prevent .so extraction at install time; the OS loads them directly
+        // from the compressed APK, reducing on-device storage footprint.
+        jniLibs.useLegacyPackaging = false
     }
     sourceSets.getByName("main").assets.srcDir(generatedChangelogAssetsDir)
 }
