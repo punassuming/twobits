@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* release workflow no longer fires on PR CI completions — `branches: [main]` filter added to `workflow_run` trigger so it only activates when CI runs against `main`
+
 ### Fixes
 
 ## 1.3.0 (2026-06-06)
