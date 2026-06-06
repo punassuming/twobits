@@ -2,7 +2,7 @@ name: Shelf Snap CI
 
 on:
   push:
-    branches: [ "main", "copilot/**", "claude/**" ]
+    branches: [ "main" ]
     paths:
       - 'apps/shelf-snap/**'
       - 'shared/**'
