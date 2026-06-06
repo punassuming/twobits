@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Improvements
+
+* CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 ### Features
 
 **Camera** — viewfinder redesign:
