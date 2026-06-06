@@ -24,15 +24,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
@@ -40,7 +37,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
@@ -78,7 +74,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -86,14 +81,8 @@ import com.twobits.billing.SubscriptionTier
 import dev.scrybe.core.common.ReleaseNotes
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.ScrybeSectionCard
-import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.AudioFormat
-import dev.scrybe.core.model.LocalGemmaModel
-import dev.scrybe.core.model.LocalWhisperModel
-import dev.scrybe.core.model.OpenAiProfileSuggestionModel
-import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
-import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,23 +91,16 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToFileManager: () -> Unit = {},
     onNavigateToProfiles: () -> Unit = {},
+    onNavigateToAiConfig: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val activity = LocalContext.current as? Activity
-    val whisperStates by viewModel.whisperStates.collectAsState()
-    val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
-    val gemmaStates by viewModel.gemmaStates.collectAsState()
-    val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
     var showChangelog by remember { mutableStateOf(false) }
     var showPostStopPicker by remember { mutableStateOf(false) }
     var showSampleRatePicker by remember { mutableStateOf(false) }
     var showBitRatePicker by remember { mutableStateOf(false) }
     var showChannelPicker by remember { mutableStateOf(false) }
-    var showProfileModelPicker by remember { mutableStateOf(false) }
-    var showTransformModelPicker by remember { mutableStateOf(false) }
-    val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
-    val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
     val context = LocalContext.current
     val obsidianVaultLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -129,12 +111,6 @@ fun SettingsScreen(
                 )
                 viewModel.setObsidianVaultUri(uri.toString())
             }
-        }
-    var pendingImportGemmaModel by remember { mutableStateOf<LocalGemmaModel?>(null) }
-    val importGemmaFilePicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            uri?.let { viewModel.importGemmaModel(it, pendingImportGemmaModel ?: return@let) }
-            pendingImportGemmaModel = null
         }
     val locationPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -243,311 +219,7 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSectionCard(
-                    title = "Transcription",
-                    icon = Icons.Filled.SettingsSuggest,
-                ) {
-                    Text(
-                        text = "Choose where speech-to-text runs.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    ProviderOptionCard(
-                        providerType = ProviderType.OPENAI,
-                        selected = uiState.transcriptionProvider == ProviderType.OPENAI.name,
-                        enabled = true,
-                        supportingText = "Cloud transcription via OpenAI Whisper API.",
-                        onSelect = { viewModel.setTranscriptionProvider(ProviderType.OPENAI.name) },
-                        icon = {
-                            Icon(Icons.Filled.CloudDone, contentDescription = null)
-                        },
-                        content = {
-                            if (shouldShowOpenAiApiKey(uiState.transcriptionProvider)) {
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    OutlinedTextField(
-                                        value = uiState.apiKey,
-                                        onValueChange = viewModel::updateApiKey,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true,
-                                        visualTransformation = PasswordVisualTransformation(),
-                                        placeholder = { Text("sk-...") },
-                                        label = { Text("OpenAI API key") },
-                                        trailingIcon = {
-                                            when (uiState.apiKeyValidationStatus) {
-                                                ApiKeyValidationStatus.Valid ->
-                                                    Icon(
-                                                        Icons.Filled.CloudDone,
-                                                        contentDescription = "OpenAI connected",
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                    )
-                                                ApiKeyValidationStatus.Invalid ->
-                                                    Icon(
-                                                        Icons.Filled.CloudOff,
-                                                        contentDescription = "OpenAI connection failed",
-                                                        tint = MaterialTheme.colorScheme.error,
-                                                    )
-                                                ApiKeyValidationStatus.Validating ->
-                                                    Icon(
-                                                        Icons.Filled.Sync,
-                                                        contentDescription = "Validating API key",
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                    )
-                                                ApiKeyValidationStatus.Unknown -> Unit
-                                            }
-                                        },
-                                        supportingText = {
-                                            uiState.apiKeyValidationMessage?.let { message ->
-                                                Text(
-                                                    text = message,
-                                                    color =
-                                                        when (uiState.apiKeyValidationStatus) {
-                                                            ApiKeyValidationStatus.Invalid ->
-                                                                MaterialTheme.colorScheme.error
-                                                            ApiKeyValidationStatus.Valid ->
-                                                                MaterialTheme.colorScheme.primary
-                                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                                        },
-                                                )
-                                            }
-                                        },
-                                    )
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Button(
-                                            onClick = viewModel::saveApiKey,
-                                            modifier = Modifier.weight(1f),
-                                        ) {
-                                            Text("Save Key")
-                                        }
-                                        Button(
-                                            onClick = viewModel::clearApiKey,
-                                            modifier = Modifier.weight(1f),
-                                        ) {
-                                            Text("Clear Key")
-                                        }
-                                    }
-                                    val isValidating =
-                                        uiState.apiKeyValidationStatus ==
-                                            ApiKeyValidationStatus.Validating
-                                    OutlinedButton(
-                                        onClick = viewModel::testApiConnection,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        enabled = !isValidating,
-                                    ) {
-                                        Text(if (isValidating) "Testing…" else "Test Connection")
-                                    }
-                                }
-                            }
-                        },
-                    )
-                    ProviderOptionCard(
-                        providerType = ProviderType.LOCAL,
-                        selected = uiState.transcriptionProvider == ProviderType.LOCAL.name,
-                        enabled = whisperStates.values.any { it is LocalModelState.Ready },
-                        supportingText = "On-device transcription using Whisper. No internet required.",
-                        alwaysShowContent = true,
-                        onSelect = { viewModel.setTranscriptionProvider(ProviderType.LOCAL.name) },
-                        icon = {
-                            Icon(Icons.Filled.Storage, contentDescription = null)
-                        },
-                        content = {
-                            Text(
-                                "Speech-to-text model (Whisper)",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            LocalWhisperModel.entries.forEach { model ->
-                                WhisperModelRow(
-                                    model = model,
-                                    state = whisperStates[model] ?: LocalModelState.NotDownloaded,
-                                    isSelected = selectedWhisperModel == model,
-                                    onSelect = { viewModel.selectWhisperModel(model) },
-                                    onDownload = { viewModel.downloadWhisperModel(model) },
-                                    onDelete = { viewModel.deleteWhisperModel(model) },
-                                )
-                            }
-                        },
-                    )
-                }
-
-                SettingsSectionCard(
-                    title = "AI Features",
-                    icon = Icons.Filled.AutoAwesome,
-                ) {
-                    Text(
-                        text = "Choose where AI transforms, rename suggestions, and tag clustering run.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    ProviderOptionCard(
-                        providerType = ProviderType.OPENAI,
-                        selected = uiState.aiFeaturesProvider == ProviderType.OPENAI.name,
-                        enabled = true,
-                        supportingText = "Cloud AI via OpenAI models.",
-                        onSelect = { viewModel.setAiFeaturesProvider(ProviderType.OPENAI.name) },
-                        icon = {
-                            Icon(Icons.Filled.CloudDone, contentDescription = null)
-                        },
-                        content = {
-                            if (uiState.aiFeaturesProvider == ProviderType.OPENAI.name) {
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = MaterialTheme.colorScheme.surface,
-                                    shape = MaterialTheme.shapes.medium,
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text(
-                                            text = "AI profile draft model",
-                                            style = MaterialTheme.typography.labelLarge,
-                                        )
-                                        Text(
-                                            text = selectedProfileModel.title,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.primary,
-                                        )
-                                        Text(
-                                            text = selectedProfileModel.supportingText,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        Text(
-                                            text = "Profiles uses this model whenever you generate an AI draft.",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        OutlinedButton(
-                                            onClick = {
-                                                viewModel.clearProfileSuggestionModelTestState()
-                                                showProfileModelPicker = true
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            Text("Choose Model")
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                    )
-                    ProviderOptionCard(
-                        providerType = ProviderType.LOCAL,
-                        selected = uiState.aiFeaturesProvider == ProviderType.LOCAL.name,
-                        enabled = gemmaStates.values.any { it is LocalModelState.Ready },
-                        supportingText = "On-device AI using Gemma. No internet required.",
-                        alwaysShowContent = true,
-                        onSelect = { viewModel.setAiFeaturesProvider(ProviderType.LOCAL.name) },
-                        icon = {
-                            Icon(Icons.Filled.Storage, contentDescription = null)
-                        },
-                        content = {
-                            Text(
-                                "LLM model (transforms, rename, tags, clustering)",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            LocalGemmaModel.entries.forEach { model ->
-                                GemmaModelRow(
-                                    model = model,
-                                    state = gemmaStates[model] ?: LocalModelState.NotDownloaded,
-                                    isSelected = selectedGemmaModel == model,
-                                    onSelect = { viewModel.selectGemmaModel(model) },
-                                    onImport = {
-                                        pendingImportGemmaModel = model
-                                        importGemmaFilePicker.launch("*/*")
-                                    },
-                                    onGetModel = {
-                                        val pageUrl = model.downloadUrl.substringBefore("/resolve/")
-                                        context.startActivity(
-                                            Intent(Intent.ACTION_VIEW, Uri.parse(pageUrl)),
-                                        )
-                                    },
-                                    onDelete = { viewModel.deleteGemmaModel(model) },
-                                )
-                            }
-                        },
-                    )
-                    HorizontalDivider()
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.AutoAwesome,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Text("Transform Model", style = MaterialTheme.typography.titleSmall)
-                        }
-                        Text(
-                            text =
-                                "Model used to run transform profiles against your transcripts. " +
-                                    "When using on-device AI, this selection applies to profiles pinned to OpenAI.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = selectedTransformModel.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = selectedTransformModel.supportingText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = selectedTransformModel.costSummary,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        OutlinedButton(
-                            onClick = { showTransformModelPicker = true },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Choose Transform Model")
-                        }
-                    }
-                    HorizontalDivider()
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Speaker identification", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                "Identify who is speaking after transcription. Colored speaker timeline and inline text coloring appear on the recording detail. May increase API costs.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = uiState.enableSpeakerIdentification,
-                            onCheckedChange = { viewModel.setEnableSpeakerIdentification(it) },
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Insight analysis", style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                "Generate sentiment and topic markers after transcription. Results appear in the recording detail AI Analysis timeline. May increase API costs.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = uiState.enableInsightAnalysis,
-                            onCheckedChange = { viewModel.setEnableInsightAnalysis(it) },
-                        )
-                    }
-                }
+                ScrybeAiConfigCard(onClick = onNavigateToAiConfig)
 
                 SettingsSectionCard(
                     title = "Recording Defaults",
@@ -1081,263 +753,6 @@ fun SettingsScreen(
             },
         )
     }
-
-    if (showProfileModelPicker) {
-        OptionPickerDialog(
-            title = "Profile Draft Model",
-            options = OpenAiProfileSuggestionModel.entries.toList(),
-            selected = selectedProfileModel,
-            label = { it.title },
-            onDismiss = { showProfileModelPicker = false },
-            onSelect = {
-                viewModel.setProfileSuggestionModel(it.apiName)
-                showProfileModelPicker = false
-            },
-        )
-    }
-
-    if (showTransformModelPicker) {
-        OptionPickerDialog(
-            title = "Transform Model",
-            options = OpenAiTransformModel.entries.toList(),
-            selected = selectedTransformModel,
-            label = { "${it.title} — ${it.costSummary}" },
-            onDismiss = { showTransformModelPicker = false },
-            onSelect = {
-                viewModel.setTransformModel(it.apiName)
-                showTransformModelPicker = false
-            },
-        )
-    }
-}
-
-@Composable
-private fun WhisperModelRow(
-    model: LocalWhisperModel,
-    state: LocalModelState,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    onDownload: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    val isReady = state is LocalModelState.Ready
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    if (isSelected && isReady) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-            ),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(model.displayName, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "${model.description} · ${model.sizeLabel}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (isReady) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (!isSelected) {
-                            TextButton(onClick = onSelect) { Text("Use") }
-                        }
-                        IconButton(onClick = onDelete) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
-                        }
-                    }
-                }
-            }
-            when (state) {
-                is LocalModelState.NotDownloaded ->
-                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text(" Download")
-                    }
-                is LocalModelState.Downloading ->
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        LinearProgressIndicator(
-                            progress = { state.progressPercent / 100f },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text(
-                            "${state.progressPercent}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                is LocalModelState.Ready ->
-                    if (isSelected) {
-                        Text(
-                            "Active",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                is LocalModelState.Error ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
-                    }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GemmaModelRow(
-    model: LocalGemmaModel,
-    state: LocalModelState,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    onImport: () -> Unit,
-    onGetModel: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    val isReady = state is LocalModelState.Ready
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    if (isSelected && isReady) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-            ),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(model.displayName, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "${model.description} · ${model.sizeLabel}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (isReady) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (!isSelected) {
-                            TextButton(onClick = onSelect) { Text("Use") }
-                        }
-                        IconButton(onClick = onDelete) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
-                        }
-                    }
-                }
-            }
-            when (state) {
-                is LocalModelState.NotDownloaded ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Text(" Import .task file")
-                        }
-                        TextButton(onClick = onGetModel, modifier = Modifier.fillMaxWidth()) {
-                            Text("Get model on HuggingFace ↗")
-                        }
-                    }
-                is LocalModelState.Downloading ->
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        LinearProgressIndicator(
-                            progress = { state.progressPercent / 100f },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text(
-                            "Importing… ${state.progressPercent}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                is LocalModelState.Ready ->
-                    if (isSelected) {
-                        Text(
-                            "Active",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                is LocalModelState.Error ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
-                    }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LocalModelDownloadSection(
-    label: String,
-    state: LocalModelState,
-    onDownload: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall)
-        when (state) {
-            is LocalModelState.NotDownloaded ->
-                OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Text(" Download")
-                }
-            is LocalModelState.Downloading ->
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    LinearProgressIndicator(
-                        progress = { state.progressPercent / 100f },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Text(
-                        "${state.progressPercent}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            is LocalModelState.Ready ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Ready",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete model")
-                    }
-                }
-            is LocalModelState.Error ->
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        state.message,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                        Text("Retry")
-                    }
-                }
-        }
-    }
 }
 
 @Composable
@@ -1478,6 +893,51 @@ private fun SettingsSectionCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScrybeAiConfigCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        shape = MaterialTheme.shapes.large,
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(ScrybeLayoutDefaults.sectionPadding),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "AI configuration",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    "Transcription · transforms · profiles · API key",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun ReleaseVersionCard(
     release: ReleaseNotes,
@@ -1543,7 +1003,7 @@ private fun ReleaseVersionCard(
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                                 Text(
-                                    text = item,
+                                    text = item.title,
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f),
                                 )

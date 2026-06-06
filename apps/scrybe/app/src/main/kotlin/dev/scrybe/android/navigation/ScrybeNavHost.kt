@@ -14,6 +14,7 @@ import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
+import dev.scrybe.feature.settings.AIConfigScreen
 import dev.scrybe.feature.settings.SettingsScreen
 import dev.scrybe.feature.tasks.TaskInboxScreen
 
@@ -35,6 +36,8 @@ sealed class Screen(
     object Settings : Screen("settings")
 
     object Tasks : Screen("tasks")
+
+    object AiConfig : Screen("ai_config")
 }
 
 @Composable
@@ -125,7 +128,11 @@ fun ScrybeNavHost(navController: NavHostController) {
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToFileManager = { navController.navigate(Screen.FileManager.route) },
                 onNavigateToProfiles = { navController.navigate(Screen.Profiles.route) },
+                onNavigateToAiConfig = { navController.navigate(Screen.AiConfig.route) },
             )
+        }
+        composable(Screen.AiConfig.route) {
+            AIConfigScreen(onBack = { navController.popBackStack() })
         }
     }
 }

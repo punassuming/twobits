@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.shelfsnap.app.data.local.AppDatabase
 import com.shelfsnap.app.data.local.ItemDao
+import com.shelfsnap.app.data.local.MIGRATION_2_3
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,7 +25,8 @@ object AppModule {
     @Singleton
     fun provideDatabase(@ApplicationContext ctx: Context): AppDatabase =
         Room.databaseBuilder(ctx, AppDatabase::class.java, "shelf_snap.db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_2_3)
+            .fallbackToDestructiveMigrationFrom(1)
             .build()
 
     @Provides

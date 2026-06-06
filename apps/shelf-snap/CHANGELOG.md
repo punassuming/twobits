@@ -4,7 +4,30 @@
 
 ### Features
 
+**Camera** — viewfinder redesign:
+* close and flash controls overlaid directly on the viewfinder surface
+* teal L-bracket corner guides frame the subject at each corner
+* AI tip pill with contextual shooting hints
+* dark bottom panel: white-ring shutter button, Analyse pill showing photo count, gallery thumbnail
+* full-screen animated AnalysingView replaces the capture overlay with a 5-step progress indicator
+
+**Settings** — AI configuration navigation card:
+* prominent `primaryContainer` card at the top of the Settings screen
+* links to API key, vision model selection, and Pro subscription settings
+* subtitle: "Vision model · pricing · local models · API key"
+
+**Inventory** — screen refresh:
+* app name as TopAppBar title with Sort button action
+* SummaryBanner between filter chips and list showing item count and total estimated value
+* InventoryItemCard: category chip as title, brand/model as bodySmall, confidence badge right-aligned
+
 ### Improvements
+
+**Item Detail** — visual polish:
+* brand · model subtitle uses middle-dot separator (was space-separated)
+* AI confidence badge replaced with a `primaryContainer` pill + "GPT-4o analysis" annotation
+
+* fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
 ### Fixes
 
