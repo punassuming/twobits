@@ -6,7 +6,11 @@
 
 ### Improvements
 
+* broaden ProGuard rules to cover kotlinx-serialization serializer companions, commons-compress SPI factories, and generic-signature retention for Retrofit — prevents potential R8 stripping of runtime-required classes
+
 ### Fixes
+
+* fix release APK staging — glob changed from `app-release*.apk` to `app-*release.apk` so ABI-split filenames (`app-arm64-v8a-release.apk`) are matched correctly
 
 ## 1.8.1 (2026-06-06)
 
