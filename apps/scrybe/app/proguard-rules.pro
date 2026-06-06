@@ -27,7 +27,7 @@
     *** Companion;
 }
 -keepclasseswithmembers class **$$serializer {
-    INSTANCE <fields>;
+    *** INSTANCE;
 }
 -dontnote kotlinx.serialization.**
 
@@ -35,3 +35,10 @@
 # Keep the SPI implementations so model-file decompression works at runtime.
 -keep class org.apache.commons.compress.compressors.** { *; }
 -keep class org.apache.commons.compress.archivers.** { *; }
+
+# commons-compress optional codec back-ends — not bundled with the app.
+# XZ/LZMA, Zstandard, and Brotli support is only pulled in when those formats
+# are actually used; the missing classes cause R8 to fail when they are absent.
+-dontwarn org.tukaani.xz.**
+-dontwarn com.github.luben.zstd.**
+-dontwarn org.brotli.dec.**

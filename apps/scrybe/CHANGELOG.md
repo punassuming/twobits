@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
+
 ## 1.8.2 (2026-06-06)
 
 ### Features
