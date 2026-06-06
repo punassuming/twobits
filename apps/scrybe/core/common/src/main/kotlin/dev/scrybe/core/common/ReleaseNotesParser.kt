@@ -24,9 +24,10 @@ object ReleaseNotesParser {
 
     fun parseReleaseHistory(changelog: String): List<ReleaseNotes> {
         val lines = changelog.lines()
-        val sectionIndices = lines.mapIndexedNotNull { index, line ->
-            if (line.startsWith("## ")) index else null
-        }
+        val sectionIndices =
+            lines.mapIndexedNotNull { index, line ->
+                if (line.startsWith("## ")) index else null
+            }
         if (sectionIndices.isEmpty()) return emptyList()
 
         return sectionIndices.mapIndexedNotNull { idx, startIndex ->
@@ -64,9 +65,10 @@ object ReleaseNotesParser {
     }
 
     private fun parseStructuredGroups(sectionLines: List<String>): List<ReleaseNotesGroup> {
-        val subHeadings = sectionLines.mapIndexedNotNull { i, line ->
-            if (line.startsWith("### ")) i else null
-        }
+        val subHeadings =
+            sectionLines.mapIndexedNotNull { i, line ->
+                if (line.startsWith("### ")) i else null
+            }
         if (subHeadings.isEmpty()) return emptyList()
 
         val groups = mutableListOf<ReleaseNotesGroup>()
@@ -123,8 +125,10 @@ object ReleaseNotesParser {
 
     private fun normalizeHeading(text: String): String =
         text.replace(LINK_REGEX, "$1")
+            .replace(SQUARE_BRACKET_REGEX, "$1")
             .replace(DATE_REGEX, "")
             .replace(PAREN_REGEX, "")
+            .replace(TRAILING_SEPARATOR_REGEX, "")
             .trim()
 
     private fun normalizeBullet(text: String): String =
@@ -143,4 +147,6 @@ object ReleaseNotesParser {
     private val DATE_REGEX = Regex("\\(\\d{4}-\\d{2}-\\d{2}\\)|\\d{4}-\\d{2}-\\d{2}")
     private val PAREN_REGEX = Regex("\\s*\\(.*?\\)")
     private val BOLD_REGEX = Regex("\\*\\*(.+?)\\*\\*")
+    private val SQUARE_BRACKET_REGEX = Regex("\\[(.+?)]")
+    private val TRAILING_SEPARATOR_REGEX = Regex("\\s*-\\s*$")
 }

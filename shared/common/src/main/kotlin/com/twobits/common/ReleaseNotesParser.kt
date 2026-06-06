@@ -137,8 +137,10 @@ object ReleaseNotesParser {
 
     private fun normalizeHeading(text: String): String =
         text.replace(LINK_REGEX, "$1")
+            .replace(SQUARE_BRACKET_REGEX, "$1")
             .replace(DATE_REGEX, "")
             .replace(PAREN_REGEX, "")
+            .replace(TRAILING_SEPARATOR_REGEX, "")
             .trim()
 
     private fun normalizeBullet(text: String): String =
@@ -157,4 +159,6 @@ object ReleaseNotesParser {
     private val DATE_REGEX = Regex("\\(\\d{4}-\\d{2}-\\d{2}\\)|\\d{4}-\\d{2}-\\d{2}")
     private val PAREN_REGEX = Regex("\\s*\\(.*?\\)")
     private val BOLD_REGEX = Regex("\\*\\*(.+?)\\*\\*")
+    private val SQUARE_BRACKET_REGEX = Regex("\\[(.+?)]")
+    private val TRAILING_SEPARATOR_REGEX = Regex("\\s*-\\s*$")
 }
