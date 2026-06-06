@@ -1,6 +1,6 @@
 package com.shelfsnap.app
 
-import com.shelfsnap.app.ui.whatsnew.parseChangelog
+import com.twobits.common.ReleaseNotesParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -24,21 +24,20 @@ class ChangelogParserTest {
     """.trimIndent()
 
     @Test
-    fun `parses sections by their headings and strips brackets`() {
-        val sections = parseChangelog(sample)
-        assertEquals(listOf("Unreleased", "1.0.0 - 2026-06-01"), sections.map { it.title })
+    fun `parses versioned sections and excludes Unreleased`() {
+        val sections = ReleaseNotesParser.parseReleaseHistory(sample)
+        assertEquals(listOf("1.0.0"), sections.map { it.title })
     }
 
     @Test
     fun `ignores preamble before the first heading`() {
-        val sections = parseChangelog(sample)
+        val sections = ReleaseNotesParser.parseReleaseHistory(sample)
         assertTrue(sections.none { it.title.contains("Changelog") })
-        // The "Added" subsection and bullet land in the section body.
-        assertTrue(sections.first().body.any { it.startsWith("- ") })
+        assertTrue(sections.first().summaryItems.isNotEmpty())
     }
 
     @Test
     fun `empty input yields no sections`() {
-        assertTrue(parseChangelog("").isEmpty())
+        assertTrue(ReleaseNotesParser.parseReleaseHistory("").isEmpty())
     }
 }
