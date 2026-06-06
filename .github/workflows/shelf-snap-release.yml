@@ -234,10 +234,10 @@ jobs:
         id: asset
         run: |
           src=$(ls apps/shelf-snap/app/build/outputs/apk/release/app-release*.apk | head -n1)
-          dest="shelf-snap-${{ steps.version.outputs.new_tag }}.apk"
+          dest="${{ steps.version.outputs.new_tag }}.apk"
           cp "$src" "$dest"
           cp apps/shelf-snap/app/build/outputs/bundle/release/app-release.aab \
-             "shelf-snap-${{ steps.version.outputs.new_tag }}.aab" || true
+             "${{ steps.version.outputs.new_tag }}.aab" || true
           echo "path=$dest" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release and upload artifacts
@@ -249,7 +249,7 @@ jobs:
           body_path: ${{ steps.changelog.outputs.release_notes_path }}
           files: |
             ${{ steps.asset.outputs.path }}
-            shelf-snap-${{ steps.version.outputs.new_tag }}.aab
+            ${{ steps.version.outputs.new_tag }}.aab
 
   # Triggered via workflow_dispatch with rebuild_for_tag set.
   # Use this to build and upload a signed APK for an orphaned tag (one that was
@@ -318,10 +318,10 @@ jobs:
         id: asset
         run: |
           src=$(ls apps/shelf-snap/app/build/outputs/apk/release/app-release*.apk | head -n1)
-          dest="shelf-snap-${{ inputs.rebuild_for_tag }}.apk"
+          dest="${{ inputs.rebuild_for_tag }}.apk"
           cp "$src" "$dest"
           cp apps/shelf-snap/app/build/outputs/bundle/release/app-release.aab \
-             "shelf-snap-${{ inputs.rebuild_for_tag }}.aab" || true
+             "${{ inputs.rebuild_for_tag }}.aab" || true
           echo "path=$dest" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK to GitHub Release
@@ -330,4 +330,4 @@ jobs:
           tag_name: ${{ inputs.rebuild_for_tag }}
           files: |
             ${{ steps.asset.outputs.path }}
-            shelf-snap-${{ inputs.rebuild_for_tag }}.aab
+            ${{ inputs.rebuild_for_tag }}.aab

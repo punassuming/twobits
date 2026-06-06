@@ -260,6 +260,17 @@ jobs:
         shell: bash
         run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
 
+      - name: Stage release assets
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        id: asset
+        run: |
+          src=$(ls apps/scrybe/app/build/outputs/apk/release/app-release*.apk | head -n1)
+          dest="${{ steps.version.outputs.new_tag }}.apk"
+          cp "$src" "$dest"
+          src_aab=apps/scrybe/app/build/outputs/bundle/release/app-release.aab
+          [ -f "$src_aab" ] && cp "$src_aab" "${{ steps.version.outputs.new_tag }}.aab" || true
+          echo "path=$dest" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release and upload artifacts
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         uses: softprops/action-gh-release@v2
@@ -268,8 +279,8 @@ jobs:
           name: Scrybe v${{ steps.version.outputs.new_version }}
           body_path: ${{ steps.changelog.outputs.release_notes_path }}
           files: |
-            apps/scrybe/app/build/outputs/apk/release/*.apk
-            apps/scrybe/app/build/outputs/bundle/release/*.aab
+            ${{ steps.asset.outputs.path }}
+            ${{ steps.version.outputs.new_tag }}.aab
 
   # Triggered via workflow_dispatch with rebuild_for_tag set.
   # Use this to build and upload a signed APK for an orphaned tag (one that was
@@ -334,10 +345,20 @@ jobs:
         shell: bash
         run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
 
+      - name: Stage release assets
+        id: asset
+        run: |
+          src=$(ls apps/scrybe/app/build/outputs/apk/release/app-release*.apk | head -n1)
+          dest="${{ inputs.rebuild_for_tag }}.apk"
+          cp "$src" "$dest"
+          src_aab=apps/scrybe/app/build/outputs/bundle/release/app-release.aab
+          [ -f "$src_aab" ] && cp "$src_aab" "${{ inputs.rebuild_for_tag }}.aab" || true
+          echo "path=$dest" >> "$GITHUB_OUTPUT"
+
       - name: Upload APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.rebuild_for_tag }}
           files: |
-            apps/scrybe/app/build/outputs/apk/release/*.apk
-            apps/scrybe/app/build/outputs/bundle/release/*.aab
+            ${{ steps.asset.outputs.path }}
+            ${{ inputs.rebuild_for_tag }}.aab
