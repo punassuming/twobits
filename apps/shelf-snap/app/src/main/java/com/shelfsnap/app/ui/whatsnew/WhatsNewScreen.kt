@@ -1,35 +1,68 @@
 package com.shelfsnap.app.ui.whatsnew
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shelfsnap.app.BuildConfig
 import com.shelfsnap.app.R
+import com.twobits.common.ReleaseNoteItem
+import com.twobits.common.ReleaseNotes
+import com.twobits.common.ReleaseNotesGroup
+import com.twobits.common.ReleaseNotesParser
 
-/**
- * Renders the bundled CHANGELOG.md (Settings → What's new). The changelog is copied
- * into assets at build time, so this always reflects the shipped version.
- */
 @Composable
 fun WhatsNewScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val sections = remember {
+    val releases = remember {
         val text = runCatching {
             context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
         }.getOrNull().orEmpty()
-        parseChangelog(text)
+        ReleaseNotesParser.parseReleaseHistory(text)
     }
 
     Scaffold(
@@ -44,7 +77,7 @@ fun WhatsNewScreen(onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        if (sections.isEmpty()) {
+        if (releases.isEmpty()) {
             Box(
                 modifier = Modifier
                     .padding(padding)
@@ -60,86 +93,218 @@ fun WhatsNewScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                Text(
-                    text = stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+            items(releases) { release ->
+                VersionCard(
+                    release = release,
+                    isLatest = release == releases.first(),
                 )
             }
-            items(sections) { section -> ChangelogSectionCard(section) }
         }
     }
 }
 
 @Composable
-private fun ChangelogSectionCard(section: ChangelogSection) {
-    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = section.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            section.body.forEach { line ->
-                when {
-                    line.startsWith("### ") -> Text(
-                        text = line.removePrefix("### ").trim(),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-
-                    line.startsWith("- ") || line.startsWith("* ") -> Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+private fun VersionCard(
+    release: ReleaseNotes,
+    isLatest: Boolean,
+) {
+    ElevatedCard(
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column {
+            // Version header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "Version ${release.title}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (isLatest) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
                     ) {
-                        Text("•", style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            text = line.drop(2).trim(),
-                            style = MaterialTheme.typography.bodyMedium
+                            text = "Current",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         )
                     }
+                }
+                if (release.date.isNotBlank()) {
+                    Text(
+                        text = release.date.trim('(', ')'),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            HorizontalDivider()
 
-                    else -> Text(line, style = MaterialTheme.typography.bodyMedium)
+            if (release.groups.isNotEmpty()) {
+                release.groups.forEachIndexed { i, group ->
+                    if (i > 0) HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    CategorySection(group = group, startExpanded = isLatest && i == 0)
+                }
+            } else {
+                // Fallback: flat bullet list for old-format sections
+                release.summaryItems.forEach { bullet ->
+                    Text(
+                        text = "• $bullet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+                Spacer(Modifier.padding(bottom = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategorySection(
+    group: ReleaseNotesGroup,
+    startExpanded: Boolean,
+) {
+    var expanded by rememberSaveable(group.title) { mutableStateOf(startExpanded) }
+    val icon = categoryIcon(group.title)
+
+    Column {
+        // Category header row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Text(
+                text = group.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+            )
+            // item count badge
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "${group.items.size}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(18.dp)
+                    .rotate(if (expanded) 180f else 0f),
+            )
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                group.items.forEach { item ->
+                    NoteItemRow(item = item)
+                    Spacer(Modifier.padding(bottom = 6.dp))
                 }
             }
         }
     }
 }
 
-/** A single `## [version]` block from the changelog. */
-data class ChangelogSection(val title: String, val body: List<String>)
+@Composable
+private fun NoteItemRow(item: ReleaseNoteItem) {
+    var expanded by rememberSaveable(item.title) { mutableStateOf(false) }
+    val hasDetails = item.description.isNotBlank() && item.description != item.title
 
-/**
- * Parses Keep-a-Changelog markdown into sections keyed by their `## ` headings.
- * Content before the first `## ` heading (the file preamble) is ignored.
- */
-fun parseChangelog(markdown: String): List<ChangelogSection> {
-    val sections = mutableListOf<ChangelogSection>()
-    var title: String? = null
-    val body = mutableListOf<String>()
-
-    fun flush() {
-        title?.let { sections.add(ChangelogSection(it, body.toList())) }
-        body.clear()
-    }
-
-    markdown.lineSequence().forEach { raw ->
-        val line = raw.trimEnd()
-        when {
-            line.startsWith("## ") -> {
-                flush()
-                // "## [1.0.0] - 2026-06-01" -> "1.0.0 - 2026-06-01"; "## [Unreleased]" -> "Unreleased"
-                title = line.removePrefix("## ").replace("[", "").replace("]", "").trim()
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = if (expanded) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        },
+        tonalElevation = if (expanded) 0.dp else 1.dp,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.clickable(enabled = hasDetails) { expanded = !expanded }
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (hasDetails) {
+                    Icon(
+                        imageVector = Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .rotate(if (expanded) 180f else 0f),
+                    )
+                }
             }
-
-            title != null && line.isNotBlank() -> body.add(line)
+            AnimatedVisibility(visible = expanded && hasDetails) {
+                Text(
+                    text = item.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(
+                        start = 14.dp, end = 14.dp, bottom = 12.dp,
+                    ),
+                )
+            }
         }
     }
-    flush()
-    return sections
 }
+
+private fun categoryIcon(title: String): ImageVector =
+    when {
+        title.contains("Feature", ignoreCase = true) -> Icons.Default.AutoAwesome
+        title.contains("Fix", ignoreCase = true) -> Icons.Default.Build
+        else -> Icons.Default.TrendingUp
+    }

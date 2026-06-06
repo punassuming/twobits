@@ -316,7 +316,7 @@ fun CaptureScreen(
                     ) {
                         item(key = "intro") { IntroGuidanceSection() }
                     }
-                    if (folderModeEnabled && searchQuery.isBlank()) {
+                    if (folderModeEnabled) {
                         val grouped = filteredSessions.groupBy { it.folderId }
                         val folderIds =
                             grouped.keys

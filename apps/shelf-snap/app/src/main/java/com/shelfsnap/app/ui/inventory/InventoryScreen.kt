@@ -74,45 +74,46 @@ fun InventoryScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Search bar
-            OutlinedTextField(
-                value = uiState.searchQuery,
-                onValueChange = viewModel::onSearchQueryChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text(stringResource(R.string.search_items)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (uiState.searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = null)
+            // Search, filters and summary are only shown once there is at least one item
+            // (or the user is actively searching), so the empty state is uncluttered.
+            if (uiState.items.isNotEmpty() || uiState.searchQuery.isNotBlank()) {
+                OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = viewModel::onSearchQueryChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text(stringResource(R.string.search_items)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (uiState.searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = null)
+                            }
                         }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Filter chips (All / Listed / Unlisted / Drafts)
-            if (!uiState.isLoading) {
-                InventoryFilterRow(
-                    selected = uiState.filter,
-                    totalCount = uiState.totalCount,
-                    listedCount = uiState.listedCount,
-                    draftCount = uiState.draftCount,
-                    onFilterChange = viewModel::onFilterChange
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
                 )
-            }
 
-            // Summary banner — shown when there are items
-            if (!uiState.isLoading && uiState.items.isNotEmpty()) {
-                val totalEstimate = uiState.items.sumOf { it.estimatedValue }
-                SummaryBanner(
-                    itemCount = uiState.items.size,
-                    totalEstimate = totalEstimate,
-                    onSummaryClick = onSummaryClick,
-                )
+                if (!uiState.isLoading) {
+                    InventoryFilterRow(
+                        selected = uiState.filter,
+                        totalCount = uiState.totalCount,
+                        listedCount = uiState.listedCount,
+                        draftCount = uiState.draftCount,
+                        onFilterChange = viewModel::onFilterChange
+                    )
+                }
+
+                if (!uiState.isLoading && uiState.items.isNotEmpty()) {
+                    val totalEstimate = uiState.items.sumOf { it.estimatedValue }
+                    SummaryBanner(
+                        itemCount = uiState.items.size,
+                        totalEstimate = totalEstimate,
+                        onSummaryClick = onSummaryClick,
+                    )
+                }
             }
 
             when {

@@ -21,10 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Search
@@ -84,18 +81,10 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val activity = LocalContext.current as? Activity
-    var showKey by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val savedMessage = stringResource(R.string.api_key_saved)
     val searchSavedMessage = stringResource(R.string.search_settings_saved)
     val toggleVisibilityLabel = stringResource(R.string.toggle_key_visibility)
 
-    LaunchedEffect(uiState.isSaved) {
-        if (uiState.isSaved) {
-            snackbarHostState.showSnackbar(savedMessage)
-            viewModel.onSavedShown()
-        }
-    }
     LaunchedEffect(uiState.isSearchSaved) {
         if (uiState.isSearchSaved) {
             snackbarHostState.showSnackbar(searchSavedMessage)
@@ -134,120 +123,6 @@ fun SettingsScreen(
             )
 
             AiConfigCard(onClick = onAiConfig)
-
-            // ── API key ────────────────────────────────────────────────────
-            SettingsSectionCard(
-                icon = Icons.Default.Key,
-                title = stringResource(R.string.api_key_label),
-            ) {
-                Text(
-                    text = stringResource(R.string.api_key_explanation),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = uiState.editApiKey,
-                    onValueChange = viewModel::onApiKeyChange,
-                    label = { Text(stringResource(R.string.api_key_label)) },
-                    placeholder = { Text(stringResource(R.string.api_key_hint)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = uiState.isKeyInvalid,
-                    supportingText = { if (uiState.isKeyInvalid) Text(stringResource(R.string.api_key_invalid)) },
-                    visualTransformation = if (showKey) VisualTransformation.None
-                        else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    trailingIcon = {
-                        TextButton(
-                            onClick = { showKey = !showKey },
-                            modifier = Modifier.semantics {
-                                contentDescription = toggleVisibilityLabel
-                            }
-                        ) {
-                            Text(stringResource(if (showKey) R.string.hide else R.string.show))
-                        }
-                    }
-                )
-                Button(
-                    onClick = viewModel::save,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isVerifyingKey
-                ) {
-                    if (uiState.isVerifyingKey) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.api_key_testing))
-                    } else {
-                        Icon(Icons.Default.Check, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.save))
-                    }
-                }
-
-                when (uiState.isKeyVerified) {
-                    true -> Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.api_key_verified),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    false -> Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = stringResource(
-                                R.string.api_key_test_failed,
-                                uiState.keyVerifyError ?: "Unknown error",
-                            ),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    null -> Unit
-                }
-
-                if (uiState.subscriptionTier is SubscriptionTier.Free) {
-                    Text(
-                        text = stringResource(R.string.vision_model_section_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    VisionModelDropdown(
-                        selected = uiState.visionModel,
-                        onSelected = viewModel::onVisionModelChange
-                    )
-                    Text(
-                        text = stringResource(R.string.reasoning_model_section_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    ReasoningModelDropdown(
-                        selected = uiState.reasoningModel,
-                        onSelected = viewModel::onReasoningModelChange
-                    )
-                }
-            }
 
             // ── Web search ─────────────────────────────────────────────────
             SettingsSectionCard(
