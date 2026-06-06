@@ -97,10 +97,11 @@ fun AIConfigScreen(
     val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
 
     var pendingImportGemmaModel by remember { mutableStateOf<LocalGemmaModel?>(null) }
-    val importGemmaFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { viewModel.importGemmaModel(it, pendingImportGemmaModel ?: return@let) }
-        pendingImportGemmaModel = null
-    }
+    val importGemmaFilePicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri?.let { viewModel.importGemmaModel(it, pendingImportGemmaModel ?: return@let) }
+            pendingImportGemmaModel = null
+        }
 
     val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
     val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
@@ -120,19 +121,21 @@ fun AIConfigScreen(
         },
     ) { paddingValues ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 12.dp)
-                    .fillMaxWidth()
-                    .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 12.dp)
+                        .fillMaxWidth()
+                        .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
             ) {
                 AiCredentialsDock(
@@ -286,15 +289,19 @@ private fun AiCredentialsDock(
             )
             if (proExpanded) {
                 Column(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 14.dp),
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 14.dp),
                 ) {
                     Text(
-                        text = when (tier) {
-                            SubscriptionTier.Free -> "Upgrade to Pro for managed OpenAI access — no personal API key needed for transcription or transforms."
-                            SubscriptionTier.Pro -> "Your Pro subscription is active. Transcription and AI transforms are managed automatically."
-                        },
+                        text =
+                            when (tier) {
+                                SubscriptionTier.Free ->
+                                    "Upgrade to Pro for managed OpenAI access — no personal API key needed for transcription or transforms."
+                                SubscriptionTier.Pro ->
+                                    "Your Pro subscription is active. Transcription and AI transforms are managed automatically."
+                            },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -314,9 +321,10 @@ private fun AiCredentialsDock(
             )
             if (byokExpanded) {
                 Column(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 14.dp),
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     OutlinedTextField(
@@ -357,11 +365,12 @@ private fun AiCredentialsDock(
                         Text(
                             text = msg,
                             style = MaterialTheme.typography.bodySmall,
-                            color = when (validationStatus) {
-                                ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
-                                ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            color =
+                                when (validationStatus) {
+                                    ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
+                                    ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
                 }
@@ -381,18 +390,20 @@ private fun AiCredentialRow(
     onToggle: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onToggle() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(iconTint.copy(alpha = 0.15f)),
+            modifier =
+                Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(iconTint.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
@@ -418,9 +429,10 @@ private fun AiCredentialRow(
             Icons.Default.ExpandMore,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .size(20.dp)
-                .rotate(if (expanded) 180f else 0f),
+            modifier =
+                Modifier
+                    .size(20.dp)
+                    .rotate(if (expanded) 180f else 0f),
         )
     }
 }
@@ -437,10 +449,11 @@ private fun AiSectionCard(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                modifier =
+                    Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
@@ -460,7 +473,10 @@ private fun AiSectionCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AiSourceToggle(provider: String, onProviderChange: (String) -> Unit) {
+private fun AiSourceToggle(
+    provider: String,
+    onProviderChange: (String) -> Unit,
+) {
     val options = listOf("OPENAI" to "Cloud", "LOCAL" to "On-device")
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
         options.forEachIndexed { index, (value, label) ->
@@ -474,17 +490,25 @@ private fun AiSourceToggle(provider: String, onProviderChange: (String) -> Unit)
 }
 
 @Composable
-private fun CloudInfo(tier: SubscriptionTier, apiKey: String, text: String) {
+private fun CloudInfo(
+    tier: SubscriptionTier,
+    apiKey: String,
+    text: String,
+) {
     val hasAccess = tier is SubscriptionTier.Pro || apiKey.isNotBlank()
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (hasAccess) PRO_COLOR.copy(alpha = 0.12f)
-                else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
-            )
-            .padding(12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (hasAccess) {
+                        PRO_COLOR.copy(alpha = 0.12f)
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+                    },
+                )
+                .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -510,9 +534,10 @@ private fun AiToggleRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -534,12 +559,15 @@ private fun WhisperModelRow(
     onDelete: () -> Unit,
 ) {
     val isReady = state is LocalModelState.Ready
+    val containerColor =
+        if (isSelected && isReady) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected && isReady) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
@@ -598,12 +626,15 @@ private fun GemmaModelRow(
     onDelete: () -> Unit,
 ) {
     val isReady = state is LocalModelState.Ready
+    val containerColor =
+        if (isSelected && isReady) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected && isReady) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(

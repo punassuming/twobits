@@ -28,8 +28,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
@@ -753,7 +753,6 @@ fun SettingsScreen(
             },
         )
     }
-
 }
 
 @Composable
@@ -904,9 +903,10 @@ private fun ScrybeAiConfigCard(onClick: () -> Unit) {
         shape = MaterialTheme.shapes.large,
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(ScrybeLayoutDefaults.sectionPadding),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(ScrybeLayoutDefaults.sectionPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
