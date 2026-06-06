@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* fix R8 release build — add `-dontwarn` rules for protobuf annotation types referenced by MediaPipe LLM inference library but absent from its bundled protobuf-lite runtime
+
 ## 1.8.0 (2026-06-06)
 
 ### Features
