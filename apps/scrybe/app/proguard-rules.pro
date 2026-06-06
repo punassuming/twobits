@@ -27,7 +27,7 @@
     *** Companion;
 }
 -keepclasseswithmembers class **$$serializer {
-    INSTANCE;
+    *** INSTANCE;
 }
 -dontnote kotlinx.serialization.**
 
