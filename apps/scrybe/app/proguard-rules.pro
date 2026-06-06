@@ -1,8 +1,9 @@
 # Sherpa-ONNX JNI bindings — native methods accessed by name at runtime
 -keep class com.k2fsa.sherpa.** { *; }
 
-# Retain annotation metadata required by Hilt's runtime component verification
--keepattributes *Annotation*
+# Retain annotation and generic-signature metadata required at runtime by Hilt,
+# Retrofit (generic return-type resolution), and kotlinx-serialization.
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
 
 # Suppress warnings for optional OkHttp TLS provider integrations
 -dontwarn okhttp3.internal.platform.**
@@ -18,3 +19,19 @@
 -dontwarn com.google.protobuf.ProtoField
 -dontwarn com.google.protobuf.ProtoPresenceBits
 -dontwarn com.google.protobuf.ProtoPresenceCheckedField
+
+# kotlinx-serialization: keep generated $$serializer companions so R8 does not
+# strip them when they are only reached via the serialization runtime's reflection.
+-keepclassmembers @kotlinx.serialization.Serializable class ** {
+    static ** serializer(...);
+    *** Companion;
+}
+-keepclasseswithmembers class **$$serializer {
+    INSTANCE <fields>;
+}
+-dontnote kotlinx.serialization.**
+
+# commons-compress uses ServiceLoader to discover compressor/archiver factories.
+# Keep the SPI implementations so model-file decompression works at runtime.
+-keep class org.apache.commons.compress.compressors.** { *; }
+-keep class org.apache.commons.compress.archivers.** { *; }

@@ -265,7 +265,7 @@ jobs:
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         id: asset
         run: |
-          src=$(ls apps/scrybe/app/build/outputs/apk/release/app-release*.apk | head -n1)
+          src=$(ls apps/scrybe/app/build/outputs/apk/release/app-*release.apk | head -n1)
           dest="${{ steps.version.outputs.new_tag }}.apk"
           cp "$src" "$dest"
           src_aab=apps/scrybe/app/build/outputs/bundle/release/app-release.aab
@@ -349,7 +349,7 @@ jobs:
       - name: Stage release assets
         id: asset
         run: |
-          src=$(ls apps/scrybe/app/build/outputs/apk/release/app-release*.apk | head -n1)
+          src=$(ls apps/scrybe/app/build/outputs/apk/release/app-*release.apk | head -n1)
           dest="${{ inputs.rebuild_for_tag }}.apk"
           cp "$src" "$dest"
           src_aab=apps/scrybe/app/build/outputs/bundle/release/app-release.aab
