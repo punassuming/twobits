@@ -152,6 +152,7 @@ dependencies {
 
     // Shared core modules
     implementation("com.twobits.core:billing")
+    implementation("com.twobits.core:common")
     implementation("com.twobits.core:design")
 
     testImplementation(libs.junit)
