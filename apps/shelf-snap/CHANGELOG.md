@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-### Improvements
-
-* CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
-
 ### Features
 
 **Camera** — viewfinder redesign:
@@ -31,6 +27,7 @@
 * brand · model subtitle uses middle-dot separator (was space-separated)
 * AI confidence badge replaced with a `primaryContainer` pill + "GPT-4o analysis" annotation
 
+* CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
 ### Fixes
