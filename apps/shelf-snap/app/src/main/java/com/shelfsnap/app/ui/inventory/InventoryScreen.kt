@@ -116,6 +116,16 @@ fun InventoryScreen(
                 }
             }
 
+            // Summary banner — shown when there are items
+            if (!uiState.isLoading && uiState.items.isNotEmpty()) {
+                val totalEstimate = uiState.items.sumOf { it.estimatedValue }
+                SummaryBanner(
+                    itemCount = uiState.items.size,
+                    totalEstimate = totalEstimate,
+                    onSummaryClick = onSummaryClick,
+                )
+            }
+
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     CircularProgressIndicator()

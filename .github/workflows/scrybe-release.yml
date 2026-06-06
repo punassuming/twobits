@@ -355,10 +355,3 @@ jobs:
           [ -f "$src_aab" ] && cp "$src_aab" "${{ inputs.rebuild_for_tag }}.aab" || true
           echo "path=$dest" >> "$GITHUB_OUTPUT"
 
-      - name: Upload APK to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ inputs.rebuild_for_tag }}
-          files: |
-            ${{ steps.asset.outputs.path }}
-            ${{ inputs.rebuild_for_tag }}.aab
