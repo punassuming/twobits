@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 1.8.0 (2026-06-06)
+
+### Features
+
 **Session Playback** — PlaybackCard visual redesign:
 * speaker colour palette updated to design tokens — signal blue `#89C7FF`, glow green `#88D7A8`, ember `#FFB695`, purple `#C6A0F6`
 * centred transport controls (skip‑10s / play‑pause / skip‑10s) with `Arrangement.Center`
@@ -20,6 +28,7 @@
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
 
 ### Fixes
+
 
 ## 1.7.0 (2026-06-05)
 
@@ -42,6 +51,7 @@
 ### Fixes
 
 
+
 ## 1.6.2 (2026-06-05)
 
 ### Features
@@ -54,6 +64,7 @@
 
 
 
+
 ## 1.6.1 (2026-06-04)
 
 ### Features
@@ -63,6 +74,7 @@
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
 
 ### Fixes
+
 
 
 
@@ -84,6 +96,7 @@
 
 
 
+
 ## 1.5.0 (2026-06-04)
 
 ### Features
@@ -94,6 +107,7 @@
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
 
 ### Fixes
+
 
 
 
@@ -119,6 +133,7 @@
 
 
 
+
 ## 1.3.0 (2026-06-03)
 
 ### Features
@@ -128,6 +143,7 @@
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
 
 ### Fixes
+
 
 
 
