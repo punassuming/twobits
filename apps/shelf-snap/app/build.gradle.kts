@@ -86,6 +86,10 @@ android {
         buildConfig = true
     }
 
+    sourceSets.getByName("main").assets.srcDir(
+        layout.buildDirectory.dir("generated/assets/changelog")
+    )
+
     lint {
         // CI runs `:app:lintDebug` as an informational gate and uploads the HTML/XML
         // report as an artifact, but pre-existing findings must not block building the
@@ -102,11 +106,13 @@ android {
 // Bundle apps/shelf-snap/CHANGELOG.md into the app's assets so the in-app "What's new"
 // screen renders the same source of truth that CI maintains. The generated copy
 // is git-ignored; it's refreshed before every build.
+val generatedChangelogAssetsDir = layout.buildDirectory.dir("generated/assets/changelog")
+
 val copyChangelogToAssets by tasks.registering(Copy::class) {
     val changelog = rootProject.file("apps/shelf-snap/CHANGELOG.md")
     onlyIf { changelog.exists() }
     from(changelog)
-    into(layout.projectDirectory.dir("src/main/assets"))
+    into(generatedChangelogAssetsDir)
 }
 
 tasks.named("preBuild") {

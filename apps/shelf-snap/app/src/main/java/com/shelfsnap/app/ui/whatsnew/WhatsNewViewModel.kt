@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.twobits.common.ReleaseNotesParser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -83,26 +84,11 @@ class WhatsNewViewModel @Inject constructor(
             context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
         }.getOrNull() ?: return emptyList()
 
-        val lines = text.lines()
-        val firstVersionLine = lines.indexOfFirst { line ->
-            line.startsWith("## ") && !line.contains("Unreleased", ignoreCase = true)
-        }
-        if (firstVersionLine == -1) return emptyList()
-
-        val nextVersionLine = lines.drop(firstVersionLine + 1)
-            .indexOfFirst { it.startsWith("## ") }
-        val end = if (nextVersionLine == -1) lines.size else firstVersionLine + 1 + nextVersionLine
-
-        return lines.subList(firstVersionLine, end)
+        return ReleaseNotesParser.parseReleaseHistory(text)
             .asSequence()
-            .map { it.trim() }
-            .filter { it.startsWith("**") || it.startsWith("* ") || it.startsWith("- ") }
-            .map { line ->
-                when {
-                    line.startsWith("**") -> line.replace(Regex("\\*\\*(.+?)\\*\\*"), "$1")
-                        .trimEnd(':').trim()
-                    else -> line.removePrefix("* ").removePrefix("- ").trim()
-                }
+            .flatMap { release ->
+                release.groups.flatMap { g -> g.items.map { it.title } }
+                    .ifEmpty { release.summaryItems }
             }
             .filter { it.isNotBlank() }
             .take(8)

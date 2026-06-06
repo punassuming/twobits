@@ -2,6 +2,7 @@ package com.shelfsnap.app.ui.itemdetail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,7 +12,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.*
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +63,33 @@ fun MarketTab(uiState: ItemDetailUiState, viewModel: ItemDetailViewModel) {
                 Icon(Icons.Default.AutoAwesome, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.research_price))
+            }
+        }
+
+        if (hasData && !uiState.hasWebEvidence) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    Text(
+                        text = "Prices estimated from AI training data. Enable Brave Search or Jina AI in Settings → AI for live market prices.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
             }
         }
 
@@ -167,36 +197,66 @@ fun MarketTab(uiState: ItemDetailUiState, viewModel: ItemDetailViewModel) {
                 .forEach { comp -> CompListingRow(comp = comp) }
         }
 
-        // Source citation
-        val sourceNames = research.comps.mapNotNull { Platform.fromKey(it.platformKey)?.displayName }
-            .distinct()
-            .ifEmpty { research.citations.map { it.label } }
-            .joinToString(", ")
-        if (sourceNames.isNotBlank()) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Icon(
-                    Icons.Default.Info,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Column {
+        // Tappable citations
+        val linkCitations = research.citations.filter { it.url.isNotBlank() }
+        if (linkCitations.isNotEmpty()) {
+            val uriHandler = LocalUriHandler.current
+            SectionTitle(title = stringResource(R.string.sources_section_title))
+            linkCitations.forEach { citation ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { uriHandler.openUri(citation.url) }
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     Text(
-                        text = stringResource(R.string.sources_label, sourceNames),
+                        text = citation.label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
                     )
-                    val date = if (research.retrievedAt > 0)
-                        DateFormat.getDateInstance().format(Date(research.retrievedAt))
-                    else "—"
-                    Text(
-                        text = stringResource(R.string.sources_retrieved, date),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Icon(
+                        Icons.Default.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary,
                     )
+                }
+            }
+        } else {
+            val sourceNames = research.comps.mapNotNull { Platform.fromKey(it.platformKey)?.displayName }
+                .distinct()
+                .ifEmpty { research.citations.map { it.label } }
+                .joinToString(", ")
+            if (sourceNames.isNotBlank()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Column {
+                        Text(
+                            text = stringResource(R.string.sources_label, sourceNames),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        val date = if (research.retrievedAt > 0)
+                            DateFormat.getDateInstance().format(Date(research.retrievedAt))
+                        else "—"
+                        Text(
+                            text = stringResource(R.string.sources_retrieved, date),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -347,10 +407,16 @@ private fun PlatformPriceRow(platform: Platform, price: Double, onApply: () -> U
 @Composable
 private fun CompListingRow(comp: MarketComp) {
     val platform = Platform.fromKey(comp.platformKey)
+    val uriHandler = LocalUriHandler.current
+    val hasLink = comp.sourceUrl.isNotBlank()
     Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (hasLink) Modifier.clickable { uriHandler.openUri(comp.sourceUrl) }
+                    else Modifier
+                )
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -367,6 +433,14 @@ private fun CompListingRow(comp: MarketComp) {
                     fontWeight = FontWeight.Bold,
                     color = if (comp.sold) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
+                if (hasLink) {
+                    Icon(
+                        Icons.Default.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (platform != null) PlatformBadge(platform = platform)

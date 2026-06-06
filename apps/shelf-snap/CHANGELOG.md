@@ -6,6 +6,14 @@
 
 ### Improvements
 
+* CHANGELOG asset now generated at build time — in-app "What's New" screen always reflects the latest release notes on a fresh clone
+* What's New dialog now accumulates bullets from recent versions rather than showing only the most-recent hotfix section
+* Market research updated to use OpenAI Responses API for gpt-5.4 and gpt-5.4-mini models — fixes "model not found" errors for users with current API keys
+* DuckDuckGo Instant Answer replaced with Jina AI Search (s.jina.ai) — returns real web results for pricing queries with no API key required
+* Market tab shows a banner when prices are estimated from AI training data rather than live web search, with guidance to enable Brave or Jina AI
+* Comparable listing rows and source citations are now tappable links that open the source URL in the browser
+* HTTP 404 from OpenAI pricing service now shows "Selected model isn't available" instead of a generic unavailable message
+
 ### Fixes
 
 ## 1.3.1 (2026-06-06)

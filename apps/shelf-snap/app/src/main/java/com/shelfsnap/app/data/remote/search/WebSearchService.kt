@@ -12,7 +12,7 @@ enum class SearchProvider(val key: String, val displayName: String) {
     /** No web search — pricing relies on the model's own knowledge only. */
     NONE("none", "None (AI only)"),
     BRAVE("brave", "Brave Search"),
-    DUCKDUCKGO("duckduckgo", "DuckDuckGo");
+    JINA("jina", "Jina AI Search");
 
     companion object {
         fun fromKey(key: String): SearchProvider =

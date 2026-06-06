@@ -114,8 +114,13 @@ object ReleaseNotesParser {
                     flush()
                     currentTitle = line.replace(BOLD_REGEX, "$1").trimEnd(':').trim()
                 }
-                (line.startsWith("* ") || line.startsWith("- ")) && currentTitle != null -> {
-                    currentBullets += normalizeBullet(line)
+                (line.startsWith("* ") || line.startsWith("- ")) -> {
+                    if (currentTitle != null) {
+                        currentBullets += normalizeBullet(line)
+                    } else {
+                        val text = normalizeBullet(line)
+                        items += ReleaseNoteItem(title = text, description = text)
+                    }
                 }
             }
         }

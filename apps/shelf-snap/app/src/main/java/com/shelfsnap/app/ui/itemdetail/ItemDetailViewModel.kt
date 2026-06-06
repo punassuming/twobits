@@ -30,6 +30,7 @@ data class ItemDetailUiState(
     val isDeleted: Boolean = false,
     val error: String? = null,
     val message: String? = null,
+    val hasWebEvidence: Boolean = false,
     // Editable field mirrors
     val editCategory: String = "",
     val editBrand: String = "",
@@ -126,6 +127,7 @@ class ItemDetailViewModel @Inject constructor(
                 it.copy(
                     isResearching = false,
                     item = updated,
+                    hasWebEvidence = result.hasWebEvidence,
                     // If the model proposed an overall price and the user hasn't typed one, surface it.
                     editEstimatedValue = result.suggestedValue
                         ?.let { v -> "%.2f".format(v) } ?: it.editEstimatedValue
