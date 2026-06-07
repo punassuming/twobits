@@ -90,7 +90,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -99,10 +98,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.scrybe.core.common.ModeBadge
-import dev.scrybe.core.common.ScrybeLayoutDefaults
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
+import dev.scrybe.core.common.ModeBadge
+import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.SessionStatusChip
 import dev.scrybe.core.common.modeAccentColor
 import dev.scrybe.core.common.modeIcon
@@ -934,7 +933,6 @@ private fun ModeCard(
         }
     }
 }
-
 
 @OptIn(ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
