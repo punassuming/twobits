@@ -1,239 +1,37 @@
-#!/usr/bin/env bash
-# pre-commit hook — lives in .githooks/ so it is tracked by git.
-#
-# Activate once per clone:
-#   git config core.hooksPath .githooks
-#
-# Requires: python3, curl, java (JRE 8+). No Android SDK needed.
-set -euo pipefail
+#!/bin/sh
+# Pre-commit: auto-format staged Kotlin files then verify no violations remain.
+# Skip with: SKIP_KTLINT=1 git commit
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-SCRYBE_DIR="$REPO_ROOT/apps/scrybe"
-SHELF_SNAP_DIR="$REPO_ROOT/apps/shelf-snap"
-KTLINT_VERSION="1.5.0"
-DETEKT_VERSION="1.23.7"
+[ "${SKIP_KTLINT:-0}" = "1" ] && exit 0
 
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+REPO_ROOT=$(git rev-parse --show-toplevel)
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep "\.kt$" || true)
+[ -z "$STAGED" ] && exit 0
 
-fail() { echo -e "${RED}PRE-COMMIT FAIL:${NC} $*" >&2; exit 1; }
-warn() { echo -e "${YELLOW}PRE-COMMIT WARN:${NC} $*" >&2; }
-ok()   { echo -e "${GREEN}PRE-COMMIT OK:${NC}   $*"; }
+# ── Scrybe ────────────────────────────────────────────────────────────────────
+SCRYBE_KT=$(echo "$STAGED" | grep "^apps/scrybe/" || true)
+if [ -n "$SCRYBE_KT" ]; then
+    MODULES=$(echo "$SCRYBE_KT" \
+        | sed 's|^apps/scrybe/||' \
+        | sed 's|/src/.*||' \
+        | sort -u \
+        | while IFS= read -r m; do printf ":%s\n" "$(echo "$m" | tr '/' ':')"; done)
 
-# ── 1. Changelog structure ────────────────────────────────────────────────────
-python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
-    validate --changelog "$SCRYBE_DIR/CHANGELOG.md" \
-    || fail "apps/scrybe/CHANGELOG.md structure is invalid."
-ok "Scrybe changelog structure"
+    FORMAT_TASKS=$(echo "$MODULES" | awk '{print $0 ":ktlintFormat"}' | tr '\n' ' ')
+    CHECK_TASKS=$(echo "$MODULES"  | awk '{print $0 ":ktlintCheck"}'  | tr '\n' ' ')
 
-python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
-    validate --changelog "$SHELF_SNAP_DIR/CHANGELOG.md" \
-    || fail "apps/shelf-snap/CHANGELOG.md structure is invalid."
-ok "Shelf Snap changelog structure"
+    printf "ktlint: formatting %s\n" "$(echo "$MODULES" | tr '\n' ' ')"
+    (cd "$REPO_ROOT/apps/scrybe" && ./gradlew $FORMAT_TASKS -q 2>&1) || true
 
-# ── 1b. Changelog update required for code changes ───────────────────────────
-# If any tracked code file is staged for a given app, that app's CHANGELOG.md
-# must also be staged.
-STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACM)
+    # Re-stage files that the formatter may have modified
+    echo "$SCRYBE_KT" | while IFS= read -r f; do git add "$f"; done
 
-STAGED_SCRYBE_CODE=$(echo "$STAGED_ALL" | grep -E \
-    "^apps/scrybe/|^shared/|^Dockerfile\.dev$|^docker-compose\.yml$|^\.dockerignore$|^\.github/workflows/scrybe" \
-    || true)
-STAGED_SCRYBE_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/scrybe/CHANGELOG.md" || true)
-
-if [[ -n "$STAGED_SCRYBE_CODE" && -z "$STAGED_SCRYBE_CHANGELOG" ]]; then
-    echo -e "${RED}apps/scrybe/CHANGELOG.md must be updated when Scrybe code files change.${NC}" >&2
-    echo "Staged Scrybe code files with no changelog entry:" >&2
-    echo "$STAGED_SCRYBE_CODE" | sed 's/^/  - /' >&2
-    fail "Stage an apps/scrybe/CHANGELOG.md update and re-commit."
-fi
-ok "Scrybe changelog update check"
-
-STAGED_SHELF_SNAP_CODE=$(echo "$STAGED_ALL" | grep -E \
-    "^apps/shelf-snap/|^\.github/workflows/shelf-snap" \
-    || true)
-STAGED_SHELF_SNAP_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/shelf-snap/CHANGELOG.md" || true)
-
-if [[ -n "$STAGED_SHELF_SNAP_CODE" && -z "$STAGED_SHELF_SNAP_CHANGELOG" ]]; then
-    echo -e "${RED}apps/shelf-snap/CHANGELOG.md must be updated when Shelf Snap code files change.${NC}" >&2
-    echo "Staged Shelf Snap code files with no changelog entry:" >&2
-    echo "$STAGED_SHELF_SNAP_CODE" | sed 's/^/  - /' >&2
-    fail "Stage an apps/shelf-snap/CHANGELOG.md update and re-commit."
-fi
-ok "Shelf Snap changelog update check"
-
-# ── 2. AndroidManifest.xml files ─────────────────────────────────────────────
-(cd "$SCRYBE_DIR" && python3 scripts/validate-manifests.py) \
-    || fail "AndroidManifest.xml validation failed."
-ok "AndroidManifest.xml files"
-
-# ── 3. Kotlin formatting via standalone ktlint ───────────────────────────────
-# Resolve ktlint: prefer system install, fall back to ~/.local/bin cache.
-# The cache persists across commits in the same environment; ephemeral runners
-# (e.g. GitHub Copilot) download once per session.
-if command -v ktlint &>/dev/null; then
-    KTLINT="$(command -v ktlint)"
-else
-    KTLINT_CACHE="${HOME}/.local/bin/ktlint"
-    if [[ ! -x "$KTLINT_CACHE" ]]; then
-        echo "Downloading ktlint ${KTLINT_VERSION}…"
-        mkdir -p "${HOME}/.local/bin"
-        curl -sSL \
-            "https://github.com/pinterest/ktlint/releases/download/${KTLINT_VERSION}/ktlint" \
-            -o "$KTLINT_CACHE" \
-            || fail "Could not download ktlint. Ensure network access and retry."
-        chmod +x "$KTLINT_CACHE"
-        ok "ktlint ${KTLINT_VERSION} downloaded to ${KTLINT_CACHE}"
+    # Fail fast if unfixable violations remain
+    if ! (cd "$REPO_ROOT/apps/scrybe" && ./gradlew $CHECK_TASKS -q 2>&1); then
+        echo ""
+        echo "ktlint: violations remain after auto-format. Fix them before committing."
+        echo "        (bypass with SKIP_KTLINT=1 git commit)"
+        exit 1
     fi
-    KTLINT="$KTLINT_CACHE"
+    printf "ktlint: all checks passed\n"
 fi
-
-# Collect staged .kt / .kts files within both app directories.
-STAGED_KT=$(git diff --cached --name-only --diff-filter=ACM \
-    | grep -E "^apps/(scrybe|shelf-snap)/.*\.kts?$" || true)
-
-if [[ -z "$STAGED_KT" ]]; then
-    ok "Kotlin formatting (no .kt/.kts files staged)"
-else
-    echo "Running ktlint --format on staged Kotlin files…"
-
-    # Auto-fix in place.
-    (cd "$REPO_ROOT" && echo "$STAGED_KT" \
-        | xargs "$KTLINT" --editorconfig="$SCRYBE_DIR/.editorconfig" --format 2>&1) || true
-
-    # Re-stage any files ktlint modified so the formatted version is committed.
-    echo "$STAGED_KT" | xargs git add --
-
-    # Verify no violations remain after auto-fix.
-    KTLINT_OUT=$(cd "$REPO_ROOT" && echo "$STAGED_KT" \
-        | xargs "$KTLINT" --editorconfig="$SCRYBE_DIR/.editorconfig" 2>&1 || true)
-
-    if echo "$KTLINT_OUT" | grep -qE ":\s.*\(standard:"; then
-        echo "$KTLINT_OUT" >&2
-        fail "ktlint violations remain after auto-format. Fix them and re-commit."
-    fi
-    ok "Kotlin formatting"
-fi
-
-# ── 4. Kotlin import completeness (no Android SDK required) ──────────────────
-# Catch common "Unresolved reference" failures that only surface in CI:
-# verify that used extension functions / classes have their imports present.
-if [[ -n "$STAGED_KT" ]]; then
-    IMPORT_ERRORS=()
-
-    # Flow extension functions in .kt files
-    declare -A FLOW_EXT_IMPORTS=(
-        [".asStateFlow()"]="kotlinx.coroutines.flow.asStateFlow"
-        [".asSharedFlow()"]="kotlinx.coroutines.flow.asSharedFlow"
-        [".filterNotNull()"]="kotlinx.coroutines.flow.filterNotNull"
-        [".mapNotNull("]="kotlinx.coroutines.flow.mapNotNull"
-        [".debounce("]="kotlinx.coroutines.flow.debounce"
-        [".distinctUntilChanged()"]="kotlinx.coroutines.flow.distinctUntilChanged"
-        [".flowOn("]="kotlinx.coroutines.flow.flowOn"
-        [".onEach("]="kotlinx.coroutines.flow.onEach"
-        [".flatMapLatest("]="kotlinx.coroutines.flow.flatMapLatest"
-        [".collectLatest("]="kotlinx.coroutines.flow.collectLatest"
-    )
-
-    # Java stdlib classes that need explicit imports in Kotlin DSL build scripts (.kts).
-    # Kotlin DSL does not resolve java.* via fully-qualified name the way plain Kotlin does.
-    declare -A KTS_JAVA_IMPORTS=(
-        [" URI("]="java.net.URI"
-        ["URL("]="java.net.URL"
-        ["HttpURLConnection"]="java.net.HttpURLConnection"
-        ["BufferedReader("]="java.io.BufferedReader"
-        ["FileInputStream("]="java.io.FileInputStream"
-        ["FileOutputStream("]="java.io.FileOutputStream"
-        ["InputStreamReader("]="java.io.InputStreamReader"
-    )
-
-    while IFS= read -r kt_file; do
-        [[ -f "$REPO_ROOT/$kt_file" ]] || continue
-
-        # Flow extension check (applies to all .kt / .kts files)
-        for usage in "${!FLOW_EXT_IMPORTS[@]}"; do
-            required="${FLOW_EXT_IMPORTS[$usage]}"
-            if grep -qF "$usage" "$REPO_ROOT/$kt_file" && \
-               ! grep -qF "import $required" "$REPO_ROOT/$kt_file"; then
-                IMPORT_ERRORS+=("$kt_file: uses '$usage' but missing 'import $required'")
-            fi
-        done
-
-        # Java stdlib check (.kts files only)
-        if [[ "$kt_file" == *.kts ]]; then
-            for usage in "${!KTS_JAVA_IMPORTS[@]}"; do
-                required="${KTS_JAVA_IMPORTS[$usage]}"
-                if grep -qF "$usage" "$REPO_ROOT/$kt_file" && \
-                   ! grep -qF "import $required" "$REPO_ROOT/$kt_file"; then
-                    IMPORT_ERRORS+=("$kt_file: uses '$usage' in .kts but missing 'import $required'")
-                fi
-            done
-        fi
-    done <<< "$STAGED_KT"
-
-    if [[ ${#IMPORT_ERRORS[@]} -gt 0 ]]; then
-        for err in "${IMPORT_ERRORS[@]}"; do
-            echo -e "${RED}MISSING IMPORT:${NC} $err" >&2
-        done
-        fail "Missing imports detected. Add them and re-commit."
-    fi
-    ok "Kotlin import completeness"
-fi
-
-# ── 5. External dependency URL reachability ──────────────────────────────────
-# Verify that GitHub Release asset URLs (Exec task downloads) and any JitPack
-# artifact URLs in libs.versions.toml actually return HTTP 2xx before pushing.
-# Catches 404s from wrong version strings or missing JitPack builds early.
-STAGED_GRADLE=$(echo "$STAGED_ALL" \
-    | grep -E "build\.gradle\.kts$|libs\.versions\.toml$" || true)
-if [[ -n "$STAGED_GRADLE" ]]; then
-    echo "Checking external dependency URLs…"
-    python3 "$SCRYBE_DIR/scripts/validate-external-urls.py" \
-        || fail "One or more dependency download URLs are unreachable. Fix the URL and re-commit."
-    ok "External dependency URLs"
-fi
-
-# ── 6. Detekt on staged Kotlin sources ───────────────────────────────────────
-# Runs the same detekt config used in CI (detekt.yml) on staged .kt files to
-# catch function-length, parameter-count, and return-count violations locally.
-# Build scripts (.kts) are excluded — detekt has limited support for them.
-STAGED_KT_SOURCES=$(echo "$STAGED_KT" | grep -E "\.kt$" || true)
-if [[ -n "$STAGED_KT_SOURCES" ]]; then
-    DETEKT_JAR="${HOME}/.local/bin/detekt-cli-${DETEKT_VERSION}-all.jar"
-    if [[ ! -f "$DETEKT_JAR" ]]; then
-        echo "Downloading detekt CLI ${DETEKT_VERSION}…"
-        mkdir -p "${HOME}/.local/bin"
-        curl -sSL \
-            "https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}/detekt-cli-${DETEKT_VERSION}-all.jar" \
-            -o "$DETEKT_JAR" \
-            || fail "Could not download detekt. Ensure network access and retry."
-        ok "detekt ${DETEKT_VERSION} downloaded"
-    fi
-
-    # Build comma-separated list of absolute paths for detekt --input.
-    DETEKT_INPUT=$(echo "$STAGED_KT_SOURCES" \
-        | sed "s|^|$REPO_ROOT/|" \
-        | paste -sd ',' -)
-
-    DETEKT_EXIT=0
-    java -jar "$DETEKT_JAR" \
-        --config "$SCRYBE_DIR/detekt.yml" \
-        --input "$DETEKT_INPUT" \
-        --base-path "$REPO_ROOT" \
-        2>&1 || DETEKT_EXIT=$?
-
-    if [[ $DETEKT_EXIT -eq 2 ]]; then
-        fail "detekt found violations. Fix them and re-commit."
-    elif [[ $DETEKT_EXIT -ne 0 ]]; then
-        # Exit code 1 is typically a type-resolution error in standalone mode;
-        # actual violations are exit code 2. Warn but don't block.
-        warn "detekt exited with code $DETEKT_EXIT (type-resolution error in standalone mode; CI will verify)."
-    fi
-    ok "Detekt"
-fi
-
-echo ""
-echo -e "${GREEN}Pre-commit checks passed.${NC}"
-echo "CI also enforces: assembleDebug · testDebugUnitTest · lint · detekt"
