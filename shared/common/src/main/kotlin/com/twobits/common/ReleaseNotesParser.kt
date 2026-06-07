@@ -106,15 +106,18 @@ object ReleaseNotesParser {
     private fun parseGroupItems(lines: List<String>): List<ReleaseNoteItem> {
         val items = mutableListOf<ReleaseNoteItem>()
         var currentTitle: String? = null
+        var currentIntroDesc: String? = null
         val currentBullets = mutableListOf<String>()
 
         fun flush() {
             val t = currentTitle ?: return
+            val descParts = listOfNotNull(currentIntroDesc) + currentBullets
             items += ReleaseNoteItem(
                 title = t,
-                description = currentBullets.joinToString(" · ").ifBlank { t },
+                description = descParts.joinToString(" · ").ifBlank { t },
             )
             currentTitle = null
+            currentIntroDesc = null
             currentBullets.clear()
         }
 
@@ -123,8 +126,15 @@ object ReleaseNotesParser {
             when {
                 line.startsWith("**") -> {
                     flush()
-                    // Strip markdown bold and trailing colon: "**Camera** — headline:" → "Camera — headline"
-                    currentTitle = line.replace(BOLD_REGEX, "$1").trimEnd(':').trim()
+                    val stripped = line.replace(BOLD_REGEX, "$1").trimEnd(':').trim()
+                    val sep = stripped.indexOf(" — ")  // em-dash separator
+                    if (sep >= 0) {
+                        currentTitle = stripped.substring(0, sep).trim()
+                        currentIntroDesc = stripped.substring(sep + 3).trim()
+                    } else {
+                        currentTitle = stripped
+                        currentIntroDesc = null
+                    }
                 }
                 (line.startsWith("* ") || line.startsWith("- ")) -> {
                     if (currentTitle != null) {
