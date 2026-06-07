@@ -181,7 +181,7 @@ private val PROFILE_TEMPLATES =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilesScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: ProfilesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -208,8 +208,10 @@ fun ProfilesScreen(
                 TopAppBar(
                     title = { Text("Profiles") },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        if (onNavigateBack != null) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
                         }
                     },
                 )

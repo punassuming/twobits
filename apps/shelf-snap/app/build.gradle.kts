@@ -109,7 +109,7 @@ android {
 val generatedChangelogAssetsDir = layout.buildDirectory.dir("generated/assets/changelog")
 
 val copyChangelogToAssets by tasks.registering(Copy::class) {
-    val changelog = rootProject.file("apps/shelf-snap/CHANGELOG.md")
+    val changelog = rootProject.file("CHANGELOG.md")
     onlyIf { changelog.exists() }
     from(changelog)
     into(generatedChangelogAssetsDir)

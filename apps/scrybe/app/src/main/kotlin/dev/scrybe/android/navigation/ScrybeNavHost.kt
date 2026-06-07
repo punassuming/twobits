@@ -123,7 +123,13 @@ fun ScrybeNavHost(navController: NavHostController) {
             popEnterTransition = { fadeEnter },
             popExitTransition = { fadeExit },
         ) {
-            ProfilesScreen(onNavigateBack = { navController.popBackStack() })
+            val prevRoute = navController.previousBackStackEntry?.destination?.route
+            val tabRoutes = setOf(Screen.Capture.route, Screen.History.route, Screen.Profiles.route, Screen.Settings.route)
+            ProfilesScreen(
+                onNavigateBack = if (prevRoute != null && prevRoute !in tabRoutes) {
+                    { navController.popBackStack() }
+                } else null,
+            )
         }
         composable(Screen.FileManager.route) {
             FileManagerScreen(onNavigateBack = { navController.popBackStack() })
