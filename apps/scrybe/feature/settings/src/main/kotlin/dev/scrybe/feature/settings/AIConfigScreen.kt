@@ -74,6 +74,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
+import com.twobits.design.components.ModelRadioList
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.LocalGemmaModel
@@ -105,8 +106,26 @@ fun AIConfigScreen(
 
     val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
     val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
-    var showTransformModelPicker by remember { mutableStateOf(false) }
     var showProfileModelPicker by remember { mutableStateOf(false) }
+
+    var transcriptionSegment by rememberSaveable {
+        mutableStateOf(
+            when {
+                uiState.transcriptionProvider == "LOCAL" -> "local"
+                uiState.subscriptionTier is SubscriptionTier.Pro -> "pro"
+                else -> "byok"
+            },
+        )
+    }
+    var featuresSegment by rememberSaveable {
+        mutableStateOf(
+            when {
+                uiState.aiFeaturesProvider == "LOCAL" -> "local"
+                uiState.subscriptionTier is SubscriptionTier.Pro -> "pro"
+                else -> "byok"
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -148,71 +167,102 @@ fun AIConfigScreen(
                 )
 
                 AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
-                    AiSourceToggle(
-                        provider = uiState.transcriptionProvider,
-                        onProviderChange = viewModel::setTranscriptionProvider,
+                    AiSourceSegment(
+                        segment = transcriptionSegment,
+                        tier = uiState.subscriptionTier,
+                        onSegmentChange = { seg ->
+                            transcriptionSegment = seg
+                            viewModel.setTranscriptionProvider(if (seg == "local") "LOCAL" else "OPENAI")
+                        },
                     )
-                    if (uiState.transcriptionProvider == "LOCAL") {
-                        Text(
-                            "On-device models — runs fully offline, no API key required.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    when (transcriptionSegment) {
+                        "pro" -> ProManagedCard(
+                            text = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
                         )
-                        LocalWhisperModel.entries.forEach { model ->
-                            WhisperModelRow(
-                                model = model,
-                                state = whisperStates[model] ?: LocalModelState.NotDownloaded,
-                                isSelected = model == selectedWhisperModel,
-                                onSelect = { viewModel.selectWhisperModel(model) },
-                                onDownload = { viewModel.downloadWhisperModel(model) },
-                                onDelete = { viewModel.deleteWhisperModel(model) },
+                        "byok" -> if (uiState.apiKey.isBlank()) {
+                            NoKeyWarning()
+                        } else {
+                            CloudInfo(
+                                tier = uiState.subscriptionTier,
+                                apiKey = uiState.apiKey,
+                                text = "Cloud transcription via OpenAI Whisper.",
                             )
                         }
-                    } else {
-                        CloudInfo(
-                            tier = uiState.subscriptionTier,
-                            apiKey = uiState.apiKey,
-                            text = "Cloud transcription via OpenAI Whisper. Pro includes managed access — no personal key needed.",
-                        )
+                        else -> {
+                            Text(
+                                "On-device models — runs fully offline, no API key required.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            LocalWhisperModel.entries.forEach { model ->
+                                WhisperModelRow(
+                                    model = model,
+                                    state = whisperStates[model] ?: LocalModelState.NotDownloaded,
+                                    isSelected = model == selectedWhisperModel,
+                                    onSelect = { viewModel.selectWhisperModel(model) },
+                                    onDownload = { viewModel.downloadWhisperModel(model) },
+                                    onDelete = { viewModel.deleteWhisperModel(model) },
+                                )
+                            }
+                        }
                     }
                 }
 
                 AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Transforms & Profiles") {
-                    AiSourceToggle(
-                        provider = uiState.aiFeaturesProvider,
-                        onProviderChange = viewModel::setAiFeaturesProvider,
+                    AiSourceSegment(
+                        segment = featuresSegment,
+                        tier = uiState.subscriptionTier,
+                        onSegmentChange = { seg ->
+                            featuresSegment = seg
+                            viewModel.setAiFeaturesProvider(if (seg == "local") "LOCAL" else "OPENAI")
+                        },
                     )
-                    if (uiState.aiFeaturesProvider == "LOCAL") {
-                        Text(
-                            "On-device AI — runs fully offline, no API key required.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    when (featuresSegment) {
+                        "pro" -> ProManagedCard(
+                            text = "AI transforms managed by Pro subscription. No personal key needed.",
                         )
-                        LocalGemmaModel.entries.forEach { model ->
-                            GemmaModelRow(
-                                model = model,
-                                state = gemmaStates[model] ?: LocalModelState.NotDownloaded,
-                                isSelected = model == selectedGemmaModel,
-                                onSelect = { viewModel.selectGemmaModel(model) },
-                                onImport = {
-                                    pendingImportGemmaModel = model
-                                    importGemmaFilePicker.launch("*/*")
-                                },
-                                onGetModel = {},
-                                onDelete = { viewModel.deleteGemmaModel(model) },
+                        "byok" -> {
+                            if (uiState.apiKey.isBlank()) NoKeyWarning()
+                            Text(
+                                "Transform model",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            ModelRadioList(
+                                models = OpenAiTransformModel.entries.toList(),
+                                selected = selectedTransformModel,
+                                onSelect = { viewModel.setTransformModel(it.apiName) },
+                                name = { it.title },
+                                subtitle = { it.supportingText },
+                                costLabel = { it.costSummary },
+                            )
+                            SettingOptionRow(
+                                title = "Profile draft model",
+                                value = selectedProfileModel.title,
+                                onClick = { showProfileModelPicker = true },
                             )
                         }
-                    } else {
-                        SettingOptionRow(
-                            title = "Transform model",
-                            value = "${selectedTransformModel.title} — ${selectedTransformModel.costSummary}",
-                            onClick = { showTransformModelPicker = true },
-                        )
-                        SettingOptionRow(
-                            title = "Profile draft model",
-                            value = selectedProfileModel.title,
-                            onClick = { showProfileModelPicker = true },
-                        )
+                        else -> {
+                            Text(
+                                "On-device AI — runs fully offline, no API key required.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            LocalGemmaModel.entries.forEach { model ->
+                                GemmaModelRow(
+                                    model = model,
+                                    state = gemmaStates[model] ?: LocalModelState.NotDownloaded,
+                                    isSelected = model == selectedGemmaModel,
+                                    onSelect = { viewModel.selectGemmaModel(model) },
+                                    onImport = {
+                                        pendingImportGemmaModel = model
+                                        importGemmaFilePicker.launch("*/*")
+                                    },
+                                    onGetModel = {},
+                                    onDelete = { viewModel.deleteGemmaModel(model) },
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -235,19 +285,6 @@ fun AIConfigScreen(
         }
     }
 
-    if (showTransformModelPicker) {
-        OptionPickerDialog(
-            title = "Transform Model",
-            options = OpenAiTransformModel.entries.toList(),
-            selected = selectedTransformModel,
-            label = { "${it.title} — ${it.costSummary}" },
-            onDismiss = { showTransformModelPicker = false },
-            onSelect = {
-                viewModel.setTransformModel(it.apiName)
-                showTransformModelPicker = false
-            },
-        )
-    }
     if (showProfileModelPicker) {
         OptionPickerDialog(
             title = "Profile Draft Model",
@@ -473,19 +510,75 @@ private fun AiSectionCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AiSourceToggle(
-    provider: String,
-    onProviderChange: (String) -> Unit,
+private fun AiSourceSegment(
+    segment: String,
+    tier: SubscriptionTier,
+    onSegmentChange: (String) -> Unit,
 ) {
-    val options = listOf("OPENAI" to "Cloud", "LOCAL" to "On-device")
+    val hasPro = tier is SubscriptionTier.Pro
+    val options = listOf("pro" to "Pro", "byok" to "BYOK", "local" to "Local")
     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
         options.forEachIndexed { index, (value, label) ->
+            val enabled = value != "pro" || hasPro
             SegmentedButton(
-                selected = provider == value,
-                onClick = { onProviderChange(value) },
+                selected = segment == value,
+                onClick = { if (enabled) onSegmentChange(value) },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                enabled = enabled,
             ) { Text(label) }
         }
+    }
+}
+
+@Composable
+private fun ProManagedCard(text: String) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(PRO_COLOR.copy(alpha = 0.12f))
+                .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Default.WorkspacePremium,
+            contentDescription = null,
+            tint = PRO_COLOR,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+@Composable
+private fun NoKeyWarning() {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
+                .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Default.Key,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = "No API key configured. Add your OpenAI key in the credentials panel above.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
     }
 }
 
