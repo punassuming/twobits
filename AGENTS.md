@@ -268,7 +268,9 @@ The CI `changelog` job blocks merges when the changelog was not updated alongsid
 
 Changelog entries are parsed and displayed in the **What's New** screen inside each app. Two formats are supported; choose based on whether the change warrants detail:
 
-#### Format A — user-facing change with expandable detail (preferred for Features)
+#### Format A — any user-visible change (Features and Improvements)
+
+Use Format A whenever the change is something a user would notice in the app — new screens, redesigned UI, new settings, changed behaviour, performance improvements the user feels, etc. This applies to entries in **both** `### Features` and `### Improvements`.
 
 ```markdown
 **[Screen or component]** — [short one-line description]:
@@ -302,14 +304,15 @@ Changelog entries are parsed and displayed in the **What's New** screen inside e
 * CI no longer fires duplicate runs — push trigger restricted to main
 ```
 
-#### Format B — quick fix or infra change (flat non-expandable row)
+#### Format B — internal/infra change only (flat non-expandable row)
+
+Use Format B **only** when the change is invisible to the user: CI tweaks, build fixes, dependency bumps, tooling changes, ProGuard rules, release workflow adjustments. If a user would notice it, use Format A instead.
 
 ```markdown
 * short description of what changed and why
 ```
 
 - Renders as a non-interactive single-line row with no expand chevron.
-- Use for minor bug fixes, CI tweaks, or anything that doesn't benefit from a longer explanation.
 - Can appear anywhere in a section, mixed with Format A entries (separated by a blank line from any preceding bold-title block).
 
 #### Category → icon mapping in the WhatsNew screen
@@ -328,6 +331,27 @@ The section heading determines the icon shown on each category row:
 `manage-changelog.py has-unreleased-bullets` (used by the release gate) accepts a section as non-empty when it contains **either** a plain `* `/`- ` bullet **or** a `**bold**` title line. A bold-title item with no sub-bullets is valid release content.
 
 `manage-changelog.py validate` checks structure only: `# Changelog` header, exactly one `## Unreleased` section first, and the three required sub-headings in order.
+
+---
+
+## Commit message format
+
+Both release workflows compute the next semantic version from conventional commit prefixes. Use the correct prefix on every commit.
+
+| Prefix | Version bump | When to use |
+|---|---|---|
+| `feat:` | minor — x.**Y**.0 | new user-visible feature or screen |
+| `fix:` | patch — x.y.**Z** | bug fix visible to users |
+| `chore:` | none | tooling, CI, dependencies, build config |
+| `refactor:` | none | code restructuring with no behaviour change |
+| `ci:` | none | workflow/pipeline changes only |
+| `docs:` | none | documentation only |
+| `BREAKING CHANGE:` in commit footer | major — **X**.0.0 | incompatible data/API change |
+
+**Rules:**
+- One prefix per commit. Use the highest-impact prefix when a commit mixes concerns (e.g. a `feat:` that also tidies code is still `feat:`).
+- `chore:` / `refactor:` / `ci:` commits do **not** trigger a release on their own. If a changelog `## Unreleased` section has bullets and a `feat:` or `fix:` commit lands on `main`, the release workflow fires and promotes those bullets.
+- Do not use `feat:` or `fix:` for pure infra work even if it feels significant — the prefix drives automated versioning, not importance.
 
 ---
 
