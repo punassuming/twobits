@@ -12,8 +12,8 @@ import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.scrybe.core.common.ReleaseNotes
-import dev.scrybe.core.common.ReleaseNotesParser
+import com.twobits.common.ReleaseNotes
+import com.twobits.common.ReleaseNotesParser
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao

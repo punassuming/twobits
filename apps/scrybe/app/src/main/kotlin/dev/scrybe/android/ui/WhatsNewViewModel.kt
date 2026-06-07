@@ -6,8 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.scrybe.core.common.ReleaseNotes
-import dev.scrybe.core.common.ReleaseNotesParser
+import com.twobits.common.ReleaseNotes
+import com.twobits.common.ReleaseNotesParser
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
