@@ -1,20 +1,12 @@
 package com.shelfsnap.app.ui.navigation
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.twobits.design.components.AppWhatsNewDialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -117,40 +109,16 @@ fun AppNavigation() {
         }
     }
     if (whatsNewState.isVisible) {
-        SSWhatsNewDialog(state = whatsNewState, onDismiss = whatsNewViewModel::dismiss)
+        AppWhatsNewDialog(
+            title = whatsNewState.title,
+            notes = whatsNewState.notes,
+            confirmLabel = whatsNewState.confirmLabel,
+            onDismiss = whatsNewViewModel::dismiss,
+            onViewHistory = if (!whatsNewState.isFirstRun) {
+                { navController.navigate(Screen.WhatsNew.route) }
+            } else null,
+        )
     }
     } // Box
 }
 
-@Composable
-private fun SSWhatsNewDialog(
-    state: SSWhatsNewUiState,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(state.title) },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 400.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                state.notes.forEach { note ->
-                    Text(
-                        text = "• $note",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(state.confirmLabel)
-            }
-        },
-    )
-}

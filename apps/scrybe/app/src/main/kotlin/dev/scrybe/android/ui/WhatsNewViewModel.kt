@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import com.twobits.common.ReleaseNotes
 import com.twobits.common.ReleaseNotesParser
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +19,6 @@ data class WhatsNewUiState(
     val isVisible: Boolean = false,
     val isFirstRun: Boolean = false,
     val title: String = "",
-    val summary: String = "",
     val versionName: String = "",
     val notes: List<String> = emptyList(),
     val confirmLabel: String = "Close",
@@ -46,29 +44,24 @@ class WhatsNewViewModel
                 val releaseNotes = loadReleaseNotes()
                 val isFirstRun = seenVersionCode == 0L
 
+                val versionName = packageInfo.versionName.orEmpty()
                 if (currentVersionCode > seenVersionCode && isFirstRun) {
-                    _uiState.value =
-                        WhatsNewUiState(
-                            isVisible = true,
-                            isFirstRun = true,
-                            title = "Your first recording, made simple",
-                            summary =
-                                "Scrybe captures the full recording first, then helps you review speakers, " +
-                                    "transcripts, insights, and follow-up tags without losing the original audio.",
-                            versionName = packageInfo.versionName.orEmpty(),
-                            notes = firstRunNotes(),
-                            confirmLabel = "Get started",
-                        )
+                    _uiState.value = WhatsNewUiState(
+                        isVisible = true,
+                        isFirstRun = true,
+                        title = "Welcome to Scrybe",
+                        versionName = versionName,
+                        notes = firstRunNotes(),
+                        confirmLabel = "Get started",
+                    )
                 } else if (currentVersionCode > seenVersionCode && releaseNotes?.summaryItems?.isNotEmpty() == true) {
-                    _uiState.value =
-                        WhatsNewUiState(
-                            isVisible = true,
-                            versionName = packageInfo.versionName.orEmpty(),
-                            title = releaseNotes.title,
-                            summary = "Here are the latest improvements in this build.",
-                            notes = releaseNotes.summaryItems,
-                            confirmLabel = "Close",
-                        )
+                    _uiState.value = WhatsNewUiState(
+                        isVisible = true,
+                        versionName = versionName,
+                        title = "What's New in $versionName",
+                        notes = releaseNotes.summaryItems,
+                        confirmLabel = "Close",
+                    )
                 }
             }
         }

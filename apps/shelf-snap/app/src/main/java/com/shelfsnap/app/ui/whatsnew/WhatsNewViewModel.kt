@@ -46,24 +46,25 @@ class WhatsNewViewModel @Inject constructor(
             val lastSeen = dataStore.data.map { it[LAST_SEEN_KEY] ?: 0L }.first()
             val isFirstRun = lastSeen == 0L
 
+            val versionName = packageInfo.versionName.orEmpty()
             if (currentVersionCode > lastSeen) {
                 if (isFirstRun) {
                     _uiState.value = SSWhatsNewUiState(
                         isVisible = true,
                         isFirstRun = true,
                         title = "Welcome to Shelf Snap",
-                        versionName = packageInfo.versionName.orEmpty(),
+                        versionName = versionName,
                         notes = firstRunNotes(),
                         confirmLabel = "Get started",
                     )
                 } else {
-                    val bullets = loadChangelogBullets()
-                    if (bullets.isNotEmpty()) {
+                    val notes = loadLatestReleaseNotes()
+                    if (notes.isNotEmpty()) {
                         _uiState.value = SSWhatsNewUiState(
                             isVisible = true,
-                            title = "What's New in ${packageInfo.versionName.orEmpty()}",
-                            versionName = packageInfo.versionName.orEmpty(),
-                            notes = bullets,
+                            title = "What's New in $versionName",
+                            versionName = versionName,
+                            notes = notes,
                             confirmLabel = "Close",
                         )
                     }
@@ -79,20 +80,12 @@ class WhatsNewViewModel @Inject constructor(
         }
     }
 
-    private fun loadChangelogBullets(): List<String> {
+    private fun loadLatestReleaseNotes(): List<String> {
         val text = runCatching {
             context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
         }.getOrNull() ?: return emptyList()
-
-        return ReleaseNotesParser.parseReleaseHistory(text)
-            .asSequence()
-            .flatMap { release ->
-                release.groups.flatMap { g -> g.items.map { it.title } }
-                    .ifEmpty { release.summaryItems }
-            }
-            .filter { it.isNotBlank() }
-            .take(8)
-            .toList()
+        val latest = ReleaseNotesParser.parseLatestReleaseNotes(text) ?: return emptyList()
+        return latest.summaryItems
     }
 
     private fun firstRunNotes(): List<String> = listOf(

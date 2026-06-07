@@ -13,13 +13,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.History
@@ -27,7 +24,6 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -37,8 +33,8 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.twobits.design.components.AppWhatsNewDialog
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -98,65 +94,16 @@ private fun ScrybeMainContent() {
         modifier = Modifier.fillMaxSize(),
     )
     if (whatsNewState.isVisible) {
-        WhatsNewDialog(state = whatsNewState, onDismiss = whatsNewViewModel::dismiss)
+        AppWhatsNewDialog(
+            title = whatsNewState.title,
+            notes = whatsNewState.notes,
+            confirmLabel = whatsNewState.confirmLabel,
+            onDismiss = whatsNewViewModel::dismiss,
+            onViewHistory = if (!whatsNewState.isFirstRun) {
+                { navController.navigate(Screen.WhatsNew.route) }
+            } else null,
+        )
     }
-}
-
-@Composable
-private fun WhatsNewDialog(
-    state: WhatsNewUiState,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text =
-                    when {
-                        state.isFirstRun -> "Welcome to Scrybe"
-                        state.versionName.isBlank() -> "What's New"
-                        else -> "What's New in ${state.versionName}"
-                    },
-            )
-        },
-        text = {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 400.dp)
-                        .verticalScroll(rememberScrollState()),
-            ) {
-                if (state.summary.isNotBlank()) {
-                    Text(
-                        text = state.summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = state.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                state.notes.forEach { note ->
-                    Text(
-                        text = "• $note",
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(state.confirmLabel)
-            }
-        },
-    )
 }
 
 @Composable
