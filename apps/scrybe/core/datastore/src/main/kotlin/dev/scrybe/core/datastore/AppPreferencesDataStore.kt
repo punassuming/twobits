@@ -13,6 +13,7 @@ import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
+import dev.scrybe.core.model.OpenAiTranscriptionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ThemeMode
@@ -54,6 +55,7 @@ class AppPreferencesDataStore
             val TASKFORGE_ENABLED = booleanPreferencesKey("taskforge_enabled")
             val TASKFORGE_PACKAGE_NAME = stringPreferencesKey("taskforge_package_name")
             val TASKFORGE_ACTION = stringPreferencesKey("taskforge_action")
+            val CLOUD_TRANSCRIPTION_MODEL = stringPreferencesKey("cloud_transcription_model")
             val LOCAL_GEMMA_MODEL = stringPreferencesKey("local_gemma_model")
             val LOCAL_WHISPER_MODEL = stringPreferencesKey("local_whisper_model")
             val DELETED_DEFAULT_PROFILE_IDS = stringPreferencesKey("deleted_default_profile_ids")
@@ -190,6 +192,11 @@ class AppPreferencesDataStore
         val taskForgeAction: Flow<String> =
             context.dataStore.data.map { prefs ->
                 prefs[Keys.TASKFORGE_ACTION] ?: "android.intent.action.SEND"
+            }
+
+        val cloudTranscriptionModel: Flow<OpenAiTranscriptionModel> =
+            context.dataStore.data.map { prefs ->
+                OpenAiTranscriptionModel.fromApiName(prefs[Keys.CLOUD_TRANSCRIPTION_MODEL] ?: "")
             }
 
         val localGemmaModel: Flow<LocalGemmaModel> =
@@ -345,6 +352,10 @@ class AppPreferencesDataStore
 
         suspend fun setTaskForgeAction(action: String) {
             context.dataStore.edit { prefs -> prefs[Keys.TASKFORGE_ACTION] = action }
+        }
+
+        suspend fun setCloudTranscriptionModel(model: OpenAiTranscriptionModel) {
+            context.dataStore.edit { prefs -> prefs[Keys.CLOUD_TRANSCRIPTION_MODEL] = model.apiName }
         }
 
         suspend fun setLocalGemmaModel(model: LocalGemmaModel) {

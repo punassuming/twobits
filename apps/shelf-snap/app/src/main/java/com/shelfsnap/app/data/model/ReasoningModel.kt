@@ -19,11 +19,6 @@ enum class ReasoningModel(
         apiName = "gpt-4o",
         displayName = "GPT-4o",
         supportingText = "Best accuracy · \$2.50 / \$10.00 per 1M tokens",
-    ),
-    GPT_5_4_MINI(
-        apiName = "gpt-5.4-mini",
-        displayName = "GPT-5.4 mini",
-        supportingText = "High quality at lower cost · \$0.75 / \$4.50 per 1M tokens",
     );
 
     companion object {

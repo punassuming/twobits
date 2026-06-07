@@ -9,6 +9,14 @@
 **Settings** — privacy policy link in About section:
 * new "Privacy policy" row opens the policy page in the browser
 
+**AI configuration** — redesigned screen with shared design components:
+* credentials panel now shows Save, Clear, and Test buttons side-by-side in the BYOK key field
+* masked API key subtitle displayed in monospace when a key is set
+* Pro/BYOK/Local source tabs redesigned as color-coded pills
+* cloud transcription BYOK mode shows Whisper 1 / Whisper Large model picker with per-minute cost labels
+* Gemma 3 1B and 4B GGUF models replace the previous Gemma 2 MediaPipe models; import a .gguf file from HuggingFace
+* Whisper Medium model added to local speech-to-text options
+
 ### Fixes
 
 ## 1.8.3 (2026-06-06)

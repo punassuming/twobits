@@ -2,52 +2,33 @@ package dev.scrybe.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.WorkspacePremium
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -56,19 +37,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
+import com.twobits.design.components.AiCredentialsDock
+import com.twobits.design.components.AiNoKeyWarning
+import com.twobits.design.components.AiProManagedCard
+import com.twobits.design.components.AiSectionHeader
+import com.twobits.design.components.AiSourceSegment
 import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
@@ -77,6 +57,7 @@ import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
+import dev.scrybe.core.model.OpenAiTranscriptionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
@@ -86,9 +67,6 @@ private fun LocalModelState.toStatus(): LocalModelStatus =
         is LocalModelState.Ready -> LocalModelStatus.Ready
         is LocalModelState.Error -> LocalModelStatus.Error(message)
     }
-
-private val PRO_COLOR get() = Color(0xFF88D7A8)
-private val BYOK_COLOR get() = Color(0xFF7DD4DC)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,15 +87,18 @@ fun AIConfigScreen(
             pendingImportGemmaModel = null
         }
 
+    val activity = LocalContext.current as? android.app.Activity
+    val hasPro = uiState.subscriptionTier is SubscriptionTier.Pro
     val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
     val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
+    val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
     var showProfileModelPicker by remember { mutableStateOf(false) }
 
     var transcriptionSegment by rememberSaveable {
         mutableStateOf(
             when {
                 uiState.transcriptionProvider == "LOCAL" -> "local"
-                uiState.subscriptionTier is SubscriptionTier.Pro -> "pro"
+                hasPro -> "pro"
                 else -> "byok"
             },
         )
@@ -126,7 +107,7 @@ fun AIConfigScreen(
         mutableStateOf(
             when {
                 uiState.aiFeaturesProvider == "LOCAL" -> "local"
-                uiState.subscriptionTier is SubscriptionTier.Pro -> "pro"
+                hasPro -> "pro"
                 else -> "byok"
             },
         )
@@ -145,53 +126,71 @@ fun AIConfigScreen(
         },
     ) { paddingValues ->
         Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
             Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(vertical = 12.dp)
-                        .fillMaxWidth()
-                        .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 12.dp)
+                    .fillMaxWidth()
+                    .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
             ) {
                 AiCredentialsDock(
-                    tier = uiState.subscriptionTier,
+                    proLabel = "Scrybe Pro",
+                    proPrice = "\$1.99/mo",
+                    hasPro = hasPro,
                     apiKey = uiState.apiKey,
-                    validationStatus = uiState.apiKeyValidationStatus,
+                    isValidating = uiState.apiKeyValidationStatus == ApiKeyValidationStatus.Validating,
                     validationMessage = uiState.apiKeyValidationMessage,
+                    isKeyValid = when (uiState.apiKeyValidationStatus) {
+                        ApiKeyValidationStatus.Valid -> true
+                        ApiKeyValidationStatus.Invalid -> false
+                        else -> null
+                    },
                     onApiKeyChange = viewModel::updateApiKey,
                     onSave = viewModel::saveApiKey,
+                    onClear = viewModel::clearApiKey,
+                    onTest = viewModel::testApiConnection,
+                    onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                 )
 
                 AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
                     AiSourceSegment(
-                        segment = transcriptionSegment,
-                        tier = uiState.subscriptionTier,
-                        onSegmentChange = { seg ->
+                        selected = transcriptionSegment,
+                        hasPro = hasPro,
+                        onChange = { seg ->
                             transcriptionSegment = seg
                             viewModel.setTranscriptionProvider(if (seg == "local") "LOCAL" else "OPENAI")
                         },
                     )
                     when (transcriptionSegment) {
-                        "pro" -> ProManagedCard(
-                            text = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
+                        "pro" -> AiProManagedCard(
+                            description = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
                         )
-                        "byok" -> if (uiState.apiKey.isBlank()) {
-                            NoKeyWarning()
-                        } else {
-                            CloudInfo(
-                                tier = uiState.subscriptionTier,
-                                apiKey = uiState.apiKey,
-                                text = "Cloud transcription via OpenAI Whisper.",
-                            )
+                        "byok" -> {
+                            if (uiState.apiKey.isBlank()) {
+                                AiNoKeyWarning()
+                            } else {
+                                Text(
+                                    "Transcription model",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                ModelRadioList(
+                                    models = OpenAiTranscriptionModel.entries.toList(),
+                                    selected = selectedTranscriptionModel,
+                                    onSelect = { viewModel.setTranscriptionModel(it) },
+                                    name = { it.title },
+                                    subtitle = { it.subtitle },
+                                    costLabel = { it.costLabel },
+                                )
+                            }
                         }
                         else ->
                             LocalModelPanel(
@@ -214,19 +213,19 @@ fun AIConfigScreen(
 
                 AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Transforms & Profiles") {
                     AiSourceSegment(
-                        segment = featuresSegment,
-                        tier = uiState.subscriptionTier,
-                        onSegmentChange = { seg ->
+                        selected = featuresSegment,
+                        hasPro = hasPro,
+                        onChange = { seg ->
                             featuresSegment = seg
                             viewModel.setAiFeaturesProvider(if (seg == "local") "LOCAL" else "OPENAI")
                         },
                     )
                     when (featuresSegment) {
-                        "pro" -> ProManagedCard(
-                            text = "AI transforms managed by Pro subscription. No personal key needed.",
+                        "pro" -> AiProManagedCard(
+                            description = "AI transforms managed by Pro subscription. No personal key needed.",
                         )
                         "byok" -> {
-                            if (uiState.apiKey.isBlank()) NoKeyWarning()
+                            if (uiState.apiKey.isBlank()) AiNoKeyWarning()
                             Text(
                                 "Transform model",
                                 style = MaterialTheme.typography.titleSmall,
@@ -249,7 +248,7 @@ fun AIConfigScreen(
                         else ->
                             LocalModelPanel(
                                 sectionLabel = "Gemma — on-device LLM",
-                                sectionSubtitle = "Download from HuggingFace, then import the .task file.",
+                                sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
                                 models = LocalGemmaModel.entries.toList(),
                                 status = { (gemmaStates[it] ?: LocalModelState.NotDownloaded).toStatus() },
                                 selected = selectedGemmaModel,
@@ -305,202 +304,13 @@ fun AIConfigScreen(
 }
 
 @Composable
-private fun AiCredentialsDock(
-    tier: SubscriptionTier,
-    apiKey: String,
-    validationStatus: ApiKeyValidationStatus,
-    validationMessage: String?,
-    onApiKeyChange: (String) -> Unit,
-    onSave: () -> Unit,
-) {
-    var proExpanded by rememberSaveable { mutableStateOf(false) }
-    var byokExpanded by rememberSaveable { mutableStateOf(false) }
-    var showKey by rememberSaveable { mutableStateOf(false) }
-
-    ElevatedCard(shape = RoundedCornerShape(20.dp)) {
-        Column {
-            AiCredentialRow(
-                icon = Icons.Default.WorkspacePremium,
-                iconTint = PRO_COLOR,
-                title = "Pro subscription",
-                status = if (tier is SubscriptionTier.Pro) "Active" else "Not subscribed",
-                subtitle = if (tier is SubscriptionTier.Pro) "Managed API · no key needed" else "\$1.99/mo · tap to expand",
-                expanded = proExpanded,
-                onToggle = { proExpanded = !proExpanded },
-            )
-            if (proExpanded) {
-                Column(
-                    modifier =
-                        Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(bottom = 14.dp),
-                ) {
-                    Text(
-                        text =
-                            when (tier) {
-                                SubscriptionTier.Free ->
-                                    "Upgrade to Pro for managed OpenAI access — no personal API key needed for transcription or transforms."
-                                SubscriptionTier.Pro ->
-                                    "Your Pro subscription is active. Transcription and AI transforms are managed automatically."
-                            },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            HorizontalDivider()
-
-            AiCredentialRow(
-                icon = Icons.Default.Key,
-                iconTint = BYOK_COLOR,
-                title = "OpenAI API key",
-                status = if (apiKey.isNotBlank()) "Connected" else "Not configured",
-                subtitle = if (apiKey.length > 8) "sk-…${apiKey.takeLast(4)}" else "Bring your own key",
-                expanded = byokExpanded,
-                onToggle = { byokExpanded = !byokExpanded },
-            )
-            if (byokExpanded) {
-                Column(
-                    modifier =
-                        Modifier
-                            .padding(horizontal = 16.dp)
-                            .padding(bottom = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    OutlinedTextField(
-                        value = apiKey,
-                        onValueChange = onApiKeyChange,
-                        label = { Text("OpenAI API key") },
-                        placeholder = { Text("sk-…") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        trailingIcon = {
-                            TextButton(onClick = { showKey = !showKey }) {
-                                Text(if (showKey) "Hide" else "Show")
-                            }
-                        },
-                    )
-                    Button(
-                        onClick = onSave,
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = validationStatus != ApiKeyValidationStatus.Validating,
-                    ) {
-                        if (validationStatus == ApiKeyValidationStatus.Validating) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Checking…")
-                        } else {
-                            Icon(Icons.Default.Check, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Save")
-                        }
-                    }
-                    validationMessage?.let { msg ->
-                        Text(
-                            text = msg,
-                            style = MaterialTheme.typography.bodySmall,
-                            color =
-                                when (validationStatus) {
-                                    ApiKeyValidationStatus.Valid -> MaterialTheme.colorScheme.primary
-                                    ApiKeyValidationStatus.Invalid -> MaterialTheme.colorScheme.error
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AiCredentialRow(
-    icon: ImageVector,
-    iconTint: Color,
-    title: String,
-    status: String,
-    subtitle: String,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable { onToggle() }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(11.dp))
-                    .background(iconTint.copy(alpha = 0.15f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Surface(shape = CircleShape, color = iconTint.copy(alpha = 0.18f)) {
-                    Text(
-                        text = status,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = iconTint,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    )
-                }
-            }
-            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Icon(
-            Icons.Default.ExpandMore,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier =
-                Modifier
-                    .size(20.dp)
-                    .rotate(if (expanded) 180f else 0f),
-        )
-    }
-}
-
-@Composable
 private fun AiSectionCard(
-    icon: ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
-            }
-            Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        }
+        AiSectionHeader(title = title, icon = icon)
         ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(14.dp),
@@ -512,117 +322,6 @@ private fun AiSectionCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AiSourceSegment(
-    segment: String,
-    tier: SubscriptionTier,
-    onSegmentChange: (String) -> Unit,
-) {
-    val hasPro = tier is SubscriptionTier.Pro
-    val options = listOf("pro" to "Pro", "byok" to "BYOK", "local" to "Local")
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        options.forEachIndexed { index, (value, label) ->
-            val enabled = value != "pro" || hasPro
-            SegmentedButton(
-                selected = segment == value,
-                onClick = { if (enabled) onSegmentChange(value) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                enabled = enabled,
-            ) { Text(label) }
-        }
-    }
-}
-
-@Composable
-private fun ProManagedCard(text: String) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(PRO_COLOR.copy(alpha = 0.12f))
-                .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.Default.WorkspacePremium,
-            contentDescription = null,
-            tint = PRO_COLOR,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-@Composable
-private fun NoKeyWarning() {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
-                .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.Default.Key,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            text = "No API key configured. Add your OpenAI key in the credentials panel above.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
-        )
-    }
-}
-
-@Composable
-private fun CloudInfo(
-    tier: SubscriptionTier,
-    apiKey: String,
-    text: String,
-) {
-    val hasAccess = tier is SubscriptionTier.Pro || apiKey.isNotBlank()
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    if (hasAccess) {
-                        PRO_COLOR.copy(alpha = 0.12f)
-                    } else {
-                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
-                    },
-                )
-                .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            if (hasAccess) Icons.Default.Check else Icons.Default.Key,
-            contentDescription = null,
-            tint = if (hasAccess) PRO_COLOR else MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            text = if (hasAccess) text else "No API access configured. Add an API key or upgrade to Pro.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
 @Composable
 private fun AiToggleRow(
     title: String,
@@ -631,10 +330,9 @@ private fun AiToggleRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -645,4 +343,3 @@ private fun AiToggleRow(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
-

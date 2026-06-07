@@ -9,6 +9,15 @@
 **Settings** — privacy policy link in About section:
 * new "Privacy policy" row opens the policy page in the browser
 
+**AI configuration** — redesigned screen with shared design components:
+* credentials panel now shows Save, Clear, and Test buttons side-by-side in the BYOK key field
+* masked API key subtitle displayed in monospace when a key is set
+* Pro/BYOK/Local source tabs added for Vision and Pricing sections
+* local vision support: import Moondream 2 (.gguf) for on-device item identification
+* local LLM support: import Gemma 3 1B or 4B (.gguf) for on-device descriptions and price estimates
+* cloud model lists trimmed to the 3 models in the design (GPT-4o, GPT-4o mini, GPT-4.1 mini)
+* Analysis section now shows AI condition detection, Auto price estimate, and Multi-photo analysis toggles
+
 * CHANGELOG asset now generated at build time — in-app "What's New" screen always reflects the latest release notes on a fresh clone
 * What's New dialog now accumulates bullets from recent versions rather than showing only the most-recent hotfix section
 * Market research updated to use OpenAI Responses API for gpt-5.4 and gpt-5.4-mini models — fixes "model not found" errors for users with current API keys
