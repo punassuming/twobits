@@ -34,7 +34,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import com.twobits.design.components.AppWhatsNewDialog
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -50,6 +49,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.twobits.design.components.AppWhatsNewDialog
 import dev.scrybe.android.navigation.Screen
 import dev.scrybe.android.navigation.ScrybeNavHost
 import dev.scrybe.feature.capture.OnboardingScreen
@@ -57,12 +57,13 @@ import dev.scrybe.feature.capture.OnboardingViewModel
 
 private data class NavTab(val screen: Screen, val icon: ImageVector, val label: String)
 
-private val NAV_TABS = listOf(
-    NavTab(Screen.Capture, Icons.Filled.Mic, "Record"),
-    NavTab(Screen.History, Icons.Filled.History, "Records"),
-    NavTab(Screen.Profiles, Icons.Filled.Tune, "Profiles"),
-    NavTab(Screen.Settings, Icons.Filled.Settings, "Settings"),
-)
+private val NAV_TABS =
+    listOf(
+        NavTab(Screen.Capture, Icons.Filled.Mic, "Record"),
+        NavTab(Screen.History, Icons.Filled.History, "Records"),
+        NavTab(Screen.Profiles, Icons.Filled.Tune, "Profiles"),
+        NavTab(Screen.Settings, Icons.Filled.Settings, "Settings"),
+    )
 
 private val TAB_ROUTES = NAV_TABS.map { it.screen.route }.toSet()
 
@@ -99,9 +100,12 @@ private fun ScrybeMainContent() {
             notes = whatsNewState.notes,
             confirmLabel = whatsNewState.confirmLabel,
             onDismiss = whatsNewViewModel::dismiss,
-            onViewHistory = if (!whatsNewState.isFirstRun) {
-                { navController.navigate(Screen.WhatsNew.route) }
-            } else null,
+            onViewHistory =
+                if (!whatsNewState.isFirstRun) {
+                    { navController.navigate(Screen.WhatsNew.route) }
+                } else {
+                    null
+                },
         )
     }
 }
@@ -124,8 +128,9 @@ private fun MainContentBox(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                     NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
                         NAV_TABS.forEach { tab ->
-                            val selected = navBackStackEntry?.destination?.hierarchy
-                                ?.any { it.route == tab.screen.route } == true
+                            val selected =
+                                navBackStackEntry?.destination?.hierarchy
+                                    ?.any { it.route == tab.screen.route } == true
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {

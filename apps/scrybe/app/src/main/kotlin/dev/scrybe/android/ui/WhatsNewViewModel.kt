@@ -4,10 +4,10 @@ import android.content.Context
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import com.twobits.common.ReleaseNotes
 import com.twobits.common.ReleaseNotesParser
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,22 +47,24 @@ class WhatsNewViewModel
 
                 val versionName = packageInfo.versionName.orEmpty()
                 if (currentVersionCode > seenVersionCode && isFirstRun) {
-                    _uiState.value = WhatsNewUiState(
-                        isVisible = true,
-                        isFirstRun = true,
-                        title = "Welcome to Scrybe",
-                        versionName = versionName,
-                        notes = firstRunNotes(),
-                        confirmLabel = "Get started",
-                    )
+                    _uiState.value =
+                        WhatsNewUiState(
+                            isVisible = true,
+                            isFirstRun = true,
+                            title = "Welcome to Scrybe",
+                            versionName = versionName,
+                            notes = firstRunNotes(),
+                            confirmLabel = "Get started",
+                        )
                 } else if (currentVersionCode > seenVersionCode && releaseNotes?.summaryItems?.isNotEmpty() == true) {
-                    _uiState.value = WhatsNewUiState(
-                        isVisible = true,
-                        versionName = versionName,
-                        title = "What's New in $versionName",
-                        notes = releaseNotes.summaryItems,
-                        confirmLabel = "Close",
-                    )
+                    _uiState.value =
+                        WhatsNewUiState(
+                            isVisible = true,
+                            versionName = versionName,
+                            title = "What's New in $versionName",
+                            notes = releaseNotes.summaryItems,
+                            confirmLabel = "Close",
+                        )
                 }
             }
         }
