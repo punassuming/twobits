@@ -19,6 +19,8 @@
 
 ### Fixes
 
+* CI now builds assembleRelease so R8 minification runs on every PR, catching ProGuard stripping issues before they reach the release workflow
+
 ## 1.8.3 (2026-06-06)
 
 ### Features

@@ -1,12 +1,12 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# Retain annotation and generic-signature metadata required at runtime by Hilt
+# (component injection) and Gson (generic type token resolution).
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
 
-# Keep data classes used by Gson
+# Keep all app data classes so Gson field-based (de)serialisation survives R8.
 -keepclassmembers class com.shelfsnap.app.** {
     <fields>;
 }
 
-# OkHttp
+# OkHttp / Okio optional integrations not bundled with the app.
 -dontwarn okhttp3.**
 -dontwarn okio.**
