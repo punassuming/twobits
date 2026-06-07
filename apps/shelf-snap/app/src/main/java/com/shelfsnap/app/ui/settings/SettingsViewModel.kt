@@ -337,7 +337,7 @@ class SettingsViewModel @Inject constructor(
             _isVerifyingKey.update { true }
             _isKeyVerified.update { null }
             _keyVerifyError.update { null }
-            val result = repository.testApiKey()
+            val result = repository.testApiKey(key)
             _isVerifyingKey.update { false }
             if (result.isSuccess) {
                 _isKeyVerified.update { true }

@@ -88,7 +88,7 @@ class OpenAiTranscriptionProvider
                 MultipartBody
                     .Builder()
                     .setType(MultipartBody.FORM)
-                    .addFormDataPart("model", "whisper-1")
+                    .addFormDataPart("model", options.model)
                     .addFormDataPart(
                         "file",
                         audioFile.name,

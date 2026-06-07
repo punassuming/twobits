@@ -70,9 +70,11 @@ class ItemRepository @Inject constructor(
      * Returns a [DraftItemResult]; caller must check [DraftItemResult.error].
      */
     suspend fun analysePhotos(photoPaths: List<String>): DraftItemResult {
-        val apiKey = getApiKey()
-        val model = getVisionModel()
-        return visionService.analyse(photoPaths, apiKey, model.apiName)
+        return when (val source = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok") {
+            "pro" -> DraftItemResult(error = "Pro vision is not yet available in this build.")
+            "local" -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
+            else -> visionService.analyse(photoPaths, getApiKey(), getVisionModel().apiName)
+        }
     }
 
     // ── Price research ──────────────────────────────────────────────────────────
@@ -82,17 +84,24 @@ class ItemRepository @Inject constructor(
      * configured web-search provider. Caller must check [PriceResearchResult.error].
      */
     suspend fun researchPrice(item: Item): PriceResearchResult {
-        return priceResearchService.research(
-            item = item,
-            openAiKey = getApiKey(),
-            searchProvider = getSearchProvider(),
-            searchKey = getSearchApiKey(),
-            model = getReasoningModel().apiName
-        )
+        return when (val source = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok") {
+            "pro" -> PriceResearchResult(error = "Pro pricing is not yet available in this build.")
+            "local" -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
+            else -> priceResearchService.research(
+                item = item,
+                openAiKey = getApiKey(),
+                searchProvider = getSearchProvider(),
+                searchKey = getSearchApiKey(),
+                model = getReasoningModel().apiName,
+            )
+        }
     }
 
     /** Verifies that the saved OpenAI API key is accepted by the API. */
     suspend fun testApiKey(): Result<Unit> = visionService.testKey(getApiKey())
+
+    /** Verifies a specific key without saving it first. */
+    suspend fun testApiKey(key: String): Result<Unit> = visionService.testKey(key)
 
     // ── Settings ──────────────────────────────────────────────────────────────
 
