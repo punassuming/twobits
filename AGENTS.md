@@ -11,7 +11,6 @@ apps/
   scrybe/          — Scrybe Android app (voice recording + Whisper transcription)
   shelf-snap/      — Shelf Snap Android app (camera inventory + price research)
 shared/            — Gradle composite build: shared library modules (billing, common, api-keys, network, design)
-scrybe-re-think/   — Design exploration docs
 ```
 
 The managed API key proxy lives in the separate **[punassuming/twobits-worker](https://github.com/punassuming/twobits-worker)** repository and is deployed independently via Cloudflare Workers.
