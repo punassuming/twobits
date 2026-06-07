@@ -126,19 +126,21 @@ fun AIConfigScreen(
         },
     ) { paddingValues ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
             contentAlignment = Alignment.TopCenter,
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 12.dp)
-                    .fillMaxWidth()
-                    .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 12.dp)
+                        .fillMaxWidth()
+                        .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
             ) {
                 AiCredentialsDock(
@@ -148,11 +150,12 @@ fun AIConfigScreen(
                     apiKey = uiState.apiKey,
                     isValidating = uiState.apiKeyValidationStatus == ApiKeyValidationStatus.Validating,
                     validationMessage = uiState.apiKeyValidationMessage,
-                    isKeyValid = when (uiState.apiKeyValidationStatus) {
-                        ApiKeyValidationStatus.Valid -> true
-                        ApiKeyValidationStatus.Invalid -> false
-                        else -> null
-                    },
+                    isKeyValid =
+                        when (uiState.apiKeyValidationStatus) {
+                            ApiKeyValidationStatus.Valid -> true
+                            ApiKeyValidationStatus.Invalid -> false
+                            else -> null
+                        },
                     onApiKeyChange = viewModel::updateApiKey,
                     onSave = viewModel::saveApiKey,
                     onClear = viewModel::clearApiKey,
@@ -170,9 +173,10 @@ fun AIConfigScreen(
                         },
                     )
                     when (transcriptionSegment) {
-                        "pro" -> AiProManagedCard(
-                            description = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
-                        )
+                        "pro" ->
+                            AiProManagedCard(
+                                description = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
+                            )
                         "byok" -> {
                             if (uiState.apiKey.isBlank()) {
                                 AiNoKeyWarning()
@@ -221,9 +225,10 @@ fun AIConfigScreen(
                         },
                     )
                     when (featuresSegment) {
-                        "pro" -> AiProManagedCard(
-                            description = "AI transforms managed by Pro subscription. No personal key needed.",
-                        )
+                        "pro" ->
+                            AiProManagedCard(
+                                description = "AI transforms managed by Pro subscription. No personal key needed.",
+                            )
                         "byok" -> {
                             if (uiState.apiKey.isBlank()) AiNoKeyWarning()
                             Text(
@@ -330,9 +335,10 @@ private fun AiToggleRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
