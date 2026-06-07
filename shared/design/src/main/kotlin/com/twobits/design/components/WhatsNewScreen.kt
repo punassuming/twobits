@@ -85,34 +85,21 @@ fun WhatsNewScreenLayout(
             )
         },
     ) { padding ->
-        if (releases.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "No release notes available.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                horizontal = 16.dp,
+                vertical = 8.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(releases, key = { it.version }) { release ->
+                WhatsNewVersionBlock(
+                    release = release,
+                    onNavigate = onNavigate,
                 )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    horizontal = 16.dp,
-                    vertical = 8.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(releases, key = { it.version }) { release ->
-                    WhatsNewVersionBlock(
-                        release = release,
-                        onNavigate = onNavigate,
-                    )
-                }
-                item { Spacer(Modifier.height(16.dp)) }
-            }
+            item { Spacer(Modifier.height(16.dp)) }
         }
     }
 }
