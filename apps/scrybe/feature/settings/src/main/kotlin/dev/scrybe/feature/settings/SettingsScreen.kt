@@ -81,7 +81,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.common.ScrybeSectionCard
+import com.twobits.design.components.AppSectionCard
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ThemeMode
@@ -741,7 +741,7 @@ private fun ProSubscriptionCard(
     onRestore: () -> Unit,
     onDismissError: () -> Unit,
 ) {
-    ScrybeSectionCard(
+    AppSectionCard(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -868,7 +868,7 @@ private fun SettingsSectionCard(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    ScrybeSectionCard(
+    AppSectionCard(
         containerColor = containerColor,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

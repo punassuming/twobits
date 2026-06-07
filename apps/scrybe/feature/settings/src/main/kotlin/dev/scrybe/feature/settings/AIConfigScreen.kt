@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Insights
@@ -33,17 +32,13 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -74,6 +69,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
+import com.twobits.design.components.LocalModelPanel
+import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.localai.LocalModelState
@@ -81,6 +78,14 @@ import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
+
+private fun LocalModelState.toStatus(): LocalModelStatus =
+    when (this) {
+        is LocalModelState.NotDownloaded -> LocalModelStatus.NotAvailable
+        is LocalModelState.Downloading -> LocalModelStatus.InProgress(progressPercent)
+        is LocalModelState.Ready -> LocalModelStatus.Ready
+        is LocalModelState.Error -> LocalModelStatus.Error(message)
+    }
 
 private val PRO_COLOR get() = Color(0xFF88D7A8)
 private val BYOK_COLOR get() = Color(0xFF7DD4DC)
@@ -188,23 +193,22 @@ fun AIConfigScreen(
                                 text = "Cloud transcription via OpenAI Whisper.",
                             )
                         }
-                        else -> {
-                            Text(
-                                "On-device models — runs fully offline, no API key required.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        else ->
+                            LocalModelPanel(
+                                sectionLabel = "Whisper — speech-to-text",
+                                models = LocalWhisperModel.entries.toList(),
+                                status = { (whisperStates[it] ?: LocalModelState.NotDownloaded).toStatus() },
+                                selected = selectedWhisperModel,
+                                onSelect = { viewModel.selectWhisperModel(it) },
+                                onPrimaryAction = { viewModel.downloadWhisperModel(it) },
+                                primaryActionLabel = "Download",
+                                primaryActionIcon = Icons.Default.CloudDownload,
+                                onDelete = { viewModel.deleteWhisperModel(it) },
+                                name = { it.displayName },
+                                sizeLabel = { it.sizeLabel },
+                                description = { it.description },
+                                progressLabel = "Downloading",
                             )
-                            LocalWhisperModel.entries.forEach { model ->
-                                WhisperModelRow(
-                                    model = model,
-                                    state = whisperStates[model] ?: LocalModelState.NotDownloaded,
-                                    isSelected = model == selectedWhisperModel,
-                                    onSelect = { viewModel.selectWhisperModel(model) },
-                                    onDownload = { viewModel.downloadWhisperModel(model) },
-                                    onDelete = { viewModel.deleteWhisperModel(model) },
-                                )
-                            }
-                        }
                     }
                 }
 
@@ -242,27 +246,27 @@ fun AIConfigScreen(
                                 onClick = { showProfileModelPicker = true },
                             )
                         }
-                        else -> {
-                            Text(
-                                "On-device AI — runs fully offline, no API key required.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        else ->
+                            LocalModelPanel(
+                                sectionLabel = "Gemma — on-device LLM",
+                                sectionSubtitle = "Download from HuggingFace, then import the .task file.",
+                                models = LocalGemmaModel.entries.toList(),
+                                status = { (gemmaStates[it] ?: LocalModelState.NotDownloaded).toStatus() },
+                                selected = selectedGemmaModel,
+                                onSelect = { viewModel.selectGemmaModel(it) },
+                                onPrimaryAction = {
+                                    pendingImportGemmaModel = it
+                                    importGemmaFilePicker.launch("*/*")
+                                },
+                                primaryActionLabel = "Import",
+                                primaryActionIcon = Icons.Default.FolderOpen,
+                                onDelete = { viewModel.deleteGemmaModel(it) },
+                                name = { it.displayName },
+                                sizeLabel = { it.sizeLabel },
+                                description = { it.description },
+                                progressLabel = "Importing",
+                                huggingFaceUrl = { it.huggingFacePageUrl },
                             )
-                            LocalGemmaModel.entries.forEach { model ->
-                                GemmaModelRow(
-                                    model = model,
-                                    state = gemmaStates[model] ?: LocalModelState.NotDownloaded,
-                                    isSelected = model == selectedGemmaModel,
-                                    onSelect = { viewModel.selectGemmaModel(model) },
-                                    onImport = {
-                                        pendingImportGemmaModel = model
-                                        importGemmaFilePicker.launch("*/*")
-                                    },
-                                    onGetModel = {},
-                                    onDelete = { viewModel.deleteGemmaModel(model) },
-                                )
-                            }
-                        }
                     }
                 }
 
@@ -642,140 +646,3 @@ private fun AiToggleRow(
     }
 }
 
-@Composable
-private fun WhisperModelRow(
-    model: LocalWhisperModel,
-    state: LocalModelState,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    onDownload: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    val isReady = state is LocalModelState.Ready
-    val containerColor =
-        if (isSelected && isReady) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(model.displayName, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "${model.description} · ${model.sizeLabel}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (isReady) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (!isSelected) TextButton(onClick = onSelect) { Text("Use") }
-                        IconButton(onClick = onDelete) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
-                        }
-                    }
-                }
-            }
-            when (state) {
-                is LocalModelState.NotDownloaded ->
-                    OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Filled.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text(" Download")
-                    }
-                is LocalModelState.Downloading ->
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        LinearProgressIndicator(progress = { state.progressPercent / 100f }, modifier = Modifier.fillMaxWidth())
-                        Text("${state.progressPercent}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                is LocalModelState.Ready ->
-                    if (isSelected) Text("Active", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                is LocalModelState.Error ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        OutlinedButton(onClick = onDownload, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
-                    }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GemmaModelRow(
-    model: LocalGemmaModel,
-    state: LocalModelState,
-    isSelected: Boolean,
-    onSelect: () -> Unit,
-    onImport: () -> Unit,
-    onGetModel: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    val isReady = state is LocalModelState.Ready
-    val containerColor =
-        if (isSelected && isReady) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(model.displayName, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "${model.description} · ${model.sizeLabel}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (isReady) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (!isSelected) TextButton(onClick = onSelect) { Text("Use") }
-                        IconButton(onClick = onDelete) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
-                        }
-                    }
-                }
-            }
-            when (state) {
-                is LocalModelState.NotDownloaded ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
-                            Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Text(" Import .task file")
-                        }
-                        TextButton(onClick = onGetModel, modifier = Modifier.fillMaxWidth()) {
-                            Text("Get model on HuggingFace ↗")
-                        }
-                    }
-                is LocalModelState.Downloading ->
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        LinearProgressIndicator(progress = { state.progressPercent / 100f }, modifier = Modifier.fillMaxWidth())
-                        Text("Importing… ${state.progressPercent}%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                is LocalModelState.Ready ->
-                    if (isSelected) Text("Active", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                is LocalModelState.Error ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                        OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Text("Retry") }
-                    }
-            }
-        }
-    }
-}

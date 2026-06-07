@@ -7,6 +7,8 @@ enum class LocalGemmaModel(
     val sizeLabel: String,
     val downloadUrl: String,
 ) {
+    val huggingFacePageUrl: String get() =
+        downloadUrl.removePrefix("https://").substringBefore("/resolve/")
     GEMMA_2_2B_GPU(
         displayName = "Gemma 2 2B IT · GPU",
         description = "Fast inference; requires GPU (Pixel 6+, Snapdragon 888+)",

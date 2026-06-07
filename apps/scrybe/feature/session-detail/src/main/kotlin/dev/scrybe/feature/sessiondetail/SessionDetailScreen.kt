@@ -110,8 +110,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.common.ScrybeSectionCard
-import dev.scrybe.core.common.ScrybeSectionHeader
+import com.twobits.design.components.AppSectionCard
+import com.twobits.design.components.AppSectionHeader
 import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.database.FolderEntity
@@ -709,8 +709,8 @@ private fun TransformedOutputCard(transcripts: List<Transcript>) {
             .filter { it.type == TranscriptType.TRANSFORMED }
             .maxByOrNull { it.createdAt }
     if (transformedTranscript != null) {
-        ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
-            ScrybeSectionHeader(title = "Output", subtitle = "Most recent AI-generated output")
+        AppSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            AppSectionHeader(title = "Output", subtitle = "Most recent AI-generated output")
             Text(
                 text = transformedTranscript.content,
                 style = MaterialTheme.typography.bodySmall,
@@ -719,7 +719,7 @@ private fun TransformedOutputCard(transcripts: List<Transcript>) {
             )
         }
     } else {
-        ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+        AppSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
             Text(
                 text = "No output yet — transcribe and post-process to see AI summaries here.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -740,7 +740,7 @@ private fun TasksTabContent(
     onShareTasks: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ScrybeSectionCard(
+        AppSectionCard(
             containerColor =
                 if (tasks.isEmpty()) {
                     MaterialTheme.colorScheme.surfaceVariant
@@ -748,7 +748,7 @@ private fun TasksTabContent(
                     MaterialTheme.colorScheme.surfaceContainerHigh
                 },
         ) {
-            ScrybeSectionHeader(
+            AppSectionHeader(
                 title = if (tasks.isEmpty()) "Tasks" else "Tasks (${tasks.size})",
                 trailing = {
                     if (tasks.isNotEmpty()) {
@@ -924,7 +924,7 @@ private fun ExtendedActionCard(
     color: Color,
     onClick: () -> Unit,
 ) {
-    ScrybeSectionCard(
+    AppSectionCard(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier.clickable(onClick = onClick),
     ) {
@@ -1004,7 +1004,7 @@ private fun InlineTagsCard(
     var isExpanded by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
 
-    ScrybeSectionCard {
+    AppSectionCard {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Label, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.width(6.dp))
@@ -1383,7 +1383,7 @@ private fun MetaChip(
 
 @Composable
 private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
-    ScrybeSectionCard(
+    AppSectionCard(
         containerColor =
             if (state.session.isArchived) {
                 MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f)
@@ -1392,7 +1392,7 @@ private fun SessionOverviewCard(state: SessionDetailUiState.Success) {
             },
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        ScrybeSectionHeader(
+        AppSectionHeader(
             title = "Recording details",
             subtitle = "Recorded ${state.session.createdAt.atZone(ZoneId.systemDefault()).format(SUMMARY_TIME_FORMATTER)}",
             trailing =
@@ -1529,7 +1529,7 @@ private fun TransformSection(
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ScrybeSectionHeader(
+        AppSectionHeader(
             title = "Post-process",
             subtitle = "Run a saved prompt against the latest transcription.",
         )
@@ -1621,7 +1621,7 @@ private fun TranscriptSection(
 ) {
     val transcripts = state.transcripts
     if (state.currentTranscript == null && transcripts.isEmpty()) {
-        ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
+        AppSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
             Text(
                 text = "No transcripts yet. You can transcribe this recording from here.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -2193,8 +2193,8 @@ private fun SpeakerSlotsCard(
         }
     var pickerTargetSpeakerId by remember { mutableStateOf<String?>(null) }
     var mergeSourceSpeakerId by remember { mutableStateOf<String?>(null) }
-    ScrybeSectionCard {
-        ScrybeSectionHeader(
+    AppSectionCard {
+        AppSectionHeader(
             title = "Speakers",
             subtitle =
                 if (distinctSpeakers.isEmpty()) {
@@ -2218,7 +2218,7 @@ private fun SpeakerSlotsCard(
                 }
                 Text(if (state.isFetchingSpeakerInfo) "Retrieving speakers..." else "Retrieve speaker info")
             }
-            return@ScrybeSectionCard
+            return@AppSectionCard
         }
         speakerEntries.forEachIndexed { idx, (speakerId, label, personName) ->
             SpeakerSlotRow(

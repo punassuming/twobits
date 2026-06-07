@@ -101,8 +101,8 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.scrybe.core.common.ModeBadge
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.common.ScrybeSectionCard
-import dev.scrybe.core.common.ScrybeSectionHeader
+import com.twobits.design.components.AppSectionCard
+import com.twobits.design.components.AppSectionHeader
 import dev.scrybe.core.common.SessionStatusChip
 import dev.scrybe.core.common.modeAccentColor
 import dev.scrybe.core.common.modeIcon
@@ -1216,11 +1216,11 @@ private fun ModeFilterRow(
 
 @Composable
 private fun IntroGuidanceSection() {
-    ScrybeSectionCard(
+    AppSectionCard(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        ScrybeSectionHeader(
+        AppSectionHeader(
             title = "Start with a confident first recording",
             subtitle =
                 "Scrybe saves the raw audio first, then layers review tools on top so you can revisit the important moments later.",
