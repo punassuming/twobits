@@ -254,17 +254,80 @@ The `has-new-unreleased-since-tag` check in both release workflows enforces this
 
 ## Mandatory changelog updates
 
-### Scrybe
-Update `apps/scrybe/CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Add bullets under `### Features`, `### Improvements`, or `### Fixes`.
+Update the relevant `CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Add entries under `### Features`, `### Improvements`, or `### Fixes`.
 
-Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md`
-
-### Shelf Snap
-Update `apps/shelf-snap/CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Format is identical to the Scrybe changelog.
-
-Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md`
+Validate commands:
+```bash
+python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md
+python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md
+```
 
 The CI `changelog` job blocks merges when the changelog was not updated alongside other tracked changes. Do **not** invent version numbers — the release workflow promotes `Unreleased` automatically.
+
+### Changelog entry format — how entries appear in-app
+
+Changelog entries are parsed and displayed in the **What's New** screen inside each app. Two formats are supported; choose based on whether the change warrants detail:
+
+#### Format A — user-facing change with expandable detail (preferred for Features)
+
+```markdown
+**[Screen or component]** — [short one-line description]:
+* detail bullet one
+* detail bullet two
+* detail bullet three
+```
+
+- The `**bold**` text becomes the collapsed item title visible at all times.
+- The em-dash `—` (U+2014, not a hyphen) separates the component name from the description; both are required.
+- Sub-bullets (`* `) accumulate as the expanded description, revealed when the user taps the row.
+- End the bold line with `:` when sub-bullets follow; omit it for a one-liner with no sub-bullets.
+- **Blank line required** between consecutive bold-title items, and between a bold-title item and any following plain bullets in the same section. Without it the parser merges the next bullet into the preceding item's description.
+
+```markdown
+### Features
+
+**Camera** — viewfinder redesign:
+* close and flash controls overlaid on the viewfinder surface
+* teal L-bracket corner guides frame the subject
+
+**Settings** — AI configuration card:
+* prominent primaryContainer card at the top of Settings
+
+### Improvements
+
+**Item Detail** — visual polish:
+* brand · model subtitle uses middle-dot separator
+* AI confidence badge replaced with a primaryContainer pill
+
+* CI no longer fires duplicate runs — push trigger restricted to main
+```
+
+#### Format B — quick fix or infra change (flat non-expandable row)
+
+```markdown
+* short description of what changed and why
+```
+
+- Renders as a non-interactive single-line row with no expand chevron.
+- Use for minor bug fixes, CI tweaks, or anything that doesn't benefit from a longer explanation.
+- Can appear anywhere in a section, mixed with Format A entries (separated by a blank line from any preceding bold-title block).
+
+#### Category → icon mapping in the WhatsNew screen
+
+The section heading determines the icon shown on each category row:
+
+| `### ` heading | Displayed label | Icon |
+|---|---|---|
+| `### Features` | Features & Enhancements | ✨ AutoAwesome |
+| `### Improvements` | Improvements | 📈 TrendingUp |
+| `### Fixes` | Bug Fixes | 🔧 BuildCircle |
+| `### Initial Release` / `### Launch` | (heading as-is) | 🚀 RocketLaunch |
+
+#### What the CI validates
+
+`manage-changelog.py has-unreleased-bullets` (used by the release gate) accepts a section as non-empty when it contains **either** a plain `* `/`- ` bullet **or** a `**bold**` title line. A bold-title item with no sub-bullets is valid release content.
+
+`manage-changelog.py validate` checks structure only: `# Changelog` header, exactly one `## Unreleased` section first, and the three required sub-headings in order.
 
 ---
 
