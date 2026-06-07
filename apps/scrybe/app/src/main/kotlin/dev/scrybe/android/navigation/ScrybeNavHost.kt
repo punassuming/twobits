@@ -10,6 +10,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import dev.scrybe.android.ui.ScrybeWhatsNewScreen
 import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
@@ -38,6 +39,8 @@ sealed class Screen(
     object Tasks : Screen("tasks")
 
     object AiConfig : Screen("ai_config")
+
+    object WhatsNew : Screen("whats_new")
 }
 
 @Composable
@@ -129,10 +132,24 @@ fun ScrybeNavHost(navController: NavHostController) {
                 onNavigateToFileManager = { navController.navigate(Screen.FileManager.route) },
                 onNavigateToProfiles = { navController.navigate(Screen.Profiles.route) },
                 onNavigateToAiConfig = { navController.navigate(Screen.AiConfig.route) },
+                onNavigateToWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
             )
         }
         composable(Screen.AiConfig.route) {
             AIConfigScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.WhatsNew.route) {
+            ScrybeWhatsNewScreen(
+                onBack = { navController.popBackStack() },
+                onNavigate = { target ->
+                    when (target) {
+                        "settings" -> navController.navigate(Screen.Settings.route)
+                        "profiles" -> navController.navigate(Screen.Profiles.route)
+                        "ai_config" -> navController.navigate(Screen.AiConfig.route)
+                        else -> Unit
+                    }
+                },
+            )
         }
     }
 }

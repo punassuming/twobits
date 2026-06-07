@@ -342,12 +342,12 @@ fun SessionDetailScreen(
                             Tab(
                                 selected = activeTab == 0,
                                 onClick = { activeTab = 0 },
-                                text = { Text("Output") },
+                                text = { Text("AI Notes") },
                             )
                             Tab(
                                 selected = activeTab == 1,
                                 onClick = { activeTab = 1 },
-                                text = { Text("Tasks") },
+                                text = { Text("Actions") },
                             )
                             Tab(
                                 selected = activeTab == 2,
