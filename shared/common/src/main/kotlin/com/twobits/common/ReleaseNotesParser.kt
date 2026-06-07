@@ -144,6 +144,12 @@ object ReleaseNotesParser {
                         items += ReleaseNoteItem(title = text, description = text)
                     }
                 }
+                line.isBlank() && currentTitle != null &&
+                        (currentIntroDesc != null || currentBullets.isNotEmpty()) -> {
+                    // Blank line ends this bold item's bullet block so that any following
+                    // standalone bullets in the same section become their own items.
+                    flush()
+                }
             }
         }
         flush()
