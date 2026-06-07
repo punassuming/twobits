@@ -1358,7 +1358,6 @@ private fun FolderSectionHeader(
     }
 }
 
-
 @Composable
 private fun RecentSessionMiniRow(session: RecentCaptureSession) {
     Row(

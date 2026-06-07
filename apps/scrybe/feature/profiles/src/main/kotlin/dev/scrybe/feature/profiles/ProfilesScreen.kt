@@ -83,9 +83,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.scrybe.core.common.ScrybeLayoutDefaults
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
+import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType

@@ -109,9 +109,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.scrybe.core.common.ScrybeLayoutDefaults
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
+import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.database.FolderEntity
