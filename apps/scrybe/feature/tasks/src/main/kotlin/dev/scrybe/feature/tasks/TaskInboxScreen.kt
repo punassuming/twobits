@@ -361,4 +361,3 @@ private fun DueChip(dueLabel: String) {
         Text(dueLabel, style = MaterialTheme.typography.labelSmall, color = tint)
     }
 }
-
