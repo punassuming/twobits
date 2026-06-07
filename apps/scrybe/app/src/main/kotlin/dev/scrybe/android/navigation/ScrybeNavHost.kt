@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import dev.scrybe.android.ui.ScrybeWhatsNewScreen
 import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
+import dev.scrybe.feature.history.HistoryScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.AIConfigScreen
@@ -94,6 +95,21 @@ fun ScrybeNavHost(navController: NavHostController) {
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
+            )
+        }
+        composable(
+            Screen.History.route,
+            enterTransition = { fadeEnter },
+            exitTransition = { fadeExit },
+            popEnterTransition = { fadeEnter },
+            popExitTransition = { fadeExit },
+        ) {
+            HistoryScreen(
+                onSessionClick = { sessionId ->
+                    navController.navigate(Screen.SessionDetail.createRoute(sessionId))
+                },
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToTasks = { navController.navigate(Screen.Tasks.route) },
             )
         }
         composable(Screen.SessionDetail.route) { backStackEntry ->
