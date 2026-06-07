@@ -90,18 +90,24 @@ fun ModeBadge(mode: RecordingMode) {
  * rendering anything for pre-transcription statuses (IDLE, RECORDING, etc.).
  */
 @Composable
-fun SessionStatusChip(status: SessionStatus, isArchived: Boolean = false) {
+fun SessionStatusChip(
+    status: SessionStatus,
+    isArchived: Boolean = false,
+) {
     val label = SessionStatusPresentation.label(status, isArchived)
     val icon = SessionStatusPresentation.icon(status, isArchived)
     val color = SessionStatusPresentation.color(status, isArchived)
 
-    if (!isArchived && status in setOf(
+    val preTranscriptionStatuses =
+        setOf(
             SessionStatus.IDLE,
             SessionStatus.RECORDING,
             SessionStatus.STOPPING,
             SessionStatus.RECORDED,
         )
-    ) return
+    if (!isArchived && status in preTranscriptionStatuses) {
+        return
+    }
 
     Surface(shape = CircleShape, color = color.copy(alpha = 0.14f)) {
         Row(
