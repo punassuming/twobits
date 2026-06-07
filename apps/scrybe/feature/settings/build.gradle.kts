@@ -22,6 +22,7 @@ android {
 dependencies {
     implementation("com.twobits.core:billing")
     implementation("com.twobits.core:common")
+    implementation("com.twobits.core:design")
     implementation(project(":core:common"))
     implementation(project(":core:model"))
     implementation(project(":core:database"))
