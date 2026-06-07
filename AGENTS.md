@@ -1,6 +1,8 @@
 # Agent instructions for the TwoBits monorepo
 
-This file is the authoritative instruction source for all AI coding agents (Claude, Copilot, Codex, etc.) working in this repository. It supersedes any older per-app instruction files.
+This file is the authoritative instruction source for AI coding agents working in this repository. It supersedes any older per-app instruction files.
+
+> **Claude Code users:** also read [`CLAUDE.md`](CLAUDE.md) for Claude-specific session setup and active hooks.
 
 ---
 
