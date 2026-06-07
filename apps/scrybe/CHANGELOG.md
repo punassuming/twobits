@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Settings About section now includes a Privacy Policy link that opens the policy page in the browser
+
 ### Fixes
 
 ## 1.8.3 (2026-06-06)

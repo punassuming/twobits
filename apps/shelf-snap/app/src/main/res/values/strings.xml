@@ -152,6 +152,8 @@
     <string name="whats_new">What\'s new</string>
     <string name="whats_new_subtitle">Recent changes &amp; release notes</string>
     <string name="whats_new_empty">No changelog is available in this build.</string>
+    <string name="privacy_policy">Privacy policy</string>
+    <string name="privacy_policy_subtitle">punassuming.github.io/twobits/privacy</string>
 
     <!-- v2: bottom navigation -->
     <string name="nav_camera">Camera</string>
