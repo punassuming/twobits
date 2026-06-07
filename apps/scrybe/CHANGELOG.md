@@ -6,7 +6,8 @@
 
 ### Improvements
 
-* Settings About section now includes a Privacy Policy link that opens the policy page in the browser
+**Settings** — privacy policy link in About section:
+* new "Privacy policy" row opens the policy page in the browser
 
 ### Fixes
 

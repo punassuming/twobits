@@ -6,7 +6,8 @@
 
 ### Improvements
 
-* Settings About section now includes a Privacy Policy link that opens the policy page in the browser
+**Settings** — privacy policy link in About section:
+* new "Privacy policy" row opens the policy page in the browser
 
 * CHANGELOG asset now generated at build time — in-app "What's New" screen always reflects the latest release notes on a fresh clone
 * What's New dialog now accumulates bullets from recent versions rather than showing only the most-recent hotfix section
