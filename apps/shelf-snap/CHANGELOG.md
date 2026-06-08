@@ -6,6 +6,31 @@
 
 ### Improvements
 
+**Settings** — privacy policy link in About section:
+* new "Privacy policy" row opens the policy page in the browser
+
+**AI configuration** — redesigned screen with shared design components:
+* credentials panel now shows Save, Clear, and Test buttons side-by-side in the BYOK key field
+* masked API key subtitle displayed in monospace when a key is set
+* Pro/BYOK/Local source tabs added for Vision and Pricing sections
+* local vision support: import Moondream 2 (.gguf) for on-device item identification
+* local LLM support: import Gemma 3 1B or 4B (.gguf) for on-device descriptions and price estimates
+* cloud model lists trimmed to the 3 models in the design (GPT-4o, GPT-4o mini, GPT-4.1 mini)
+* Analysis section now shows AI condition detection, Auto price estimate, and Multi-photo analysis toggles
+
+### Fixes
+
+* CI now builds assembleRelease so R8 minification runs on every PR, catching ProGuard stripping issues before they reach the release workflow
+* CI sets android/verified commit status so branch protection can block merges when the build fails
+
+* CHANGELOG asset now generated at build time — in-app "What's New" screen always reflects the latest release notes on a fresh clone
+* What's New dialog now accumulates bullets from recent versions rather than showing only the most-recent hotfix section
+* Market research updated to use OpenAI Responses API for gpt-5.4 and gpt-5.4-mini models — fixes "model not found" errors for users with current API keys
+* DuckDuckGo Instant Answer replaced with Jina AI Search (s.jina.ai) — returns real web results for pricing queries with no API key required
+* Market tab shows a banner when prices are estimated from AI training data rather than live web search, with guidance to enable Brave or Jina AI
+* Comparable listing rows and source citations are now tappable links that open the source URL in the browser
+* HTTP 404 from OpenAI pricing service now shows "Selected model isn't available" instead of a generic unavailable message
+
 ### Fixes
 
 ## 1.3.1 (2026-06-06)

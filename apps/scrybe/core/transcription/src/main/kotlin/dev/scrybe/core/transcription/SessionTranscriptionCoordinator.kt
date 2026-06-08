@@ -63,11 +63,20 @@ class SessionTranscriptionCoordinator
 
             updateSessionStatus(sessionId, SessionStatus.TRANSCRIBING)
 
+            val transcriptionOptions =
+                if (providerType == ProviderType.OPENAI) {
+                    val model = preferencesDataStore.cloudTranscriptionModel.first()
+                    TranscriptionOptions(model = model.apiName)
+                } else {
+                    TranscriptionOptions()
+                }
+
             val result =
                 batchTranscriptionService.transcribe(
                     sessionId = sessionId,
                     audioFile = audioFile,
                     providerType = providerType,
+                    options = transcriptionOptions,
                 )
 
             return result.fold(

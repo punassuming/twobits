@@ -108,6 +108,7 @@
     <string name="research_price">Research price</string>
     <string name="researching_price">Researching price…</string>
     <string name="no_market_research">No price research yet. Tap “Research price” to gather comparable listings and a suggested price.</string>
+    <string name="sources_section_title">Sources</string>
     <string name="sources_label">Sources: %1$s</string>
     <string name="sources_retrieved">Prices retrieved %1$s. Estimates may vary by condition, location, and demand.</string>
     <string name="ai_pricing">AI pricing</string>
@@ -151,6 +152,8 @@
     <string name="whats_new">What\'s new</string>
     <string name="whats_new_subtitle">Recent changes &amp; release notes</string>
     <string name="whats_new_empty">No changelog is available in this build.</string>
+    <string name="privacy_policy">Privacy policy</string>
+    <string name="privacy_policy_subtitle">punassuming.github.io/twobits/privacy</string>
 
     <!-- v2: bottom navigation -->
     <string name="nav_camera">Camera</string>
@@ -188,6 +191,6 @@
     <string name="search_section_subtitle">Choose a web-search provider to gather comparable listings for price estimates.</string>
     <string name="search_provider_label">Search provider</string>
     <string name="search_api_key_label">Search API key</string>
-    <string name="search_api_key_hint">Required for Brave; not needed for DuckDuckGo.</string>
+    <string name="search_api_key_hint">Required for Brave — free at api-dashboard.search.brave.com (2,000 queries/month).</string>
     <string name="search_settings_saved">Search settings saved.</string>
 </resources>

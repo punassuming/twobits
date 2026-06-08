@@ -31,7 +31,9 @@ data class PriceResearchResult(
     val research: MarketResearch = MarketResearch(),
     /** Suggested overall asking price (USD), or null if not produced. */
     val suggestedValue: Double? = null,
-    val error: String? = null
+    val error: String? = null,
+    /** True when live web-search evidence was available; false means AI training data only. */
+    val hasWebEvidence: Boolean = false,
 )
 
 /**
@@ -85,8 +87,9 @@ class PriceResearchService @Inject constructor(
         // Step 2 — synthesize via the model.
         runCatching {
             val requestBody = buildRequest(item, evidence, model)
+            val endpoint = if (isResponsesModel(model)) "v1/responses" else "v1/chat/completions"
             val request = Request.Builder()
-                .url("https://api.openai.com/v1/chat/completions")
+                .url("https://api.openai.com/$endpoint")
                 .addHeader("Authorization", "Bearer $openAiKey")
                 .addHeader("Content-Type", "application/json")
                 .post(gson.toJson(requestBody).toRequestBody(json))
@@ -98,7 +101,7 @@ class PriceResearchService @Inject constructor(
                     Log.w(TAG, "Pricing request failed: HTTP ${response.code}")
                     return@use PriceResearchResult(error = friendlyHttpError(response.code))
                 }
-                parseResponse(body, evidence)
+                parseResponse(body, evidence, isResponsesModel(model))
             }
         }.getOrElse { e ->
             Log.w(TAG, "Pricing request threw ${e.javaClass.simpleName}")
@@ -183,20 +186,31 @@ class PriceResearchService @Inject constructor(
 
         return JsonObject().apply {
             addProperty("model", model)
-            add("messages", messages)
-            addProperty("max_tokens", 900)
+            val messagesField = if (isResponsesModel(model)) "input" else "messages"
+            add(messagesField, messages)
+            if (isResponsesModel(model)) addProperty("max_output_tokens", 900)
+            else addProperty("max_tokens", 900)
             addProperty("temperature", 0.2)
         }
     }
 
+    private fun isResponsesModel(model: String): Boolean =
+        model.startsWith("gpt-5.") || model == "gpt-5"
+
     private fun parseResponse(
         responseJson: String,
-        evidence: List<WebSearchResult>
+        evidence: List<WebSearchResult>,
+        isResponsesApi: Boolean = false,
     ): PriceResearchResult = runCatching {
-        val content = JsonParser.parseString(responseJson).asJsonObject
-            .getAsJsonArray("choices").get(0).asJsonObject
-            .getAsJsonObject("message").get("content").asString
-            .removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
+        val root = JsonParser.parseString(responseJson).asJsonObject
+        val content = if (isResponsesApi) {
+            root.getAsJsonArray("output").get(0).asJsonObject
+                .getAsJsonArray("content").get(0).asJsonObject
+                .get("text").asString
+        } else {
+            root.getAsJsonArray("choices").get(0).asJsonObject
+                .getAsJsonObject("message").get("content").asString
+        }.removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
 
         val obj = JsonParser.parseString(content).asJsonObject
 
@@ -242,7 +256,8 @@ class PriceResearchService @Inject constructor(
         )
         PriceResearchResult(
             research = research,
-            suggestedValue = obj.get("suggestedValue")?.asDouble
+            suggestedValue = obj.get("suggestedValue")?.asDouble,
+            hasWebEvidence = evidence.isNotEmpty(),
         )
     }.getOrElse {
         Log.w(TAG, "Failed to parse pricing response: ${it.javaClass.simpleName}")
@@ -267,6 +282,8 @@ class PriceResearchService @Inject constructor(
             "Rate limited by OpenAI. Wait a moment and try again."
         internal const val ERROR_UNAVAILABLE =
             "Pricing service is temporarily unavailable. Try again shortly."
+        internal const val ERROR_MODEL_NOT_FOUND =
+            "Selected model isn't available. Try a different model in Settings → AI."
         internal const val ERROR_TIMEOUT =
             "Price research timed out. Check your connection and try again."
         internal const val ERROR_NETWORK =
@@ -277,6 +294,7 @@ class PriceResearchService @Inject constructor(
 
         internal fun friendlyHttpError(code: Int): String = when {
             code == 401 || code == 403 -> ERROR_INVALID_KEY
+            code == 404 -> ERROR_MODEL_NOT_FOUND
             code == 429 -> ERROR_RATE_LIMITED
             code in 500..599 -> ERROR_UNAVAILABLE
             else -> ERROR_UNAVAILABLE

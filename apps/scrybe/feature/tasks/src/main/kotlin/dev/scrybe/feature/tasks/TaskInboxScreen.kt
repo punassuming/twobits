@@ -48,7 +48,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.scrybe.core.model.RecordingMode
+import dev.scrybe.core.common.ModeBadge
 
 private val TODAY_LABELS = setOf("today", "Today")
 
@@ -359,12 +359,5 @@ private fun DueChip(dueLabel: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Filled.Schedule, contentDescription = null, modifier = Modifier.size(11.dp), tint = tint)
         Text(dueLabel, style = MaterialTheme.typography.labelSmall, color = tint)
-    }
-}
-
-@Composable
-private fun ModeBadge(mode: RecordingMode) {
-    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.extraSmall) {
-        Text(mode.label, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
     }
 }

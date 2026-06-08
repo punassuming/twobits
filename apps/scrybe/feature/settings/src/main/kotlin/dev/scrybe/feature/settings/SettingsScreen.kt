@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,12 +17,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,16 +32,15 @@ import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,17 +71,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
-import dev.scrybe.core.common.ReleaseNotes
+import com.twobits.design.components.AppSectionCard
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.common.ScrybeSectionCard
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ThemeMode
@@ -92,11 +94,12 @@ fun SettingsScreen(
     onNavigateToFileManager: () -> Unit = {},
     onNavigateToProfiles: () -> Unit = {},
     onNavigateToAiConfig: () -> Unit = {},
+    onNavigateToWhatsNew: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val activity = LocalContext.current as? Activity
-    var showChangelog by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
     var showPostStopPicker by remember { mutableStateOf(false) }
     var showSampleRatePicker by remember { mutableStateOf(false) }
     var showBitRatePicker by remember { mutableStateOf(false) }
@@ -164,17 +167,12 @@ fun SettingsScreen(
                     onDismissError = viewModel::dismissPurchaseError,
                 )
 
+                ProfilesProminentCard(onClick = onNavigateToProfiles)
+
                 SettingsSectionCard(
                     title = "Intelligence",
                     icon = Icons.Filled.AutoAwesome,
                 ) {
-                    SettingOptionRow(
-                        title = "Profiles",
-                        value = "Manage",
-                        supportingText = "Pipeline recipes for recording + AI transforms + destinations",
-                        onClick = onNavigateToProfiles,
-                    )
-                    HorizontalDivider()
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Auto-transcribe", style = MaterialTheme.typography.bodyLarge)
@@ -185,18 +183,27 @@ fun SettingsScreen(
                     HorizontalDivider()
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Speaker identification", style = MaterialTheme.typography.bodyLarge)
-                            Text("Color-code multiple voices in transcript", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Location tagging", style = MaterialTheme.typography.bodyLarge)
+                            Text("Tag recordings with place name automatically", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Switch(checked = uiState.enableSpeakerIdentification, onCheckedChange = viewModel::setEnableSpeakerIdentification)
-                    }
-                    HorizontalDivider()
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Auto-extract tasks", style = MaterialTheme.typography.bodyLarge)
-                            Text("Pull action items from transcript with AI", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = uiState.enableInsightAnalysis, onCheckedChange = viewModel::setEnableInsightAnalysis)
+                        Switch(
+                            checked = uiState.locationRecordingEnabled,
+                            onCheckedChange = { enabled ->
+                                if (!enabled) {
+                                    viewModel.setLocationRecordingEnabled(false)
+                                } else if (ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    viewModel.setLocationRecordingEnabled(true)
+                                } else {
+                                    locationPermissionLauncher.launch(
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    )
+                                }
+                            },
+                        )
                     }
                 }
 
@@ -285,37 +292,6 @@ fun SettingsScreen(
                             ),
                         onClick = { showChannelPicker = true },
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Attach location to recordings")
-                            Text(
-                                "Saves city/region with each recording",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = uiState.locationRecordingEnabled,
-                            onCheckedChange = { enabled ->
-                                if (!enabled) {
-                                    viewModel.setLocationRecordingEnabled(false)
-                                } else if (ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    viewModel.setLocationRecordingEnabled(true)
-                                } else {
-                                    locationPermissionLauncher.launch(
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    )
-                                }
-                            },
-                        )
-                    }
                 }
 
                 SettingsSectionCard(
@@ -644,50 +620,37 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Button(
-                        onClick = { showChangelog = true },
+                        onClick = onNavigateToWhatsNew,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("View Release Notes")
+                        Text("What's new")
+                    }
+                    Surface(
+                        onClick = { uriHandler.openUri("https://punassuming.github.io/twobits/privacy.html") },
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(Icons.Filled.PrivacyTip, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Privacy policy", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = "punassuming.github.io/twobits/privacy",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
         }
-    }
-
-    if (showChangelog) {
-        AlertDialog(
-            onDismissRequest = { showChangelog = false },
-            title = { Text("Release Notes") },
-            text = {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 360.dp)
-                            .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    if (uiState.releaseHistory.isEmpty()) {
-                        Text(
-                            text = "Release notes unavailable in this build.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    } else {
-                        uiState.releaseHistory.forEachIndexed { index, release ->
-                            ReleaseVersionCard(
-                                release = release,
-                                expandedByDefault = index == 0,
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showChangelog = false }) {
-                    Text("Close")
-                }
-            },
-        )
     }
 
     if (showPostStopPicker) {
@@ -803,7 +766,7 @@ private fun ProSubscriptionCard(
     onRestore: () -> Unit,
     onDismissError: () -> Unit,
 ) {
-    ScrybeSectionCard(
+    AppSectionCard(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -871,6 +834,59 @@ private fun ProSubscriptionCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfilesProminentCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(ScrybeLayoutDefaults.sectionPadding),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.Tune,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Profiles",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    "Pipeline recipes for recording + transforms",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun SettingsSectionCard(
     title: String,
@@ -878,7 +894,7 @@ private fun SettingsSectionCard(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    ScrybeSectionCard(
+    AppSectionCard(
         containerColor = containerColor,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -934,84 +950,6 @@ private fun ScrybeAiConfigCard(onClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(18.dp),
             )
-        }
-    }
-}
-
-@Composable
-private fun ReleaseVersionCard(
-    release: ReleaseNotes,
-    expandedByDefault: Boolean,
-) {
-    var expanded by remember(release.title) { mutableStateOf(expandedByDefault) }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = release.title,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                    Text(
-                        text = "${release.summaryItems.size} highlighted changes",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(
-                        imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = if (expanded) "Collapse release notes" else "Expand release notes",
-                    )
-                }
-            }
-
-            if (expanded) {
-                release.groups.forEachIndexed { index, group ->
-                    if (index > 0) {
-                        HorizontalDivider()
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = group.title,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        group.items.forEachIndexed { itemIndex, item ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.Top,
-                            ) {
-                                Text(
-                                    text = "${itemIndex + 1}.",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }

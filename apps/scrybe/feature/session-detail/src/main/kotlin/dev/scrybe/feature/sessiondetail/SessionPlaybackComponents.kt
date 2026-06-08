@@ -47,7 +47,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import dev.scrybe.core.common.ScrybeSectionCard
+import com.twobits.design.components.AppSectionCard
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SentimentSegment
 import dev.scrybe.core.model.SpeakerSegment
@@ -71,7 +71,7 @@ internal fun PlaybackCard(
     onSpeakerClick: (speakerId: String) -> Unit = {},
     onManageSpeakers: (() -> Unit)? = null,
 ) {
-    ScrybeSectionCard(
+    AppSectionCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(

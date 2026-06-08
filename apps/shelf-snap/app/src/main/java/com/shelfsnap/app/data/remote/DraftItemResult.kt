@@ -4,12 +4,12 @@ import com.shelfsnap.app.data.model.Condition
 
 /** Result returned by the vision analysis service for a set of item photos. */
 data class DraftItemResult(
-    val category: String,
-    val description: String,
-    val condition: Condition,
+    val category: String = "",
+    val description: String = "",
+    val condition: Condition = Condition.GOOD,
     /** Estimated resale/donation value in USD. Always presented as an estimate in the UI. */
-    val estimatedValue: Double,
+    val estimatedValue: Double = 0.0,
     /** 0-100 confidence score from the model. */
-    val confidencePercent: Int,
+    val confidencePercent: Int = 0,
     val error: String? = null
 )

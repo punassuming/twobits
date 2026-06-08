@@ -2,9 +2,14 @@ package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shelfsnap.app.data.local.LocalModelManager
+import com.shelfsnap.app.data.local.LocalModelState
+import com.shelfsnap.app.data.model.LocalGemmaModel
+import com.shelfsnap.app.data.model.LocalMoondreamModel
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.SearchProvider
@@ -49,6 +54,15 @@ data class SettingsUiState(
     val isSearchSaved: Boolean = false,
     val visionModel: VisionModel = VisionModel.default,
     val reasoningModel: ReasoningModel = ReasoningModel.default,
+    val visionSource: String = "byok",
+    val textSource: String = "byok",
+    val moondreamStates: Map<LocalMoondreamModel, LocalModelState> = emptyMap(),
+    val selectedMoondream: LocalMoondreamModel? = null,
+    val gemmaStates: Map<LocalGemmaModel, LocalModelState> = emptyMap(),
+    val selectedGemma: LocalGemmaModel? = null,
+    val aiConditionDetection: Boolean = true,
+    val autoPriceEstimate: Boolean = true,
+    val multiPhotoAnalysis: Boolean = false,
     val autoAnalyze: Boolean = false,
     val keepPhotos: Boolean = true,
     val storage: StorageInfo = StorageInfo(),
@@ -62,6 +76,7 @@ class SettingsViewModel @Inject constructor(
     private val repository: ItemRepository,
     private val subscriptionRepository: SubscriptionRepository,
     private val billingManager: BillingManager,
+    private val localModelManager: LocalModelManager,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -110,19 +125,39 @@ class SettingsViewModel @Inject constructor(
         SearchState(provider, savedKey, editKey, saved, visionModel)
     }
 
+    private val localModelsFlow = combine(
+        localModelManager.moondreamStates,
+        localModelManager.selectedMoondream,
+        localModelManager.gemmaStates,
+        localModelManager.selectedGemma,
+    ) { moondreamStates, selectedMoondream, gemmaStates, selectedGemma ->
+        LocalModelsState(moondreamStates, selectedMoondream, gemmaStates, selectedGemma)
+    }
+
     private val modelsFlow = combine(
         repository.observeVisionModel(),
         repository.observeReasoningModel(),
-    ) { vision, reasoning -> ModelsState(vision, reasoning) }
+        combine(
+            repository.observeVisionSource(),
+            repository.observeTextSource(),
+        ) { vs, ts -> vs to ts },
+        localModelsFlow,
+    ) { vision, reasoning, (visionSource, textSource), localModels ->
+        ModelsState(vision, reasoning, visionSource, textSource, localModels)
+    }
 
     private val prefsFlow = combine(
         repository.observeAutoAnalyze(),
         repository.observeKeepPhotos(),
+        combine(
+            repository.observeAiConditionDetection(),
+            repository.observeAutoPriceEstimate(),
+            repository.observeMultiPhotoAnalysis(),
+        ) { a, b, c -> Triple(a, b, c) },
         _storage,
-        _isPurchasing,
-        _purchaseError,
-    ) { autoAnalyze, keepPhotos, storage, purchasing, purchaseError ->
-        PrefsState(autoAnalyze, keepPhotos, storage, purchasing, purchaseError)
+        combine(_isPurchasing, _purchaseError) { p, e -> p to e },
+    ) { autoAnalyze, keepPhotos, (conditionDetection, priceEstimate, multiPhoto), storage, (purchasing, purchaseError) ->
+        PrefsState(autoAnalyze, keepPhotos, conditionDetection, priceEstimate, multiPhoto, storage, purchasing, purchaseError)
     }
 
     val uiState: StateFlow<SettingsUiState> = combine(
@@ -146,6 +181,15 @@ class SettingsViewModel @Inject constructor(
             isSearchSaved = search.saved,
             visionModel = models.visionModel,
             reasoningModel = models.reasoningModel,
+            visionSource = models.visionSource,
+            textSource = models.textSource,
+            moondreamStates = models.localModels.moondreamStates,
+            selectedMoondream = models.localModels.selectedMoondream,
+            gemmaStates = models.localModels.gemmaStates,
+            selectedGemma = models.localModels.selectedGemma,
+            aiConditionDetection = prefs.aiConditionDetection,
+            autoPriceEstimate = prefs.autoPriceEstimate,
+            multiPhotoAnalysis = prefs.multiPhotoAnalysis,
             autoAnalyze = prefs.autoAnalyze,
             keepPhotos = prefs.keepPhotos,
             storage = prefs.storage,
@@ -233,6 +277,77 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.saveKeepPhotos(enabled) }
     }
 
+    fun onVisionSourceChange(source: String) {
+        viewModelScope.launch { repository.saveVisionSource(source) }
+    }
+
+    fun onTextSourceChange(source: String) {
+        viewModelScope.launch { repository.saveTextSource(source) }
+    }
+
+    fun onAiConditionDetectionChange(enabled: Boolean) {
+        viewModelScope.launch { repository.saveAiConditionDetection(enabled) }
+    }
+
+    fun onAutoPriceEstimateChange(enabled: Boolean) {
+        viewModelScope.launch { repository.saveAutoPriceEstimate(enabled) }
+    }
+
+    fun onMultiPhotoAnalysisChange(enabled: Boolean) {
+        viewModelScope.launch { repository.saveMultiPhotoAnalysis(enabled) }
+    }
+
+    fun importMoondream(uri: Uri, model: LocalMoondreamModel) {
+        viewModelScope.launch { localModelManager.importMoondream(uri, model) }
+    }
+
+    fun deleteMoondream(model: LocalMoondreamModel) {
+        localModelManager.deleteMoondream(model)
+    }
+
+    fun selectMoondream(model: LocalMoondreamModel) {
+        localModelManager.selectMoondream(model)
+    }
+
+    fun importGemma(uri: Uri, model: LocalGemmaModel) {
+        viewModelScope.launch { localModelManager.importGemma(uri, model) }
+    }
+
+    fun deleteGemma(model: LocalGemmaModel) {
+        localModelManager.deleteGemma(model)
+    }
+
+    fun selectGemma(model: LocalGemmaModel) {
+        localModelManager.selectGemma(model)
+    }
+
+    fun clearApiKey() {
+        viewModelScope.launch {
+            repository.saveApiKey("")
+            _editKey.update { "" }
+            _isKeyVerified.update { null }
+            _keyVerifyError.update { null }
+        }
+    }
+
+    fun testApiKey() {
+        viewModelScope.launch {
+            val key = _editKey.value.ifBlank { uiState.value.savedApiKey }.trim()
+            if (key.isBlank()) return@launch
+            _isVerifyingKey.update { true }
+            _isKeyVerified.update { null }
+            _keyVerifyError.update { null }
+            val result = repository.testApiKey(key)
+            _isVerifyingKey.update { false }
+            if (result.isSuccess) {
+                _isKeyVerified.update { true }
+            } else {
+                _isKeyVerified.update { false }
+                _keyVerifyError.update { result.exceptionOrNull()?.message }
+            }
+        }
+    }
+
     fun startProPurchase(activity: Activity) {
         viewModelScope.launch {
             _isPurchasing.value = true
@@ -304,14 +419,27 @@ class SettingsViewModel @Inject constructor(
         val visionModel: VisionModel,
     )
 
+    private data class LocalModelsState(
+        val moondreamStates: Map<LocalMoondreamModel, LocalModelState>,
+        val selectedMoondream: LocalMoondreamModel?,
+        val gemmaStates: Map<LocalGemmaModel, LocalModelState>,
+        val selectedGemma: LocalGemmaModel?,
+    )
+
     private data class ModelsState(
         val visionModel: VisionModel,
         val reasoningModel: ReasoningModel,
+        val visionSource: String,
+        val textSource: String,
+        val localModels: LocalModelsState,
     )
 
     private data class PrefsState(
         val autoAnalyze: Boolean,
         val keepPhotos: Boolean,
+        val aiConditionDetection: Boolean,
+        val autoPriceEstimate: Boolean,
+        val multiPhotoAnalysis: Boolean,
         val storage: StorageInfo,
         val isPurchasing: Boolean,
         val purchaseError: String?,

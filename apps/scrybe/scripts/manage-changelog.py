@@ -241,7 +241,9 @@ def empty_unreleased_body() -> list[str]:
 
 
 def has_bullets(lines: list[str]) -> bool:
-    return any(line.strip().startswith(("* ", "- ")) for line in lines)
+    # Accept plain bullets ("* ", "- ") and bold-title items ("**Component** — desc")
+    # so that a bold-only entry (no sub-bullets) still counts as release content.
+    return any(line.strip().startswith(("* ", "- ", "**")) for line in lines)
 
 
 def render_changelog(sections: list[Section]) -> str:

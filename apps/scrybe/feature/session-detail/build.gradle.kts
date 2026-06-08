@@ -21,6 +21,7 @@ android {
 }
 
 dependencies {
+    implementation("com.twobits.core:design")
     implementation(project(":core:audio"))
     implementation(project(":core:model"))
     implementation(project(":core:common"))

@@ -1,6 +1,8 @@
 # Agent instructions for the TwoBits monorepo
 
-This file is the authoritative instruction source for all AI coding agents (Claude, Copilot, Codex, etc.) working in this repository. It supersedes any older per-app instruction files.
+This file is the authoritative instruction source for AI coding agents working in this repository. It supersedes any older per-app instruction files.
+
+> **Claude Code users:** also read [`CLAUDE.md`](CLAUDE.md) for Claude-specific session setup and active hooks.
 
 ---
 
@@ -11,7 +13,6 @@ apps/
   scrybe/          — Scrybe Android app (voice recording + Whisper transcription)
   shelf-snap/      — Shelf Snap Android app (camera inventory + price research)
 shared/            — Gradle composite build: shared library modules (billing, common, api-keys, network, design)
-scrybe-re-think/   — Design exploration docs
 ```
 
 The managed API key proxy lives in the separate **[punassuming/twobits-worker](https://github.com/punassuming/twobits-worker)** repository and is deployed independently via Cloudflare Workers.
@@ -254,17 +255,104 @@ The `has-new-unreleased-since-tag` check in both release workflows enforces this
 
 ## Mandatory changelog updates
 
-### Scrybe
-Update `apps/scrybe/CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Add bullets under `### Features`, `### Improvements`, or `### Fixes`.
+Update the relevant `CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Add entries under `### Features`, `### Improvements`, or `### Fixes`.
 
-Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md`
-
-### Shelf Snap
-Update `apps/shelf-snap/CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Format is identical to the Scrybe changelog.
-
-Validate with: `python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md`
+Validate commands:
+```bash
+python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md
+python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md
+```
 
 The CI `changelog` job blocks merges when the changelog was not updated alongside other tracked changes. Do **not** invent version numbers — the release workflow promotes `Unreleased` automatically.
+
+### Changelog entry format — how entries appear in-app
+
+Changelog entries are parsed and displayed in the **What's New** screen inside each app. Two formats are supported; choose based on whether the change warrants detail:
+
+#### Format A — any user-visible change (Features and Improvements)
+
+Use Format A whenever the change is something a user would notice in the app — new screens, redesigned UI, new settings, changed behaviour, performance improvements the user feels, etc. This applies to entries in **both** `### Features` and `### Improvements`.
+
+```markdown
+**[Screen or component]** — [short one-line description]:
+* detail bullet one
+* detail bullet two
+* detail bullet three
+```
+
+- The `**bold**` text becomes the collapsed item title visible at all times.
+- The em-dash `—` (U+2014, not a hyphen) separates the component name from the description; both are required.
+- Sub-bullets (`* `) accumulate as the expanded description, revealed when the user taps the row.
+- End the bold line with `:` when sub-bullets follow; omit it for a one-liner with no sub-bullets.
+- **Blank line required** between consecutive bold-title items, and between a bold-title item and any following plain bullets in the same section. Without it the parser merges the next bullet into the preceding item's description.
+
+```markdown
+### Features
+
+**Camera** — viewfinder redesign:
+* close and flash controls overlaid on the viewfinder surface
+* teal L-bracket corner guides frame the subject
+
+**Settings** — AI configuration card:
+* prominent primaryContainer card at the top of Settings
+
+### Improvements
+
+**Item Detail** — visual polish:
+* brand · model subtitle uses middle-dot separator
+* AI confidence badge replaced with a primaryContainer pill
+
+* CI no longer fires duplicate runs — push trigger restricted to main
+```
+
+#### Format B — internal/infra change only (flat non-expandable row)
+
+Use Format B **only** when the change is invisible to the user: CI tweaks, build fixes, dependency bumps, tooling changes, ProGuard rules, release workflow adjustments. If a user would notice it, use Format A instead.
+
+```markdown
+* short description of what changed and why
+```
+
+- Renders as a non-interactive single-line row with no expand chevron.
+- Can appear anywhere in a section, mixed with Format A entries (separated by a blank line from any preceding bold-title block).
+
+#### Category → icon mapping in the WhatsNew screen
+
+The section heading determines the icon shown on each category row:
+
+| `### ` heading | Displayed label | Icon |
+|---|---|---|
+| `### Features` | Features & Enhancements | ✨ AutoAwesome |
+| `### Improvements` | Improvements | 📈 TrendingUp |
+| `### Fixes` | Bug Fixes | 🔧 BuildCircle |
+| `### Initial Release` / `### Launch` | (heading as-is) | 🚀 RocketLaunch |
+
+#### What the CI validates
+
+`manage-changelog.py has-unreleased-bullets` (used by the release gate) accepts a section as non-empty when it contains **either** a plain `* `/`- ` bullet **or** a `**bold**` title line. A bold-title item with no sub-bullets is valid release content.
+
+`manage-changelog.py validate` checks structure only: `# Changelog` header, exactly one `## Unreleased` section first, and the three required sub-headings in order.
+
+---
+
+## Commit message format
+
+Both release workflows compute the next semantic version from conventional commit prefixes. Use the correct prefix on every commit.
+
+| Prefix | Version bump | When to use |
+|---|---|---|
+| `feat:` | minor — x.**Y**.0 | new user-visible feature or screen |
+| `fix:` | patch — x.y.**Z** | bug fix visible to users |
+| `chore:` | none | tooling, CI, dependencies, build config |
+| `refactor:` | none | code restructuring with no behaviour change |
+| `ci:` | none | workflow/pipeline changes only |
+| `docs:` | none | documentation only |
+| `BREAKING CHANGE:` in commit footer | major — **X**.0.0 | incompatible data/API change |
+
+**Rules:**
+- One prefix per commit. Use the highest-impact prefix when a commit mixes concerns (e.g. a `feat:` that also tidies code is still `feat:`).
+- `chore:` / `refactor:` / `ci:` commits do **not** trigger a release on their own. If a changelog `## Unreleased` section has bullets and a `feat:` or `fix:` commit lands on `main`, the release workflow fires and promotes those bullets.
+- Do not use `feat:` or `fix:` for pure infra work even if it feels significant — the prefix drives automated versioning, not importance.
 
 ---
 

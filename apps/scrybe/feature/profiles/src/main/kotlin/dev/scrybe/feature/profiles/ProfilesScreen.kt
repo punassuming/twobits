@@ -83,9 +83,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppSectionCard
+import com.twobits.design.components.AppSectionHeader
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.common.ScrybeSectionCard
-import dev.scrybe.core.common.ScrybeSectionHeader
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
@@ -181,7 +181,7 @@ private val PROFILE_TEMPLATES =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfilesScreen(
-    onNavigateBack: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: ProfilesViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -208,8 +208,10 @@ fun ProfilesScreen(
                 TopAppBar(
                     title = { Text("Profiles") },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        if (onNavigateBack != null) {
+                            IconButton(onClick = onNavigateBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
                         }
                     },
                 )
@@ -336,8 +338,8 @@ private fun ProfileCreationCard(
     onCreateManual: () -> Unit,
     onCreateWithAi: () -> Unit,
 ) {
-    ScrybeSectionCard {
-        ScrybeSectionHeader(
+    AppSectionCard {
+        AppSectionHeader(
             title = "Create a profile",
             subtitle = "Build one manually or let AI draft a starting point, then refine it before saving.",
         )
@@ -367,7 +369,7 @@ private fun ProfileCreationCard(
 
 @Composable
 private fun EmptyProfilesCard() {
-    ScrybeSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+    AppSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
         Text(
             text = "No profiles configured",
             style = MaterialTheme.typography.titleSmall,
@@ -388,7 +390,7 @@ private fun ProfileRow(
     onDelete: () -> Unit,
     onSetDefault: () -> Unit,
 ) {
-    ScrybeSectionCard(modifier = Modifier.clickable(onClick = onClick)) {
+    AppSectionCard(modifier = Modifier.clickable(onClick = onClick)) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ProfileRowHeader(
                 profile = profile,
@@ -658,7 +660,7 @@ private fun BuilderSection(
     onToggle: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    ScrybeSectionCard {
+    AppSectionCard {
         Row(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle),
             verticalAlignment = Alignment.CenterVertically,

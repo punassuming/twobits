@@ -10,8 +10,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import dev.scrybe.android.ui.ScrybeWhatsNewScreen
 import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
+import dev.scrybe.feature.history.HistoryScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.AIConfigScreen
@@ -38,6 +40,8 @@ sealed class Screen(
     object Tasks : Screen("tasks")
 
     object AiConfig : Screen("ai_config")
+
+    object WhatsNew : Screen("whats_new")
 }
 
 @Composable
@@ -93,6 +97,21 @@ fun ScrybeNavHost(navController: NavHostController) {
                 },
             )
         }
+        composable(
+            Screen.History.route,
+            enterTransition = { fadeEnter },
+            exitTransition = { fadeExit },
+            popEnterTransition = { fadeEnter },
+            popExitTransition = { fadeExit },
+        ) {
+            HistoryScreen(
+                onSessionClick = { sessionId ->
+                    navController.navigate(Screen.SessionDetail.createRoute(sessionId))
+                },
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToTasks = { navController.navigate(Screen.Tasks.route) },
+            )
+        }
         composable(Screen.SessionDetail.route) { backStackEntry ->
             val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
             SessionDetailScreen(sessionId = sessionId, onNavigateBack = { navController.popBackStack() })
@@ -104,7 +123,16 @@ fun ScrybeNavHost(navController: NavHostController) {
             popEnterTransition = { fadeEnter },
             popExitTransition = { fadeExit },
         ) {
-            ProfilesScreen(onNavigateBack = { navController.popBackStack() })
+            val prevRoute = navController.previousBackStackEntry?.destination?.route
+            val tabRoutes = setOf(Screen.Capture.route, Screen.History.route, Screen.Profiles.route, Screen.Settings.route)
+            ProfilesScreen(
+                onNavigateBack =
+                    if (prevRoute != null && prevRoute !in tabRoutes) {
+                        { navController.popBackStack() }
+                    } else {
+                        null
+                    },
+            )
         }
         composable(Screen.FileManager.route) {
             FileManagerScreen(onNavigateBack = { navController.popBackStack() })
@@ -129,10 +157,24 @@ fun ScrybeNavHost(navController: NavHostController) {
                 onNavigateToFileManager = { navController.navigate(Screen.FileManager.route) },
                 onNavigateToProfiles = { navController.navigate(Screen.Profiles.route) },
                 onNavigateToAiConfig = { navController.navigate(Screen.AiConfig.route) },
+                onNavigateToWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
             )
         }
         composable(Screen.AiConfig.route) {
             AIConfigScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.WhatsNew.route) {
+            ScrybeWhatsNewScreen(
+                onBack = { navController.popBackStack() },
+                onNavigate = { target ->
+                    when (target) {
+                        "settings" -> navController.navigate(Screen.Settings.route)
+                        "profiles" -> navController.navigate(Screen.Profiles.route)
+                        "ai_config" -> navController.navigate(Screen.AiConfig.route)
+                        else -> Unit
+                    }
+                },
+            )
         }
     }
 }

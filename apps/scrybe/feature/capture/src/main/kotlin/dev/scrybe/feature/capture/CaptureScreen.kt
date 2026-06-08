@@ -41,7 +41,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -50,12 +49,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Search
@@ -95,7 +90,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -104,9 +98,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppSectionCard
+import com.twobits.design.components.AppSectionHeader
+import dev.scrybe.core.common.ModeBadge
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.common.ScrybeSectionCard
-import dev.scrybe.core.common.ScrybeSectionHeader
+import dev.scrybe.core.common.SessionStatusChip
+import dev.scrybe.core.common.modeAccentColor
+import dev.scrybe.core.common.modeIcon
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
@@ -936,33 +934,6 @@ private fun ModeCard(
     }
 }
 
-@Composable
-private fun ModeBadge(mode: RecordingMode) {
-    val accentColor = modeAccentColor(mode)
-    Surface(
-        shape = CircleShape,
-        color = accentColor.copy(alpha = 0.18f),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = modeIcon(mode),
-                contentDescription = null,
-                tint = accentColor,
-                modifier = Modifier.size(12.dp),
-            )
-            Text(
-                text = mode.label,
-                style = MaterialTheme.typography.labelSmall,
-                color = accentColor,
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun HomeSessionCard(
@@ -1243,11 +1214,11 @@ private fun ModeFilterRow(
 
 @Composable
 private fun IntroGuidanceSection() {
-    ScrybeSectionCard(
+    AppSectionCard(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        ScrybeSectionHeader(
+        AppSectionHeader(
             title = "Start with a confident first recording",
             subtitle =
                 "Scrybe saves the raw audio first, then layers review tools on top so you can revisit the important moments later.",
@@ -1381,50 +1352,6 @@ private fun FolderSectionHeader(
             contentDescription = null,
             modifier = Modifier.size(16.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun modeAccentColor(mode: RecordingMode): Color =
-    when (mode) {
-        RecordingMode.MEETING -> Color(0xFF89C7FF)
-        RecordingMode.IDEA -> Color(0xFFFFD580)
-        RecordingMode.TASKS -> Color(0xFF7DD4DC)
-        RecordingMode.CONVERSATION -> Color(0xFFC4ABFF)
-        RecordingMode.STORY -> Color(0xFFFF9EC4)
-        RecordingMode.INTERVIEW -> Color(0xFFFFB695)
-        RecordingMode.JOURNAL -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-private fun modeIcon(mode: RecordingMode): ImageVector =
-    when (mode) {
-        RecordingMode.MEETING -> Icons.Filled.Groups
-        RecordingMode.IDEA -> Icons.Filled.Lightbulb
-        RecordingMode.TASKS -> Icons.Filled.TaskAlt
-        RecordingMode.CONVERSATION -> Icons.Filled.Forum
-        RecordingMode.STORY -> Icons.Filled.MenuBook
-        RecordingMode.INTERVIEW -> Icons.Filled.PersonSearch
-        RecordingMode.JOURNAL -> Icons.Filled.Book
-    }
-
-@Composable
-private fun SessionStatusChip(status: SessionStatus) {
-    val (label, color) =
-        when (status) {
-            SessionStatus.TRANSCRIBING -> "Transcribing" to MaterialTheme.colorScheme.tertiary
-            SessionStatus.TRANSCRIBED -> "Done" to MaterialTheme.colorScheme.primary
-            SessionStatus.FAILED -> "Failed" to MaterialTheme.colorScheme.error
-            SessionStatus.QUEUED -> "Queued" to MaterialTheme.colorScheme.onSurfaceVariant
-            SessionStatus.PARTIAL_TRANSCRIPTION -> "Partial" to MaterialTheme.colorScheme.tertiary
-            else -> return
-        }
-    Surface(shape = CircleShape, color = color.copy(alpha = 0.14f)) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
         )
     }
 }

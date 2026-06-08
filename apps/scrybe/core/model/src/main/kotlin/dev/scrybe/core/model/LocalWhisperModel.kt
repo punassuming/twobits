@@ -35,6 +35,14 @@ enum class LocalWhisperModel(
         filePrefix = "small.en",
         sizeLabel = "~967 MB",
     ),
+    MEDIUM(
+        displayName = "Whisper Medium",
+        description = "Best local accuracy · multilingual",
+        archiveName = "sherpa-onnx-whisper-medium.tar.bz2",
+        dirName = "sherpa-onnx-whisper-medium",
+        filePrefix = "medium",
+        sizeLabel = "~1.5 GB",
+    ),
     ;
 
     val downloadUrl: String get() = "$SHERPA_ASR_BASE_URL$archiveName"

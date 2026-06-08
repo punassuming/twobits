@@ -13,23 +13,26 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,15 +40,32 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.twobits.design.components.AppWhatsNewDialog
 import dev.scrybe.android.navigation.Screen
 import dev.scrybe.android.navigation.ScrybeNavHost
 import dev.scrybe.feature.capture.OnboardingScreen
 import dev.scrybe.feature.capture.OnboardingViewModel
+
+private data class NavTab(val screen: Screen, val icon: ImageVector, val label: String)
+
+private val NAV_TABS =
+    listOf(
+        NavTab(Screen.Capture, Icons.Filled.Mic, "Record"),
+        NavTab(Screen.History, Icons.Filled.History, "Records"),
+        NavTab(Screen.Profiles, Icons.Filled.Tune, "Profiles"),
+        NavTab(Screen.Settings, Icons.Filled.Settings, "Settings"),
+    )
+
+private val TAB_ROUTES = NAV_TABS.map { it.screen.route }.toSet()
 
 @Composable
 fun ScrybeApp() {
@@ -75,65 +95,19 @@ private fun ScrybeMainContent() {
         modifier = Modifier.fillMaxSize(),
     )
     if (whatsNewState.isVisible) {
-        WhatsNewDialog(state = whatsNewState, onDismiss = whatsNewViewModel::dismiss)
+        AppWhatsNewDialog(
+            title = whatsNewState.title,
+            notes = whatsNewState.notes,
+            confirmLabel = whatsNewState.confirmLabel,
+            onDismiss = whatsNewViewModel::dismiss,
+            onViewHistory =
+                if (!whatsNewState.isFirstRun) {
+                    { navController.navigate(Screen.WhatsNew.route) }
+                } else {
+                    null
+                },
+        )
     }
-}
-
-@Composable
-private fun WhatsNewDialog(
-    state: WhatsNewUiState,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text =
-                    when {
-                        state.isFirstRun -> "Welcome to Scrybe"
-                        state.versionName.isBlank() -> "What's New"
-                        else -> "What's New in ${state.versionName}"
-                    },
-            )
-        },
-        text = {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 400.dp)
-                        .verticalScroll(rememberScrollState()),
-            ) {
-                if (state.summary.isNotBlank()) {
-                    Text(
-                        text = state.summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    text = state.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                state.notes.forEach { note ->
-                    Text(
-                        text = "• $note",
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(state.confirmLabel)
-            }
-        },
-    )
 }
 
 @Composable
@@ -142,28 +116,66 @@ private fun MainContentBox(
     activeRecordingState: ActiveRecordingUiState,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier) {
-        ScrybeNavHost(navController = navController)
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val showBottomNav = currentRoute in TAB_ROUTES
 
-        AnimatedVisibility(
-            visible = activeRecordingState.isRecording,
-            modifier =
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { -it / 2 }) + fadeOut(),
-        ) {
-            ActiveRecordingBanner(
-                elapsedMs = activeRecordingState.elapsedMs,
-                amplitudeRatio = activeRecordingState.amplitudeRatio,
-                onOpen = {
-                    navController.navigate(Screen.Capture.route) {
-                        launchSingleTop = true
+    Scaffold(
+        modifier = modifier,
+        bottomBar = {
+            if (showBottomNav) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
+                        NAV_TABS.forEach { tab ->
+                            val selected =
+                                navBackStackEntry?.destination?.hierarchy
+                                    ?.any { it.route == tab.screen.route } == true
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    navController.navigate(tab.screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = {
+                                    Icon(tab.icon, contentDescription = tab.label)
+                                },
+                                label = { Text(tab.label) },
+                            )
+                        }
                     }
-                },
-            )
+                }
+            }
+        },
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            ScrybeNavHost(navController = navController)
+
+            AnimatedVisibility(
+                visible = activeRecordingState.isRecording,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it / 2 }) + fadeOut(),
+            ) {
+                ActiveRecordingBanner(
+                    elapsedMs = activeRecordingState.elapsedMs,
+                    amplitudeRatio = activeRecordingState.amplitudeRatio,
+                    onOpen = {
+                        navController.navigate(Screen.Capture.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
         }
     }
 }

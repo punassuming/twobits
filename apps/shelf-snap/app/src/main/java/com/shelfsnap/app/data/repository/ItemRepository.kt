@@ -11,6 +11,8 @@ import com.shelfsnap.app.data.local.toEntity
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
+import com.shelfsnap.app.data.model.LocalGemmaModel
+import com.shelfsnap.app.data.model.LocalMoondreamModel
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
@@ -38,6 +40,11 @@ class ItemRepository @Inject constructor(
         private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
         private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
         private val KEY_REASONING_MODEL = stringPreferencesKey("reasoning_model")
+        private val KEY_VISION_SOURCE = stringPreferencesKey("vision_source")
+        private val KEY_TEXT_SOURCE = stringPreferencesKey("text_source")
+        private val KEY_AI_CONDITION_DETECTION = booleanPreferencesKey("ai_condition_detection")
+        private val KEY_AUTO_PRICE_ESTIMATE = booleanPreferencesKey("auto_price_estimate")
+        private val KEY_MULTI_PHOTO_ANALYSIS = booleanPreferencesKey("multi_photo_analysis")
     }
 
     // ── Inventory ─────────────────────────────────────────────────────────────
@@ -63,9 +70,11 @@ class ItemRepository @Inject constructor(
      * Returns a [DraftItemResult]; caller must check [DraftItemResult.error].
      */
     suspend fun analysePhotos(photoPaths: List<String>): DraftItemResult {
-        val apiKey = getApiKey()
-        val model = getVisionModel()
-        return visionService.analyse(photoPaths, apiKey, model.apiName)
+        return when (val source = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok") {
+            "pro" -> DraftItemResult(error = "Pro vision is not yet available in this build.")
+            "local" -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
+            else -> visionService.analyse(photoPaths, getApiKey(), getVisionModel().apiName)
+        }
     }
 
     // ── Price research ──────────────────────────────────────────────────────────
@@ -75,17 +84,24 @@ class ItemRepository @Inject constructor(
      * configured web-search provider. Caller must check [PriceResearchResult.error].
      */
     suspend fun researchPrice(item: Item): PriceResearchResult {
-        return priceResearchService.research(
-            item = item,
-            openAiKey = getApiKey(),
-            searchProvider = getSearchProvider(),
-            searchKey = getSearchApiKey(),
-            model = getReasoningModel().apiName
-        )
+        return when (val source = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok") {
+            "pro" -> PriceResearchResult(error = "Pro pricing is not yet available in this build.")
+            "local" -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
+            else -> priceResearchService.research(
+                item = item,
+                openAiKey = getApiKey(),
+                searchProvider = getSearchProvider(),
+                searchKey = getSearchApiKey(),
+                model = getReasoningModel().apiName,
+            )
+        }
     }
 
     /** Verifies that the saved OpenAI API key is accepted by the API. */
     suspend fun testApiKey(): Result<Unit> = visionService.testKey(getApiKey())
+
+    /** Verifies a specific key without saving it first. */
+    suspend fun testApiKey(key: String): Result<Unit> = visionService.testKey(key)
 
     // ── Settings ──────────────────────────────────────────────────────────────
 
@@ -162,5 +178,44 @@ class ItemRepository @Inject constructor(
 
     suspend fun saveReasoningModel(model: ReasoningModel) {
         dataStore.edit { it[KEY_REASONING_MODEL] = model.apiName }
+    }
+
+    // ── Settings: AI source (pro / byok / local) ─────────────────────────────
+
+    fun observeVisionSource(): Flow<String> =
+        dataStore.data.map { it[KEY_VISION_SOURCE] ?: "byok" }
+
+    suspend fun saveVisionSource(source: String) {
+        dataStore.edit { it[KEY_VISION_SOURCE] = source }
+    }
+
+    fun observeTextSource(): Flow<String> =
+        dataStore.data.map { it[KEY_TEXT_SOURCE] ?: "byok" }
+
+    suspend fun saveTextSource(source: String) {
+        dataStore.edit { it[KEY_TEXT_SOURCE] = source }
+    }
+
+    // ── Settings: AI analysis toggles ────────────────────────────────────────
+
+    fun observeAiConditionDetection(): Flow<Boolean> =
+        dataStore.data.map { it[KEY_AI_CONDITION_DETECTION] ?: true }
+
+    suspend fun saveAiConditionDetection(enabled: Boolean) {
+        dataStore.edit { it[KEY_AI_CONDITION_DETECTION] = enabled }
+    }
+
+    fun observeAutoPriceEstimate(): Flow<Boolean> =
+        dataStore.data.map { it[KEY_AUTO_PRICE_ESTIMATE] ?: true }
+
+    suspend fun saveAutoPriceEstimate(enabled: Boolean) {
+        dataStore.edit { it[KEY_AUTO_PRICE_ESTIMATE] = enabled }
+    }
+
+    fun observeMultiPhotoAnalysis(): Flow<Boolean> =
+        dataStore.data.map { it[KEY_MULTI_PHOTO_ANALYSIS] ?: false }
+
+    suspend fun saveMultiPhotoAnalysis(enabled: Boolean) {
+        dataStore.edit { it[KEY_MULTI_PHOTO_ANALYSIS] = enabled }
     }
 }

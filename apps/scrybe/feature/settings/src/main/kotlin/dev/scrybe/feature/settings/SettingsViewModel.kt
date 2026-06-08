@@ -10,10 +10,10 @@ import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseCancelledException
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import com.twobits.common.ReleaseNotes
+import com.twobits.common.ReleaseNotesParser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.scrybe.core.common.ReleaseNotes
-import dev.scrybe.core.common.ReleaseNotesParser
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao
@@ -25,6 +25,7 @@ import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
+import dev.scrybe.core.model.OpenAiTranscriptionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ProviderType
@@ -72,6 +73,7 @@ data class SettingsUiState(
     val usageStats: UsageStats = UsageStats(),
     val apiKeyValidationStatus: ApiKeyValidationStatus = ApiKeyValidationStatus.Unknown,
     val apiKeyValidationMessage: String? = null,
+    val transcriptionModel: String = OpenAiTranscriptionModel.default.apiName,
     val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
     val profileSuggestionModelTestState: ProfileSuggestionModelTestUiState = ProfileSuggestionModelTestUiState.Idle,
     val transformModel: String = OpenAiTransformModel.default.apiName,
@@ -205,10 +207,12 @@ class SettingsViewModel
                 combine(
                     transformProfileDao.getAllProfiles(),
                     aiFeatureToggles,
-                ) { profiles, (speakerIdEnabled, insightEnabled) ->
-                    Triple(profiles, speakerIdEnabled, insightEnabled)
+                    preferencesDataStore.cloudTranscriptionModel,
+                ) { profiles, (speakerIdEnabled, insightEnabled), transcriptionModel ->
+                    Triple(profiles, speakerIdEnabled to insightEnabled, transcriptionModel)
                 },
-            ) { providers, autoTranscribe, profileId, profileSuggestionModel, (profiles, speakerIdEnabled, insightEnabled) ->
+            ) { providers, autoTranscribe, profileId, profileSuggestionModel, (profiles, enableToggles, transcriptionModel) ->
+                val (speakerIdEnabled, insightEnabled) = enableToggles
                 ProfileSettings(
                     transcriptionProvider = providers.transcriptionProvider,
                     aiFeaturesProvider = providers.aiFeaturesProvider,
@@ -218,6 +222,7 @@ class SettingsViewModel
                     defaultTransformProfileId = profileId,
                     defaultTransformProfileName = profiles.firstOrNull { it.id == profileId }?.name,
                     profileSuggestionModel = profileSuggestionModel,
+                    transcriptionModel = transcriptionModel.apiName,
                 )
             }
         private val displayPreferences =
@@ -340,6 +345,7 @@ class SettingsViewModel
                     enableInsightAnalysis = profileSettings.enableInsightAnalysis,
                     defaultTransformProfileId = profileSettings.defaultTransformProfileId,
                     defaultTransformProfileName = profileSettings.defaultTransformProfileName,
+                    transcriptionModel = profileSettings.transcriptionModel,
                     profileSuggestionModel = profileSettings.profileSuggestionModel,
                     transformModel = transformModel,
                     themeMode = recordingPreferences.themeMode,
@@ -426,6 +432,7 @@ class SettingsViewModel
                     usageStats = settingsData.usageStats,
                     apiKeyValidationStatus = validation.status,
                     apiKeyValidationMessage = validation.message,
+                    transcriptionModel = settingsData.transcriptionModel,
                     profileSuggestionModel = settingsData.profileSuggestionModel,
                     profileSuggestionModelTestState = modelTestState,
                     transformModel = settingsData.transformModel,
@@ -584,6 +591,10 @@ class SettingsViewModel
                 apiKeyValidationMessage.value = "API key cleared"
                 profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
             }
+        }
+
+        fun setTranscriptionModel(model: OpenAiTranscriptionModel) {
+            viewModelScope.launch { preferencesDataStore.setCloudTranscriptionModel(model) }
         }
 
         fun setProfileSuggestionModel(modelName: String) {
@@ -783,6 +794,7 @@ class SettingsViewModel
             val recordingVibrateOnStartStop: Boolean = true,
             val recordingSoundOnStartStop: Boolean = false,
             val apiKey: String = "",
+            val transcriptionModel: String = OpenAiTranscriptionModel.default.apiName,
             val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
             val transformModel: String = OpenAiTransformModel.default.apiName,
             val taskForgeEnabled: Boolean = false,
@@ -808,6 +820,7 @@ class SettingsViewModel
             val defaultTransformProfileId: String? = null,
             val defaultTransformProfileName: String? = null,
             val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,
+            val transcriptionModel: String = OpenAiTranscriptionModel.default.apiName,
         )
 
         private data class RecordingPreferences(

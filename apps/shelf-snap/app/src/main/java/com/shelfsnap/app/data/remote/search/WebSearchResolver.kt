@@ -11,12 +11,12 @@ import javax.inject.Singleton
 @Singleton
 class WebSearchResolver @Inject constructor(
     private val brave: BraveSearchService,
-    private val duckDuckGo: DuckDuckGoSearchService
+    private val jina: JinaAiSearchService,
 ) {
     /** Returns the service for [provider], or null when web search is disabled. */
     fun resolve(provider: SearchProvider): WebSearchService? = when (provider) {
         SearchProvider.NONE -> null
         SearchProvider.BRAVE -> brave
-        SearchProvider.DUCKDUCKGO -> duckDuckGo
+        SearchProvider.JINA -> jina
     }
 }
