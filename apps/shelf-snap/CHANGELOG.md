@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.4.0 (2026-06-08)
+
+### Features
+
+### Improvements
+
 **Settings** — privacy policy link in About section:
 * new "Privacy policy" row opens the policy page in the browser
 
@@ -33,6 +41,7 @@
 
 ### Fixes
 
+
 ## 1.3.1 (2026-06-06)
 
 ### Features
@@ -42,6 +51,7 @@
 * release workflow no longer fires on PR CI completions — `branches: [main]` filter added to `workflow_run` trigger so it only activates when CI runs against `main`
 
 ### Fixes
+
 
 
 ## 1.3.0 (2026-06-06)
@@ -75,6 +85,7 @@
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
 ### Fixes
+
 
 
 
@@ -112,6 +123,7 @@
 
 
 
+
 ## 1.1.3 (2026-06-05)
 
 ### Features
@@ -121,6 +133,7 @@
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
 ### Fixes
+
 
 
 
@@ -141,6 +154,7 @@
 
 
 
+
 ## 1.1.1 (2026-06-04)
 
 ### Features
@@ -151,6 +165,7 @@
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
 
 ### Fixes
+
 
 
 
@@ -176,6 +191,7 @@
 
 
 
+
 ## 1.0.2 (2026-06-03)
 
 ### Features
@@ -185,6 +201,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -212,9 +229,11 @@
 
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 
