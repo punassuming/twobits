@@ -21,6 +21,7 @@
 ### Fixes
 
 * CI now builds assembleRelease so R8 minification runs on every PR, catching ProGuard stripping issues before they reach the release workflow
+* CI sets android/verified commit status so branch protection can block merges when the build fails
 
 * CHANGELOG asset now generated at build time — in-app "What's New" screen always reflects the latest release notes on a fresh clone
 * What's New dialog now accumulates bullets from recent versions rather than showing only the most-recent hotfix section
