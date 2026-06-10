@@ -33,8 +33,6 @@
 
 ## 1.9.0 (2026-06-08)
 
-### Features
-
 ### Improvements
 
 **Settings** — privacy policy link in About section:
@@ -52,22 +50,13 @@
 
 * CI now builds assembleRelease so R8 minification runs on every PR, catching ProGuard stripping issues before they reach the release workflow
 
-
 ## 1.8.3 (2026-06-06)
-
-### Features
-
-### Improvements
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
 
-
-
 ## 1.8.2 (2026-06-06)
-
-### Features
 
 ### Improvements
 
@@ -77,12 +66,7 @@
 
 * fix release APK staging — glob changed from `app-release*.apk` to `app-*release.apk` so ABI-split filenames (`app-arm64-v8a-release.apk`) are matched correctly
 
-
-
-
 ## 1.8.1 (2026-06-06)
-
-### Features
 
 ### Improvements
 
@@ -92,35 +76,11 @@
 
 * fix R8 release build — add `-dontwarn` rules for protobuf annotation types referenced by MediaPipe LLM inference library but absent from its bundled protobuf-lite runtime
 
-
-
-
-
 ## 1.8.0 (2026-06-06)
-
-### Features
-
-**Session Playback** — PlaybackCard visual redesign:
-* speaker colour palette updated to design tokens — signal blue `#89C7FF`, glow green `#88D7A8`, ember `#FFB695`, purple `#C6A0F6`
-* centred transport controls (skip‑10s / play‑pause / skip‑10s) with `Arrangement.Center`
-* waveform card height reduced to 80dp; `ScrybeSectionHeader` removed from playback
-
-**Capture** — RecordingActiveView content area:
-* recent-session mini-list replaces the empty spacer between the waveform card and stop controls
-* each row shows mode badge, session title, duration, and status chip
-* tapping a row navigates to that session while the recording continues in the background
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
-* fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
-
-### Fixes
-
-
-
-
-
 
 ## 1.7.0 (2026-06-05)
 
@@ -140,52 +100,19 @@
 
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
 
-### Fixes
-
-
-
-
-
-
-
 ## 1.6.2 (2026-06-05)
-
-### Features
 
 ### Improvements
 
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
 
-### Fixes
-
-
-
-
-
-
-
-
 ## 1.6.1 (2026-06-04)
-
-### Features
 
 ### Improvements
 
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
 
-### Fixes
-
-
-
-
-
-
-
-
-
 ## 1.6.0 (2026-06-04)
-
-### Features
 
 ### Improvements
 
@@ -194,37 +121,12 @@
 * standardise changelog location — move Scrybe changelog from repo root to `apps/scrybe/CHANGELOG.md` (matching Shelf Snap's `apps/shelf-snap/CHANGELOG.md`); update all CI workflow, pre-commit hook, manage-changelog.py, AGENTS.md, copilot-instructions.md, and codex skill references to new path; add per-app changelog gate in pre-commit hook covering both apps; fix `app/build.gradle.kts` changelog asset path accordingly
 * add per-app README files — create `apps/scrybe/README.md` with full feature table, recording modes, AI provider tiers, architecture diagram, module map, tech stack, and CI docs; expand root `README.md` into a TwoBits project overview covering design philosophy, privacy commitments, shared infrastructure, and monorepo layout; update `apps/shelf-snap/README.md` CI section to reference current workflow names
 
-### Fixes
-
-
-
-
-
-
-
-
-
-
 ## 1.5.0 (2026-06-04)
-
-### Features
 
 ### Improvements
 
 * consolidate CI/CD workflows — shared `reusable-validate.yml` for changelog and manifest validation; rename `android-ci.yml` → `scrybe-ci.yml` and `release.yml` → `scrybe-release.yml`; standardise signing secret names to `SIGNING_*` across both apps; add `workflow_dispatch` trigger to release workflows
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
-
-### Fixes
-
-
-
-
-
-
-
-
-
-
 
 ## 1.4.0 (2026-06-03)
 
@@ -237,40 +139,11 @@
 * harden worker model validation — reject chat completions requests for any model not in the pricing table with HTTP 422 instead of silently falling back to gpt-5-mini pricing; prevents unexpected charges for newly added or expensive models
 * serialize worker spend tracking with Durable Objects — replace KV read-modify-write spend accounting with a SpendTracker Durable Object that atomically reserves budget before forwarding to OpenAI and settles to actual cost afterward; eliminates the race condition where concurrent requests could each read the same KV total and bypass the monthly spend cap
 
-### Fixes
-
-
-
-
-
-
-
-
-
-
-
-
 ## 1.3.0 (2026-06-03)
-
-### Features
 
 ### Improvements
 
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
-
-### Fixes
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## 1.2.0 (2026-06-03)
 
@@ -304,8 +177,6 @@
 * add core:api-keys shared module — ApiKeyProvider interface, KeystoreApiKeyProvider (DataStore-backed, keyed by ProviderType), ApiKeyValidator, ApiKeyRouter (routes BYOK vs. managed Pro keys via api.twobits.app), ProUserIdProvider interface, and a Hilt ApiKeysModule under com.twobits.apikeys
 * add core:network shared module — OkHttpClientFactory (configurable logging, AI-tuned timeouts), HttpErrorMapper for user-friendly HTTP error strings, and a Hilt NetworkModule providing a singleton OkHttpClient under com.twobits.network
 * add core:design shared module — DM Sans variable-font family, TwoBitsTypography (full Material 3 type scale), TwoBitsShapes (8/12/18/24/28dp radius scale), ThemeMode enum (SYSTEM/LIGHT/DARK), and shared Compose components: ApiKeyField, SubscriptionBanner, SettingsRow, ErrorCard, LoadingOverlay under com.twobits.design
-
-### Improvements
 
 * rebrand monorepo to Two Bits — Cloudflare worker renamed to twobits-proxy, custom domain api.twobits.app configured in wrangler.toml, worker setup docs updated with deployment URL
 * migrate to monorepo — Shelf Snap app moved into apps/shelf-snap alongside apps/scrybe; all CI workflows unified under .github/workflows with per-app path filters; CLAUDE.md updated for monorepo layout

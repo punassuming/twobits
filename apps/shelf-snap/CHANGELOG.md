@@ -31,8 +31,6 @@
 
 ## 1.4.0 (2026-06-08)
 
-### Features
-
 ### Improvements
 
 **Settings** — privacy policy link in About section:
@@ -47,68 +45,35 @@
 * cloud model lists trimmed to the 3 models in the design (GPT-4o, GPT-4o mini, GPT-4.1 mini)
 * Analysis section now shows AI condition detection, Auto price estimate, and Multi-photo analysis toggles
 
+**Market research** — live web evidence:
+* updated to use OpenAI Responses API for gpt-5.4 and gpt-5.4-mini models
+* DuckDuckGo Instant Answer replaced with Jina AI Search for real pricing results
+* Market tab shows a banner when prices are estimated from AI training data rather than live web search
+* comparable listing rows and source citations are tappable links that open the source URL in the browser
+
 ### Fixes
 
 * CI now builds assembleRelease so R8 minification runs on every PR, catching ProGuard stripping issues before they reach the release workflow
+
 * CI sets android/verified commit status so branch protection can block merges when the build fails
 
 * CHANGELOG asset now generated at build time — in-app "What's New" screen always reflects the latest release notes on a fresh clone
+
 * What's New dialog now accumulates bullets from recent versions rather than showing only the most-recent hotfix section
-* Market research updated to use OpenAI Responses API for gpt-5.4 and gpt-5.4-mini models — fixes "model not found" errors for users with current API keys
-* DuckDuckGo Instant Answer replaced with Jina AI Search (s.jina.ai) — returns real web results for pricing queries with no API key required
-* Market tab shows a banner when prices are estimated from AI training data rather than live web search, with guidance to enable Brave or Jina AI
-* Comparable listing rows and source citations are now tappable links that open the source URL in the browser
+
 * HTTP 404 from OpenAI pricing service now shows "Selected model isn't available" instead of a generic unavailable message
 
-### Fixes
-
-
 ## 1.3.1 (2026-06-06)
-
-### Features
 
 ### Improvements
 
 * release workflow no longer fires on PR CI completions — `branches: [main]` filter added to `workflow_run` trigger so it only activates when CI runs against `main`
 
-### Fixes
-
-
-
 ## 1.3.0 (2026-06-06)
-
-### Features
-
-**Camera** — viewfinder redesign:
-* close and flash controls overlaid directly on the viewfinder surface
-* teal L-bracket corner guides frame the subject at each corner
-* AI tip pill with contextual shooting hints
-* dark bottom panel: white-ring shutter button, Analyse pill showing photo count, gallery thumbnail
-* full-screen animated AnalysingView replaces the capture overlay with a 5-step progress indicator
-
-**Settings** — AI configuration navigation card:
-* prominent `primaryContainer` card at the top of the Settings screen
-* links to API key, vision model selection, and Pro subscription settings
-* subtitle: "Vision model · pricing · local models · API key"
-
-**Inventory** — screen refresh:
-* app name as TopAppBar title with Sort button action
-* SummaryBanner between filter chips and list showing item count and total estimated value
-* InventoryItemCard: category chip as title, brand/model as bodySmall, confidence badge right-aligned
 
 ### Improvements
 
-**Item Detail** — visual polish:
-* brand · model subtitle uses middle-dot separator (was space-separated)
-* AI confidence badge replaced with a `primaryContainer` pill + "GPT-4o analysis" annotation
-
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
-* fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
-
-### Fixes
-
-
-
 
 ## 1.2.0 (2026-06-05)
 
@@ -139,79 +104,31 @@
 
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
-### Fixes
-
-
-
-
-
 ## 1.1.3 (2026-06-05)
-
-### Features
 
 ### Improvements
 
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
-### Fixes
-
-
-
-
-
-
 ## 1.1.2 (2026-06-04)
-
-### Features
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
 
-### Fixes
-
-
-
-
-
-
-
 ## 1.1.1 (2026-06-04)
-
-### Features
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
-
-### Fixes
-
-
-
-
-
-
-
 
 ## 1.1.0 (2026-06-04)
 
-### Features
-
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
-
-### Fixes
-
-
-
-
-
-
-
-
 
 ## 1.0.2 (2026-06-03)
 
@@ -219,50 +136,15 @@
 
 * add vision model selector for BYOK users — choose from GPT-4o, GPT-4o mini, GPT-5.4, GPT-5.4 mini, or GPT-4.1 mini for item photo analysis; selection persists across sessions; Pro users use the managed API default
 
-### Improvements
-
-### Fixes
-
-
-
-
-
-
-
-
-
-
 ## 1.0.1 (2026-06-03)
 
 ### Features
 
 * add Shelf-Snap product page to twobits GitHub Pages site — shelf-snap.html with phone mockup, "Snap. Analyze. List or donate." how-it-works steps, tabbed item detail (Details/Market/List), feature grid, cross-listing platform chips, market research price example, and Google Play store listing mockup
 
-### Improvements
-
-### Fixes
-
-
-
-
-
-
-
-
-
-
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
-
-
-
-
-
-
-
-
-
 
 ## 1.0.0 (2026-06-01)
 
