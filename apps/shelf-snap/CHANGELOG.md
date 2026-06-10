@@ -4,9 +4,30 @@
 
 ### Features
 
+**AI models** — GPT-5 and GPT-5.4 families:
+* vision analysis models: GPT-5 (default), GPT-5 mini, GPT-5.4, GPT-5.4 mini
+* pricing & description models: GPT-5 mini (default), GPT-5.4 nano, GPT-5.4 mini, GPT-5
+* GPT-5-family requests routed through the OpenAI Responses API for vision and pricing
+
 ### Improvements
 
+**Market research** — search status visibility:
+* Market tab shows where each estimate came from: "Based on N web results via …", a search-failure notice, or AI-only
+* search status persists with the item instead of resetting on app restart
+* Jina AI search authenticates with an API key (free at jina.ai) — fixes silently empty results
+* search provider and API key settings moved into the AI configuration screen
+
+**What's New dialog** — structured release notes:
+* update popup shows bold item titles with plain descriptions instead of raw flat bullets
+* markdown code ticks and bold markers no longer leak into parsed release notes
+
 ### Fixes
+
+* GPT-5 mini and nano price-research requests no longer sent to the Chat Completions endpoint they reject
+
+* price research reads the Responses API message item instead of the first output entry, which is usually reasoning
+
+* model selection rows clamp long subtitles to two lines so the cost label stays aligned
 
 ## 1.4.0 (2026-06-08)
 

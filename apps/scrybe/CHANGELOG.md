@@ -6,7 +6,17 @@
 
 ### Improvements
 
+**What's New dialog** — structured release notes:
+* update popup shows bold item titles with plain descriptions instead of raw flat bullets
+* markdown code ticks and bold markers no longer leak into parsed release notes
+
+**Navigation** — return to single-screen home:
+* bottom navigation bar removed; Capture is the home screen again
+* Settings opens from the top-bar gear, Profiles from Settings
+
 ### Fixes
+
+* model selection rows clamp long subtitles to two lines so the cost label stays aligned
 
 ## 1.9.0 (2026-06-08)
 

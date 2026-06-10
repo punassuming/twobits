@@ -11,8 +11,6 @@ import com.shelfsnap.app.data.local.toEntity
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
-import com.shelfsnap.app.data.model.LocalGemmaModel
-import com.shelfsnap.app.data.model.LocalMoondreamModel
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
@@ -25,197 +23,177 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ItemRepository @Inject constructor(
-    private val dao: ItemDao,
-    private val visionService: VisionAnalysisService,
-    private val priceResearchService: PriceResearchService,
-    private val dataStore: DataStore<Preferences>
-) {
+class ItemRepository
+    @Inject
+    constructor(
+        private val dao: ItemDao,
+        private val visionService: VisionAnalysisService,
+        private val priceResearchService: PriceResearchService,
+        private val dataStore: DataStore<Preferences>,
+    ) {
+        companion object {
+            private val KEY_API_KEY = stringPreferencesKey("openai_api_key")
+            private val KEY_SEARCH_PROVIDER = stringPreferencesKey("search_provider")
+            private val KEY_SEARCH_API_KEY = stringPreferencesKey("search_api_key")
+            private val KEY_AUTO_ANALYZE = booleanPreferencesKey("auto_analyze")
+            private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
+            private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
+            private val KEY_REASONING_MODEL = stringPreferencesKey("reasoning_model")
+            private val KEY_VISION_SOURCE = stringPreferencesKey("vision_source")
+            private val KEY_TEXT_SOURCE = stringPreferencesKey("text_source")
+            private val KEY_AI_CONDITION_DETECTION = booleanPreferencesKey("ai_condition_detection")
+            private val KEY_AUTO_PRICE_ESTIMATE = booleanPreferencesKey("auto_price_estimate")
+            private val KEY_MULTI_PHOTO_ANALYSIS = booleanPreferencesKey("multi_photo_analysis")
+        }
 
-    companion object {
-        private val KEY_API_KEY = stringPreferencesKey("openai_api_key")
-        private val KEY_SEARCH_PROVIDER = stringPreferencesKey("search_provider")
-        private val KEY_SEARCH_API_KEY = stringPreferencesKey("search_api_key")
-        private val KEY_AUTO_ANALYZE = booleanPreferencesKey("auto_analyze")
-        private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
-        private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
-        private val KEY_REASONING_MODEL = stringPreferencesKey("reasoning_model")
-        private val KEY_VISION_SOURCE = stringPreferencesKey("vision_source")
-        private val KEY_TEXT_SOURCE = stringPreferencesKey("text_source")
-        private val KEY_AI_CONDITION_DETECTION = booleanPreferencesKey("ai_condition_detection")
-        private val KEY_AUTO_PRICE_ESTIMATE = booleanPreferencesKey("auto_price_estimate")
-        private val KEY_MULTI_PHOTO_ANALYSIS = booleanPreferencesKey("multi_photo_analysis")
-    }
+        // ── Inventory ─────────────────────────────────────────────────────────────
 
-    // ── Inventory ─────────────────────────────────────────────────────────────
+        fun observeAll(): Flow<List<Item>> = dao.observeAll().map { list -> list.map { it.toDomain() } }
 
-    fun observeAll(): Flow<List<Item>> =
-        dao.observeAll().map { list -> list.map { it.toDomain() } }
+        fun search(query: String): Flow<List<Item>> = dao.observeFiltered(query.trim()).map { list -> list.map { it.toDomain() } }
 
-    fun search(query: String): Flow<List<Item>> =
-        dao.observeFiltered(query.trim()).map { list -> list.map { it.toDomain() } }
+        suspend fun getById(id: Long): Item? = dao.getById(id)?.toDomain()
 
-    suspend fun getById(id: Long): Item? = dao.getById(id)?.toDomain()
+        suspend fun save(item: Item): Long = dao.insert(item.toEntity())
 
-    suspend fun save(item: Item): Long = dao.insert(item.toEntity())
+        suspend fun update(item: Item) = dao.update(item.toEntity())
 
-    suspend fun update(item: Item) = dao.update(item.toEntity())
+        suspend fun delete(id: Long) = dao.deleteById(id)
 
-    suspend fun delete(id: Long) = dao.deleteById(id)
+        // ── AI Analysis ───────────────────────────────────────────────────────────
 
-    // ── AI Analysis ───────────────────────────────────────────────────────────
+        /**
+         * Sends [photoPaths] to the vision service for analysis.
+         * Returns a [DraftItemResult]; caller must check [DraftItemResult.error].
+         */
+        suspend fun analysePhotos(photoPaths: List<String>): DraftItemResult =
+            when (val source = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok") {
+                "pro" -> DraftItemResult(error = "Pro vision is not yet available in this build.")
+                "local" -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
+                else -> visionService.analyse(photoPaths, getApiKey(), getVisionModel().apiName)
+            }
 
-    /**
-     * Sends [photoPaths] to the vision service for analysis.
-     * Returns a [DraftItemResult]; caller must check [DraftItemResult.error].
-     */
-    suspend fun analysePhotos(photoPaths: List<String>): DraftItemResult {
-        return when (val source = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok") {
-            "pro" -> DraftItemResult(error = "Pro vision is not yet available in this build.")
-            "local" -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
-            else -> visionService.analyse(photoPaths, getApiKey(), getVisionModel().apiName)
+        // ── Price research ──────────────────────────────────────────────────────────
+
+        /**
+         * Researches a resale price for [item] using OpenAI inference plus the
+         * configured web-search provider. Caller must check [PriceResearchResult.error].
+         */
+        suspend fun researchPrice(item: Item): PriceResearchResult =
+            when (val source = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok") {
+                "pro" -> PriceResearchResult(error = "Pro pricing is not yet available in this build.")
+                "local" -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
+                else ->
+                    priceResearchService.research(
+                        item = item,
+                        openAiKey = getApiKey(),
+                        searchProvider = getSearchProvider(),
+                        searchKey = getSearchApiKey(),
+                        model = getReasoningModel().apiName,
+                    )
+            }
+
+        /** Verifies that the saved OpenAI API key is accepted by the API. */
+        suspend fun testApiKey(): Result<Unit> = visionService.testKey(getApiKey())
+
+        /** Verifies a specific key without saving it first. */
+        suspend fun testApiKey(key: String): Result<Unit> = visionService.testKey(key)
+
+        // ── Settings ──────────────────────────────────────────────────────────────
+
+        fun observeApiKey(): Flow<String> = dataStore.data.map { it[KEY_API_KEY] ?: "" }
+
+        suspend fun getApiKey(): String = dataStore.data.firstOrNull()?.get(KEY_API_KEY) ?: ""
+
+        suspend fun saveApiKey(key: String) {
+            dataStore.edit { it[KEY_API_KEY] = key }
+        }
+
+        // ── Settings: web search for price research ─────────────────────────────────
+
+        fun observeSearchProvider(): Flow<SearchProvider> = dataStore.data.map { SearchProvider.fromKey(it[KEY_SEARCH_PROVIDER] ?: "") }
+
+        suspend fun getSearchProvider(): SearchProvider = SearchProvider.fromKey(dataStore.data.firstOrNull()?.get(KEY_SEARCH_PROVIDER) ?: "")
+
+        suspend fun saveSearchProvider(provider: SearchProvider) {
+            dataStore.edit { it[KEY_SEARCH_PROVIDER] = provider.key }
+        }
+
+        fun observeSearchApiKey(): Flow<String> = dataStore.data.map { it[KEY_SEARCH_API_KEY] ?: "" }
+
+        suspend fun getSearchApiKey(): String = dataStore.data.firstOrNull()?.get(KEY_SEARCH_API_KEY) ?: ""
+
+        suspend fun saveSearchApiKey(key: String) {
+            dataStore.edit { it[KEY_SEARCH_API_KEY] = key }
+        }
+
+        // ── Settings: capture preferences ───────────────────────────────────────────
+
+        /** Whether captured photos are analysed automatically (default off). */
+        fun observeAutoAnalyze(): Flow<Boolean> = dataStore.data.map { it[KEY_AUTO_ANALYZE] ?: false }
+
+        suspend fun getAutoAnalyze(): Boolean = dataStore.data.firstOrNull()?.get(KEY_AUTO_ANALYZE) ?: false
+
+        suspend fun saveAutoAnalyze(enabled: Boolean) {
+            dataStore.edit { it[KEY_AUTO_ANALYZE] = enabled }
+        }
+
+        /** Whether the original full-resolution photos are kept on device (default on). */
+        fun observeKeepPhotos(): Flow<Boolean> = dataStore.data.map { it[KEY_KEEP_PHOTOS] ?: true }
+
+        suspend fun saveKeepPhotos(enabled: Boolean) {
+            dataStore.edit { it[KEY_KEEP_PHOTOS] = enabled }
+        }
+
+        // ── Settings: vision model for BYOK users ───────────────────────────────────
+
+        fun observeVisionModel(): Flow<VisionModel> = dataStore.data.map { VisionModel.fromApiName(it[KEY_VISION_MODEL]) }
+
+        suspend fun getVisionModel(): VisionModel = VisionModel.fromApiName(dataStore.data.firstOrNull()?.get(KEY_VISION_MODEL))
+
+        suspend fun saveVisionModel(model: VisionModel) {
+            dataStore.edit { it[KEY_VISION_MODEL] = model.apiName }
+        }
+
+        fun observeReasoningModel(): Flow<ReasoningModel> = dataStore.data.map { ReasoningModel.fromApiName(it[KEY_REASONING_MODEL]) }
+
+        suspend fun getReasoningModel(): ReasoningModel = ReasoningModel.fromApiName(dataStore.data.firstOrNull()?.get(KEY_REASONING_MODEL))
+
+        suspend fun saveReasoningModel(model: ReasoningModel) {
+            dataStore.edit { it[KEY_REASONING_MODEL] = model.apiName }
+        }
+
+        // ── Settings: AI source (pro / byok / local) ─────────────────────────────
+
+        fun observeVisionSource(): Flow<String> = dataStore.data.map { it[KEY_VISION_SOURCE] ?: "byok" }
+
+        suspend fun saveVisionSource(source: String) {
+            dataStore.edit { it[KEY_VISION_SOURCE] = source }
+        }
+
+        fun observeTextSource(): Flow<String> = dataStore.data.map { it[KEY_TEXT_SOURCE] ?: "byok" }
+
+        suspend fun saveTextSource(source: String) {
+            dataStore.edit { it[KEY_TEXT_SOURCE] = source }
+        }
+
+        // ── Settings: AI analysis toggles ────────────────────────────────────────
+
+        fun observeAiConditionDetection(): Flow<Boolean> = dataStore.data.map { it[KEY_AI_CONDITION_DETECTION] ?: true }
+
+        suspend fun saveAiConditionDetection(enabled: Boolean) {
+            dataStore.edit { it[KEY_AI_CONDITION_DETECTION] = enabled }
+        }
+
+        fun observeAutoPriceEstimate(): Flow<Boolean> = dataStore.data.map { it[KEY_AUTO_PRICE_ESTIMATE] ?: true }
+
+        suspend fun saveAutoPriceEstimate(enabled: Boolean) {
+            dataStore.edit { it[KEY_AUTO_PRICE_ESTIMATE] = enabled }
+        }
+
+        fun observeMultiPhotoAnalysis(): Flow<Boolean> = dataStore.data.map { it[KEY_MULTI_PHOTO_ANALYSIS] ?: false }
+
+        suspend fun saveMultiPhotoAnalysis(enabled: Boolean) {
+            dataStore.edit { it[KEY_MULTI_PHOTO_ANALYSIS] = enabled }
         }
     }
-
-    // ── Price research ──────────────────────────────────────────────────────────
-
-    /**
-     * Researches a resale price for [item] using OpenAI inference plus the
-     * configured web-search provider. Caller must check [PriceResearchResult.error].
-     */
-    suspend fun researchPrice(item: Item): PriceResearchResult {
-        return when (val source = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok") {
-            "pro" -> PriceResearchResult(error = "Pro pricing is not yet available in this build.")
-            "local" -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
-            else -> priceResearchService.research(
-                item = item,
-                openAiKey = getApiKey(),
-                searchProvider = getSearchProvider(),
-                searchKey = getSearchApiKey(),
-                model = getReasoningModel().apiName,
-            )
-        }
-    }
-
-    /** Verifies that the saved OpenAI API key is accepted by the API. */
-    suspend fun testApiKey(): Result<Unit> = visionService.testKey(getApiKey())
-
-    /** Verifies a specific key without saving it first. */
-    suspend fun testApiKey(key: String): Result<Unit> = visionService.testKey(key)
-
-    // ── Settings ──────────────────────────────────────────────────────────────
-
-    fun observeApiKey(): Flow<String> =
-        dataStore.data.map { it[KEY_API_KEY] ?: "" }
-
-    suspend fun getApiKey(): String =
-        dataStore.data.firstOrNull()?.get(KEY_API_KEY) ?: ""
-
-    suspend fun saveApiKey(key: String) {
-        dataStore.edit { it[KEY_API_KEY] = key }
-    }
-
-    // ── Settings: web search for price research ─────────────────────────────────
-
-    fun observeSearchProvider(): Flow<SearchProvider> =
-        dataStore.data.map { SearchProvider.fromKey(it[KEY_SEARCH_PROVIDER] ?: "") }
-
-    suspend fun getSearchProvider(): SearchProvider =
-        SearchProvider.fromKey(dataStore.data.firstOrNull()?.get(KEY_SEARCH_PROVIDER) ?: "")
-
-    suspend fun saveSearchProvider(provider: SearchProvider) {
-        dataStore.edit { it[KEY_SEARCH_PROVIDER] = provider.key }
-    }
-
-    fun observeSearchApiKey(): Flow<String> =
-        dataStore.data.map { it[KEY_SEARCH_API_KEY] ?: "" }
-
-    suspend fun getSearchApiKey(): String =
-        dataStore.data.firstOrNull()?.get(KEY_SEARCH_API_KEY) ?: ""
-
-    suspend fun saveSearchApiKey(key: String) {
-        dataStore.edit { it[KEY_SEARCH_API_KEY] = key }
-    }
-
-    // ── Settings: capture preferences ───────────────────────────────────────────
-
-    /** Whether captured photos are analysed automatically (default off). */
-    fun observeAutoAnalyze(): Flow<Boolean> =
-        dataStore.data.map { it[KEY_AUTO_ANALYZE] ?: false }
-
-    suspend fun getAutoAnalyze(): Boolean =
-        dataStore.data.firstOrNull()?.get(KEY_AUTO_ANALYZE) ?: false
-
-    suspend fun saveAutoAnalyze(enabled: Boolean) {
-        dataStore.edit { it[KEY_AUTO_ANALYZE] = enabled }
-    }
-
-    /** Whether the original full-resolution photos are kept on device (default on). */
-    fun observeKeepPhotos(): Flow<Boolean> =
-        dataStore.data.map { it[KEY_KEEP_PHOTOS] ?: true }
-
-    suspend fun saveKeepPhotos(enabled: Boolean) {
-        dataStore.edit { it[KEY_KEEP_PHOTOS] = enabled }
-    }
-
-    // ── Settings: vision model for BYOK users ───────────────────────────────────
-
-    fun observeVisionModel(): Flow<VisionModel> =
-        dataStore.data.map { VisionModel.fromApiName(it[KEY_VISION_MODEL]) }
-
-    suspend fun getVisionModel(): VisionModel =
-        VisionModel.fromApiName(dataStore.data.firstOrNull()?.get(KEY_VISION_MODEL))
-
-    suspend fun saveVisionModel(model: VisionModel) {
-        dataStore.edit { it[KEY_VISION_MODEL] = model.apiName }
-    }
-
-    fun observeReasoningModel(): Flow<ReasoningModel> =
-        dataStore.data.map { ReasoningModel.fromApiName(it[KEY_REASONING_MODEL]) }
-
-    suspend fun getReasoningModel(): ReasoningModel =
-        ReasoningModel.fromApiName(dataStore.data.firstOrNull()?.get(KEY_REASONING_MODEL))
-
-    suspend fun saveReasoningModel(model: ReasoningModel) {
-        dataStore.edit { it[KEY_REASONING_MODEL] = model.apiName }
-    }
-
-    // ── Settings: AI source (pro / byok / local) ─────────────────────────────
-
-    fun observeVisionSource(): Flow<String> =
-        dataStore.data.map { it[KEY_VISION_SOURCE] ?: "byok" }
-
-    suspend fun saveVisionSource(source: String) {
-        dataStore.edit { it[KEY_VISION_SOURCE] = source }
-    }
-
-    fun observeTextSource(): Flow<String> =
-        dataStore.data.map { it[KEY_TEXT_SOURCE] ?: "byok" }
-
-    suspend fun saveTextSource(source: String) {
-        dataStore.edit { it[KEY_TEXT_SOURCE] = source }
-    }
-
-    // ── Settings: AI analysis toggles ────────────────────────────────────────
-
-    fun observeAiConditionDetection(): Flow<Boolean> =
-        dataStore.data.map { it[KEY_AI_CONDITION_DETECTION] ?: true }
-
-    suspend fun saveAiConditionDetection(enabled: Boolean) {
-        dataStore.edit { it[KEY_AI_CONDITION_DETECTION] = enabled }
-    }
-
-    fun observeAutoPriceEstimate(): Flow<Boolean> =
-        dataStore.data.map { it[KEY_AUTO_PRICE_ESTIMATE] ?: true }
-
-    suspend fun saveAutoPriceEstimate(enabled: Boolean) {
-        dataStore.edit { it[KEY_AUTO_PRICE_ESTIMATE] = enabled }
-    }
-
-    fun observeMultiPhotoAnalysis(): Flow<Boolean> =
-        dataStore.data.map { it[KEY_MULTI_PHOTO_ANALYSIS] ?: false }
-
-    suspend fun saveMultiPhotoAnalysis(enabled: Boolean) {
-        dataStore.edit { it[KEY_MULTI_PHOTO_ANALYSIS] = enabled }
-    }
-}

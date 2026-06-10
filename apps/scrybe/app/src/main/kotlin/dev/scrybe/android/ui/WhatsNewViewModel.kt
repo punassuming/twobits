@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.twobits.common.ReleaseNotes
 import com.twobits.common.ReleaseNotesParser
+import com.twobits.design.components.WhatsNewDialogEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
@@ -21,7 +22,7 @@ data class WhatsNewUiState(
     val isFirstRun: Boolean = false,
     val title: String = "",
     val versionName: String = "",
-    val notes: List<String> = emptyList(),
+    val entries: List<WhatsNewDialogEntry> = emptyList(),
     val confirmLabel: String = "Close",
 )
 
@@ -46,6 +47,7 @@ class WhatsNewViewModel
                 val isFirstRun = seenVersionCode == 0L
 
                 val versionName = packageInfo.versionName.orEmpty()
+                val updateEntries = releaseNotes?.toDialogEntries().orEmpty()
                 if (currentVersionCode > seenVersionCode && isFirstRun) {
                     _uiState.value =
                         WhatsNewUiState(
@@ -53,16 +55,16 @@ class WhatsNewViewModel
                             isFirstRun = true,
                             title = "Welcome to Scrybe",
                             versionName = versionName,
-                            notes = firstRunNotes(),
+                            entries = firstRunNotes().map { WhatsNewDialogEntry(title = it) },
                             confirmLabel = "Get started",
                         )
-                } else if (currentVersionCode > seenVersionCode && releaseNotes?.summaryItems?.isNotEmpty() == true) {
+                } else if (currentVersionCode > seenVersionCode && updateEntries.isNotEmpty()) {
                     _uiState.value =
                         WhatsNewUiState(
                             isVisible = true,
                             versionName = versionName,
                             title = "What's New in $versionName",
-                            notes = releaseNotes.summaryItems,
+                            entries = updateEntries,
                             confirmLabel = "Close",
                         )
                 }
@@ -87,6 +89,21 @@ class WhatsNewViewModel
             return ReleaseNotesParser.parseLatestReleaseNotes(changelogText)
         }
 
+        private fun ReleaseNotes.toDialogEntries(): List<WhatsNewDialogEntry> {
+            val structured =
+                groups.flatMap { group -> group.items }.map { item ->
+                    WhatsNewDialogEntry(
+                        title = item.title,
+                        description = item.description.takeIf { it != item.title }.orEmpty(),
+                    )
+                }
+            val entries =
+                structured.ifEmpty {
+                    summaryItems.map { WhatsNewDialogEntry(title = it) }
+                }
+            return entries.take(MAX_DIALOG_ENTRIES)
+        }
+
         private fun firstRunNotes(): List<String> =
             listOf(
                 "Start recording from the home screen and Scrybe saves the raw audio before any AI step runs.",
@@ -96,4 +113,8 @@ class WhatsNewViewModel
                 "Use post-processing profiles to transform raw transcripts into cleaner summaries, action items, or custom outputs.",
                 "Recent recordings stay one tap away, and archived sessions remain available without cluttering your active list.",
             )
+
+        private companion object {
+            const val MAX_DIALOG_ENTRIES = 6
+        }
     }

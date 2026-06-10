@@ -139,7 +139,7 @@
     <!-- v2: settings — capture, storage, about -->
     <string name="capture_storage_section">Capture &amp; storage</string>
     <string name="auto_analyze_title">Auto-analyze on capture</string>
-    <string name="auto_analyze_subtitle">Run AI analysis automatically after taking photos</string>
+    <string name="auto_analyze_subtitle">Analyze photos immediately after capture</string>
     <string name="keep_photos_title">Keep original photos</string>
     <string name="keep_photos_subtitle">Store full-resolution photos on this device</string>
     <string name="storage_usage">Storage usage</string>
@@ -187,10 +187,12 @@
     <string name="go_to_settings">Open Settings</string>
 
     <!-- v2: settings — web search for pricing -->
-    <string name="search_section_title">Price research search</string>
+    <string name="search_section_title">Web search for pricing</string>
     <string name="search_section_subtitle">Choose a web-search provider to gather comparable listings for price estimates.</string>
     <string name="search_provider_label">Search provider</string>
-    <string name="search_api_key_label">Search API key</string>
-    <string name="search_api_key_hint">Required for Brave — free at api-dashboard.search.brave.com (2,000 queries/month).</string>
+    <string name="brave_api_key_label">Brave API key</string>
+    <string name="brave_api_key_hint">Free at api-dashboard.search.brave.com (2,000 queries/month).</string>
+    <string name="jina_api_key_label">Jina API key</string>
+    <string name="jina_api_key_hint">Free key at jina.ai — required for search results.</string>
     <string name="search_settings_saved">Search settings saved.</string>
 </resources>

@@ -4,26 +4,37 @@ enum class ReasoningModel(
     val apiName: String,
     val displayName: String,
     val supportingText: String,
+    val costLabel: String,
 ) {
-    GPT_4O_MINI(
-        apiName = "gpt-4o-mini",
-        displayName = "GPT-4o mini",
-        supportingText = "Fast & affordable · \$0.15 / \$0.60 per 1M tokens",
+    GPT_5_MINI(
+        apiName = "gpt-5-mini",
+        displayName = "GPT-5 mini",
+        supportingText = "Fast and affordable",
+        costLabel = "\$0.25 / \$2.00",
     ),
-    GPT_4_1_MINI(
-        apiName = "gpt-4.1-mini",
-        displayName = "GPT-4.1 mini",
-        supportingText = "Solid reasoning, economical · \$0.40 / \$1.60 per 1M tokens",
+    GPT_5_4_NANO(
+        apiName = "gpt-5.4-nano",
+        displayName = "GPT-5.4 nano",
+        supportingText = "Cheapest",
+        costLabel = "\$0.20 / \$1.25",
     ),
-    GPT_4O(
-        apiName = "gpt-4o",
-        displayName = "GPT-4o",
-        supportingText = "Best accuracy · \$2.50 / \$10.00 per 1M tokens",
-    );
+    GPT_5_4_MINI(
+        apiName = "gpt-5.4-mini",
+        displayName = "GPT-5.4 mini",
+        supportingText = "Newest mini",
+        costLabel = "\$0.75 / \$4.50",
+    ),
+    GPT_5(
+        apiName = "gpt-5",
+        displayName = "GPT-5",
+        supportingText = "Best accuracy",
+        costLabel = "\$1.25 / \$10.00",
+    ),
+    ;
 
     companion object {
-        val default: ReasoningModel = GPT_4O_MINI
-        fun fromApiName(value: String?): ReasoningModel =
-            entries.firstOrNull { it.apiName.equals(value, ignoreCase = true) } ?: default
+        val default: ReasoningModel = GPT_5_MINI
+
+        fun fromApiName(value: String?): ReasoningModel = entries.firstOrNull { it.apiName.equals(value, ignoreCase = true) } ?: default
     }
 }
