@@ -29,6 +29,8 @@
 
 * model selection rows clamp long subtitles to two lines so the cost label stays aligned
 
+* changelog parser unit tests cover markdown backtick and bold-marker stripping
+
 ## 1.4.0 (2026-06-08)
 
 ### Improvements

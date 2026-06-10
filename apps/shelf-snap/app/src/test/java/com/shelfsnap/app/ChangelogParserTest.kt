@@ -6,8 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChangelogParserTest {
-
-    private val sample = """
+    private val sample =
+        """
         # Changelog
 
         Preamble text that should be ignored.
@@ -21,7 +21,7 @@ class ChangelogParserTest {
 
         ### Added
         - First release
-    """.trimIndent()
+        """.trimIndent()
 
     @Test
     fun `parses versioned sections and excludes Unreleased`() {
@@ -39,5 +39,42 @@ class ChangelogParserTest {
     @Test
     fun `empty input yields no sections`() {
         assertTrue(ReleaseNotesParser.parseReleaseHistory("").isEmpty())
+    }
+
+    @Test
+    fun `strips inline backticks and bold markers from bullets`() {
+        val changelog =
+            """
+            ## 2.0.0 (2026-06-08)
+
+            ### Fixes
+            - fix `gradlew` task and **bold** text in notes
+            """.trimIndent()
+        val section = ReleaseNotesParser.parseReleaseHistory(changelog).single()
+        assertEquals(
+            listOf("fix gradlew task and bold text in notes"),
+            section.summaryItems,
+        )
+    }
+
+    @Test
+    fun `strips backticks from bold item titles`() {
+        val changelog =
+            """
+            ## 2.1.0 (2026-06-08)
+
+            ### Improvements
+
+            **`Settings`** — cleaner `layout`:
+            * row spacing normalised
+            """.trimIndent()
+        val section = ReleaseNotesParser.parseReleaseHistory(changelog).single()
+        val item =
+            section.groups
+                .single()
+                .items
+                .single()
+        assertEquals("Settings", item.title)
+        assertEquals("cleaner layout · row spacing normalised", item.description)
     }
 }
