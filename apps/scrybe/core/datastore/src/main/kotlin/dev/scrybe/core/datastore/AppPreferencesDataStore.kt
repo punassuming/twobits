@@ -61,6 +61,7 @@ class AppPreferencesDataStore
             val DELETED_DEFAULT_PROFILE_IDS = stringPreferencesKey("deleted_default_profile_ids")
             val ENABLE_SPEAKER_IDENTIFICATION = booleanPreferencesKey("enable_speaker_identification")
             val ENABLE_INSIGHT_ANALYSIS = booleanPreferencesKey("enable_insight_analysis")
+            val DEBUG_DIARIZATION = booleanPreferencesKey("debug_diarization")
             val HAS_SEEN_ONBOARDING = booleanPreferencesKey("has_seen_onboarding")
             val OPENAI_API_KEY = stringPreferencesKey("openai_api_key")
             val LOCATION_RECORDING_ENABLED = booleanPreferencesKey("location_recording_enabled")
@@ -219,6 +220,11 @@ class AppPreferencesDataStore
                 prefs[Keys.ENABLE_INSIGHT_ANALYSIS] ?: false
             }
 
+        val debugDiarization: Flow<Boolean> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.DEBUG_DIARIZATION] ?: false
+            }
+
         val deletedDefaultProfileIds: Flow<Set<String>> =
             context.dataStore.data.map { prefs ->
                 prefs[Keys.DELETED_DEFAULT_PROFILE_IDS]
@@ -372,6 +378,10 @@ class AppPreferencesDataStore
 
         suspend fun setEnableInsightAnalysis(enabled: Boolean) {
             context.dataStore.edit { prefs -> prefs[Keys.ENABLE_INSIGHT_ANALYSIS] = enabled }
+        }
+
+        suspend fun setDebugDiarization(enabled: Boolean) {
+            context.dataStore.edit { prefs -> prefs[Keys.DEBUG_DIARIZATION] = enabled }
         }
 
         suspend fun setOnboardingSeen() {

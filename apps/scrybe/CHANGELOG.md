@@ -14,7 +14,20 @@
 * bottom navigation bar removed; Capture is the home screen again
 * Settings opens from the top-bar gear, Profiles from Settings
 
+**Settings** — reorganized menu:
+* AI configuration card moved to the top, right after the Pro subscription card
+* duplicate Auto-transcribe toggle removed; the Intelligence card is dissolved into Recording Behavior
+* Recording Defaults renamed to Recording, Recording Automation to Recording Behavior
+* Location tagging now lives with the other recording behaviors; Appearance moved below the recording sections
+
+**Diarization** — debug mode for speaker identification:
+* new "Diarization debug" toggle in AI configuration → Analysis
+* session screen shows a debug card with raw speaker segments, timestamps, gaps, and the model's raw response
+* verbose logging under the "Diarization" tag covers word timestamps, the LLM exchange, and merge decisions
+
 ### Fixes
+
+* copying a transcript now copies what is shown on screen — paragraph breaks and speaker labels included
 
 * model selection rows clamp long subtitles to two lines so the cost label stays aligned
 

@@ -1,5 +1,6 @@
 package dev.scrybe.core.transcription
 
+import android.util.Log
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.SpeakerSegment
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,7 @@ class OpenAiDiarizationService
         private val okHttpClient: OkHttpClient,
         private val json: Json,
         private val apiKeyProvider: ApiKeyProvider,
+        private val debugStore: DiarizationDebugStore,
     ) : DiarizationService {
         override suspend fun diarize(
             sessionId: String,
@@ -41,13 +43,18 @@ class OpenAiDiarizationService
                             ?: throw IllegalStateException("No API key configured for OpenAI")
 
                     val verboseSegments = transcribeVerbose(audioFile, apiKey)
+                    Log.d(
+                        TAG,
+                        "verbose transcription: ${verboseSegments.size} segments, " +
+                            "${verboseSegments.count { !it.words.isNullOrEmpty() }} with word timestamps",
+                    )
                     if (verboseSegments.isEmpty()) return@withContext emptyList()
 
-                    val speakerAssignments = assignSpeakers(verboseSegments, apiKey)
+                    val llmRun = assignSpeakers(verboseSegments, apiKey)
 
                     val rawSegments =
                         verboseSegments.mapIndexed { index, segment ->
-                            val speakerId = speakerAssignments.getOrNull(index) ?: "SPEAKER_1"
+                            val speakerId = llmRun.assignments.getOrNull(index) ?: "SPEAKER_1"
                             SpeakerSegment(
                                 id = UUID.randomUUID().toString(),
                                 sessionId = sessionId,
@@ -58,9 +65,32 @@ class OpenAiDiarizationService
                                 endMs = (segment.end * 1000.0).roundToLong(),
                             )
                         }
-                    mergeAdjacentSegments(rawSegments)
+                    val merged = mergeAdjacentSegments(rawSegments)
+                    Log.d(TAG, "merged ${rawSegments.size} raw segments into ${merged.size}")
+                    debugStore.write(
+                        buildDebugInfo(sessionId, verboseSegments, llmRun, merged.size),
+                    )
+                    merged
                 }
             }
+
+        private fun buildDebugInfo(
+            sessionId: String,
+            verboseSegments: List<VerboseSegment>,
+            llmRun: DiarizationLlmRun,
+            mergedSegmentCount: Int,
+        ): DiarizationDebugInfo =
+            DiarizationDebugInfo(
+                sessionId = sessionId,
+                runAtMs = System.currentTimeMillis(),
+                model = MODEL,
+                verboseSegmentCount = verboseSegments.size,
+                wordTimestampsPresent = verboseSegments.any { !it.words.isNullOrEmpty() },
+                prompt = llmRun.prompt,
+                rawLlmResponse = llmRun.rawOutput,
+                assignments = llmRun.assignments,
+                mergedSegmentCount = mergedSegmentCount,
+            )
 
         private fun transcribeVerbose(
             audioFile: File,
@@ -204,11 +234,22 @@ class OpenAiDiarizationService
         private fun assignSpeakers(
             segments: List<VerboseSegment>,
             apiKey: String,
-        ): List<String> {
+        ): DiarizationLlmRun {
             val prompt = buildDiarizationPrompt(buildSegmentsJson(segments))
+            Log.d(TAG, "LLM prompt (${prompt.length} chars): ${prompt.take(500)}")
             val outputText = callDiarizationLlm(prompt, apiKey)
-            return parseAssignments(outputText, segments.size)
+            Log.d(TAG, "LLM response: ${outputText?.take(500) ?: "<null>"}")
+            val assignments = parseAssignments(outputText, segments.size)
+            Log.d(TAG, "assignments: ${assignments.groupingBy { it }.eachCount()}")
+            return DiarizationLlmRun(prompt = prompt, rawOutput = outputText, assignments = assignments)
         }
+
+        /** The full LLM exchange for one diarization run, retained for the debug record. */
+        private data class DiarizationLlmRun(
+            val prompt: String,
+            val rawOutput: String?,
+            val assignments: List<String>,
+        )
 
         private fun mergeAdjacentSegments(segments: List<SpeakerSegment>): List<SpeakerSegment> {
             if (segments.isEmpty()) return emptyList()
@@ -292,6 +333,7 @@ class OpenAiDiarizationService
         )
 
         private companion object {
+            const val TAG = "Diarization"
             const val MODEL = "gpt-5-mini"
 
             /** Minimum gap between the last word of one segment and the first word of the next

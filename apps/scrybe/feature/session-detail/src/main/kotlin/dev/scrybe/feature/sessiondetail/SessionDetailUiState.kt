@@ -9,6 +9,7 @@ import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.TopicMarker
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TransformProfile
+import dev.scrybe.core.transcription.DiarizationDebugInfo
 
 data class AnalysisSuggestionState(
     val suggestedTitle: String? = null,
@@ -57,6 +58,8 @@ sealed interface SessionDetailUiState {
         val densityProfile: List<Float> = emptyList(),
         val tasks: List<SessionTask> = emptyList(),
         val isExtractingTasks: Boolean = false,
+        val debugDiarizationEnabled: Boolean = false,
+        val diarizationDebug: DiarizationDebugInfo? = null,
     ) : SessionDetailUiState
 
     data class Error(

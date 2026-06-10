@@ -167,69 +167,12 @@ fun SettingsScreen(
                     onDismissError = viewModel::dismissPurchaseError,
                 )
 
+                ScrybeAiConfigCard(onClick = onNavigateToAiConfig)
+
                 ProfilesProminentCard(onClick = onNavigateToProfiles)
 
                 SettingsSectionCard(
-                    title = "Intelligence",
-                    icon = Icons.Filled.AutoAwesome,
-                ) {
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Auto-transcribe", style = MaterialTheme.typography.bodyLarge)
-                            Text("Begins immediately after stopping", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = uiState.autoTranscribe, onCheckedChange = viewModel::setAutoTranscribe)
-                    }
-                    HorizontalDivider()
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Location tagging", style = MaterialTheme.typography.bodyLarge)
-                            Text("Tag recordings with place name automatically", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(
-                            checked = uiState.locationRecordingEnabled,
-                            onCheckedChange = { enabled ->
-                                if (!enabled) {
-                                    viewModel.setLocationRecordingEnabled(false)
-                                } else if (ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    viewModel.setLocationRecordingEnabled(true)
-                                } else {
-                                    locationPermissionLauncher.launch(
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    )
-                                }
-                            },
-                        )
-                    }
-                }
-
-                SettingsSectionCard(
-                    title = "Appearance",
-                    icon = Icons.Filled.Palette,
-                ) {
-                    val themeOptions =
-                        listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark")
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        themeOptions.forEachIndexed { index, (mode, label) ->
-                            SegmentedButton(
-                                selected = uiState.themeMode == mode,
-                                onClick = { viewModel.setThemeMode(mode) },
-                                shape = SegmentedButtonDefaults.itemShape(index = index, count = themeOptions.size),
-                            ) {
-                                Text(label)
-                            }
-                        }
-                    }
-                }
-
-                ScrybeAiConfigCard(onClick = onNavigateToAiConfig)
-
-                SettingsSectionCard(
-                    title = "Recording Defaults",
+                    title = "Recording",
                     icon = Icons.Filled.Storage,
                 ) {
                     Text(
@@ -295,21 +238,42 @@ fun SettingsScreen(
                 }
 
                 SettingsSectionCard(
-                    title = "Recording Automation",
+                    title = "Recording Behavior",
                     icon = Icons.Filled.AutoAwesome,
                 ) {
                     Text(
                         text = "Default transform profile: ${uiState.defaultTransformProfileName ?: "None selected"}",
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Auto-transcribe", modifier = Modifier.weight(1f))
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Auto-transcribe", style = MaterialTheme.typography.bodyLarge)
+                            Text("Begins immediately after stopping", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = uiState.autoTranscribe, onCheckedChange = viewModel::setAutoTranscribe)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Location tagging", style = MaterialTheme.typography.bodyLarge)
+                            Text("Tag recordings with place name automatically", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Switch(
-                            checked = uiState.autoTranscribe,
-                            onCheckedChange = { viewModel.setAutoTranscribe(it) },
+                            checked = uiState.locationRecordingEnabled,
+                            onCheckedChange = { enabled ->
+                                if (!enabled) {
+                                    viewModel.setLocationRecordingEnabled(false)
+                                } else if (ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    viewModel.setLocationRecordingEnabled(true)
+                                } else {
+                                    locationPermissionLauncher.launch(
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    )
+                                }
+                            },
                         )
                     }
                     Row(
@@ -392,6 +356,25 @@ fun SettingsScreen(
                             checked = uiState.recordingSoundOnStartStop,
                             onCheckedChange = { viewModel.setRecordingSoundOnStartStop(it) },
                         )
+                    }
+                }
+
+                SettingsSectionCard(
+                    title = "Appearance",
+                    icon = Icons.Filled.Palette,
+                ) {
+                    val themeOptions =
+                        listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark")
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        themeOptions.forEachIndexed { index, (mode, label) ->
+                            SegmentedButton(
+                                selected = uiState.themeMode == mode,
+                                onClick = { viewModel.setThemeMode(mode) },
+                                shape = SegmentedButtonDefaults.itemShape(index = index, count = themeOptions.size),
+                            ) {
+                                Text(label)
+                            }
+                        }
                     }
                 }
 
