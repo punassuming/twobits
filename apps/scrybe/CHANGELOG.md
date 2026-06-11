@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.10.0 (2026-06-11)
+
+### Features
+
+### Improvements
+
 **What's New dialog** — structured release notes:
 * update popup shows bold item titles with plain descriptions instead of raw flat bullets
 * markdown code ticks and bold markers no longer leak into parsed release notes
@@ -33,6 +41,7 @@
 
 * model selection rows clamp long subtitles to two lines so the cost label stays aligned
 
+
 ## 1.9.0 (2026-06-08)
 
 ### Improvements
@@ -52,11 +61,13 @@
 
 * CI now builds assembleRelease so R8 minification runs on every PR, catching ProGuard stripping issues before they reach the release workflow
 
+
 ## 1.8.3 (2026-06-06)
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
+
 
 ## 1.8.2 (2026-06-06)
 
@@ -68,6 +79,7 @@
 
 * fix release APK staging — glob changed from `app-release*.apk` to `app-*release.apk` so ABI-split filenames (`app-arm64-v8a-release.apk`) are matched correctly
 
+
 ## 1.8.1 (2026-06-06)
 
 ### Improvements
@@ -78,11 +90,13 @@
 
 * fix R8 release build — add `-dontwarn` rules for protobuf annotation types referenced by MediaPipe LLM inference library but absent from its bundled protobuf-lite runtime
 
+
 ## 1.8.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 ## 1.7.0 (2026-06-05)
 
@@ -102,17 +116,20 @@
 
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
 
+
 ## 1.6.2 (2026-06-05)
 
 ### Improvements
 
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
 
+
 ## 1.6.1 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
+
 
 ## 1.6.0 (2026-06-04)
 
@@ -123,12 +140,14 @@
 * standardise changelog location — move Scrybe changelog from repo root to `apps/scrybe/CHANGELOG.md` (matching Shelf Snap's `apps/shelf-snap/CHANGELOG.md`); update all CI workflow, pre-commit hook, manage-changelog.py, AGENTS.md, copilot-instructions.md, and codex skill references to new path; add per-app changelog gate in pre-commit hook covering both apps; fix `app/build.gradle.kts` changelog asset path accordingly
 * add per-app README files — create `apps/scrybe/README.md` with full feature table, recording modes, AI provider tiers, architecture diagram, module map, tech stack, and CI docs; expand root `README.md` into a TwoBits project overview covering design philosophy, privacy commitments, shared infrastructure, and monorepo layout; update `apps/shelf-snap/README.md` CI section to reference current workflow names
 
+
 ## 1.5.0 (2026-06-04)
 
 ### Improvements
 
 * consolidate CI/CD workflows — shared `reusable-validate.yml` for changelog and manifest validation; rename `android-ci.yml` → `scrybe-ci.yml` and `release.yml` → `scrybe-release.yml`; standardise signing secret names to `SIGNING_*` across both apps; add `workflow_dispatch` trigger to release workflows
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
+
 
 ## 1.4.0 (2026-06-03)
 
@@ -141,11 +160,13 @@
 * harden worker model validation — reject chat completions requests for any model not in the pricing table with HTTP 422 instead of silently falling back to gpt-5-mini pricing; prevents unexpected charges for newly added or expensive models
 * serialize worker spend tracking with Durable Objects — replace KV read-modify-write spend accounting with a SpendTracker Durable Object that atomically reserves budget before forwarding to OpenAI and settles to actual cost afterward; eliminates the race condition where concurrent requests could each read the same KV total and bypass the monthly spend cap
 
+
 ## 1.3.0 (2026-06-03)
 
 ### Improvements
 
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
+
 
 ## 1.2.0 (2026-06-03)
 
