@@ -126,7 +126,10 @@ object ReleaseNotesParser {
             when {
                 line.startsWith("**") -> {
                     flush()
-                    val stripped = line.replace(BOLD_REGEX, "$1").trimEnd(':').trim()
+                    val stripped = line.replace(BOLD_REGEX, "$1")
+                        .replace(INLINE_CODE_REGEX, "$1")
+                        .trimEnd(':')
+                        .trim()
                     val sep = stripped.indexOf(" — ")  // em-dash separator
                     if (sep >= 0) {
                         currentTitle = stripped.substring(0, sep).trim()
@@ -169,12 +172,15 @@ object ReleaseNotesParser {
             .removePrefix("- ")
             .replace(LINK_REGEX, "$1")
             .replace(COMMIT_LINK_REGEX, "")
+            .replace(INLINE_CODE_REGEX, "$1")
+            .replace("**", "")
             .replace(MULTI_SPACE_REGEX, " ")
             .trim()
 
     private const val MAX_SUMMARY_ITEMS = 6
     private const val UNRELEASED_TITLE = "Unreleased"
     private val LINK_REGEX = Regex("\\[(.+?)]\\(.+?\\)")
+    private val INLINE_CODE_REGEX = Regex("`([^`]*)`")
     private val COMMIT_LINK_REGEX = Regex("\\s*\\([^)]+\\)$")
     private val MULTI_SPACE_REGEX = Regex("\\s+")
     private val DATE_REGEX = Regex("\\(\\d{4}-\\d{2}-\\d{2}\\)|\\d{4}-\\d{2}-\\d{2}")

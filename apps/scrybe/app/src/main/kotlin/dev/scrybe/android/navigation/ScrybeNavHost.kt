@@ -13,7 +13,6 @@ import androidx.navigation.compose.composable
 import dev.scrybe.android.ui.ScrybeWhatsNewScreen
 import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
-import dev.scrybe.feature.history.HistoryScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.AIConfigScreen
@@ -24,8 +23,6 @@ sealed class Screen(
     val route: String,
 ) {
     object Capture : Screen("capture")
-
-    object History : Screen("history")
 
     object SessionDetail : Screen("session_detail/{sessionId}") {
         fun createRoute(sessionId: String) = "session_detail/$sessionId"
@@ -97,21 +94,6 @@ fun ScrybeNavHost(navController: NavHostController) {
                 },
             )
         }
-        composable(
-            Screen.History.route,
-            enterTransition = { fadeEnter },
-            exitTransition = { fadeExit },
-            popEnterTransition = { fadeEnter },
-            popExitTransition = { fadeExit },
-        ) {
-            HistoryScreen(
-                onSessionClick = { sessionId ->
-                    navController.navigate(Screen.SessionDetail.createRoute(sessionId))
-                },
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToTasks = { navController.navigate(Screen.Tasks.route) },
-            )
-        }
         composable(Screen.SessionDetail.route) { backStackEntry ->
             val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
             SessionDetailScreen(sessionId = sessionId, onNavigateBack = { navController.popBackStack() })
@@ -123,16 +105,7 @@ fun ScrybeNavHost(navController: NavHostController) {
             popEnterTransition = { fadeEnter },
             popExitTransition = { fadeExit },
         ) {
-            val prevRoute = navController.previousBackStackEntry?.destination?.route
-            val tabRoutes = setOf(Screen.Capture.route, Screen.History.route, Screen.Profiles.route, Screen.Settings.route)
-            ProfilesScreen(
-                onNavigateBack =
-                    if (prevRoute != null && prevRoute !in tabRoutes) {
-                        { navController.popBackStack() }
-                    } else {
-                        null
-                    },
-            )
+            ProfilesScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.FileManager.route) {
             FileManagerScreen(onNavigateBack = { navController.popBackStack() })

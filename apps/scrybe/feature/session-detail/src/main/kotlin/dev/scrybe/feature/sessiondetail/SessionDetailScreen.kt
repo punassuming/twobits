@@ -102,6 +102,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -122,6 +123,7 @@ import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
+import dev.scrybe.core.transcription.DiarizationDebugInfo
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -1707,6 +1709,12 @@ private fun TranscriptSection(
                 )
             }
         }
+        if (state.debugDiarizationEnabled) {
+            DiarizationDebugCard(
+                debugInfo = state.diarizationDebug,
+                speakerSegments = state.speakerSegments,
+            )
+        }
     }
 }
 
@@ -1824,7 +1832,8 @@ private fun TranscriptCard(
                 TranscriptCardActions(
                     expanded = expanded,
                     onCopy = {
-                        clipboardManager.setText(AnnotatedString(transcript.content))
+                        // Copy what the user sees: paragraph breaks and speaker labels included.
+                        clipboardManager.setText(AnnotatedString(formattedText.text))
                         Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
                     },
                     onToggleExpand = { expanded = !expanded },
@@ -2395,6 +2404,80 @@ private fun formatDuration(durationMs: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%d:%02d".format(minutes, seconds)
+}
+
+@Composable
+private fun DiarizationDebugCard(
+    debugInfo: DiarizationDebugInfo?,
+    speakerSegments: List<SpeakerSegment>,
+) {
+    var showRawResponse by remember { mutableStateOf(false) }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Diarization debug",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+            if (debugInfo == null && speakerSegments.isEmpty()) {
+                Text(
+                    text = "No diarization run recorded yet. Run speaker identification to capture debug data.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                return@Column
+            }
+            debugInfo?.let { info ->
+                Text(
+                    text =
+                        "model ${info.model} · ${info.verboseSegmentCount} raw segments → " +
+                            "${info.mergedSegmentCount} merged · word timestamps: " +
+                            if (info.wordTimestampsPresent) "yes" else "no",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            var prevEndMs: Long? = null
+            speakerSegments.sortedBy { it.startMs }.forEach { segment ->
+                val gap = prevEndMs?.let { segment.startMs - it }
+                val gapLabel = gap?.let { ", gap %.1fs".format(it / 1000.0) } ?: ""
+                Text(
+                    text =
+                        "${segment.speakerId}  ${formatDebugTime(segment.startMs)}–${formatDebugTime(segment.endMs)}" +
+                            "  (%.1fs$gapLabel)".format((segment.endMs - segment.startMs) / 1000.0),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                )
+                prevEndMs = segment.endMs
+            }
+            debugInfo?.rawLlmResponse?.let { raw ->
+                TextButton(onClick = { showRawResponse = !showRawResponse }) {
+                    Text(if (showRawResponse) "Hide model response" else "Show model response")
+                }
+                if (showRawResponse) {
+                    Text(
+                        text = raw,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatDebugTime(ms: Long): String {
+    val totalSeconds = ms / 1000.0
+    val minutes = (totalSeconds / 60).toInt()
+    val seconds = totalSeconds % 60
+    return "%02d:%04.1f".format(minutes, seconds)
 }
 
 private fun formatFileSize(bytes: Long): String {

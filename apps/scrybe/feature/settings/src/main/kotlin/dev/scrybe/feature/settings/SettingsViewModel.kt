@@ -82,6 +82,7 @@ data class SettingsUiState(
     val taskForgeAction: String = "android.intent.action.SEND",
     val enableSpeakerIdentification: Boolean = false,
     val enableInsightAnalysis: Boolean = false,
+    val debugDiarization: Boolean = false,
     val locationRecordingEnabled: Boolean = true,
     val obsidianVaultUri: String = "",
 )
@@ -195,8 +196,9 @@ class SettingsViewModel
             combine(
                 preferencesDataStore.enableSpeakerIdentification,
                 preferencesDataStore.enableInsightAnalysis,
-            ) { speakerIdEnabled, insightEnabled ->
-                speakerIdEnabled to insightEnabled
+                preferencesDataStore.debugDiarization,
+            ) { speakerIdEnabled, insightEnabled, debugDiarization ->
+                Triple(speakerIdEnabled, insightEnabled, debugDiarization)
             }
         private val profileSettings =
             combine(
@@ -208,17 +210,18 @@ class SettingsViewModel
                     transformProfileDao.getAllProfiles(),
                     aiFeatureToggles,
                     preferencesDataStore.cloudTranscriptionModel,
-                ) { profiles, (speakerIdEnabled, insightEnabled), transcriptionModel ->
-                    Triple(profiles, speakerIdEnabled to insightEnabled, transcriptionModel)
+                ) { profiles, toggles, transcriptionModel ->
+                    Triple(profiles, toggles, transcriptionModel)
                 },
-            ) { providers, autoTranscribe, profileId, profileSuggestionModel, (profiles, enableToggles, transcriptionModel) ->
-                val (speakerIdEnabled, insightEnabled) = enableToggles
+            ) { providers, autoTranscribe, profileId, profileSuggestionModel, (profiles, toggles, transcriptionModel) ->
+                val (speakerIdEnabled, insightEnabled, debugDiarization) = toggles
                 ProfileSettings(
                     transcriptionProvider = providers.transcriptionProvider,
                     aiFeaturesProvider = providers.aiFeaturesProvider,
                     autoTranscribe = autoTranscribe,
                     enableSpeakerIdentification = speakerIdEnabled,
                     enableInsightAnalysis = insightEnabled,
+                    debugDiarization = debugDiarization,
                     defaultTransformProfileId = profileId,
                     defaultTransformProfileName = profiles.firstOrNull { it.id == profileId }?.name,
                     profileSuggestionModel = profileSuggestionModel,
@@ -343,6 +346,7 @@ class SettingsViewModel
                     autoTranscribe = profileSettings.autoTranscribe,
                     enableSpeakerIdentification = profileSettings.enableSpeakerIdentification,
                     enableInsightAnalysis = profileSettings.enableInsightAnalysis,
+                    debugDiarization = profileSettings.debugDiarization,
                     defaultTransformProfileId = profileSettings.defaultTransformProfileId,
                     defaultTransformProfileName = profileSettings.defaultTransformProfileName,
                     transcriptionModel = profileSettings.transcriptionModel,
@@ -441,6 +445,7 @@ class SettingsViewModel
                     taskForgeAction = settingsData.taskForgeAction,
                     enableSpeakerIdentification = settingsData.enableSpeakerIdentification,
                     enableInsightAnalysis = settingsData.enableInsightAnalysis,
+                    debugDiarization = settingsData.debugDiarization,
                     locationRecordingEnabled = settingsData.locationRecordingEnabled,
                     obsidianVaultUri = settingsData.obsidianVaultUri,
                 )
@@ -471,6 +476,10 @@ class SettingsViewModel
 
         fun setEnableInsightAnalysis(enabled: Boolean) {
             viewModelScope.launch { preferencesDataStore.setEnableInsightAnalysis(enabled) }
+        }
+
+        fun setDebugDiarization(enabled: Boolean) {
+            viewModelScope.launch { preferencesDataStore.setDebugDiarization(enabled) }
         }
 
         fun setTranscriptionProvider(provider: String) {
@@ -692,7 +701,8 @@ class SettingsViewModel
                     isPurchasing.value = false
                     return@launch
                 }
-                billingManager.purchase(activity, pkg)
+                billingManager
+                    .purchase(activity, pkg)
                     .onFailure { e ->
                         if (e !is PurchaseCancelledException) {
                             purchaseError.value = e.message ?: "Purchase failed."
@@ -706,7 +716,8 @@ class SettingsViewModel
             viewModelScope.launch {
                 isPurchasing.value = true
                 purchaseError.value = null
-                billingManager.restorePurchases()
+                billingManager
+                    .restorePurchases()
                     .onFailure { purchaseError.value = it.message ?: "Restore failed." }
                 isPurchasing.value = false
             }
@@ -779,6 +790,7 @@ class SettingsViewModel
             val autoTranscribe: Boolean = false,
             val enableSpeakerIdentification: Boolean = false,
             val enableInsightAnalysis: Boolean = false,
+            val debugDiarization: Boolean = false,
             val defaultTransformProfileId: String? = null,
             val defaultTransformProfileName: String? = null,
             val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -817,6 +829,7 @@ class SettingsViewModel
             val autoTranscribe: Boolean = false,
             val enableSpeakerIdentification: Boolean = false,
             val enableInsightAnalysis: Boolean = false,
+            val debugDiarization: Boolean = false,
             val defaultTransformProfileId: String? = null,
             val defaultTransformProfileName: String? = null,
             val profileSuggestionModel: String = OpenAiProfileSuggestionModel.default.apiName,

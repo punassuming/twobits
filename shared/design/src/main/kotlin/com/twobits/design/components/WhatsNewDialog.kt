@@ -12,12 +12,22 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
+/**
+ * One entry in the update dialog: a short bold title with an optional plain
+ * description beneath it. Built from the parsed changelog's structured items.
+ */
+data class WhatsNewDialogEntry(
+    val title: String,
+    val description: String = "",
+)
 
 @Composable
 fun AppWhatsNewDialog(
     title: String,
-    notes: List<String>,
+    entries: List<WhatsNewDialogEntry>,
     confirmLabel: String = "Close",
     onDismiss: () -> Unit,
     onViewHistory: (() -> Unit)? = null,
@@ -32,14 +42,8 @@ fun AppWhatsNewDialog(
                     .heightIn(max = 400.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                notes.forEach { note ->
-                    Text(
-                        text = "• $note",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                entries.forEach { entry ->
+                    WhatsNewDialogEntryRow(entry)
                 }
             }
         },
@@ -59,4 +63,27 @@ fun AppWhatsNewDialog(
             }
         } else null,
     )
+}
+
+@Composable
+private fun WhatsNewDialogEntryRow(entry: WhatsNewDialogEntry) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+    ) {
+        Text(
+            text = entry.title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        if (entry.description.isNotBlank()) {
+            Text(
+                text = entry.description,
+                modifier = Modifier.padding(top = 2.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }

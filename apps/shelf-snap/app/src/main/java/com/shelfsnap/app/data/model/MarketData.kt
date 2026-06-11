@@ -12,7 +12,7 @@ data class MarketComp(
     val sold: Boolean,
     /** Human-readable recency, e.g. "3 days ago" or "Active". */
     val date: String,
-    val sourceUrl: String = ""
+    val sourceUrl: String = "",
 )
 
 /**
@@ -32,13 +32,19 @@ data class MarketResearch(
     /** Source URLs / descriptions cited for the estimate. */
     val citations: List<Citation> = emptyList(),
     /** When the research was last refreshed (epoch millis), or 0 if never. */
-    val retrievedAt: Long = 0L
+    val retrievedAt: Long = 0L,
+    /** SearchProvider key of the web-search backend used, or "" when search was disabled. */
+    val searchProviderKey: String = "",
+    /** Number of web results that fed the estimate; 0 with no error = search found nothing. */
+    val searchResultCount: Int = 0,
+    /** Non-null when the web search itself failed (auth, network, HTTP error). */
+    val searchError: String? = null,
 )
 
 /** A cited source backing a price estimate. */
 data class Citation(
     val label: String,
-    val url: String = ""
+    val url: String = "",
 )
 
 /**
@@ -48,12 +54,12 @@ data class Citation(
 data class PlatformListing(
     val platformKey: String,
     val status: ListingStatus,
-    val price: Double
+    val price: Double,
 )
 
 enum class ListingStatus {
     ACTIVE,
     SOLD,
     DRAFT,
-    EXPIRED
+    EXPIRED,
 }

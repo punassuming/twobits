@@ -7,64 +7,88 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * [WebSearchService] backed by Jina AI Search (s.jina.ai).
- * Keyless — no API key required for basic queries.
+ * JSON responses require a bearer token — free keys are available at jina.ai.
  */
 @Singleton
-class JinaAiSearchService @Inject constructor() : WebSearchService {
+class JinaAiSearchService
+    @Inject
+    constructor() : WebSearchService {
+        override val provider = SearchProvider.JINA
 
-    override val provider = SearchProvider.JINA
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .build()
-
-    override suspend fun search(query: String, apiKey: String, limit: Int): List<WebSearchResult> =
-        withContext(Dispatchers.IO) {
-            val url = "https://s.jina.ai/".toHttpUrl().newBuilder()
-                .addQueryParameter("q", query)
+        private val client =
+            OkHttpClient
+                .Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(20, TimeUnit.SECONDS)
                 .build()
 
-            val request = Request.Builder()
-                .url(url)
-                .addHeader("Accept", "application/json")
-                .get()
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "Jina AI search failed: HTTP ${response.code}")
-                    return@use emptyList()
+        override suspend fun search(
+            query: String,
+            apiKey: String,
+            limit: Int,
+        ): List<WebSearchResult> =
+            withContext(Dispatchers.IO) {
+                if (apiKey.isBlank()) {
+                    throw IOException("Jina AI requires an API key for search results — add one in Settings")
                 }
-                parse(body, limit)
+                val url =
+                    "https://s.jina.ai/"
+                        .toHttpUrl()
+                        .newBuilder()
+                        .addQueryParameter("q", query)
+                        .build()
+
+                val request =
+                    Request
+                        .Builder()
+                        .url(url)
+                        .addHeader("Accept", "application/json")
+                        .addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                        .get()
+                        .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.w(TAG, "Jina AI search failed: HTTP ${response.code}")
+                        throw IOException("Jina AI search failed: HTTP ${response.code}")
+                    }
+                    parse(response.body?.string().orEmpty(), limit)
+                }
             }
-        }
 
-    private fun parse(json: String, limit: Int): List<WebSearchResult> = runCatching {
-        val data = JsonParser.parseString(json).asJsonObject
-            .getAsJsonArray("data") ?: return emptyList()
-        data.take(limit).mapNotNull { el ->
-            val obj = el.asJsonObject
-            val title = obj.get("title")?.asString ?: return@mapNotNull null
-            val resultUrl = obj.get("url")?.asString ?: return@mapNotNull null
-            val snippet = obj.get("description")?.asString
-                ?: obj.get("content")?.asString?.take(200)
-                ?: ""
-            WebSearchResult(title = title, url = resultUrl, snippet = snippet)
-        }
-    }.getOrElse {
-        Log.w(TAG, "Failed to parse Jina AI response: ${it.javaClass.simpleName}")
-        emptyList()
-    }
+        private fun parse(
+            json: String,
+            limit: Int,
+        ): List<WebSearchResult> =
+            runCatching {
+                val data =
+                    JsonParser
+                        .parseString(json)
+                        .asJsonObject
+                        .getAsJsonArray("data") ?: return emptyList()
+                data.take(limit).mapNotNull { el ->
+                    val obj = el.asJsonObject
+                    val title = obj.get("title")?.asString ?: return@mapNotNull null
+                    val resultUrl = obj.get("url")?.asString ?: return@mapNotNull null
+                    val snippet =
+                        obj.get("description")?.asString
+                            ?: obj.get("content")?.asString?.take(200)
+                            ?: ""
+                    WebSearchResult(title = title, url = resultUrl, snippet = snippet)
+                }
+            }.getOrElse {
+                Log.w(TAG, "Failed to parse Jina AI response: ${it.javaClass.simpleName}")
+                emptyList()
+            }
 
-    companion object {
-        private const val TAG = "JinaAiSearch"
+        companion object {
+            private const val TAG = "JinaAiSearch"
+        }
     }
-}

@@ -41,11 +41,14 @@ import dev.scrybe.core.model.TopicMarker
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
+import dev.scrybe.core.transcription.DiarizationDebugInfo
+import dev.scrybe.core.transcription.DiarizationDebugStore
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transforms.OpenAiTagSuggestionService
 import dev.scrybe.core.transforms.OpenAiTaskExtractionService
 import dev.scrybe.core.transforms.RecordingModeSuggestionService
 import dev.scrybe.core.transforms.SessionTransformCoordinator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,6 +64,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.Duration
@@ -82,6 +86,7 @@ class SessionDetailViewModel
         private val personDao: PersonDao,
         private val sessionTaskDao: SessionTaskDao,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val diarizationDebugStore: DiarizationDebugStore,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val autoRenameService: AutoRenameServiceFacade,
@@ -107,6 +112,14 @@ class SessionDetailViewModel
         private val _events = MutableSharedFlow<SessionDetailEvent>()
         val events = _events.asSharedFlow()
 
+        /** Latest diarization debug state: pref toggle + the stored run record, if any. */
+        private data class DiarizationDebugState(
+            val enabled: Boolean = false,
+            val info: DiarizationDebugInfo? = null,
+        )
+
+        private val diarizationDebugState = MutableStateFlow(DiarizationDebugState())
+
         val folders: StateFlow<List<FolderEntity>> =
             folderDao.getAllFolders().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -125,6 +138,25 @@ class SessionDetailViewModel
         )
 
         init {
+            viewModelScope.launch {
+                // Re-read the debug record whenever the toggle flips or a diarization run
+                // lands new segments for this session.
+                combine(
+                    preferencesDataStore.debugDiarization,
+                    speakerSegmentDao.getSegmentsForSession(sessionId),
+                ) { enabled, _ -> enabled }
+                    .collect { enabled ->
+                        diarizationDebugState.value =
+                            if (enabled) {
+                                DiarizationDebugState(
+                                    enabled = true,
+                                    info = withContext(Dispatchers.IO) { diarizationDebugStore.read(sessionId) },
+                                )
+                            } else {
+                                DiarizationDebugState()
+                            }
+                    }
+            }
             viewModelScope.launch {
                 val session = sessionDao.getSessionByIdOnce(sessionId)
                 if (session?.status == SessionStatus.TRANSCRIBING.name) {
@@ -208,8 +240,10 @@ class SessionDetailViewModel
                             )
                         }
                     },
-                    isExtractingTasks,
-                ) { sessionBundle, detailContext, tasks, extractingTasks ->
+                    combine(isExtractingTasks, diarizationDebugState) { extracting, debugState ->
+                        extracting to debugState
+                    },
+                ) { sessionBundle, detailContext, tasks, (extractingTasks, debugState) ->
                     val (sessionEntity, transcriptEntities, profileEntities) = sessionBundle
                     val (defaultProfileId, isTransforming, isFetchingSpeakerInfo, playbackBundle, sideData) = detailContext
                     val (playbackState, showRenameAfterRecording, renamePromptDismissed) = playbackBundle
@@ -333,6 +367,8 @@ class SessionDetailViewModel
                             topicMarkers = topicMarkers,
                             tasks = tasks,
                             isExtractingTasks = extractingTasks,
+                            debugDiarizationEnabled = debugState.enabled,
+                            diarizationDebug = debugState.info,
                         )
                     }
                 }.catch { emit(SessionDetailUiState.Error(it.message ?: "Unknown error")) }
@@ -898,6 +934,7 @@ class SessionDetailViewModel
                     transcriptDao.deleteTranscriptsForSession(sessionId)
                     transformRunDao.deleteRunsForSession(sessionId)
                     sessionDao.deleteSession(sessionId)
+                    diarizationDebugStore.delete(sessionId)
                 }.onSuccess {
                     _events.emit(SessionDetailEvent.NavigateBack)
                 }.onFailure {

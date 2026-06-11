@@ -288,6 +288,13 @@ fun AIConfigScreen(
                         checked = uiState.enableInsightAnalysis,
                         onCheckedChange = viewModel::setEnableInsightAnalysis,
                     )
+                    HorizontalDivider()
+                    AiToggleRow(
+                        title = "Diarization debug",
+                        subtitle = "Show raw speaker segments and model output on session screens",
+                        checked = uiState.debugDiarization,
+                        onCheckedChange = viewModel::setDebugDiarization,
+                    )
                 }
             }
         }
