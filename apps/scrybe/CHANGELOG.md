@@ -28,6 +28,8 @@
 
 ### Fixes
 
+* fixed compiler error in speaker management sheet caused by nested lambda destructuring
+
 ## 1.11.0 (2026-06-11)
 
 ### Features

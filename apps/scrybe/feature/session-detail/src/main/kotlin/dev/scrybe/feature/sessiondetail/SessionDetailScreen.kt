@@ -2254,7 +2254,9 @@ private fun SpeakerSlotsCard(
             }
             return@AppSectionCard
         }
-        speakerEntries.forEachIndexed { idx, ((speakerId, label, personName), talkLabel) ->
+        speakerEntries.forEachIndexed { idx, entry ->
+            val (triple, talkLabel) = entry
+            val (speakerId, label, personName) = triple
             SpeakerSlotRow(
                 dotColor = speakerColorForIndex(idx),
                 label = label,
