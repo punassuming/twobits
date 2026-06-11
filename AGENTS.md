@@ -255,6 +255,9 @@ The `has-new-unreleased-since-tag` check in both release workflows enforces this
 
 ## Mandatory changelog updates
 
+> **Changelogs are written manually — nothing generates them from git commits.**
+> `manage-changelog.py` only validates structure. The release workflow only *promotes* `## Unreleased` → a versioned section. All content must be written by the agent or developer making the change.
+
 Update the relevant `CHANGELOG.md` `## Unreleased` section before any commit destined for `main`. Add entries under `### Features`, `### Improvements`, or `### Fixes`.
 
 Validate commands:

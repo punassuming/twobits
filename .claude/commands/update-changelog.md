@@ -1,5 +1,7 @@
 Update the `## Unreleased` section of the relevant app's `CHANGELOG.md` before this commit lands on `main`.
 
+> **Write the entries yourself.** Nothing auto-generates them from git commits. `manage-changelog.py` only validates structure; the release workflow only promotes `## Unreleased` → a versioned section.
+
 ## Which file to edit
 
 - Scrybe changes → `apps/scrybe/CHANGELOG.md`
