@@ -31,6 +31,8 @@
 
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
+* missing FilterChip import in MarketTab restored after wildcard-import replacement
+
 ## 1.4.0 (2026-06-08)
 
 ### Improvements
