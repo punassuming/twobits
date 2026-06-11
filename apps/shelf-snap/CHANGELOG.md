@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.6.0 (2026-06-11)
+
+### Features
+
+### Improvements
+
 **Jina AI Search** — key setup and validation:
 * settings show step-by-step instructions for creating a free Jina API key when no key is configured
 * Test button validates the key against the live Jina AI Search service immediately
@@ -13,6 +21,7 @@
 * test result (connected or error message) shown inline below the buttons
 
 ### Fixes
+
 
 ## 1.5.0 (2026-06-11)
 
@@ -46,6 +55,7 @@
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
 * missing FilterChip import in MarketTab restored after wildcard-import replacement
+
 
 
 ## 1.4.0 (2026-06-08)
@@ -83,6 +93,7 @@
 * HTTP 404 from OpenAI pricing service now shows "Selected model isn't available" instead of a generic unavailable message
 
 
+
 ## 1.3.1 (2026-06-06)
 
 ### Improvements
@@ -90,11 +101,13 @@
 * release workflow no longer fires on PR CI completions — `branches: [main]` filter added to `workflow_run` trigger so it only activates when CI runs against `main`
 
 
+
 ## 1.3.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 ## 1.2.0 (2026-06-05)
@@ -127,6 +140,7 @@
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
 
+
 ## 1.1.3 (2026-06-05)
 
 ### Improvements
@@ -134,11 +148,13 @@
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step and `rebuild_for_tag` dispatch input added to Shelf Snap release workflow
 
 
+
 ## 1.1.2 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
+
 
 
 ## 1.1.1 (2026-06-04)
@@ -149,12 +165,14 @@
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
 
 
+
 ## 1.1.0 (2026-06-04)
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
+
 
 
 ## 1.0.2 (2026-06-03)
@@ -164,6 +182,7 @@
 * add vision model selector for BYOK users — choose from GPT-4o, GPT-4o mini, GPT-5.4, GPT-5.4 mini, or GPT-4.1 mini for item photo analysis; selection persists across sessions; Pro users use the managed API default
 
 
+
 ## 1.0.1 (2026-06-03)
 
 ### Features
@@ -171,9 +190,11 @@
 * add Shelf-Snap product page to twobits GitHub Pages site — shelf-snap.html with phone mockup, "Snap. Analyze. List or donate." how-it-works steps, tabbed item detail (Details/Market/List), feature grid, cross-listing platform chips, market research price example, and Google Play store listing mockup
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 ## 1.0.0 (2026-06-01)
