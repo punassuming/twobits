@@ -198,7 +198,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("AI configuration", style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "Transcription · transforms · API key",
+                                "Transcription · transforms · local models · API key",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -904,7 +904,7 @@ private fun ProfilesProminentCard(onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 Text(
-                    "Pipeline recipes for recording + transforms",
+                    "Pipeline recipes for recording + AI transforms + destinations",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                 )

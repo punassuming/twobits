@@ -1,6 +1,7 @@
 package dev.scrybe.feature.sessiondetail
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -26,10 +27,13 @@ import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -97,6 +101,16 @@ internal fun PlaybackCard(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+        PlaybackSeekBar(
+            progress =
+                if (state.playbackDurationMs > 0L) {
+                    state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
+                } else {
+                    0f
+                },
+            onSeek = { fraction -> onSeek((fraction * state.playbackDurationMs).toLong()) },
+            modifier = Modifier.fillMaxWidth(),
+        )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
                 text = formatPlaybackTime(state.playbackPositionMs),
@@ -321,6 +335,45 @@ private fun WaveformTimeline(
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PlaybackSeekBar(
+    progress: Float,
+    onSeek: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Slider(
+        value = progress,
+        onValueChange = onSeek,
+        modifier = modifier,
+        colors =
+            SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.outline,
+            ),
+        thumb = {
+            Box(
+                modifier =
+                    Modifier
+                        .size(20.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            CircleShape,
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(13.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape),
+                )
+            }
+        },
+    )
 }
 
 @Composable

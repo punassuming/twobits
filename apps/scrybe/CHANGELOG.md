@@ -10,9 +10,17 @@
 * Profiles card moved directly below the Pro subscription card
 * new Intelligence section groups AI configuration nav row and location tagging toggle
 * location tagging toggle removed from Recording Behavior (now in Intelligence)
+* AI Config subtitle updated to include "local models" in the feature list
+* Profiles card description updated to mention "AI transforms + destinations"
 
-**Capture** — search + folder mode:
+**Capture** — design alignment:
+* task nudge banner now uses primary container colors with a trailing arrow icon
 * folder groupings no longer render while a search query is active; flat list shown instead
+
+**Session detail** — design alignment:
+* tabs replaced with underline-style indicator: 2 dp primary bottom border on active tab, no filled background
+* seek bar added below the waveform for precise scrubbing: primary-colored track, glow-ring thumb
+* transcript tab shows speaker color pills (colored 8 dp squares + labels) above the transcript when multiple speakers are detected
 
 ### Fixes
 
