@@ -74,8 +74,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -340,23 +338,11 @@ fun SessionDetailScreen(
                             onSpeakerClick = { speakerId -> speakerAssignTarget = speakerId },
                             onManageSpeakers = { showSpeakerManageSheet = true },
                         )
-                        TabRow(selectedTabIndex = activeTab) {
-                            Tab(
-                                selected = activeTab == 0,
-                                onClick = { activeTab = 0 },
-                                text = { Text("AI Notes") },
-                            )
-                            Tab(
-                                selected = activeTab == 1,
-                                onClick = { activeTab = 1 },
-                                text = { Text("Actions") },
-                            )
-                            Tab(
-                                selected = activeTab == 2,
-                                onClick = { activeTab = 2 },
-                                text = { Text("Transcript") },
-                            )
-                        }
+                        ScrybeTabRow(
+                            tabs = listOf("AI Notes", "Actions", "Transcript"),
+                            selected = activeTab,
+                            onSelect = { activeTab = it },
+                        )
                         when (activeTab) {
                             0 ->
                                 OutputTabContent(
@@ -1614,6 +1600,7 @@ private fun TransformProfileRow(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TranscriptSection(
     state: SessionDetailUiState.Success,
@@ -1672,6 +1659,38 @@ private fun TranscriptSection(
             .sortedByDescending { it.createdAt }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val speakerIds =
+            state.speakerSegments
+                .map { it.speakerId }
+                .distinct()
+                .sorted()
+        if (speakerIds.size > 1) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                speakerIds.forEachIndexed { idx, speakerId ->
+                    val color = speakerColorForIndex(idx)
+                    val label = speakerId.removePrefix("SPEAKER_").let { "Speaker $it" }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(8.dp)
+                                    .background(color, MaterialTheme.shapes.extraSmall),
+                        )
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
         if (rawTranscripts.isNotEmpty()) {
             rawTranscripts.forEach { transcript ->
                 TranscriptCard(
@@ -2563,5 +2582,58 @@ private fun FolderPickerSheet(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ScrybeTabRow(
+    tabs: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+) {
+    Column {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            tabs.forEachIndexed { i, label ->
+                val isSelected = i == selected
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .clickable { onSelect(i) }
+                            .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color =
+                            if (isSelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            tabs.indices.forEach { i ->
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .height(2.dp)
+                            .background(
+                                if (i == selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    Color.Transparent
+                                },
+                            ),
+                )
+            }
+        }
+        HorizontalDivider()
     }
 }

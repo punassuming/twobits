@@ -6,10 +6,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,6 +21,7 @@ import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +31,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -311,6 +312,11 @@ private fun WebSearchSection(
     if (uiState.searchProvider != SearchProvider.NONE) {
         var showSearchKey by remember { mutableStateOf(false) }
         val isJina = uiState.searchProvider == SearchProvider.JINA
+
+        if (isJina && uiState.savedSearchApiKey.isBlank()) {
+            JinaKeyWalkthrough()
+        }
+
         OutlinedTextField(
             value = uiState.editSearchApiKey,
             onValueChange = viewModel::onSearchApiKeyChange,
@@ -330,13 +336,74 @@ private fun WebSearchSection(
                 }
             },
         )
-        Button(
-            onClick = viewModel::saveSearchSettings,
+
+        Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(Icons.Default.Search, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.save))
+            OutlinedButton(
+                onClick = viewModel::clearSearchKey,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(stringResource(R.string.clear))
+            }
+            Button(
+                onClick = viewModel::saveSearchSettings,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(stringResource(R.string.save))
+            }
+            if (isJina) {
+                Button(
+                    onClick = viewModel::testSearchKey,
+                    modifier = Modifier.weight(1f),
+                    enabled = uiState.editSearchApiKey.isNotBlank() && !uiState.isSearchTesting,
+                ) {
+                    if (uiState.isSearchTesting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text(stringResource(R.string.test))
+                    }
+                }
+            }
+        }
+
+        uiState.searchTestMessage?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color =
+                    if (uiState.searchTestResult == true) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+            )
+        }
+    }
+}
+
+@Composable
+private fun JinaKeyWalkthrough() {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = stringResource(R.string.jina_setup_title),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        listOf(
+            stringResource(R.string.jina_setup_step_1),
+            stringResource(R.string.jina_setup_step_2),
+            stringResource(R.string.jina_setup_step_3),
+        ).forEachIndexed { i, step ->
+            Text(
+                text = "${i + 1}. $step",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

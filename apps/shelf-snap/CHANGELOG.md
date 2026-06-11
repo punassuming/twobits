@@ -6,6 +6,12 @@
 
 ### Improvements
 
+**Jina AI Search** — key setup and validation:
+* settings show step-by-step instructions for creating a free Jina API key when no key is configured
+* Test button validates the key against the live Jina AI Search service immediately
+* Save / Clear / Test buttons replace the single Save button in the web search section
+* test result (connected or error message) shown inline below the buttons
+
 ### Fixes
 
 ## 1.5.0 (2026-06-11)

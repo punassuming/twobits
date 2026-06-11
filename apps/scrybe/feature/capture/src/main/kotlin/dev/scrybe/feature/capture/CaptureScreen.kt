@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CheckCircle
@@ -108,6 +109,7 @@ import dev.scrybe.core.common.modeIcon
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
+import kotlinx.coroutines.flow.filterNotNull
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -314,7 +316,7 @@ fun CaptureScreen(
                     ) {
                         item(key = "intro") { IntroGuidanceSection() }
                     }
-                    if (folderModeEnabled) {
+                    if (folderModeEnabled && searchQuery.isBlank()) {
                         val grouped = filteredSessions.groupBy { it.folderId }
                         val folderIds =
                             grouped.keys
@@ -1291,7 +1293,7 @@ private fun TaskNudgeBanner(
         modifier = modifier,
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
             ),
     ) {
         Row(
@@ -1303,12 +1305,19 @@ private fun TaskNudgeBanner(
                 Icons.Filled.TaskAlt,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
             )
             Text(
                 text = "$openTaskTotal open task${if (openTaskTotal == 1) "" else "s"} across your sessions",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }
