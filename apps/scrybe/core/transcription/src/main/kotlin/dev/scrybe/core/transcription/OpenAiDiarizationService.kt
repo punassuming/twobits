@@ -1,9 +1,11 @@
 package dev.scrybe.core.transcription
 
 import android.util.Log
+import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.SpeakerSegment
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -29,6 +31,7 @@ class OpenAiDiarizationService
         private val json: Json,
         private val apiKeyProvider: ApiKeyProvider,
         private val debugStore: DiarizationDebugStore,
+        private val preferencesDataStore: AppPreferencesDataStore,
     ) : DiarizationService {
         override suspend fun diarize(
             sessionId: String,
@@ -38,6 +41,7 @@ class OpenAiDiarizationService
         ): Result<List<SpeakerSegment>> =
             runCatching {
                 withContext(Dispatchers.IO) {
+                    val debugEnabled = preferencesDataStore.debugDiarization.first()
                     val apiKey =
                         apiKeyProvider.getApiKey(ProviderType.OPENAI)
                             ?: throw IllegalStateException("No API key configured for OpenAI")
@@ -50,7 +54,7 @@ class OpenAiDiarizationService
                     )
                     if (verboseSegments.isEmpty()) return@withContext emptyList()
 
-                    val llmRun = assignSpeakers(verboseSegments, apiKey)
+                    val llmRun = assignSpeakers(verboseSegments, apiKey, debugEnabled)
 
                     val rawSegments =
                         verboseSegments.mapIndexed { index, segment ->
@@ -67,9 +71,9 @@ class OpenAiDiarizationService
                         }
                     val merged = mergeAdjacentSegments(rawSegments)
                     Log.d(TAG, "merged ${rawSegments.size} raw segments into ${merged.size}")
-                    debugStore.write(
-                        buildDebugInfo(sessionId, verboseSegments, llmRun, merged.size),
-                    )
+                    if (debugEnabled) {
+                        debugStore.write(buildDebugInfo(sessionId, verboseSegments, llmRun, merged.size))
+                    }
                     merged
                 }
             }
@@ -234,11 +238,12 @@ class OpenAiDiarizationService
         private fun assignSpeakers(
             segments: List<VerboseSegment>,
             apiKey: String,
+            debugEnabled: Boolean,
         ): DiarizationLlmRun {
             val prompt = buildDiarizationPrompt(buildSegmentsJson(segments))
-            Log.d(TAG, "LLM prompt (${prompt.length} chars): ${prompt.take(500)}")
+            if (debugEnabled) Log.d(TAG, "LLM prompt (${prompt.length} chars): ${prompt.take(500)}")
             val outputText = callDiarizationLlm(prompt, apiKey)
-            Log.d(TAG, "LLM response: ${outputText?.take(500) ?: "<null>"}")
+            if (debugEnabled) Log.d(TAG, "LLM response: ${outputText?.take(500) ?: "<null>"}")
             val assignments = parseAssignments(outputText, segments.size)
             Log.d(TAG, "assignments: ${assignments.groupingBy { it }.eachCount()}")
             return DiarizationLlmRun(prompt = prompt, rawOutput = outputText, assignments = assignments)

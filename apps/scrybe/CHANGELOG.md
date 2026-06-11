@@ -29,6 +29,8 @@
 
 * copying a transcript now copies what is shown on screen — paragraph breaks and speaker labels included
 
+* diarization debug logs and persisted debug records now only written when the Diarization debug toggle is on — transcript content no longer stored or logged unconditionally
+
 * model selection rows clamp long subtitles to two lines so the cost label stays aligned
 
 ## 1.9.0 (2026-06-08)
