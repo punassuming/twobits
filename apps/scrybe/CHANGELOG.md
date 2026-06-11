@@ -6,6 +6,14 @@
 
 ### Improvements
 
+**Settings** — design alignment:
+* Profiles card moved directly below the Pro subscription card
+* new Intelligence section groups AI configuration nav row and location tagging toggle
+* location tagging toggle removed from Recording Behavior (now in Intelligence)
+
+**Capture** — search + folder mode:
+* folder groupings no longer render while a search query is active; flat list shown instead
+
 ### Fixes
 
 ## 1.10.0 (2026-06-11)

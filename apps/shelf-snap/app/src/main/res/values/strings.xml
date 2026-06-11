@@ -193,6 +193,12 @@
     <string name="brave_api_key_label">Brave API key</string>
     <string name="brave_api_key_hint">Free at api-dashboard.search.brave.com (2,000 queries/month).</string>
     <string name="jina_api_key_label">Jina API key</string>
-    <string name="jina_api_key_hint">Free key at jina.ai — required for search results.</string>
+    <string name="jina_api_key_hint">Free key at jina.ai · 1 million tokens free · required for search results.</string>
     <string name="search_settings_saved">Search settings saved.</string>
+    <string name="test">Test</string>
+    <string name="clear">Clear</string>
+    <string name="jina_setup_title">How to get your free Jina AI key</string>
+    <string name="jina_setup_step_1">Go to jina.ai and create a free account</string>
+    <string name="jina_setup_step_2">Open your dashboard and click API Keys</string>
+    <string name="jina_setup_step_3">Copy your key, paste it in the field below, then tap Save</string>
 </resources>

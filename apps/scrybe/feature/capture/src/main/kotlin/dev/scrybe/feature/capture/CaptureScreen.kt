@@ -108,6 +108,7 @@ import dev.scrybe.core.common.modeIcon
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
+import kotlinx.coroutines.flow.filterNotNull
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -314,7 +315,7 @@ fun CaptureScreen(
                     ) {
                         item(key = "intro") { IntroGuidanceSection() }
                     }
-                    if (folderModeEnabled) {
+                    if (folderModeEnabled && searchQuery.isBlank()) {
                         val grouped = filteredSessions.groupBy { it.folderId }
                         val folderIds =
                             grouped.keys
