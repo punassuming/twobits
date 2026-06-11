@@ -130,24 +130,62 @@ class PriceResearchService
             searchKey: String,
         ): SearchEvidence {
             val service = searchResolver.resolve(provider) ?: return SearchEvidence()
-            val query = buildSearchQuery(item)
-            return runCatching { service.search(query, searchKey) }
-                .fold(
-                    onSuccess = { SearchEvidence(results = it, providerKey = provider.key) },
-                    onFailure = {
-                        Log.w(TAG, "Web search failed: ${it.javaClass.simpleName}: ${it.message}")
-                        SearchEvidence(
-                            providerKey = provider.key,
-                            error = it.message ?: it.javaClass.simpleName,
-                        )
-                    },
-                )
+            val queries = buildSearchQueries(item)
+            val seen = mutableSetOf<String>()
+            val merged = mutableListOf<WebSearchResult>()
+            var lastError: String? = null
+
+            for (query in queries) {
+                if (merged.size >= MAX_SEARCH_RESULTS) break
+                runCatching { service.search(query, searchKey) }
+                    .fold(
+                        onSuccess = { results ->
+                            results.forEach { r ->
+                                if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
+                            }
+                        },
+                        onFailure = {
+                            Log.w(TAG, "Web search failed for query '$query': ${it.javaClass.simpleName}: ${it.message}")
+                            lastError = it.message ?: it.javaClass.simpleName
+                        },
+                    )
+                if (merged.size >= MIN_RESULTS_EARLY_STOP) break
+            }
+
+            return if (merged.isNotEmpty()) {
+                SearchEvidence(results = merged, providerKey = provider.key)
+            } else {
+                SearchEvidence(providerKey = provider.key, error = lastError)
+            }
         }
 
-        private fun buildSearchQuery(item: Item): String =
-            listOf(item.brand, item.model, item.category, "resale price sold")
-                .filter { it.isNotBlank() }
-                .joinToString(" ")
+        private fun buildSearchQueries(item: Item): List<String> {
+            val hasBrandModel = item.brand.isNotBlank() || item.model.isNotBlank()
+            val base = listOf(item.brand, item.model).filter { it.isNotBlank() }.joinToString(" ")
+            val conditionLabel = item.condition.searchLabel()
+            val queries = mutableListOf<String>()
+
+            if (hasBrandModel) {
+                // Platform-targeted queries using the top two highest-signal platforms.
+                queries.add("$base $conditionLabel ${item.category} site:ebay.com sold".trim())
+                queries.add("$base ${item.category} mercari sold listing".trim())
+            }
+            // Fallback general query (existing behaviour).
+            queries.add(
+                listOf(item.brand, item.model, item.category, "resale price sold")
+                    .filter { it.isNotBlank() }
+                    .joinToString(" "),
+            )
+            return queries
+        }
+
+        private fun com.shelfsnap.app.data.model.Condition.searchLabel(): String =
+            when (this) {
+                com.shelfsnap.app.data.model.Condition.EXCELLENT -> "like new"
+                com.shelfsnap.app.data.model.Condition.GOOD -> "good condition"
+                com.shelfsnap.app.data.model.Condition.FAIR -> "used"
+                com.shelfsnap.app.data.model.Condition.POOR -> "parts or repair"
+            }
 
         private fun buildRequest(
             item: Item,
@@ -177,6 +215,9 @@ class PriceResearchService
                 Valid platformKey values: $platformKeys.
                 Prefer sold listings over active ones. If evidence is thin, lower the
                 confidence and say so via fewer comps. Never invent exact URLs you were not given.
+                Prefer snippets that contain a price and the word 'sold'. If the search evidence
+                does not include actual marketplace listings, lower confidence to ≤ 40 and state
+                that in the comp titles.
                 """.trimIndent()
 
             val userPayload =
@@ -355,6 +396,8 @@ class PriceResearchService
             private const val MODEL = "gpt-5-mini"
 
             private const val MAX_CITATIONS = 8
+            private const val MAX_SEARCH_RESULTS = 12
+            private const val MIN_RESULTS_EARLY_STOP = 3
 
             internal const val ERROR_INVALID_KEY =
                 "Invalid or missing OpenAI API key. Check Settings."

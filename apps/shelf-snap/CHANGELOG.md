@@ -6,6 +6,12 @@
 
 ### Improvements
 
+**Market research search** — platform-targeted queries for better comp evidence:
+* price research now sends up to two platform-specific search queries (eBay sold listings, Mercari) before falling back to the generic query
+* condition is included in the query string ("like new", "good condition", "used", "parts or repair")
+* results from multiple queries are de-duplicated by URL and capped at 12
+* LLM synthesis prompt now instructs the model to prefer snippets with a price and "sold", and to lower confidence to ≤ 40 when no actual marketplace listings are present in the evidence
+
 ### Fixes
 
 ## 1.6.0 (2026-06-11)
