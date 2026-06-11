@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.12.0 (2026-06-11)
+
+### Features
+
+### Improvements
+
 **AI configuration** — unified model picker modal:
 * "Transform model" row now opens a modal showing model name, supporting text, and cost — replaces the inline radio list
 * "Profile draft model" modal upgraded to the same style showing name and description
@@ -30,6 +38,7 @@
 
 * fixed compiler error in speaker management sheet caused by nested lambda destructuring
 
+
 ## 1.11.0 (2026-06-11)
 
 ### Features
@@ -53,6 +62,7 @@
 * transcript tab shows speaker color pills (colored 8 dp squares + labels) above the transcript when multiple speakers are detected
 
 ### Fixes
+
 
 
 ## 1.10.0 (2026-06-11)
@@ -90,6 +100,7 @@
 
 
 
+
 ## 1.9.0 (2026-06-08)
 
 ### Improvements
@@ -111,11 +122,13 @@
 
 
 
+
 ## 1.8.3 (2026-06-06)
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
+
 
 
 
@@ -131,6 +144,7 @@
 
 
 
+
 ## 1.8.1 (2026-06-06)
 
 ### Improvements
@@ -143,11 +157,13 @@
 
 
 
+
 ## 1.8.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -171,6 +187,7 @@
 
 
 
+
 ## 1.6.2 (2026-06-05)
 
 ### Improvements
@@ -179,11 +196,13 @@
 
 
 
+
 ## 1.6.1 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
+
 
 
 
@@ -198,12 +217,14 @@
 
 
 
+
 ## 1.5.0 (2026-06-04)
 
 ### Improvements
 
 * consolidate CI/CD workflows — shared `reusable-validate.yml` for changelog and manifest validation; rename `android-ci.yml` → `scrybe-ci.yml` and `release.yml` → `scrybe-release.yml`; standardise signing secret names to `SIGNING_*` across both apps; add `workflow_dispatch` trigger to release workflows
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
+
 
 
 
@@ -220,11 +241,13 @@
 
 
 
+
 ## 1.3.0 (2026-06-03)
 
 ### Improvements
 
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
+
 
 
 
