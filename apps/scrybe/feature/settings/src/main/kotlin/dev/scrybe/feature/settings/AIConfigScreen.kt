@@ -2,13 +2,16 @@ package dev.scrybe.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,15 +23,18 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -93,6 +99,7 @@ fun AIConfigScreen(
     val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
     val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
     var showProfileModelPicker by remember { mutableStateOf(false) }
+    var showTransformModelPicker by remember { mutableStateOf(false) }
 
     var transcriptionSegment by rememberSaveable {
         mutableStateOf(
@@ -231,18 +238,10 @@ fun AIConfigScreen(
                             )
                         "byok" -> {
                             if (uiState.apiKey.isBlank()) AiNoKeyWarning()
-                            Text(
-                                "Transform model",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            ModelRadioList(
-                                models = OpenAiTransformModel.entries.toList(),
-                                selected = selectedTransformModel,
-                                onSelect = { viewModel.setTransformModel(it.apiName) },
-                                name = { it.title },
-                                subtitle = { it.supportingText },
-                                costLabel = { it.costSummary },
+                            SettingOptionRow(
+                                title = "Transform model",
+                                value = selectedTransformModel?.title ?: "Select",
+                                onClick = { showTransformModelPicker = true },
                             )
                             SettingOptionRow(
                                 title = "Profile draft model",
@@ -300,17 +299,29 @@ fun AIConfigScreen(
         }
     }
 
+    if (showTransformModelPicker) {
+        ModelPickerDialog(
+            title = "Transform Model",
+            models = OpenAiTransformModel.entries.toList(),
+            selected = selectedTransformModel,
+            name = { it.title },
+            subtitle = { it.supportingText },
+            costLabel = { it.costSummary },
+            onDismiss = { showTransformModelPicker = false },
+            onSelect = { viewModel.setTransformModel(it.apiName) },
+        )
+    }
+
     if (showProfileModelPicker) {
-        OptionPickerDialog(
+        ModelPickerDialog(
             title = "Profile Draft Model",
-            options = OpenAiProfileSuggestionModel.entries.toList(),
+            models = OpenAiProfileSuggestionModel.entries.toList(),
             selected = selectedProfileModel,
-            label = { it.title },
+            name = { it.title },
+            subtitle = { it.supportingText },
+            costLabel = { "" },
             onDismiss = { showProfileModelPicker = false },
-            onSelect = {
-                viewModel.setProfileSuggestionModel(it.apiName)
-                showProfileModelPicker = false
-            },
+            onSelect = { viewModel.setProfileSuggestionModel(it.apiName) },
         )
     }
 }
@@ -332,6 +343,56 @@ private fun AiSectionCard(
             }
         }
     }
+}
+
+@Composable
+private fun <T> ModelPickerDialog(
+    title: String,
+    models: List<T>,
+    selected: T?,
+    name: (T) -> String,
+    subtitle: (T) -> String,
+    costLabel: (T) -> String,
+    onDismiss: () -> Unit,
+    onSelect: (T) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                models.forEach { model ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onSelect(model)
+                                    onDismiss()
+                                }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = model == selected, onClick = null)
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(name(model), style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                subtitle(model),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            costLabel(model),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

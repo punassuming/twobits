@@ -627,6 +627,7 @@ fun SessionDetailScreen(
                     onCreatePerson = viewModel::createPersonAndAssign,
                     onFetchSpeakerInfo = viewModel::fetchSpeakerInfo,
                     onMergeSpeakers = viewModel::mergeSpeakers,
+                    onSplitSpeaker = viewModel::splitSpeakerAt,
                 )
             }
         }
@@ -2206,21 +2207,26 @@ private fun SpeakerSlotsCard(
     onCreatePerson: (speakerId: String, name: String) -> Unit,
     onFetchSpeakerInfo: () -> Unit,
     onMergeSpeakers: (sourceSpeakerId: String, targetSpeakerId: String) -> Unit,
+    onSplitSpeaker: (speakerId: String, splitAtMs: Long) -> Unit,
 ) {
     val distinctSpeakers =
         state.speakerSegments
             .map { it.speakerId }
             .distinct()
             .sorted()
+    val totalMs = state.speakerSegments.sumOf { it.endMs - it.startMs }.coerceAtLeast(1L)
     val speakerEntries =
         distinctSpeakers.mapIndexed { idx, speakerId ->
             val seg = state.speakerSegments.first { it.speakerId == speakerId }
             val label = seg.speakerLabel ?: defaultSpeakerLabel(speakerId, idx)
             val personName = seg.personId?.let { pid -> state.persons.find { it.id == pid }?.name }
-            Triple(speakerId, label, personName)
+            val talkMs = state.speakerSegments.filter { it.speakerId == speakerId }.sumOf { it.endMs - it.startMs }
+            val talkLabel = formatTalkTime(talkMs, totalMs)
+            Triple(speakerId, label, personName) to talkLabel
         }
     var pickerTargetSpeakerId by remember { mutableStateOf<String?>(null) }
     var mergeSourceSpeakerId by remember { mutableStateOf<String?>(null) }
+    var splitTargetSpeakerId by remember { mutableStateOf<String?>(null) }
     AppSectionCard {
         AppSectionHeader(
             title = "Speakers",
@@ -2248,15 +2254,31 @@ private fun SpeakerSlotsCard(
             }
             return@AppSectionCard
         }
-        speakerEntries.forEachIndexed { idx, (speakerId, label, personName) ->
+        speakerEntries.forEachIndexed { idx, entry ->
+            val (triple, talkLabel) = entry
+            val (speakerId, label, personName) = triple
             SpeakerSlotRow(
                 dotColor = speakerColorForIndex(idx),
                 label = label,
                 personName = personName,
+                talkTimeLabel = talkLabel,
                 showMergeButton = distinctSpeakers.size > 1,
                 onAssign = { pickerTargetSpeakerId = speakerId },
                 onMerge = { mergeSourceSpeakerId = speakerId },
+                onSplit = { splitTargetSpeakerId = speakerId },
             )
+        }
+        Spacer(Modifier.height(4.dp))
+        OutlinedButton(
+            onClick = onFetchSpeakerInfo,
+            enabled = !state.isFetchingSpeakerInfo,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (state.isFetchingSpeakerInfo) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(if (state.isFetchingSpeakerInfo) "Running..." else "Re-run identification")
         }
     }
     pickerTargetSpeakerId?.let { speakerId ->
@@ -2275,8 +2297,8 @@ private fun SpeakerSlotsCard(
         )
     }
     mergeSourceSpeakerId?.let { sourceId ->
-        val sourceLabel = speakerEntries.firstOrNull { it.first == sourceId }?.second ?: sourceId
-        val others = speakerEntries.filter { it.first != sourceId }.map { it.first to it.second }
+        val sourceLabel = speakerEntries.firstOrNull { it.first.first == sourceId }?.first?.second ?: sourceId
+        val others = speakerEntries.filter { it.first.first != sourceId }.map { it.first.first to it.first.second }
         MergeSpeakerDialog(
             sourceLabel = sourceLabel,
             otherSpeakers = others,
@@ -2287,6 +2309,15 @@ private fun SpeakerSlotsCard(
             },
         )
     }
+    splitTargetSpeakerId?.let { speakerId ->
+        SplitSpeakerDialog(
+            onDismiss = { splitTargetSpeakerId = null },
+            onConfirm = { splitAtMs ->
+                onSplitSpeaker(speakerId, splitAtMs)
+                splitTargetSpeakerId = null
+            },
+        )
+    }
 }
 
 @Composable
@@ -2294,9 +2325,11 @@ private fun SpeakerSlotRow(
     dotColor: Color,
     label: String,
     personName: String?,
+    talkTimeLabel: String,
     showMergeButton: Boolean,
     onAssign: () -> Unit,
     onMerge: () -> Unit,
+    onSplit: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -2306,6 +2339,11 @@ private fun SpeakerSlotRow(
         Box(modifier = Modifier.size(10.dp).background(dotColor, CircleShape))
         Column(modifier = Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                talkTimeLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (personName != null) {
                 Text(
                     personName,
@@ -2321,6 +2359,9 @@ private fun SpeakerSlotRow(
             TextButton(onClick = onMerge) {
                 Text("Merge")
             }
+        }
+        TextButton(onClick = onSplit) {
+            Text("Split")
         }
     }
 }
@@ -2361,6 +2402,69 @@ private fun MergeSpeakerDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
+}
+
+@Composable
+private fun SplitSpeakerDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (splitAtMs: Long) -> Unit,
+) {
+    var timeInput by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Split Speaker") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Enter the time to split at (MM:SS or seconds):",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedTextField(
+                    value = timeInput,
+                    onValueChange = { timeInput = it },
+                    placeholder = { Text("e.g. 1:30 or 90") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val ms = parseTimeToMs(timeInput)
+                    if (ms != null) onConfirm(ms)
+                },
+                enabled = parseTimeToMs(timeInput) != null,
+            ) { Text("Split") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+private fun parseTimeToMs(input: String): Long? {
+    val trimmed = input.trim()
+    if (trimmed.isBlank()) return null
+    return if (trimmed.contains(":")) {
+        val parts = trimmed.split(":")
+        if (parts.size != 2) return null
+        val minutes = parts[0].toLongOrNull() ?: return null
+        val seconds = parts[1].toLongOrNull() ?: return null
+        (minutes * 60 + seconds) * 1000L
+    } else {
+        trimmed.toLongOrNull()?.let { it * 1000L }
+    }
+}
+
+private fun formatTalkTime(
+    ms: Long,
+    totalMs: Long,
+): String {
+    val seconds = ms / 1000
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    val pct = (ms * 100 / totalMs.coerceAtLeast(1)).toInt()
+    val timeStr = if (minutes > 0) "${minutes}m ${remainingSeconds}s" else "${remainingSeconds}s"
+    return "$timeStr · $pct%"
 }
 
 @Composable

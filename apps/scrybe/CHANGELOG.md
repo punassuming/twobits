@@ -6,7 +6,29 @@
 
 ### Improvements
 
+**AI configuration** — unified model picker modal:
+* "Transform model" row now opens a modal showing model name, supporting text, and cost — replaces the inline radio list
+* "Profile draft model" modal upgraded to the same style showing name and description
+* both pickers use a scrollable `AlertDialog` with radio buttons and consistent layout
+
+**Diarization** — smarter speaker detection:
+* removed the hard 0.8s gap gate — short gaps no longer prevent the model from switching speakers
+* model now looks for conversational cues (questions, replies, discourse markers) to detect turns within shorter gaps
+* added "Split" button per speaker in the speaker management sheet to manually split a segment at a given timestamp (MM:SS)
+* added "Re-run identification" button at the bottom of the speaker sheet to re-run diarization on the existing transcript
+* talk time and percentage displayed per speaker row (e.g., "2m 14s · 43%")
+
+**Search** — capture screen visibility fix:
+* search bar moved above the session list so it appears immediately when the search icon is tapped, regardless of scroll position
+* search now also matches transcript preview text
+* "no results" empty state shown when search returns zero sessions
+
+**Search** — folder context in history results:
+* session cards in History search results now show a folder chip (folder icon + name) so users know which folder each result belongs to
+
 ### Fixes
+
+* fixed compiler error in speaker management sheet caused by nested lambda destructuring
 
 ## 1.11.0 (2026-06-11)
 
