@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -172,7 +173,8 @@ fun CaptureScreen(
                         searchQuery.isBlank() ||
                             session.title.contains(searchQuery, ignoreCase = true) ||
                             session.tags.any { it.contains(searchQuery, ignoreCase = true) } ||
-                            session.locationLabel?.contains(searchQuery, ignoreCase = true) == true
+                            session.locationLabel?.contains(searchQuery, ignoreCase = true) == true ||
+                            session.transcriptPreview?.contains(searchQuery, ignoreCase = true) == true
                     )
             }
         }
@@ -252,168 +254,195 @@ fun CaptureScreen(
                     onResume = viewModel::resumeRecording,
                 )
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding =
-                        PaddingValues(
-                            start = ScrybeLayoutDefaults.screenHorizontalPadding,
-                            top = paddingValues.calculateTopPadding() + 4.dp,
-                            end = ScrybeLayoutDefaults.screenHorizontalPadding,
-                            bottom = paddingValues.calculateBottomPadding() + 16.dp,
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    if (searchOpen) {
-                        item(key = "search") {
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                placeholder = { Text("Search sessions…") },
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .scrybeContentWidth(),
-                                singleLine = true,
-                            )
-                        }
-                    }
-                    item(key = "filter") {
-                        ModeFilterRow(selected = filterMode, onSelect = { filterMode = it })
-                    }
-                    if (uiState.openTaskTotal > 0) {
-                        item(key = "task-nudge") {
-                            TaskNudgeBanner(
-                                openTaskTotal = uiState.openTaskTotal,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .scrybeContentWidth(),
-                            )
-                        }
-                    }
-                    uiState.errorMessage?.let { message ->
-                        item(key = "error") {
-                            Card(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .scrybeContentWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                            ) {
-                                Text(
-                                    text = "Error: $message",
-                                    modifier = Modifier.padding(16.dp),
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                )
-                            }
-                        }
-                    }
-                    if (filteredSessions.isEmpty() &&
-                        uiState.phase == CapturePhase.IDLE &&
-                        searchQuery.isBlank() &&
-                        filterMode == null
-                    ) {
-                        item(key = "intro") { IntroGuidanceSection() }
-                    }
-                    if (folderModeEnabled && searchQuery.isBlank()) {
-                        val grouped = filteredSessions.groupBy { it.folderId }
-                        val folderIds =
-                            grouped.keys
-                                .filterNotNull()
-                                .sortedBy { uiState.folderNames[it] ?: it }
-                        val unfiled = grouped[null] ?: emptyList()
-                        folderIds.forEach { folderId ->
-                            val name = uiState.folderNames[folderId] ?: folderId
-                            val expanded = folderId in expandedFolderIds
-                            val sessions = grouped[folderId] ?: emptyList()
-                            item(key = "folder-$folderId") {
-                                FolderSectionHeader(
-                                    name = name,
-                                    count = sessions.size,
-                                    expanded = expanded,
-                                    onToggle = {
-                                        expandedFolderIds =
-                                            if (expanded) {
-                                                expandedFolderIds - folderId
-                                            } else {
-                                                expandedFolderIds + folderId
-                                            }
-                                    },
-                                )
-                            }
-                            if (expanded) {
-                                items(sessions, key = { "f-${it.id}" }) { session ->
-                                    HomeSessionCard(
-                                        session = session,
-                                        isSelected = session.id in uiState.selectedSessionIds,
-                                        isSelecting = uiState.isSelecting,
-                                        onClick = {
-                                            if (uiState.isSelecting) {
-                                                viewModel.toggleSelection(session.id)
-                                            } else {
-                                                onNavigateToSessionDetail(session.id)
-                                            }
-                                        },
-                                        onLongClick = { viewModel.enterSelectionMode(session.id) },
-                                    )
-                                }
-                            }
-                        }
-                        if (unfiled.isNotEmpty()) {
-                            item(key = "folder-unfiled") {
-                                val expanded = "unfiled" in expandedFolderIds
-                                FolderSectionHeader(
-                                    name = "No folder",
-                                    count = unfiled.size,
-                                    expanded = expanded,
-                                    onToggle = {
-                                        expandedFolderIds =
-                                            if (expanded) {
-                                                expandedFolderIds - "unfiled"
-                                            } else {
-                                                expandedFolderIds + "unfiled"
-                                            }
-                                    },
-                                )
-                            }
-                            if ("unfiled" in expandedFolderIds) {
-                                items(unfiled, key = { "u-${it.id}" }) { session ->
-                                    HomeSessionCard(
-                                        session = session,
-                                        isSelected = session.id in uiState.selectedSessionIds,
-                                        isSelecting = uiState.isSelecting,
-                                        onClick = {
-                                            if (uiState.isSelecting) {
-                                                viewModel.toggleSelection(session.id)
-                                            } else {
-                                                onNavigateToSessionDetail(session.id)
-                                            }
-                                        },
-                                        onLongClick = { viewModel.enterSelectionMode(session.id) },
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        items(filteredSessions, key = { it.id }) { session ->
-                            HomeSessionCard(
-                                session = session,
-                                isSelected = session.id in uiState.selectedSessionIds,
-                                isSelecting = uiState.isSelecting,
-                                onClick = {
-                                    if (uiState.isSelecting) {
-                                        viewModel.toggleSelection(session.id)
-                                    } else {
-                                        onNavigateToSessionDetail(session.id)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    AnimatedVisibility(visible = searchOpen) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Search sessions…") },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = ScrybeLayoutDefaults.screenHorizontalPadding,
+                                        vertical = 4.dp,
+                                    ).padding(top = paddingValues.calculateTopPadding()),
+                            singleLine = true,
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Filled.Close, contentDescription = "Clear search")
                                     }
-                                },
-                                onLongClick = { viewModel.enterSelectionMode(session.id) },
-                            )
-                        }
+                                }
+                            },
+                        )
                     }
-                    item(key = "bottom-spacer") { Spacer(Modifier.height(80.dp)) }
-                }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding =
+                            PaddingValues(
+                                start = ScrybeLayoutDefaults.screenHorizontalPadding,
+                                top = if (searchOpen) 4.dp else paddingValues.calculateTopPadding() + 4.dp,
+                                end = ScrybeLayoutDefaults.screenHorizontalPadding,
+                                bottom = paddingValues.calculateBottomPadding() + 16.dp,
+                            ),
+                        verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        item(key = "filter") {
+                            ModeFilterRow(selected = filterMode, onSelect = { filterMode = it })
+                        }
+                        if (uiState.openTaskTotal > 0) {
+                            item(key = "task-nudge") {
+                                TaskNudgeBanner(
+                                    openTaskTotal = uiState.openTaskTotal,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .scrybeContentWidth(),
+                                )
+                            }
+                        }
+                        uiState.errorMessage?.let { message ->
+                            item(key = "error") {
+                                Card(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .scrybeContentWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                ) {
+                                    Text(
+                                        text = "Error: $message",
+                                        modifier = Modifier.padding(16.dp),
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                    )
+                                }
+                            }
+                        }
+                        if (filteredSessions.isEmpty() &&
+                            uiState.phase == CapturePhase.IDLE &&
+                            searchQuery.isBlank() &&
+                            filterMode == null
+                        ) {
+                            item(key = "intro") { IntroGuidanceSection() }
+                        }
+                        if (filteredSessions.isEmpty() && searchQuery.isNotBlank()) {
+                            item(key = "no-results") {
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 32.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        "No sessions match \"$searchQuery\"",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                        if (folderModeEnabled && searchQuery.isBlank()) {
+                            val grouped = filteredSessions.groupBy { it.folderId }
+                            val folderIds =
+                                grouped.keys
+                                    .filterNotNull()
+                                    .sortedBy { uiState.folderNames[it] ?: it }
+                            val unfiled = grouped[null] ?: emptyList()
+                            folderIds.forEach { folderId ->
+                                val name = uiState.folderNames[folderId] ?: folderId
+                                val expanded = folderId in expandedFolderIds
+                                val sessions = grouped[folderId] ?: emptyList()
+                                item(key = "folder-$folderId") {
+                                    FolderSectionHeader(
+                                        name = name,
+                                        count = sessions.size,
+                                        expanded = expanded,
+                                        onToggle = {
+                                            expandedFolderIds =
+                                                if (expanded) {
+                                                    expandedFolderIds - folderId
+                                                } else {
+                                                    expandedFolderIds + folderId
+                                                }
+                                        },
+                                    )
+                                }
+                                if (expanded) {
+                                    items(sessions, key = { "f-${it.id}" }) { session ->
+                                        HomeSessionCard(
+                                            session = session,
+                                            isSelected = session.id in uiState.selectedSessionIds,
+                                            isSelecting = uiState.isSelecting,
+                                            onClick = {
+                                                if (uiState.isSelecting) {
+                                                    viewModel.toggleSelection(session.id)
+                                                } else {
+                                                    onNavigateToSessionDetail(session.id)
+                                                }
+                                            },
+                                            onLongClick = { viewModel.enterSelectionMode(session.id) },
+                                        )
+                                    }
+                                }
+                            }
+                            if (unfiled.isNotEmpty()) {
+                                item(key = "folder-unfiled") {
+                                    val expanded = "unfiled" in expandedFolderIds
+                                    FolderSectionHeader(
+                                        name = "No folder",
+                                        count = unfiled.size,
+                                        expanded = expanded,
+                                        onToggle = {
+                                            expandedFolderIds =
+                                                if (expanded) {
+                                                    expandedFolderIds - "unfiled"
+                                                } else {
+                                                    expandedFolderIds + "unfiled"
+                                                }
+                                        },
+                                    )
+                                }
+                                if ("unfiled" in expandedFolderIds) {
+                                    items(unfiled, key = { "u-${it.id}" }) { session ->
+                                        HomeSessionCard(
+                                            session = session,
+                                            isSelected = session.id in uiState.selectedSessionIds,
+                                            isSelecting = uiState.isSelecting,
+                                            onClick = {
+                                                if (uiState.isSelecting) {
+                                                    viewModel.toggleSelection(session.id)
+                                                } else {
+                                                    onNavigateToSessionDetail(session.id)
+                                                }
+                                            },
+                                            onLongClick = { viewModel.enterSelectionMode(session.id) },
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            items(filteredSessions, key = { it.id }) { session ->
+                                HomeSessionCard(
+                                    session = session,
+                                    isSelected = session.id in uiState.selectedSessionIds,
+                                    isSelecting = uiState.isSelecting,
+                                    onClick = {
+                                        if (uiState.isSelecting) {
+                                            viewModel.toggleSelection(session.id)
+                                        } else {
+                                            onNavigateToSessionDetail(session.id)
+                                        }
+                                    },
+                                    onLongClick = { viewModel.enterSelectionMode(session.id) },
+                                )
+                            }
+                        }
+                        item(key = "bottom-spacer") { Spacer(Modifier.height(80.dp)) }
+                    }
+                } // end Column
                 FloatingActionButton(
                     onClick = viewModel::showModePicker,
                     modifier =

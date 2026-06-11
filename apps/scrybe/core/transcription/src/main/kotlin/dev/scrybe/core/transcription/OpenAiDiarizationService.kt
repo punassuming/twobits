@@ -156,17 +156,21 @@ class OpenAiDiarizationService
                     """{"index":$i,"start":${s.start},"end":${s.end},"text":"$escapedText","words":$wordsJson}"""
                 }.joinToString(",", "[", "]")
 
-        @Suppress("MaxLineLength")
         private fun buildDiarizationPrompt(segmentsJson: String): String =
             """
-            You are a speaker diarization expert. Analyze the transcript segments below and assign a speaker ID to each.
+            You are a speaker diarization expert. Assign a speaker ID to each transcript segment.
 
             Rules:
-            - Use SPEAKER_1, SPEAKER_2, etc. A speaker who reappears later MUST reuse their original ID.
-            - Default to the fewest speakers that explain the data. Assume 2 speakers unless the evidence strongly indicates more.
-            - Do NOT change speakers within a continuous word run. Only assign a new speaker when the gap between the last word of a segment and the first word of the next is at least $MIN_SPEAKER_CHANGE_GAP_SECONDS seconds.
-            - If a segment is shorter than $MIN_SPEAKER_CHANGE_GAP_SECONDS seconds and surrounded by segments of the same speaker, assign it to that speaker regardless of content.
-            - Return ONLY a JSON array with no extra text: [{"index":0,"speakerId":"SPEAKER_1"},{"index":1,"speakerId":"SPEAKER_2"},...]
+            - Use SPEAKER_1, SPEAKER_2, etc. A speaker who reappears MUST reuse their original ID.
+            - Default to the fewest speakers that explain the data (usually 2).
+            - A gap ≥ ${MIN_SPEAKER_CHANGE_GAP_SECONDS}s between segments is a STRONG signal of a speaker change, but is not required.
+            - You MAY change speakers within shorter gaps when the text strongly indicates a turn:
+                * A direct question followed by a direct answer
+                * A discourse marker that typically opens a reply ("Right,", "Exactly,", "So basically,", "I think,")
+                * A clear contradiction or agreement with the prior speaker's statement
+            - You must NOT change speakers mid-sentence or mid-phrase (within a continuous word run with no gap).
+            - If a segment is ≤ 1 word and surrounded by the same speaker, assign it to that speaker.
+            - Return ONLY a JSON array: [{"index":0,"speakerId":"SPEAKER_1"},...]
 
             Transcript segments (JSON):
             $segmentsJson

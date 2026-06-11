@@ -563,6 +563,7 @@ fun HistoryScreen(
                                 }
                             }
                         } else {
+                            val folderNameMap = state.allFolders.associate { it.id to it.name }
                             val sessionRow: @Composable (HistorySessionItem) -> Unit = { item ->
                                 RecordRow(
                                     item = item,
@@ -600,6 +601,12 @@ fun HistoryScreen(
                                     onResetTranscriptionState = { viewModel.resetTranscriptionState(item.session.id) },
                                     showRecordingInfo = state.interactionPreferences.showRecordingInfoInList,
                                     onTagClick = { tag -> viewModel.selectTag(tag) },
+                                    folderName =
+                                        if (searchQuery.isNotBlank()) {
+                                            item.session.folderId?.let { folderNameMap[it] }
+                                        } else {
+                                            null
+                                        },
                                 )
                             }
                             Box(modifier = Modifier.fillMaxSize()) {

@@ -808,6 +808,36 @@ class SessionDetailViewModel
             }
         }
 
+        fun splitSpeakerAt(
+            speakerId: String,
+            splitAtMs: Long,
+        ) {
+            viewModelScope.launch {
+                val segments = speakerSegmentDao.getSegmentsOnce(sessionId)
+                val target =
+                    segments.firstOrNull { it.speakerId == speakerId && it.startMs < splitAtMs && splitAtMs < it.endMs }
+                        ?: return@launch
+                val maxSpeakerNum =
+                    segments
+                        .mapNotNull { it.speakerId.removePrefix("SPEAKER_").toIntOrNull() }
+                        .maxOrNull() ?: 1
+                val newSpeakerId = "SPEAKER_${maxSpeakerNum + 1}"
+                speakerSegmentDao.deleteSegmentById(target.id)
+                speakerSegmentDao.insertSegments(
+                    listOf(
+                        target.copy(id = UUID.randomUUID().toString(), endMs = splitAtMs),
+                        target.copy(
+                            id = UUID.randomUUID().toString(),
+                            speakerId = newSpeakerId,
+                            speakerLabel = null,
+                            personId = null,
+                            startMs = splitAtMs,
+                        ),
+                    ),
+                )
+            }
+        }
+
         fun saveTranscriptEdit(content: String) {
             val trimmed = content.trim()
             if (trimmed.isBlank()) return

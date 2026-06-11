@@ -46,4 +46,7 @@ interface SpeakerSegmentDao {
         sourceId: String,
         targetId: String,
     )
+
+    @Query("DELETE FROM speaker_segments WHERE id = :id")
+    suspend fun deleteSegmentById(id: String)
 }

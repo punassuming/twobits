@@ -246,7 +246,10 @@ private fun RecordRowFooter(item: HistorySessionItem) {
 }
 
 @Composable
-private fun RecordRowContent(item: HistorySessionItem) {
+private fun RecordRowContent(
+    item: HistorySessionItem,
+    folderName: String? = null,
+) {
     val accentColor = modeAccentColor(item.session.mode, MaterialTheme.colorScheme)
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -261,6 +264,12 @@ private fun RecordRowContent(item: HistorySessionItem) {
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(loc, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                if (folderName != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(folderName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -311,6 +320,7 @@ internal fun RecordRow(
     onResetTranscriptionState: () -> Unit,
     showRecordingInfo: Boolean,
     onTagClick: ((String) -> Unit)? = null,
+    folderName: String? = null,
 ) {
     var menuExpanded by remember(item.session.id) { mutableStateOf(false) }
 
@@ -333,7 +343,7 @@ internal fun RecordRow(
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                RecordRowContent(item = item)
+                RecordRowContent(item = item, folderName = folderName)
             }
             if (!selectionEnabled) {
                 Box(modifier = Modifier.align(Alignment.TopEnd)) {
