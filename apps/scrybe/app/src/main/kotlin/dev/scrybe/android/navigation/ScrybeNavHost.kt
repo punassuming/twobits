@@ -16,6 +16,7 @@ import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.AIConfigScreen
+import dev.scrybe.feature.settings.PeopleScreen
 import dev.scrybe.feature.settings.SettingsScreen
 import dev.scrybe.feature.tasks.TaskInboxScreen
 
@@ -39,6 +40,8 @@ sealed class Screen(
     object AiConfig : Screen("ai_config")
 
     object WhatsNew : Screen("whats_new")
+
+    object People : Screen("people")
 }
 
 @Composable
@@ -131,10 +134,14 @@ fun ScrybeNavHost(navController: NavHostController) {
                 onNavigateToProfiles = { navController.navigate(Screen.Profiles.route) },
                 onNavigateToAiConfig = { navController.navigate(Screen.AiConfig.route) },
                 onNavigateToWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
+                onNavigateToPeople = { navController.navigate(Screen.People.route) },
             )
         }
         composable(Screen.AiConfig.route) {
             AIConfigScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.People.route) {
+            PeopleScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.WhatsNew.route) {
             ScrybeWhatsNewScreen(

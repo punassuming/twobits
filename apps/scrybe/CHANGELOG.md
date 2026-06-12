@@ -4,6 +4,12 @@
 
 ### Features
 
+**People management** — new screen accessible from Settings → Intelligence:
+* lists all speaker profiles with session counts
+* rename any person inline
+* merge two people — all speaker assignments move to the target, source is removed
+* delete a person with confirmation
+
 ### Improvements
 
 **AI configuration** — standardized model picker layout:
