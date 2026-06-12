@@ -78,27 +78,33 @@ internal fun PlaybackCard(
     AppSectionCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(80.dp),
-        ) {
-            WaveformTimeline(
-                samples = state.session.waveformSamples,
-                playbackPositionMs = state.playbackPositionMs,
-                progress =
-                    if (state.playbackDurationMs > 0L) {
-                        state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
-                    } else {
-                        0f
-                    },
+        Column {
+            IntentDotStrip(
+                markers = state.topicMarkers,
                 durationMs = state.playbackDurationMs,
-                sentimentSegments = state.sentimentSegments,
-                topicMarkers = state.topicMarkers,
-                speakerSegments = state.speakerSegments,
-                onSeek = onSeek,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth().height(14.dp),
+            )
+            Box(modifier = Modifier.fillMaxWidth().height(100.dp)) {
+                WaveformTimeline(
+                    samples = state.session.waveformSamples,
+                    playbackPositionMs = state.playbackPositionMs,
+                    progress =
+                        if (state.playbackDurationMs > 0L) {
+                            state.playbackPositionMs.toFloat() / state.playbackDurationMs.toFloat()
+                        } else {
+                            0f
+                        },
+                    durationMs = state.playbackDurationMs,
+                    topicMarkers = state.topicMarkers,
+                    speakerSegments = state.speakerSegments,
+                    onSeek = onSeek,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            SentimentDotStrip(
+                segments = state.sentimentSegments,
+                durationMs = state.playbackDurationMs,
+                modifier = Modifier.fillMaxWidth().height(14.dp),
             )
         }
         PlaybackSeekBar(
@@ -185,7 +191,6 @@ private fun WaveformTimeline(
     playbackPositionMs: Long,
     progress: Float,
     durationMs: Long,
-    sentimentSegments: List<SentimentSegment>,
     topicMarkers: List<TopicMarker>,
     speakerSegments: List<SpeakerSegment> = emptyList(),
     onSeek: (Long) -> Unit,
@@ -312,19 +317,6 @@ private fun WaveformTimeline(
                     cap = StrokeCap.Round,
                 )
             }
-            drawSentimentDots(
-                segments = sentimentSegments,
-                durationMs = durationMs,
-                canvasWidth = size.width,
-                centerY = centerY,
-            )
-            drawIntentDots(
-                markers = topicMarkers,
-                durationMs = durationMs,
-                canvasWidth = size.width,
-                centerY = centerY,
-                activeMarker = activeIntent,
-            )
             val playheadX = size.width * progress.coerceIn(0f, 1f)
             drawLine(
                 color = playheadColor,
@@ -372,6 +364,13 @@ private fun PlaybackSeekBar(
                             .background(MaterialTheme.colorScheme.primary, CircleShape),
                 )
             }
+        },
+        track = { sliderState ->
+            SliderDefaults.Track(
+                sliderState = sliderState,
+                modifier = Modifier.height(2.dp),
+                thumbTrackGapSize = 0.dp,
+            )
         },
     )
 }
@@ -575,44 +574,44 @@ internal fun PerSpeakerTimelineSection(
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSentimentDots(
-    segments: List<SentimentSegment>,
+@Composable
+private fun IntentDotStrip(
+    markers: List<TopicMarker>,
     durationMs: Long,
-    canvasWidth: Float,
-    centerY: Float,
+    modifier: Modifier = Modifier,
 ) {
-    if (segments.isEmpty() || durationMs <= 0L) return
-    segments.forEach { segment ->
-        val midpointMs = (segment.startMs + segment.endMs) / 2L
-        val x = (midpointMs.toFloat() / durationMs) * canvasWidth
-        drawCircle(
-            color = sentimentColor(segment.sentiment).copy(alpha = 0.88f),
-            radius = 4.dp.toPx(),
-            center = Offset(x, centerY + 22.dp.toPx()),
-        )
+    if (markers.isEmpty() || durationMs <= 0L) return
+    Canvas(modifier = modifier) {
+        val centerY = size.height / 2f
+        markers.forEach { marker ->
+            val x = (marker.timeMs.toFloat() / durationMs) * size.width
+            drawCircle(
+                color = Color(0xFFFF9800).copy(alpha = 0.88f),
+                radius = 4.dp.toPx(),
+                center = Offset(x, centerY),
+            )
+        }
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawIntentDots(
-    markers: List<TopicMarker>,
+@Composable
+private fun SentimentDotStrip(
+    segments: List<SentimentSegment>,
     durationMs: Long,
-    canvasWidth: Float,
-    centerY: Float,
-    activeMarker: TopicMarker?,
+    modifier: Modifier = Modifier,
 ) {
-    if (markers.isEmpty() || durationMs <= 0L) return
-    markers.forEach { marker ->
-        val x = (marker.timeMs.toFloat() / durationMs) * canvasWidth
-        drawCircle(
-            color =
-                if (marker == activeMarker) {
-                    Color(0xFFFFB74D)
-                } else {
-                    Color(0xFFFF9800).copy(alpha = 0.88f)
-                },
-            radius = if (marker == activeMarker) 5.dp.toPx() else 4.dp.toPx(),
-            center = Offset(x, centerY - 22.dp.toPx()),
-        )
+    if (segments.isEmpty() || durationMs <= 0L) return
+    Canvas(modifier = modifier) {
+        val centerY = size.height / 2f
+        segments.forEach { segment ->
+            val midpointMs = (segment.startMs + segment.endMs) / 2L
+            val x = (midpointMs.toFloat() / durationMs) * size.width
+            drawCircle(
+                color = sentimentColor(segment.sentiment).copy(alpha = 0.88f),
+                radius = 4.dp.toPx(),
+                center = Offset(x, centerY),
+            )
+        }
     }
 }
 

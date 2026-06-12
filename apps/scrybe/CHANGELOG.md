@@ -10,6 +10,12 @@
 * "Transform model" and "Profile draft model" now use the shared `ModelRadioList` component inline — the same pattern used by the Transcription and ShelfSnap settings, with proper overflow handling and consistent row layout
 * cost label shortened to "$0.25 / $2.00" format — removes the verbose "per 1M tokens" suffix that caused excessive left-column wrapping
 
+**Session playback** — waveform and indicator layout:
+* waveform canvas height increased from 80 dp to 100 dp for a more prominent display
+* sentiment dots (positive/negative/neutral) moved to a dedicated 14 dp strip below the waveform — no longer overlap the waveform bars
+* topic/intent dots moved to a dedicated 14 dp strip above the waveform — no longer overlap the waveform bars
+* seek bar track reduced from ~4 dp to 2 dp for a cleaner appearance; thumb size unchanged
+
 **History** — alphabetical sort option:
 * filter dialog sort section now includes "Name A→Z" to sort sessions by title
 
