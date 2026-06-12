@@ -222,7 +222,7 @@ class PriceResearchService
                 Valid platformKey values: $platformKeys.
                 Prefer sold listings over active ones. If evidence is thin, lower the
                 confidence and say so via fewer comps. Never invent exact URLs you were not given.
-                IMPORTANT: Only use snippets that contain an actual price (e.g. '$XX.XX') and
+                IMPORTANT: Only use snippets that contain an actual price (e.g. '${'$'}XX.XX') and
                 indicate a completed/sold transaction. Ignore blog posts, buying guides, and
                 general articles. If fewer than 3 snippets contain real prices from actual
                 marketplace listings, set confidencePercent ≤ 30.

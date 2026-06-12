@@ -36,6 +36,8 @@
 
 * photo viewer next/previous navigation compiles correctly — missing `mutableIntStateOf` import restored
 * clearing the Jina AI Search key now takes effect immediately — previously an explicit clear saved an empty string that the migration fallback treated as absent, silently restoring the legacy key
+* price research LLM prompt no longer fails to compile — `$XX.XX` example string now escapes the dollar sign correctly
+* model picker dropdown compiles correctly — removed invalid import of `ExposedDropdownMenu` which is a scope-only composable accessed through `ExposedDropdownMenuBox`
 
 ## 1.7.0 (2026-06-11)
 
