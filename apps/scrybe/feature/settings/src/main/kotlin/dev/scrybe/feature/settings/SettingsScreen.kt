@@ -214,38 +214,6 @@ fun SettingsScreen(
                     }
                     HorizontalDivider()
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Location tagging", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "Tag recordings with place name automatically",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = uiState.locationRecordingEnabled,
-                            onCheckedChange = { enabled ->
-                                if (!enabled) {
-                                    viewModel.setLocationRecordingEnabled(false)
-                                } else if (ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    viewModel.setLocationRecordingEnabled(true)
-                                } else {
-                                    locationPermissionLauncher.launch(
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    )
-                                }
-                            },
-                        )
-                    }
-                    HorizontalDivider()
-                    Row(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
@@ -290,6 +258,38 @@ fun SettingsScreen(
                     title = "Recording",
                     icon = Icons.Filled.Storage,
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Location tagging", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "Tag recordings with place name automatically",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = uiState.locationRecordingEnabled,
+                            onCheckedChange = { enabled ->
+                                if (!enabled) {
+                                    viewModel.setLocationRecordingEnabled(false)
+                                } else if (ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    viewModel.setLocationRecordingEnabled(true)
+                                } else {
+                                    locationPermissionLauncher.launch(
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    )
+                                }
+                            },
+                        )
+                    }
+                    HorizontalDivider()
                     Text(
                         text = "Format",
                         style = MaterialTheme.typography.titleSmall,

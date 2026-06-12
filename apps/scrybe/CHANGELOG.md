@@ -31,6 +31,7 @@
 
 * back navigation no longer blocked during an active recording — the foreground service continues regardless of which screen is visible
 * folder groups now remain visible while searching in folder mode; empty folders are hidden from results instead of collapsing to a flat list
+* location tagging toggle moved from Intelligence to Recording section — it controls recording behaviour, not AI processing
 
 ## 1.12.0 (2026-06-11)
 
