@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.RadioButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -25,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,10 +71,11 @@ fun PeopleScreen(
     ) { paddingValues ->
         if (persons.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(24.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(24.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -85,9 +86,10 @@ fun PeopleScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {
                 items(persons, key = { it.id }) { person ->
@@ -124,7 +126,7 @@ fun PeopleScreen(
     deleteTarget?.let { person ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text(“Delete ${person.name}?”) },
+            title = { Text("Delete ${person.name}?") },
             text = { Text("Speaker assignments for this person will be removed from all sessions.") },
             confirmButton = {
                 TextButton(onClick = {
@@ -154,9 +156,10 @@ private fun PersonRow(
     var showMergePicker by remember { mutableStateOf(false) }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -275,10 +278,11 @@ private fun MergePersonDialog(
                 )
                 candidates.forEach { candidate ->
                     Row(
-                        modifier = Modifier
-                            .clickable { selected = candidate.id }
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                        modifier =
+                            Modifier
+                                .clickable { selected = candidate.id }
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
