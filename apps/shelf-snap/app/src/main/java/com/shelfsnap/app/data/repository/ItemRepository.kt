@@ -34,7 +34,9 @@ class ItemRepository
         companion object {
             private val KEY_API_KEY = stringPreferencesKey("openai_api_key")
             private val KEY_SEARCH_PROVIDER = stringPreferencesKey("search_provider")
-            private val KEY_SEARCH_API_KEY = stringPreferencesKey("search_api_key")
+            private val KEY_SEARCH_API_KEY = stringPreferencesKey("search_api_key") // legacy — migration fallback for Jina
+            private val KEY_JINA_API_KEY = stringPreferencesKey("jina_search_api_key")
+            private val KEY_BRAVE_API_KEY = stringPreferencesKey("brave_search_api_key")
             private val KEY_AUTO_ANALYZE = booleanPreferencesKey("auto_analyze")
             private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
             private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
@@ -122,10 +124,36 @@ class ItemRepository
             dataStore.edit { it[KEY_SEARCH_PROVIDER] = provider.key }
         }
 
-        fun observeSearchApiKey(): Flow<String> = dataStore.data.map { it[KEY_SEARCH_API_KEY] ?: "" }
+        fun observeJinaApiKey(): Flow<String> =
+            dataStore.data.map {
+                it[KEY_JINA_API_KEY]?.ifBlank { null } ?: it[KEY_SEARCH_API_KEY] ?: ""
+            }
 
-        suspend fun getSearchApiKey(): String = dataStore.data.firstOrNull()?.get(KEY_SEARCH_API_KEY) ?: ""
+        fun observeBraveApiKey(): Flow<String> = dataStore.data.map { it[KEY_BRAVE_API_KEY] ?: "" }
 
+        suspend fun getJinaApiKey(): String {
+            val prefs = dataStore.data.firstOrNull()
+            return prefs?.get(KEY_JINA_API_KEY)?.ifBlank { null } ?: prefs?.get(KEY_SEARCH_API_KEY) ?: ""
+        }
+
+        suspend fun getBraveApiKey(): String = dataStore.data.firstOrNull()?.get(KEY_BRAVE_API_KEY) ?: ""
+
+        suspend fun saveJinaApiKey(key: String) {
+            dataStore.edit { it[KEY_JINA_API_KEY] = key }
+        }
+
+        suspend fun saveBraveApiKey(key: String) {
+            dataStore.edit { it[KEY_BRAVE_API_KEY] = key }
+        }
+
+        suspend fun getSearchApiKey(): String =
+            when (getSearchProvider()) {
+                SearchProvider.BRAVE -> getBraveApiKey()
+                SearchProvider.JINA -> getJinaApiKey()
+                SearchProvider.NONE -> ""
+            }
+
+        @Deprecated("Use saveJinaApiKey or saveBraveApiKey")
         suspend fun saveSearchApiKey(key: String) {
             dataStore.edit { it[KEY_SEARCH_API_KEY] = key }
         }

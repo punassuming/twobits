@@ -6,6 +6,12 @@
 
 ### Improvements
 
+**Dual search API keys** — store Jina AI and Brave Search keys independently:
+* Settings → AI Config now shows separate Save / Clear / Test panels for Jina AI Search and Brave Search regardless of which provider is selected
+* switching providers no longer wipes the previously saved key — both are retained in DataStore
+* existing `search_api_key` value migrated automatically to `jina_search_api_key` on first read
+* Test button now available for both providers (Brave Search included)
+
 **Re-analysis** — richer descriptions and inline model picker:
 * vision prompt now requests a 3–5 sentence description covering condition, features, visible defects, material, and best use — replacing the previous one-liner
 * tags expanded from 3–6 to 6–10 keywords including style, material, color, use case, and condition descriptor for better search matching
