@@ -12,6 +12,14 @@
 * existing `search_api_key` value migrated automatically to `jina_search_api_key` on first read
 * Test button now available for both providers (Brave Search included)
 
+**Market research search** — targeted queries and stricter evidence filtering:
+* search queries now wrap brand + model in quotes for exact-phrase matching (e.g. `"IKEA Ektorp"`)
+* added platform-specific queries: `site:ebay.com/itm`, `site:ebay.com sold`, and `mercari.com sold` before the generic fallback
+* tag-augmented fallback query added when the item has keyword tags
+* early-stop threshold raised from 3 → 5 results so more evidence is gathered per research run
+* LLM synthesis prompt now instructs the model to ignore blog posts and buying guides — only snippets with a real price and sold transaction count; confidence capped at ≤ 30 when fewer than 3 real listings are present
+* Jina AI Search requests now include `X-Return-Format: text` for cleaner content extraction from listing pages
+
 **Re-analysis** — richer descriptions and inline model picker:
 * vision prompt now requests a 3–5 sentence description covering condition, features, visible defects, material, and best use — replacing the previous one-liner
 * tags expanded from 3–6 to 6–10 keywords including style, material, color, use case, and condition descriptor for better search matching

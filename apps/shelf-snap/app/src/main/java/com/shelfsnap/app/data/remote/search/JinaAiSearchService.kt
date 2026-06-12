@@ -51,6 +51,7 @@ class JinaAiSearchService
                         .url(url)
                         .addHeader("Accept", "application/json")
                         .addHeader("Authorization", "Bearer ${apiKey.trim()}")
+                        .addHeader("X-Return-Format", "text")
                         .get()
                         .build()
 
