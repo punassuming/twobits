@@ -34,6 +34,8 @@
 
 ### Fixes
 
+* photo viewer next/previous navigation compiles correctly — missing `mutableIntStateOf` import restored
+
 ## 1.7.0 (2026-06-11)
 
 ### Features
