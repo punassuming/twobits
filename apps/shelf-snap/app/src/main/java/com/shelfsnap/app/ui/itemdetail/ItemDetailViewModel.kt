@@ -244,6 +244,23 @@ class ItemDetailViewModel
             }
         }
 
+        /** Flips a platform listing from ACTIVE → SOLD and persists. */
+        fun markSold(platformKey: String) {
+            val item = _uiState.value.item ?: return
+            viewModelScope.launch {
+                val updated =
+                    item.copy(
+                        listings =
+                            item.listings.map { l ->
+                                if (l.platformKey == platformKey) l.copy(status = ListingStatus.SOLD) else l
+                            },
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                repository.update(updated)
+                _uiState.update { it.copy(item = updated) }
+            }
+        }
+
         fun delete() {
             val item = _uiState.value.item ?: return
             viewModelScope.launch {

@@ -12,6 +12,12 @@
 * existing `search_api_key` value migrated automatically to `jina_search_api_key` on first read
 * Test button now available for both providers (Brave Search included)
 
+**Listing integration** — platform-specific text, Share Sheet, Mark Sold, and tips:
+* listing text is now formatted per-platform: eBay gets an Item Specifics block with brand/model/condition/size/color and a title capped at 80 characters; Mercari is casual with price at end; Facebook Marketplace puts the price at top with no hashtags; OfferUp uses a short title with bulleted condition notes; Craigslist uses a classic classified format with email footer
+* Share button added next to "Copy listing text" — opens the Android Share Sheet with listing text and up to 3 item photos; uses the system chooser so the user can send directly to the eBay/Mercari app, Messages, email, etc.
+* "Mark sold" button appears on each active listing row — tapping it flips the listing status to Sold and persists the change
+* collapsible "Tips ▼" row added below each platform checkbox with 3–4 platform-specific listing tips (title length limits, tone guidance, pricing strategy)
+
 **Market research search** — targeted queries and stricter evidence filtering:
 * search queries now wrap brand + model in quotes for exact-phrase matching (e.g. `"IKEA Ektorp"`)
 * added platform-specific queries: `site:ebay.com/itm`, `site:ebay.com sold`, and `mercari.com sold` before the generic fallback
