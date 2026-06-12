@@ -179,9 +179,6 @@ fun CaptureScreen(
             }
         }
 
-    BackHandler(enabled = uiState.phase != CapturePhase.IDLE) {
-        // No-op: keep user on screen while recording; foreground service continues.
-    }
     BackHandler(enabled = uiState.isSelecting) {
         viewModel.clearSelection()
     }
@@ -344,7 +341,7 @@ fun CaptureScreen(
                                 }
                             }
                         }
-                        if (folderModeEnabled && searchQuery.isBlank()) {
+                        if (folderModeEnabled) {
                             val grouped = filteredSessions.groupBy { it.folderId }
                             val folderIds =
                                 grouped.keys
@@ -355,6 +352,7 @@ fun CaptureScreen(
                                 val name = uiState.folderNames[folderId] ?: folderId
                                 val expanded = folderId in expandedFolderIds
                                 val sessions = grouped[folderId] ?: emptyList()
+                                if (sessions.isEmpty()) return@forEach
                                 item(key = "folder-$folderId") {
                                     FolderSectionHeader(
                                         name = name,

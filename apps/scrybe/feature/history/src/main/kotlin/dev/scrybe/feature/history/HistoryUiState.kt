@@ -25,6 +25,7 @@ enum class RecordsSortOption {
     OLDEST,
     LONGEST,
     LARGEST,
+    ALPHABETICAL,
 }
 
 enum class RecordsDateRange {

@@ -1408,6 +1408,7 @@ internal fun buildFilterSummary(filters: RecordsFilterState): String {
             RecordsSortOption.OLDEST -> "Oldest first"
             RecordsSortOption.LONGEST -> "Longest first"
             RecordsSortOption.LARGEST -> "Largest first"
+            RecordsSortOption.ALPHABETICAL -> "Name A→Z"
         }
     return "$dateSummary · $sortSummary · $statusSummary · $archiveSummary"
 }
@@ -1427,6 +1428,7 @@ internal fun buildCompactFilterSummary(filters: RecordsFilterState): String {
                 RecordsSortOption.OLDEST -> add("Oldest")
                 RecordsSortOption.LONGEST -> add("Longest")
                 RecordsSortOption.LARGEST -> add("Largest")
+                RecordsSortOption.ALPHABETICAL -> add("Name A→Z")
             }
             if (filters.includedStatuses.isNotEmpty()) {
                 add(
