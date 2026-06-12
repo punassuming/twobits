@@ -124,7 +124,7 @@ fun PeopleScreen(
     deleteTarget?.let { person ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text(“Delete \”${person.name}\”?”) },
+            title = { Text(“Delete ${person.name}?”) },
             text = { Text("Speaker assignments for this person will be removed from all sessions.") },
             confirmButton = {
                 TextButton(onClick = {

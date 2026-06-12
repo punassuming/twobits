@@ -34,7 +34,7 @@
 * edit dialog now opens with the same sentence-level paragraph breaks and speaker labels that the read-only view shows, giving a clean starting point for edits
 ### Fixes
 
-* delete person dialog title no longer breaks due to unescaped quotes
+* delete person dialog no longer fails to compile due to unescapable quote characters in dialog title
 * back navigation no longer blocked during an active recording — the foreground service continues regardless of which screen is visible
 * folder groups now remain visible while searching in folder mode; empty folders are hidden from results instead of collapsing to a flat list
 * location tagging toggle moved from Intelligence to Recording section — it controls recording behaviour, not AI processing
