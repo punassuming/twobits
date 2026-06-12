@@ -10,6 +10,8 @@ import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.database.CustomRecordingTypeDao
+import dev.scrybe.core.database.CustomRecordingTypeEntity
 import dev.scrybe.core.database.FolderDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.SessionTaskDao
@@ -17,6 +19,7 @@ import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.CustomRecordingType
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
@@ -51,6 +54,7 @@ class CaptureViewModel
         private val sessionTaskDao: SessionTaskDao,
         private val folderDao: FolderDao,
         private val transformProfileDao: TransformProfileDao,
+        private val customRecordingTypeDao: CustomRecordingTypeDao,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val recordingSessionEvents: RecordingSessionEvents,
@@ -74,6 +78,20 @@ class CaptureViewModel
                             steps = TransformStepsCodec.decode(e.steps, fallback = e.systemPrompt),
                             providerType = ProviderType.valueOf(e.providerType),
                             isDefault = e.isDefault,
+                        )
+                    }
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        private val customTypes: StateFlow<List<CustomRecordingType>> =
+            customRecordingTypeDao
+                .getAll()
+                .map { entities ->
+                    entities.map { e ->
+                        CustomRecordingType(
+                            id = e.id,
+                            name = e.name,
+                            defaultProfileId = e.defaultProfileId,
+                            createdAt = e.createdAt,
                         )
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -199,6 +217,11 @@ class CaptureViewModel
                         )
                 }
             }
+            viewModelScope.launch {
+                customTypes.collectLatest { types ->
+                    _uiState.value = _uiState.value.copy(customTypes = types)
+                }
+            }
         }
 
         fun showModePicker() {
@@ -225,6 +248,47 @@ class CaptureViewModel
                     }
                 context.startForegroundService(intent)
             }
+        }
+
+        fun startRecordingWithCustomType(typeId: String) {
+            viewModelScope.launch {
+                _uiState.value =
+                    CaptureUiState(
+                        phase = CapturePhase.RECORDING,
+                        keepScreenOn = _uiState.value.keepScreenOn,
+                        showModePickerSheet = false,
+                    )
+                val intent =
+                    Intent(context, RecordingForegroundService::class.java).apply {
+                        action = RecordingServiceActions.ACTION_START
+                        putExtra(RecordingServiceActions.EXTRA_RECORDING_MODE, RecordingMode.JOURNAL.name)
+                        putExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID, typeId)
+                    }
+                context.startForegroundService(intent)
+            }
+        }
+
+        fun createCustomType(
+            name: String,
+            defaultProfileId: String?,
+        ) {
+            viewModelScope.launch {
+                customRecordingTypeDao.insert(
+                    CustomRecordingTypeEntity(
+                        id =
+                            java.util.UUID
+                                .randomUUID()
+                                .toString(),
+                        name = name,
+                        defaultProfileId = defaultProfileId,
+                        createdAt = System.currentTimeMillis(),
+                    ),
+                )
+            }
+        }
+
+        fun deleteCustomType(id: String) {
+            viewModelScope.launch { customRecordingTypeDao.delete(id) }
         }
 
         fun pauseRecording() {

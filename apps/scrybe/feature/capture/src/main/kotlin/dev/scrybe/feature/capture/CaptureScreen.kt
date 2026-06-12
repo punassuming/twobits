@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CheckCircle
@@ -108,8 +109,10 @@ import dev.scrybe.core.common.SessionStatusChip
 import dev.scrybe.core.common.modeAccentColor
 import dev.scrybe.core.common.modeIcon
 import dev.scrybe.core.common.scrybeContentWidth
+import dev.scrybe.core.model.CustomRecordingType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.model.TransformProfile
 import kotlinx.coroutines.flow.filterNotNull
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -128,6 +131,7 @@ fun CaptureScreen(
     var searchOpen by remember { mutableStateOf(false) }
     var filterMode by remember { mutableStateOf<RecordingMode?>(null) }
     var pendingMode by remember { mutableStateOf(RecordingMode.JOURNAL) }
+    var pendingCustomTypeId by remember { mutableStateOf<String?>(null) }
     var folderModeEnabled by remember { mutableStateOf(false) }
     var expandedFolderIds by remember { mutableStateOf(emptySet<String>()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -156,7 +160,15 @@ fun CaptureScreen(
                 results[Manifest.permission.RECORD_AUDIO] == true ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
                     PackageManager.PERMISSION_GRANTED
-            if (audioGranted) viewModel.startRecordingWithMode(pendingMode)
+            if (audioGranted) {
+                val customId = pendingCustomTypeId
+                if (customId != null) {
+                    viewModel.startRecordingWithCustomType(customId)
+                    pendingCustomTypeId = null
+                } else {
+                    viewModel.startRecordingWithMode(pendingMode)
+                }
+            }
         }
 
     DisposableEffect(view, uiState.phase, uiState.keepScreenOn) {
@@ -461,9 +473,21 @@ fun CaptureScreen(
                     viewModel.startRecordingWithMode(mode)
                 } else {
                     pendingMode = mode
+                    pendingCustomTypeId = null
                     permissionLauncher.launch(requiredPermissions.toTypedArray())
                 }
             },
+            onStartCustomType = { typeId ->
+                if (hasRequiredPermissions) {
+                    viewModel.startRecordingWithCustomType(typeId)
+                } else {
+                    pendingCustomTypeId = typeId
+                    permissionLauncher.launch(requiredPermissions.toTypedArray())
+                }
+            },
+            customTypes = uiState.customTypes,
+            profiles = profiles,
+            onCreateType = { name, profileId -> viewModel.createCustomType(name, profileId) },
             onDismiss = viewModel::dismissModePicker,
         )
     }
@@ -804,10 +828,15 @@ private fun formatElapsed(ms: Long): String {
 @Composable
 private fun ModePickerSheet(
     onStartRecording: (RecordingMode) -> Unit,
+    onStartCustomType: (String) -> Unit,
+    customTypes: List<CustomRecordingType>,
+    profiles: List<TransformProfile>,
+    onCreateType: (String, String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedMode by remember { mutableStateOf(RecordingMode.JOURNAL) }
+    var showCreateTypeDialog by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -844,19 +873,131 @@ private fun ModePickerSheet(
                 }
             }
             ModeOutputPreview(selectedMode = selectedMode)
-            Button(
-                onClick = { onStartRecording(selectedMode) },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
+            if (customTypes.isNotEmpty()) {
+                HorizontalDivider()
+                Text(
+                    text = "Custom types",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                customTypes.chunked(2).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        row.forEach { customType ->
+                            OutlinedButton(
+                                onClick = {
+                                    onStartCustomType(customType.id)
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    customType.name,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(8.dp))
-                Text("Start recording")
+                Button(
+                    onClick = { onStartRecording(selectedMode) },
+                    modifier = Modifier.weight(1f).padding(bottom = 16.dp),
+                ) {
+                    Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(8.dp))
+                    Text("Start recording")
+                }
+                OutlinedButton(
+                    onClick = { showCreateTypeDialog = true },
+                    modifier = Modifier.padding(bottom = 16.dp),
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(4.dp))
+                    Text("New type")
+                }
             }
         }
     }
+
+    if (showCreateTypeDialog) {
+        CreateTypeDialog(
+            profiles = profiles,
+            onConfirm = { name, profileId ->
+                onCreateType(name, profileId)
+                showCreateTypeDialog = false
+            },
+            onDismiss = { showCreateTypeDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun CreateTypeDialog(
+    profiles: List<TransformProfile>,
+    onConfirm: (String, String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var selectedProfileId by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New recording type") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    label = { Text("Type name") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (profiles.isNotEmpty()) {
+                    Text(
+                        "Default transform profile (optional)",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    profiles.forEach { profile ->
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedProfileId = if (selectedProfileId == profile.id) null else profile.id }
+                                    .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Checkbox(
+                                checked = selectedProfileId == profile.id,
+                                onCheckedChange = { checked ->
+                                    selectedProfileId = if (checked) profile.id else null
+                                },
+                            )
+                            Text(profile.name, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (name.isNotBlank()) onConfirm(name.trim(), selectedProfileId) },
+                enabled = name.isNotBlank(),
+            ) {
+                Text("Create")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable

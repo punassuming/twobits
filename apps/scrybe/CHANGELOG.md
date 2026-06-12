@@ -4,6 +4,11 @@
 
 ### Features
 
+**Custom recording types** — extend the mode picker with your own recording categories:
+* tap "+ New type" at the bottom of the mode picker to create a named type with an optional default transform profile
+* custom types appear in the mode picker alongside the built-in modes
+* recordings captured with a custom type store the type ID; if a default profile is set, it auto-applies after transcription when auto-transcribe is on
+
 **People management** — new screen accessible from Settings → Intelligence:
 * lists all speaker profiles with session counts
 * rename any person inline
