@@ -66,11 +66,14 @@ class ItemRepository
          * Sends [photoPaths] to the vision service for analysis.
          * Returns a [DraftItemResult]; caller must check [DraftItemResult.error].
          */
-        suspend fun analysePhotos(photoPaths: List<String>): DraftItemResult =
+        suspend fun analysePhotos(
+            photoPaths: List<String>,
+            modelOverride: VisionModel? = null,
+        ): DraftItemResult =
             when (val source = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok") {
                 "pro" -> DraftItemResult(error = "Pro vision is not yet available in this build.")
                 "local" -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
-                else -> visionService.analyse(photoPaths, getApiKey(), getVisionModel().apiName)
+                else -> visionService.analyse(photoPaths, getApiKey(), (modelOverride ?: getVisionModel()).apiName)
             }
 
         // ── Price research ──────────────────────────────────────────────────────────
@@ -164,6 +167,8 @@ class ItemRepository
         }
 
         // ── Settings: AI source (pro / byok / local) ─────────────────────────────
+
+        suspend fun getVisionSource(): String = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok"
 
         fun observeVisionSource(): Flow<String> = dataStore.data.map { it[KEY_VISION_SOURCE] ?: "byok" }
 

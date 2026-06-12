@@ -7,6 +7,7 @@ import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.ListingStatus
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
+import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +46,8 @@ data class ItemDetailUiState(
     val showPhotoViewer: Boolean = false,
     val viewerPhotoIndex: Int = 0,
     val editPrimaryPhotoIndex: Int = 0,
+    val visionSource: String = "byok",
+    val overrideVisionModel: VisionModel? = null,
 )
 
 @HiltViewModel
@@ -60,7 +63,8 @@ class ItemDetailViewModel
             viewModelScope.launch {
                 val item = repository.getById(itemId)
                 if (item != null) {
-                    _uiState.update { it.copyFromItem(item) }
+                    val source = repository.getVisionSource()
+                    _uiState.update { it.copyFromItem(item).copy(visionSource = source) }
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = "Item not found") }
                 }
@@ -87,11 +91,14 @@ class ItemDetailViewModel
 
         fun selectTab(tab: DetailTab) = _uiState.update { it.copy(tab = tab) }
 
+        fun onOverrideVisionModelChange(model: VisionModel) = _uiState.update { it.copy(overrideVisionModel = model) }
+
         fun reanalyse() {
             val item = _uiState.value.item ?: return
+            val modelOverride = _uiState.value.overrideVisionModel
             viewModelScope.launch {
                 _uiState.update { it.copy(isAnalysing = true, error = null) }
-                val result = repository.analysePhotos(item.photoPaths)
+                val result = repository.analysePhotos(item.photoPaths, modelOverride)
                 if (result.error != null) {
                     _uiState.update { it.copy(isAnalysing = false, error = result.error) }
                     return@launch

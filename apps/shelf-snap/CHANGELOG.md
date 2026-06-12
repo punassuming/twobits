@@ -6,6 +6,12 @@
 
 ### Improvements
 
+**Re-analysis** — richer descriptions and inline model picker:
+* vision prompt now requests a 3–5 sentence description covering condition, features, visible defects, material, and best use — replacing the previous one-liner
+* tags expanded from 3–6 to 6–10 keywords including style, material, color, use case, and condition descriptor for better search matching
+* image detail level raised from "low" to "auto" so the model sees full-resolution context when re-analysing
+* model picker dropdown appears above the Re-analyze button (BYOK mode) — choose any available GPT-5 family model for a single analysis without changing your default in Settings
+
 ### Fixes
 
 ## 1.7.0 (2026-06-11)
