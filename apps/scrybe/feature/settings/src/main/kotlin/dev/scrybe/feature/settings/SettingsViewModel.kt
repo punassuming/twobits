@@ -753,7 +753,10 @@ class SettingsViewModel
         }
 
         fun deletePerson(id: String) {
-            viewModelScope.launch { personDao.deletePerson(id) }
+            viewModelScope.launch {
+                personDao.clearPersonFromSegments(id)
+                personDao.deletePerson(id)
+            }
         }
 
         fun mergePersons(

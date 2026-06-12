@@ -35,6 +35,8 @@
 ### Fixes
 
 * delete person confirmation dialog title had Unicode curly-quote string delimiters (U+201C/D) instead of ASCII `"` — replaced so the file parses correctly
+* deleting a person now clears their ID from all speaker segments before removing the person row — previously sessions kept stale personId references pointing to a nonexistent profile
+* custom recording type ID no longer cleared when a stop/pause/resume command arrives — only ACTION_START updates the pending custom type, so auto-transform runs with the correct profile after stop
 * back navigation no longer blocked during an active recording — the foreground service continues regardless of which screen is visible
 * folder groups now remain visible while searching in folder mode; empty folders are hidden from results instead of collapsing to a flat list
 * location tagging toggle moved from Intelligence to Recording section — it controls recording behaviour, not AI processing

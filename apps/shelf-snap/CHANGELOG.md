@@ -35,6 +35,7 @@
 ### Fixes
 
 * photo viewer next/previous navigation compiles correctly — missing `mutableIntStateOf` import restored
+* clearing the Jina AI Search key now takes effect immediately — previously an explicit clear saved an empty string that the migration fallback treated as absent, silently restoring the legacy key
 
 ## 1.7.0 (2026-06-11)
 

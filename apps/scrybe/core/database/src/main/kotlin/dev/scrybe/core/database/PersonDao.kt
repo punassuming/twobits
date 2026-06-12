@@ -17,6 +17,9 @@ interface PersonDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPerson(person: PersonEntity)
 
+    @Query("UPDATE speaker_segments SET personId = NULL WHERE personId = :id")
+    suspend fun clearPersonFromSegments(id: String)
+
     @Query("DELETE FROM persons WHERE id = :id")
     suspend fun deletePerson(id: String)
 

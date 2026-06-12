@@ -87,7 +87,9 @@ class RecordingForegroundService : Service() {
         pendingMode =
             intent?.getStringExtra(RecordingServiceActions.EXTRA_RECORDING_MODE)
                 ?: RecordingMode.JOURNAL.name
-        pendingCustomTypeId = intent?.getStringExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID)
+        if (intent?.action == RecordingServiceActions.ACTION_START) {
+            pendingCustomTypeId = intent.getStringExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID)
+        }
         when (intent?.action) {
             RecordingServiceActions.ACTION_START -> handleStart()
             RecordingServiceActions.ACTION_STOP -> handleStop()

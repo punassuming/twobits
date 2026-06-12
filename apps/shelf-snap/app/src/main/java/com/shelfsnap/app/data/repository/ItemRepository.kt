@@ -126,14 +126,14 @@ class ItemRepository
 
         fun observeJinaApiKey(): Flow<String> =
             dataStore.data.map {
-                it[KEY_JINA_API_KEY]?.ifBlank { null } ?: it[KEY_SEARCH_API_KEY] ?: ""
+                it[KEY_JINA_API_KEY] ?: it[KEY_SEARCH_API_KEY] ?: ""
             }
 
         fun observeBraveApiKey(): Flow<String> = dataStore.data.map { it[KEY_BRAVE_API_KEY] ?: "" }
 
         suspend fun getJinaApiKey(): String {
             val prefs = dataStore.data.firstOrNull()
-            return prefs?.get(KEY_JINA_API_KEY)?.ifBlank { null } ?: prefs?.get(KEY_SEARCH_API_KEY) ?: ""
+            return prefs?.get(KEY_JINA_API_KEY) ?: prefs?.get(KEY_SEARCH_API_KEY) ?: ""
         }
 
         suspend fun getBraveApiKey(): String = dataStore.data.firstOrNull()?.get(KEY_BRAVE_API_KEY) ?: ""
