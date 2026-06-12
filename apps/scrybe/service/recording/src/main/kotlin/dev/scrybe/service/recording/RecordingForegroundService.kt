@@ -20,12 +20,14 @@ import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.audio.RecordedAudio
 import dev.scrybe.core.audio.RecordingConfig
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.database.CustomRecordingTypeDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
+import dev.scrybe.core.transforms.SessionTransformCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -54,11 +56,15 @@ class RecordingForegroundService : Service() {
 
     @Inject lateinit var sessionTranscriptionCoordinator: SessionTranscriptionCoordinator
 
+    @Inject lateinit var sessionTransformCoordinator: SessionTransformCoordinator
+
     @Inject lateinit var recordingSessionEvents: RecordingSessionEvents
 
     @Inject lateinit var preferencesDataStore: AppPreferencesDataStore
 
     @Inject lateinit var locationProvider: LocationProvider
+
+    @Inject lateinit var customRecordingTypeDao: CustomRecordingTypeDao
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -66,6 +72,7 @@ class RecordingForegroundService : Service() {
     private var telemetryJob: Job? = null
     private var locationDeferred: Deferred<Triple<Double, Double, String?>?>? = null
     private var pendingMode: String = RecordingMode.JOURNAL.name
+    private var pendingCustomTypeId: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -80,6 +87,9 @@ class RecordingForegroundService : Service() {
         pendingMode =
             intent?.getStringExtra(RecordingServiceActions.EXTRA_RECORDING_MODE)
                 ?: RecordingMode.JOURNAL.name
+        if (intent?.action == RecordingServiceActions.ACTION_START) {
+            pendingCustomTypeId = intent.getStringExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID)
+        }
         when (intent?.action) {
             RecordingServiceActions.ACTION_START -> handleStart()
             RecordingServiceActions.ACTION_STOP -> handleStop()
@@ -157,14 +167,29 @@ class RecordingForegroundService : Service() {
                                 recordingSessionEvents.onRecordingError(SHORT_AUTO_TRANSCRIBE_MESSAGE)
                                 return@launch
                             }
-                            sessionTranscriptionCoordinator
-                                .autoTranscribeIfEnabled(sessionId)
-                                .onFailure {
-                                    android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
-                                    recordingSessionEvents.onRecordingError(
-                                        it.message ?: "Auto-transcription failed",
-                                    )
+                            val transcriptionResult =
+                                sessionTranscriptionCoordinator
+                                    .autoTranscribeIfEnabled(sessionId)
+                            transcriptionResult.onFailure {
+                                android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
+                                recordingSessionEvents.onRecordingError(
+                                    it.message ?: "Auto-transcription failed",
+                                )
+                            }
+                            if (transcriptionResult.isSuccess) {
+                                val customTypeId = pendingCustomTypeId
+                                if (customTypeId != null) {
+                                    val defaultProfileId =
+                                        customRecordingTypeDao.getById(customTypeId)?.defaultProfileId
+                                    if (defaultProfileId != null) {
+                                        sessionTransformCoordinator
+                                            .transformLatestRawTranscript(sessionId, defaultProfileId)
+                                            .onFailure {
+                                                android.util.Log.w(TAG, "Auto-transform failed for session $sessionId", it)
+                                            }
+                                    }
                                 }
+                            }
                         }
                     }.onFailure { error ->
                         android.util.Log.e(TAG, "Failed to save recording", error)
@@ -254,6 +279,7 @@ class RecordingForegroundService : Service() {
                 locationLng = location?.second,
                 locationLabel = location?.third,
                 mode = pendingMode,
+                customTypeId = pendingCustomTypeId,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
             ),

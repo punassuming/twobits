@@ -521,7 +521,12 @@ fun SessionDetailScreen(
 
     if (isEditingTranscript && successState != null) {
         EditTranscriptDialog(
-            initialValue = successState.currentTranscript?.content.orEmpty(),
+            initialValue =
+                formatTranscriptPlainText(
+                    content = successState.currentTranscript?.content.orEmpty(),
+                    speakerSegments = successState.speakerSegments,
+                    durationMs = successState.playbackDurationMs,
+                ),
             onDismiss = { isEditingTranscript = false },
             onSave = {
                 viewModel.saveTranscriptEdit(it)
@@ -1869,6 +1874,43 @@ private fun TranscriptCard(
             )
         }
     }
+}
+
+private fun formatTranscriptPlainText(
+    content: String,
+    speakerSegments: List<SpeakerSegment>,
+    durationMs: Long,
+): String {
+    val paragraphed = content.replace(Regex("([.?!])\\s+([A-Z])"), "$1\n\n$2")
+    if (speakerSegments.isEmpty() || durationMs <= 0L) return paragraphed
+    val speakerIds = speakerSegments.map { it.speakerId }.distinct().sorted()
+    val len = paragraphed.length
+    var lastSpeakerId: String? = null
+    val sb = StringBuilder()
+    var pos = 0
+    for (segment in speakerSegments.sortedBy { it.startMs }) {
+        val rawStart = ((segment.startMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
+        val rawEnd = ((segment.endMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
+        val segEnd = rawEnd.coerceAtLeast(pos)
+        if (segEnd <= pos) continue
+        val segStart =
+            if (segment.speakerId != lastSpeakerId) {
+                snapToWordBoundary(paragraphed, rawStart).coerceAtLeast(pos)
+            } else {
+                rawStart.coerceAtLeast(pos)
+            }
+        if (segStart > pos) sb.append(paragraphed.substring(pos, segStart))
+        if (segment.speakerId != lastSpeakerId) {
+            val label = defaultSpeakerLabel(segment.speakerId, speakerIds.indexOf(segment.speakerId))
+            if (sb.isNotEmpty()) sb.append("\n\n")
+            sb.append("$label: ")
+            lastSpeakerId = segment.speakerId
+        }
+        if (segStart < segEnd) sb.append(paragraphed.substring(segStart, segEnd))
+        pos = segEnd
+    }
+    if (pos < len) sb.append(paragraphed.substring(pos))
+    return sb.toString()
 }
 
 private fun buildSpeakerAnnotatedString(

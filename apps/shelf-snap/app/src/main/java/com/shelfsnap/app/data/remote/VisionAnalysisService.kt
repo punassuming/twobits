@@ -141,7 +141,7 @@ class VisionAnalysisService
                                     "image_url",
                                     JsonObject().apply {
                                         addProperty("url", "data:image/jpeg;base64,${encodeImageToBase64(path)}")
-                                        addProperty("detail", "low")
+                                        addProperty("detail", "auto")
                                     },
                                 )
                             },
@@ -151,7 +151,7 @@ class VisionAnalysisService
             return JsonObject().apply {
                 addProperty("model", model)
                 add("messages", buildMessages(userContent))
-                addProperty("max_tokens", 300)
+                addProperty("max_tokens", 800)
             }
         }
 
@@ -174,7 +174,7 @@ class VisionAnalysisService
                             JsonObject().apply {
                                 addProperty("type", "input_image")
                                 addProperty("image_url", "data:image/jpeg;base64,${encodeImageToBase64(path)}")
-                                addProperty("detail", "low")
+                                addProperty("detail", "auto")
                             },
                         )
                     }
@@ -183,7 +183,7 @@ class VisionAnalysisService
                 addProperty("model", model)
                 add("input", buildMessages(userContent))
                 // Reasoning tokens count against max_output_tokens; leave headroom for the JSON.
-                addProperty("max_output_tokens", 800)
+                addProperty("max_output_tokens", 1200)
                 add("reasoning", JsonObject().apply { addProperty("effort", "low") })
             }
         }
@@ -314,12 +314,15 @@ class VisionAnalysisService
                 Given one or more photos of a single item, respond ONLY with valid JSON in this exact schema:
                 {
                   "category": "<short category, e.g. Clothing, Electronics, Books, Furniture, Toys, Kitchenware, Other>",
-                  "description": "<one-sentence description of the item>",
+                  "brand": "<brand or manufacturer name, or empty string if unknown>",
+                  "model": "<model name or number, or empty string if unknown>",
+                  "description": "<3–5 sentence marketplace listing description. Cover: overall condition and appearance, notable features or design elements, any visible defects or wear, material/fabric/finish if discernible, and how the item is best used. Write as if posting on eBay — specific, factual, no fluff.>",
                   "condition": "<one of: EXCELLENT, GOOD, FAIR, POOR>",
                   "estimatedValue": <number, USD resale/donation estimate>,
                   "confidencePercent": <integer 0-100>
                 }
-                Be concise. Do not include any explanation outside the JSON object.
+                tags: 6–10 searchable marketplace keywords — include brand name (if present), style/era (e.g. "mid-century", "Y2K"), material, dominant color, use case (e.g. "home office", "outdoor"), and condition descriptor. All lowercase.
+                Do not include any explanation outside the JSON object.
                 """.trimIndent()
 
             private const val USER_PROMPT =

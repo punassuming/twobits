@@ -4,9 +4,42 @@
 
 ### Features
 
+**Custom recording types** — extend the mode picker with your own recording categories:
+* tap "+ New type" at the bottom of the mode picker to create a named type with an optional default transform profile
+* custom types appear in the mode picker alongside the built-in modes
+* recordings captured with a custom type store the type ID; if a default profile is set, it auto-applies after transcription when auto-transcribe is on
+
+**People management** — new screen accessible from Settings → Intelligence:
+* lists all speaker profiles with session counts
+* rename any person inline
+* merge two people — all speaker assignments move to the target, source is removed
+* delete a person with confirmation
+
 ### Improvements
 
+**AI configuration** — standardized model picker layout:
+* "Transform model" and "Profile draft model" now use the shared `ModelRadioList` component inline — the same pattern used by the Transcription and ShelfSnap settings, with proper overflow handling and consistent row layout
+* cost label shortened to "$0.25 / $2.00" format — removes the verbose "per 1M tokens" suffix that caused excessive left-column wrapping
+
+**Session playback** — waveform and indicator layout:
+* waveform canvas height increased from 80 dp to 100 dp for a more prominent display
+* sentiment dots (positive/negative/neutral) moved to a dedicated 14 dp strip below the waveform — no longer overlap the waveform bars
+* topic/intent dots moved to a dedicated 14 dp strip above the waveform — no longer overlap the waveform bars
+* seek bar track reduced from ~4 dp to 2 dp for a cleaner appearance; thumb size unchanged
+
+**History** — alphabetical sort option:
+* filter dialog sort section now includes "Name A→Z" to sort sessions by title
+
+**Transcript editing** — pre-formatted with paragraph breaks:
+* edit dialog now opens with the same sentence-level paragraph breaks and speaker labels that the read-only view shows, giving a clean starting point for edits
 ### Fixes
+
+* delete person confirmation dialog title had Unicode curly-quote string delimiters (U+201C/D) instead of ASCII `"` — replaced so the file parses correctly
+* deleting a person now clears their ID from all speaker segments before removing the person row — previously sessions kept stale personId references pointing to a nonexistent profile
+* custom recording type ID no longer cleared when a stop/pause/resume command arrives — only ACTION_START updates the pending custom type, so auto-transform runs with the correct profile after stop
+* back navigation no longer blocked during an active recording — the foreground service continues regardless of which screen is visible
+* folder groups now remain visible while searching in folder mode; empty folders are hidden from results instead of collapsing to a flat list
+* location tagging toggle moved from Intelligence to Recording section — it controls recording behaviour, not AI processing
 
 ## 1.12.0 (2026-06-11)
 

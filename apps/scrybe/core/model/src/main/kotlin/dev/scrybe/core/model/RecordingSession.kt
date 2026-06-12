@@ -24,6 +24,7 @@ data class RecordingSession(
     val sentimentJson: String? = null,
     val topicsJson: String? = null,
     val mode: RecordingMode = RecordingMode.JOURNAL,
+    val customTypeId: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
 )

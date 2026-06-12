@@ -14,6 +14,8 @@ import com.twobits.common.ReleaseNotes
 import com.twobits.common.ReleaseNotesParser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.scrybe.core.database.PersonDao
+import dev.scrybe.core.database.PersonEntity
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao
@@ -136,6 +138,7 @@ class SettingsViewModel
     constructor(
         @ApplicationContext private val context: Context,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val personDao: PersonDao,
         recordingSessionDao: RecordingSessionDao,
         transcriptDao: TranscriptDao,
         transformRunDao: TransformRunDao,
@@ -147,6 +150,15 @@ class SettingsViewModel
         private val subscriptionRepository: SubscriptionRepository,
         private val billingManager: BillingManager,
     ) : ViewModel() {
+        val persons: StateFlow<List<PersonEntity>> =
+            personDao
+                .getAllPersons()
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = emptyList(),
+                )
+
         val whisperStates: StateFlow<Map<LocalWhisperModel, LocalModelState>> = localModelManager.whisperStates
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = localModelManager.selectedWhisperModel
         val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = localModelManager.gemmaStates
@@ -732,6 +744,32 @@ class SettingsViewModel
                 savedFiles.value = scanSavedFiles()
             }
         }
+
+        fun renamePerson(
+            id: String,
+            name: String,
+        ) {
+            viewModelScope.launch { personDao.renamePerson(id, name) }
+        }
+
+        fun deletePerson(id: String) {
+            viewModelScope.launch {
+                personDao.clearPersonFromSegments(id)
+                personDao.deletePerson(id)
+            }
+        }
+
+        fun mergePersons(
+            sourceId: String,
+            targetId: String,
+        ) {
+            viewModelScope.launch {
+                personDao.reassignPersonAcrossSessions(sourceId, targetId)
+                personDao.deletePerson(sourceId)
+            }
+        }
+
+        suspend fun sessionCountForPerson(id: String): Int = personDao.sessionCountForPerson(id)
 
         fun deleteSavedFile(path: String) {
             viewModelScope.launch {

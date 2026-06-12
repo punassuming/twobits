@@ -162,15 +162,22 @@ class PriceResearchService
         private fun buildSearchQueries(item: Item): List<String> {
             val hasBrandModel = item.brand.isNotBlank() || item.model.isNotBlank()
             val base = listOf(item.brand, item.model).filter { it.isNotBlank() }.joinToString(" ")
+            val quoted = if (base.isNotBlank()) "\"$base\"" else ""
             val conditionLabel = item.condition.searchLabel()
             val queries = mutableListOf<String>()
 
             if (hasBrandModel) {
-                // Platform-targeted queries using the top two highest-signal platforms.
-                queries.add("$base $conditionLabel ${item.category} site:ebay.com sold".trim())
-                queries.add("$base ${item.category} mercari sold listing".trim())
+                // Exact-phrase platform-targeted queries for highest-signal sold listings.
+                queries.add("$quoted $conditionLabel ${item.category} site:ebay.com/itm".trim())
+                queries.add("$quoted sold ${item.category} site:ebay.com".trim())
+                queries.add("$quoted ${item.category} mercari.com sold".trim())
             }
-            // Fallback general query (existing behaviour).
+            // Tag-augmented fallback for broader evidence.
+            if (item.tags.isNotEmpty()) {
+                val tagHint = item.tags.take(3).joinToString(" ")
+                queries.add("$quoted $tagHint ${item.category} sold price".trim())
+            }
+            // General fallback.
             queries.add(
                 listOf(item.brand, item.model, item.category, "resale price sold")
                     .filter { it.isNotBlank() }
@@ -215,9 +222,10 @@ class PriceResearchService
                 Valid platformKey values: $platformKeys.
                 Prefer sold listings over active ones. If evidence is thin, lower the
                 confidence and say so via fewer comps. Never invent exact URLs you were not given.
-                Prefer snippets that contain a price and the word 'sold'. If the search evidence
-                does not include actual marketplace listings, lower confidence to ≤ 40 and state
-                that in the comp titles.
+                IMPORTANT: Only use snippets that contain an actual price (e.g. '${'$'}XX.XX') and
+                indicate a completed/sold transaction. Ignore blog posts, buying guides, and
+                general articles. If fewer than 3 snippets contain real prices from actual
+                marketplace listings, set confidencePercent ≤ 30.
                 """.trimIndent()
 
             val userPayload =
@@ -397,7 +405,7 @@ class PriceResearchService
 
             private const val MAX_CITATIONS = 8
             private const val MAX_SEARCH_RESULTS = 12
-            private const val MIN_RESULTS_EARLY_STOP = 3
+            private const val MIN_RESULTS_EARLY_STOP = 5
 
             internal const val ERROR_INVALID_KEY =
                 "Invalid or missing OpenAI API key. Check Settings."

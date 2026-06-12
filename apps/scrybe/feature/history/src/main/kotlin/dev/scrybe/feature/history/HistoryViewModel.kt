@@ -983,6 +983,7 @@ class HistoryViewModel
                 RecordsSortOption.OLDEST -> compareBy<RecordingSession> { it.createdAt }
                 RecordsSortOption.LONGEST -> compareByDescending<RecordingSession> { it.durationMs }
                 RecordsSortOption.LARGEST -> compareByDescending<RecordingSession> { it.fileSizeBytes }
+                RecordsSortOption.ALPHABETICAL -> compareBy<RecordingSession> { it.title.lowercase() }
             }
 
         private fun matchesDateFilter(

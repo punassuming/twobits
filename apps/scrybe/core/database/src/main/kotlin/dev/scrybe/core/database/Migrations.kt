@@ -130,3 +130,23 @@ val MIGRATION_12_13: Migration =
             db.execSQL("ALTER TABLE transform_profiles ADD COLUMN mode TEXT DEFAULT NULL")
         }
     }
+
+val MIGRATION_13_14: Migration =
+    object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `custom_recording_types` (
+                    `id` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `defaultProfileId` TEXT,
+                    `createdAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "ALTER TABLE recording_sessions ADD COLUMN customTypeId TEXT DEFAULT NULL",
+            )
+        }
+    }

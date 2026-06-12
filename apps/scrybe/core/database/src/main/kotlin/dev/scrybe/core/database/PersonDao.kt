@@ -17,6 +17,24 @@ interface PersonDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPerson(person: PersonEntity)
 
+    @Query("UPDATE speaker_segments SET personId = NULL WHERE personId = :id")
+    suspend fun clearPersonFromSegments(id: String)
+
     @Query("DELETE FROM persons WHERE id = :id")
     suspend fun deletePerson(id: String)
+
+    @Query("UPDATE persons SET name = :name WHERE id = :id")
+    suspend fun renamePerson(
+        id: String,
+        name: String,
+    )
+
+    @Query("UPDATE speaker_segments SET personId = :targetId WHERE personId = :sourceId")
+    suspend fun reassignPersonAcrossSessions(
+        sourceId: String,
+        targetId: String,
+    )
+
+    @Query("SELECT COUNT(DISTINCT sessionId) FROM speaker_segments WHERE personId = :id")
+    suspend fun sessionCountForPerson(id: String): Int
 }

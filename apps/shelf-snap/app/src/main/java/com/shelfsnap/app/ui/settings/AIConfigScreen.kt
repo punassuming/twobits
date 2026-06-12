@@ -309,80 +309,95 @@ private fun WebSearchSection(
         selected = uiState.searchProvider,
         onSelected = viewModel::onSearchProviderChange,
     )
-    if (uiState.searchProvider != SearchProvider.NONE) {
-        var showSearchKey by remember { mutableStateOf(false) }
-        val isJina = uiState.searchProvider == SearchProvider.JINA
+    // Always show both key fields so both keys can be saved independently.
+    SearchApiKeyPanel(
+        label = stringResource(R.string.jina_api_key_label),
+        hint = stringResource(R.string.jina_api_key_hint),
+        value = uiState.editJinaApiKey,
+        onValueChange = viewModel::onJinaApiKeyChange,
+        isTesting = uiState.isJinaTesting,
+        testResult = uiState.jinaTestResult,
+        testMessage = uiState.jinaTestMessage,
+        onSave = viewModel::saveJinaKey,
+        onClear = viewModel::clearJinaKey,
+        onTest = viewModel::testJinaKey,
+        showWalkthrough = uiState.savedJinaApiKey.isBlank(),
+    )
+    HorizontalDivider()
+    SearchApiKeyPanel(
+        label = stringResource(R.string.brave_api_key_label),
+        hint = stringResource(R.string.brave_api_key_hint),
+        value = uiState.editBraveApiKey,
+        onValueChange = viewModel::onBraveApiKeyChange,
+        isTesting = uiState.isBraveTesting,
+        testResult = uiState.braveTestResult,
+        testMessage = uiState.braveTestMessage,
+        onSave = viewModel::saveBraveKey,
+        onClear = viewModel::clearBraveKey,
+        onTest = viewModel::testBraveKey,
+        showWalkthrough = false,
+    )
+}
 
-        if (isJina && uiState.savedSearchApiKey.isBlank()) {
-            JinaKeyWalkthrough()
+@Composable
+private fun SearchApiKeyPanel(
+    label: String,
+    hint: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    isTesting: Boolean,
+    testResult: Boolean?,
+    testMessage: String?,
+    onSave: () -> Unit,
+    onClear: () -> Unit,
+    onTest: () -> Unit,
+    showWalkthrough: Boolean,
+) {
+    var showKey by remember { mutableStateOf(false) }
+    if (showWalkthrough) JinaKeyWalkthrough()
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        supportingText = { Text(hint) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        trailingIcon = {
+            TextButton(onClick = { showKey = !showKey }) {
+                Text(stringResource(if (showKey) R.string.hide else R.string.show))
+            }
+        },
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(onClick = onClear, modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.clear))
         }
-
-        OutlinedTextField(
-            value = uiState.editSearchApiKey,
-            onValueChange = viewModel::onSearchApiKeyChange,
-            label = {
-                Text(stringResource(if (isJina) R.string.jina_api_key_label else R.string.brave_api_key_label))
-            },
-            supportingText = {
-                Text(stringResource(if (isJina) R.string.jina_api_key_hint else R.string.brave_api_key_hint))
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = if (showSearchKey) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            trailingIcon = {
-                TextButton(onClick = { showSearchKey = !showSearchKey }) {
-                    Text(stringResource(if (showSearchKey) R.string.hide else R.string.show))
-                }
-            },
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Button(onClick = onSave, modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.save))
+        }
+        Button(
+            onClick = onTest,
+            modifier = Modifier.weight(1f),
+            enabled = value.isNotBlank() && !isTesting,
         ) {
-            OutlinedButton(
-                onClick = viewModel::clearSearchKey,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(stringResource(R.string.clear))
-            }
-            Button(
-                onClick = viewModel::saveSearchSettings,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(stringResource(R.string.save))
-            }
-            if (isJina) {
-                Button(
-                    onClick = viewModel::testSearchKey,
-                    modifier = Modifier.weight(1f),
-                    enabled = uiState.editSearchApiKey.isNotBlank() && !uiState.isSearchTesting,
-                ) {
-                    if (uiState.isSearchTesting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Text(stringResource(R.string.test))
-                    }
-                }
+            if (isTesting) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            } else {
+                Text(stringResource(R.string.test))
             }
         }
-
-        uiState.searchTestMessage?.let { message ->
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodySmall,
-                color =
-                    if (uiState.searchTestResult == true) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.error
-                    },
-            )
-        }
+    }
+    testMessage?.let { message ->
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (testResult == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+        )
     }
 }
 

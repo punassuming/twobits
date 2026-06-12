@@ -6,7 +6,38 @@
 
 ### Improvements
 
+**Dual search API keys** — store Jina AI and Brave Search keys independently:
+* Settings → AI Config now shows separate Save / Clear / Test panels for Jina AI Search and Brave Search regardless of which provider is selected
+* switching providers no longer wipes the previously saved key — both are retained in DataStore
+* existing `search_api_key` value migrated automatically to `jina_search_api_key` on first read
+* Test button now available for both providers (Brave Search included)
+
+**Listing integration** — platform-specific text, Share Sheet, Mark Sold, and tips:
+* listing text is now formatted per-platform: eBay gets an Item Specifics block with brand/model/condition/size/color and a title capped at 80 characters; Mercari is casual with price at end; Facebook Marketplace puts the price at top with no hashtags; OfferUp uses a short title with bulleted condition notes; Craigslist uses a classic classified format with email footer
+* Share button added next to "Copy listing text" — opens the Android Share Sheet with listing text and up to 3 item photos; uses the system chooser so the user can send directly to the eBay/Mercari app, Messages, email, etc.
+* "Mark sold" button appears on each active listing row — tapping it flips the listing status to Sold and persists the change
+* collapsible "Tips ▼" row added below each platform checkbox with 3–4 platform-specific listing tips (title length limits, tone guidance, pricing strategy)
+
+**Market research search** — targeted queries and stricter evidence filtering:
+* search queries now wrap brand + model in quotes for exact-phrase matching (e.g. `"IKEA Ektorp"`)
+* added platform-specific queries: `site:ebay.com/itm`, `site:ebay.com sold`, and `mercari.com sold` before the generic fallback
+* tag-augmented fallback query added when the item has keyword tags
+* early-stop threshold raised from 3 → 5 results so more evidence is gathered per research run
+* LLM synthesis prompt now instructs the model to ignore blog posts and buying guides — only snippets with a real price and sold transaction count; confidence capped at ≤ 30 when fewer than 3 real listings are present
+* Jina AI Search requests now include `X-Return-Format: text` for cleaner content extraction from listing pages
+
+**Re-analysis** — richer descriptions and inline model picker:
+* vision prompt now requests a 3–5 sentence description covering condition, features, visible defects, material, and best use — replacing the previous one-liner
+* tags expanded from 3–6 to 6–10 keywords including style, material, color, use case, and condition descriptor for better search matching
+* image detail level raised from "low" to "auto" so the model sees full-resolution context when re-analysing
+* model picker dropdown appears above the Re-analyze button (BYOK mode) — choose any available GPT-5 family model for a single analysis without changing your default in Settings
+
 ### Fixes
+
+* photo viewer next/previous navigation compiles correctly — missing `mutableIntStateOf` import restored
+* clearing the Jina AI Search key now takes effect immediately — previously an explicit clear saved an empty string that the migration fallback treated as absent, silently restoring the legacy key
+* price research LLM prompt no longer fails to compile — `$XX.XX` example string now escapes the dollar sign correctly
+* model picker dropdown compiles correctly — removed invalid import of `ExposedDropdownMenu` which is a scope-only composable accessed through `ExposedDropdownMenuBox`
 
 ## 1.7.0 (2026-06-11)
 
