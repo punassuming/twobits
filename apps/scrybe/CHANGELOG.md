@@ -8,6 +8,9 @@
 
 ### Fixes
 
+* location tagging now works on Android 13+ — the API 33 `Geocoder.getFromLocation` callback is asynchronous but was being read before it fired, always returning null; fixed by suspending until the callback completes
+* location capture now falls back to `PRIORITY_HIGH_ACCURACY` when the balanced-power request returns no fix (e.g. cold start with no cached location); timeout extended from 3 s to 5 s to accommodate the fallback
+
 ## 1.13.0 (2026-06-13)
 
 ### Features
