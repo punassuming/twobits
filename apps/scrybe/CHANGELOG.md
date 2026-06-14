@@ -6,6 +6,11 @@
 
 ### Improvements
 
+**Recording** — back navigation and less-obtrusive status pill:
+* pressing back (or the back arrow) while recording now shows the sessions list — the recording continues in the background via the foreground service
+* returning to the recording view via the banner pill (or tapping "open") restores the full recording controls
+* active-recording indicator replaced with a compact floating pill (pulsing red dot + elapsed time) instead of the full-width card that covered the top of every screen
+
 ### Fixes
 
 * location tagging now works on Android 13+ — the API 33 `Geocoder.getFromLocation` callback is asynchronous but was being read before it fired, always returning null; fixed by suspending until the callback completes

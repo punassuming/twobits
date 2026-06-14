@@ -86,6 +86,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -101,6 +102,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
 import dev.scrybe.core.common.ModeBadge
@@ -191,8 +195,19 @@ fun CaptureScreen(
             }
         }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.unminimize()
+        }
+    }
+
     BackHandler(enabled = uiState.isSelecting) {
         viewModel.clearSelection()
+    }
+
+    BackHandler(enabled = uiState.phase != CapturePhase.IDLE && !uiState.minimized) {
+        viewModel.minimize()
     }
 
     Scaffold(
@@ -252,12 +267,12 @@ fun CaptureScreen(
         },
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            if (uiState.phase != CapturePhase.IDLE) {
+            if (uiState.phase != CapturePhase.IDLE && !uiState.minimized) {
                 RecordingActiveView(
                     state = uiState,
                     paddingValues = paddingValues,
                     onStop = viewModel::stopRecording,
-                    onBack = {},
+                    onBack = viewModel::minimize,
                     onCancel = viewModel::cancelRecording,
                     onPause = viewModel::pauseRecording,
                     onResume = viewModel::resumeRecording,

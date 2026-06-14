@@ -132,6 +132,7 @@ class CaptureViewModel
                                 elapsedMs = 0L,
                                 currentAmplitudeRatio = 0f,
                                 amplitudeHistory = emptyList(),
+                                minimized = false,
                             )
                     }
                 }
@@ -289,6 +290,14 @@ class CaptureViewModel
 
         fun deleteCustomType(id: String) {
             viewModelScope.launch { customRecordingTypeDao.delete(id) }
+        }
+
+        fun minimize() {
+            _uiState.value = _uiState.value.copy(minimized = true)
+        }
+
+        fun unminimize() {
+            _uiState.value = _uiState.value.copy(minimized = false)
         }
 
         fun pauseRecording() {
