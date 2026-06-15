@@ -26,12 +26,14 @@ class LocationProvider
     constructor(
         @ApplicationContext private val context: Context,
     ) {
-        suspend fun captureCoarseLocationWithLabel(): Triple<Double, Double, String?>? =
-            withTimeoutOrNull(3_000) {
-                val location = getLastKnownLocation() ?: return@withTimeoutOrNull null
-                val label = withContext(Dispatchers.IO) { reverseGeocode(location.latitude, location.longitude) }
-                Triple(location.latitude, location.longitude, label)
-            }
+        suspend fun captureCoarseLocationWithLabel(): Triple<Double, Double, String?>? {
+            val location = withTimeoutOrNull(5_000) { getLastKnownLocation() } ?: return null
+            val label =
+                withTimeoutOrNull(3_000) {
+                    withContext(Dispatchers.IO) { reverseGeocode(location.latitude, location.longitude) }
+                }
+            return Triple(location.latitude, location.longitude, label)
+        }
 
         @SuppressLint("MissingPermission")
         private suspend fun getLastKnownLocation(): Location? {
@@ -40,35 +42,60 @@ class LocationProvider
                     PackageManager.PERMISSION_GRANTED
             if (!hasPermission) return null
 
-            return suspendCancellableCoroutine { cont ->
+            val client = LocationServices.getFusedLocationProviderClient(context)
+
+            // Try balanced accuracy first; fall back to high accuracy if no fix is cached.
+            return fetchLocation(client, Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                ?: fetchLocation(client, Priority.PRIORITY_HIGH_ACCURACY)
+        }
+
+        @SuppressLint("MissingPermission")
+        private suspend fun fetchLocation(
+            client: com.google.android.gms.location.FusedLocationProviderClient,
+            priority: Int,
+        ): Location? =
+            suspendCancellableCoroutine { cont ->
                 val cancellationSource = CancellationTokenSource()
                 cont.invokeOnCancellation { cancellationSource.cancel() }
-                LocationServices
-                    .getFusedLocationProviderClient(context)
-                    .getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellationSource.token)
+                client
+                    .getCurrentLocation(priority, cancellationSource.token)
                     .addOnSuccessListener { location -> cont.resume(location) }
                     .addOnFailureListener { cont.resume(null) }
                     .addOnCanceledListener { cont.resume(null) }
             }
-        }
 
-        @Suppress("DEPRECATION")
-        private fun reverseGeocode(
+        private suspend fun reverseGeocode(
             lat: Double,
             lng: Double,
         ): String? =
             runCatching {
                 val geocoder = Geocoder(context)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    var result: String? = null
-                    geocoder.getFromLocation(lat, lng, 1) { addresses ->
-                        result =
-                            addresses.firstOrNull()?.let { addr ->
-                                listOfNotNull(addr.locality, addr.adminArea).joinToString(", ").takeIf { it.isNotBlank() }
-                            }
+                    // API 33+: getFromLocation is async — suspend until onGeocode or onError fires.
+                    suspendCancellableCoroutine { cont ->
+                        geocoder.getFromLocation(
+                            lat,
+                            lng,
+                            1,
+                            object : Geocoder.GeocodeListener {
+                                override fun onGeocode(addresses: List<android.location.Address>) {
+                                    cont.resume(
+                                        addresses.firstOrNull()?.let { addr ->
+                                            listOfNotNull(addr.locality, addr.adminArea)
+                                                .joinToString(", ")
+                                                .takeIf { it.isNotBlank() }
+                                        },
+                                    )
+                                }
+
+                                override fun onError(errorMessage: String?) {
+                                    cont.resume(null)
+                                }
+                            },
+                        )
                     }
-                    result
                 } else {
+                    @Suppress("DEPRECATION")
                     geocoder.getFromLocation(lat, lng, 1)?.firstOrNull()?.let { addr ->
                         listOfNotNull(addr.locality, addr.adminArea).joinToString(", ").takeIf { it.isNotBlank() }
                     }

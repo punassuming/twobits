@@ -86,6 +86,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -101,6 +102,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
 import dev.scrybe.core.common.ModeBadge
@@ -120,6 +124,8 @@ import kotlinx.coroutines.flow.filterNotNull
 fun CaptureScreen(
     onNavigateToSessionDetail: (String) -> Unit,
     onNavigateToSettings: () -> Unit = {},
+    unminimizeRequested: Boolean = false,
+    onUnminimizeConsumed: () -> Unit = {},
     viewModel: CaptureViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -191,8 +197,26 @@ fun CaptureScreen(
             }
         }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.unminimize()
+        }
+    }
+
+    LaunchedEffect(unminimizeRequested) {
+        if (unminimizeRequested) {
+            viewModel.unminimize()
+            onUnminimizeConsumed()
+        }
+    }
+
     BackHandler(enabled = uiState.isSelecting) {
         viewModel.clearSelection()
+    }
+
+    BackHandler(enabled = uiState.phase != CapturePhase.IDLE && !uiState.minimized) {
+        viewModel.minimize()
     }
 
     Scaffold(
@@ -252,12 +276,12 @@ fun CaptureScreen(
         },
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            if (uiState.phase != CapturePhase.IDLE) {
+            if (uiState.phase != CapturePhase.IDLE && !uiState.minimized) {
                 RecordingActiveView(
                     state = uiState,
                     paddingValues = paddingValues,
                     onStop = viewModel::stopRecording,
-                    onBack = {},
+                    onBack = viewModel::minimize,
                     onCancel = viewModel::cancelRecording,
                     onPause = viewModel::pauseRecording,
                     onResume = viewModel::resumeRecording,
@@ -453,14 +477,16 @@ fun CaptureScreen(
                         item(key = "bottom-spacer") { Spacer(Modifier.height(80.dp)) }
                     }
                 } // end Column
-                FloatingActionButton(
-                    onClick = viewModel::showModePicker,
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp),
-                ) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Start recording")
+                if (uiState.phase == CapturePhase.IDLE) {
+                    FloatingActionButton(
+                        onClick = viewModel::showModePicker,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp),
+                    ) {
+                        Icon(Icons.Filled.Mic, contentDescription = "Start recording")
+                    }
                 }
             } // end IDLE branch
         }

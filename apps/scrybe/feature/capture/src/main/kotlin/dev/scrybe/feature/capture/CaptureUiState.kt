@@ -18,6 +18,7 @@ data class CaptureUiState(
     val folderNames: Map<String, String> = emptyMap(),
     val selectedSessionIds: Set<String> = emptySet(),
     val customTypes: List<CustomRecordingType> = emptyList(),
+    val minimized: Boolean = false,
 ) {
     val isSelecting: Boolean get() = selectedSessionIds.isNotEmpty()
 }

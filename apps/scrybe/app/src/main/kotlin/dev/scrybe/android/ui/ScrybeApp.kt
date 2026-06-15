@@ -8,22 +8,16 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.RadioButtonChecked
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -109,6 +102,12 @@ private fun MainContentBox(
                 elapsedMs = activeRecordingState.elapsedMs,
                 amplitudeRatio = activeRecordingState.amplitudeRatio,
                 onOpen = {
+                    try {
+                        navController
+                            .getBackStackEntry(Screen.Capture.route)
+                            .savedStateHandle["unminimize"] = true
+                    } catch (_: IllegalArgumentException) {
+                    }
                     navController.navigate(Screen.Capture.route) {
                         launchSingleTop = true
                     }
@@ -129,67 +128,29 @@ private fun ActiveRecordingBanner(
         label = "active-recording-banner-scale",
     )
 
-    Card(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onOpen),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 3.dp,
+        modifier = Modifier.clickable(onClick = onOpen),
     ) {
         Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(14.dp)
-                            .scale(reactiveScale)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.error),
-                )
-                Icon(
-                    imageVector = Icons.Filled.GraphicEq,
-                    contentDescription = null,
-                    modifier = Modifier.padding(start = 10.dp, end = 8.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Column {
-                    Text(
-                        text = "Recording active",
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    Text(
-                        text = "Elapsed ${formatBannerElapsed(elapsedMs)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.RadioButtonChecked,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.padding(end = 6.dp),
-                )
-                Text(
-                    text = "Open",
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Box(
+                modifier =
+                    Modifier
+                        .size(8.dp)
+                        .scale(reactiveScale)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error),
+            )
+            Text(
+                text = "Recording · ${formatBannerElapsed(elapsedMs)}",
+                style = MaterialTheme.typography.labelMedium,
+            )
         }
     }
 }
