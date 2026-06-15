@@ -17,9 +17,12 @@
 
 ### Improvements
 
-**AI configuration** — standardized model picker layout:
-* "Transform model" and "Profile draft model" now use the shared `ModelRadioList` component inline — the same pattern used by the Transcription and ShelfSnap settings, with proper overflow handling and consistent row layout
-* cost label shortened to "$0.25 / $2.00" format — removes the verbose "per 1M tokens" suffix that caused excessive left-column wrapping
+**AI configuration** — model picker readability:
+* cost label moved below the model subtitle rather than trailing the row — fixes extreme text wrapping (model names broken to one word per line) on the narrow AlertDialog layout
+* cost label only shown when non-blank, so the Profile Draft model picker keeps its two-line rows clean
+
+**What's New dialog** — structured release notes:
+* multi-bullet entries now display as individual "• item" lines instead of a single dot-separated paragraph, making release notes easier to scan
 
 **Session playback** — waveform and indicator layout:
 * waveform canvas height increased from 80 dp to 100 dp for a more prominent display

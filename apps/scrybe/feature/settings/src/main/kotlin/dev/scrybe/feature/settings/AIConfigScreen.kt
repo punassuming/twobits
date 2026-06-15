@@ -381,12 +381,15 @@ private fun <T> ModelPickerDialog(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            val cost = costLabel(model)
+                            if (cost.isNotBlank()) {
+                                Text(
+                                    cost,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
-                        Text(
-                            costLabel(model),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
                     }
                 }
             }

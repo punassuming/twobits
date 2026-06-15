@@ -78,12 +78,24 @@ private fun WhatsNewDialogEntryRow(entry: WhatsNewDialogEntry) {
             fontWeight = FontWeight.SemiBold,
         )
         if (entry.description.isNotBlank()) {
-            Text(
-                text = entry.description,
-                modifier = Modifier.padding(top = 2.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            val bullets = entry.description.split(" · ")
+            if (bullets.size <= 1) {
+                Text(
+                    text = entry.description,
+                    modifier = Modifier.padding(top = 2.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                bullets.forEach { bullet ->
+                    Text(
+                        text = "• $bullet",
+                        modifier = Modifier.padding(top = 2.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }
