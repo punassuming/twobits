@@ -1,6 +1,7 @@
 package dev.scrybe.feature.filemanager
 
 import android.content.Context
+import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -51,6 +52,8 @@ class FileManagerViewModel
         private val _events = MutableSharedFlow<String>()
         val events: SharedFlow<String> = _events.asSharedFlow()
 
+        private val recordingsDir: File by lazy { context.filesDir.resolve("recordings") }
+
         init {
             refresh()
         }
@@ -92,7 +95,6 @@ class FileManagerViewModel
                         )
                     }.toMutableList()
 
-            val recordingsDir = context.filesDir.resolve("recordings")
             if (recordingsDir.exists()) {
                 val audioExts = setOf("m4a", "mp4", "ogg", "webm")
                 recordingsDir
@@ -141,6 +143,30 @@ class FileManagerViewModel
                     }.onFailure { _events.emit(it.message ?: "Import failed") }
             }
         }
+
+        fun importExternalFile(uri: Uri) {
+            viewModelScope.launch {
+                runCatching {
+                    val ext = mimeExtension(context.contentResolver.getType(uri))
+                    val dest = File(recordingsDir.also { it.mkdirs() }, "recording_${UUID.randomUUID()}.$ext")
+                    context.contentResolver.openInputStream(uri)!!.use { src ->
+                        dest.outputStream().use { dst -> src.copyTo(dst) }
+                    }
+                    createSession(dest)
+                }.onSuccess {
+                    refresh()
+                    _events.emit("Recording imported")
+                }.onFailure { _events.emit(it.message ?: "Import failed") }
+            }
+        }
+
+        private fun mimeExtension(mimeType: String?): String =
+            when (mimeType?.lowercase()) {
+                "audio/mp4", "audio/aac", "audio/x-m4a" -> "m4a"
+                "audio/ogg" -> "ogg"
+                "audio/webm" -> "webm"
+                else -> "m4a"
+            }
 
         private suspend fun createSession(file: File) {
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date(file.lastModified()))

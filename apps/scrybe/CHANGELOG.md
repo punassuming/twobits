@@ -24,6 +24,11 @@
 **What's New dialog** — structured release notes:
 * multi-bullet entries now display as individual "• item" lines instead of a single dot-separated paragraph, making release notes easier to scan
 
+**File Manager** — import audio from device storage:
+* new "+" button in the File Manager toolbar opens the system file picker filtered to audio files
+* selected file is copied into Scrybe's recordings folder and registered as a new recording ready for transcription
+* orphaned recordings already present in the recordings folder continue to appear automatically with an Import button to register them
+
 **Session playback** — waveform and indicator layout:
 * waveform canvas height increased from 80 dp to 100 dp for a more prominent display
 * sentiment dots (positive/negative/neutral) moved to a dedicated 14 dp strip below the waveform — no longer overlap the waveform bars
