@@ -102,6 +102,12 @@ private fun MainContentBox(
                 elapsedMs = activeRecordingState.elapsedMs,
                 amplitudeRatio = activeRecordingState.amplitudeRatio,
                 onOpen = {
+                    try {
+                        navController
+                            .getBackStackEntry(Screen.Capture.route)
+                            .savedStateHandle["unminimize"] = true
+                    } catch (_: IllegalArgumentException) {
+                    }
                     navController.navigate(Screen.Capture.route) {
                         launchSingleTop = true
                     }

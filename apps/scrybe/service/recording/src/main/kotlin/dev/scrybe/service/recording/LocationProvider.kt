@@ -26,12 +26,14 @@ class LocationProvider
     constructor(
         @ApplicationContext private val context: Context,
     ) {
-        suspend fun captureCoarseLocationWithLabel(): Triple<Double, Double, String?>? =
-            withTimeoutOrNull(5_000) {
-                val location = getLastKnownLocation() ?: return@withTimeoutOrNull null
-                val label = withContext(Dispatchers.IO) { reverseGeocode(location.latitude, location.longitude) }
-                Triple(location.latitude, location.longitude, label)
-            }
+        suspend fun captureCoarseLocationWithLabel(): Triple<Double, Double, String?>? {
+            val location = withTimeoutOrNull(5_000) { getLastKnownLocation() } ?: return null
+            val label =
+                withTimeoutOrNull(3_000) {
+                    withContext(Dispatchers.IO) { reverseGeocode(location.latitude, location.longitude) }
+                }
+            return Triple(location.latitude, location.longitude, label)
+        }
 
         @SuppressLint("MissingPermission")
         private suspend fun getLastKnownLocation(): Location? {
@@ -69,17 +71,28 @@ class LocationProvider
             runCatching {
                 val geocoder = Geocoder(context)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    // API 33+: getFromLocation callback is async — suspend until it fires.
+                    // API 33+: getFromLocation is async — suspend until onGeocode or onError fires.
                     suspendCancellableCoroutine { cont ->
-                        geocoder.getFromLocation(lat, lng, 1) { addresses ->
-                            cont.resume(
-                                addresses.firstOrNull()?.let { addr ->
-                                    listOfNotNull(addr.locality, addr.adminArea)
-                                        .joinToString(", ")
-                                        .takeIf { it.isNotBlank() }
-                                },
-                            )
-                        }
+                        geocoder.getFromLocation(
+                            lat,
+                            lng,
+                            1,
+                            object : android.location.GeocodeListener {
+                                override fun onGeocode(addresses: List<android.location.Address>) {
+                                    cont.resume(
+                                        addresses.firstOrNull()?.let { addr ->
+                                            listOfNotNull(addr.locality, addr.adminArea)
+                                                .joinToString(", ")
+                                                .takeIf { it.isNotBlank() }
+                                        },
+                                    )
+                                }
+
+                                override fun onError(errorMessage: String?) {
+                                    cont.resume(null)
+                                }
+                            },
+                        )
                     }
                 } else {
                     @Suppress("DEPRECATION")

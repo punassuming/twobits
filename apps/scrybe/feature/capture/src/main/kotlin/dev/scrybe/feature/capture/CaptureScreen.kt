@@ -124,6 +124,8 @@ import kotlinx.coroutines.flow.filterNotNull
 fun CaptureScreen(
     onNavigateToSessionDetail: (String) -> Unit,
     onNavigateToSettings: () -> Unit = {},
+    unminimizeRequested: Boolean = false,
+    onUnminimizeConsumed: () -> Unit = {},
     viewModel: CaptureViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -199,6 +201,13 @@ fun CaptureScreen(
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.unminimize()
+        }
+    }
+
+    LaunchedEffect(unminimizeRequested) {
+        if (unminimizeRequested) {
+            viewModel.unminimize()
+            onUnminimizeConsumed()
         }
     }
 
@@ -468,14 +477,16 @@ fun CaptureScreen(
                         item(key = "bottom-spacer") { Spacer(Modifier.height(80.dp)) }
                     }
                 } // end Column
-                FloatingActionButton(
-                    onClick = viewModel::showModePicker,
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp),
-                ) {
-                    Icon(Icons.Filled.Mic, contentDescription = "Start recording")
+                if (uiState.phase == CapturePhase.IDLE) {
+                    FloatingActionButton(
+                        onClick = viewModel::showModePicker,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp),
+                    ) {
+                        Icon(Icons.Filled.Mic, contentDescription = "Start recording")
+                    }
                 }
             } // end IDLE branch
         }

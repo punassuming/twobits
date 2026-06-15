@@ -6,6 +6,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -87,8 +89,13 @@ fun ScrybeNavHost(navController: NavHostController) {
             exitTransition = { fadeExit },
             popEnterTransition = { fadeEnter },
             popExitTransition = { fadeExit },
-        ) {
+        ) { backStackEntry ->
+            val unminimizeRequested by backStackEntry.savedStateHandle
+                .getStateFlow("unminimize", false)
+                .collectAsState()
             CaptureScreen(
+                unminimizeRequested = unminimizeRequested,
+                onUnminimizeConsumed = { backStackEntry.savedStateHandle["unminimize"] = false },
                 onNavigateToSessionDetail = { sessionId ->
                     navController.navigate(Screen.SessionDetail.createRoute(sessionId))
                 },
