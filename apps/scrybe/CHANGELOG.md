@@ -14,7 +14,7 @@
 ### Fixes
 
 * location tagging now works on Android 13+ — the API 33 `Geocoder.getFromLocation` callback is asynchronous but was being read before it fired, always returning null; fixed by suspending until the callback completes
-* geocoder `onError` callback now resumes the coroutine with null instead of letting it hang until the outer timeout, so coordinates are still saved to the session even when reverse geocoding fails
+* geocoder `onError` callback now resumes the coroutine with null instead of letting it hang until the outer timeout, so coordinates are still saved to the session even when reverse geocoding fails; corrected to use `Geocoder.GeocodeListener` (nested interface) instead of the non-existent `android.location.GeocodeListener`
 * location capture timeout is now split: 5 s for the location fix, 3 s for geocoding — a slow or failing geocoder no longer causes the session to lose its coordinates
 * location capture now falls back to `PRIORITY_HIGH_ACCURACY` when the balanced-power request returns no fix (e.g. cold start with no cached location)
 * tapping the recording pill while already on the sessions list (minimized recording) now correctly restores the recording controls — previously the `launchSingleTop` navigate was a no-op and the lifecycle effect did not refire

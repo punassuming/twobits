@@ -77,7 +77,7 @@ class LocationProvider
                             lat,
                             lng,
                             1,
-                            object : android.location.GeocodeListener {
+                            object : Geocoder.GeocodeListener {
                                 override fun onGeocode(addresses: List<android.location.Address>) {
                                     cont.resume(
                                         addresses.firstOrNull()?.let { addr ->
