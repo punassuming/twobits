@@ -49,6 +49,11 @@ if [[ -n "$STAGED_SCRYBE_CODE" && -z "$STAGED_SCRYBE_CHANGELOG" ]]; then
     echo "$STAGED_SCRYBE_CODE" | sed 's/^/  - /' >&2
     fail "Stage an apps/scrybe/CHANGELOG.md update and re-commit."
 fi
+if [[ -n "$STAGED_SCRYBE_CODE" && -n "$STAGED_SCRYBE_CHANGELOG" ]]; then
+    python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+        check-staged-unreleased-new --changelog "$SCRYBE_DIR/CHANGELOG.md" \
+        || fail "apps/scrybe/CHANGELOG.md must have new ## Unreleased bullets when Scrybe code changes."
+fi
 ok "Scrybe changelog update check"
 
 STAGED_SHELF_SNAP_CODE=$(echo "$STAGED_ALL" | grep -E \
@@ -61,6 +66,11 @@ if [[ -n "$STAGED_SHELF_SNAP_CODE" && -z "$STAGED_SHELF_SNAP_CHANGELOG" ]]; then
     echo "Staged Shelf Snap code files with no changelog entry:" >&2
     echo "$STAGED_SHELF_SNAP_CODE" | sed 's/^/  - /' >&2
     fail "Stage an apps/shelf-snap/CHANGELOG.md update and re-commit."
+fi
+if [[ -n "$STAGED_SHELF_SNAP_CODE" && -n "$STAGED_SHELF_SNAP_CHANGELOG" ]]; then
+    python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+        check-staged-unreleased-new --changelog "$SHELF_SNAP_DIR/CHANGELOG.md" \
+        || fail "apps/shelf-snap/CHANGELOG.md must have new ## Unreleased bullets when Shelf Snap code changes."
 fi
 ok "Shelf Snap changelog update check"
 

@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* changelog enforcement now requires new `## Unreleased` bullets, not just a file touch — a cleanup-only edit no longer satisfies the pre-commit hook or CI check
+
 ## 1.14.0 (2026-06-15)
 
 ### Features
