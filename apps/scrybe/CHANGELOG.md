@@ -44,6 +44,7 @@
 
 * File Manager imports now read duration, sample rate, bitrate, and channel count from the file using MediaMetadataRetriever — previously all four values were stored as zero, causing recordings to display as 0 sec with no cost or insight data
 * File Manager imports now preserve the correct file extension for MP3 (audio/mpeg) and WAV (audio/wav) files — previously both were saved as .m4a, causing transcription to label them as audio/mp4
+* AudioFormat enum extended with MP3 and WAV entries; exhaustive when expressions in AndroidMediaRecorder updated to handle both (mapped to AAC/MPEG-4 fallbacks — these formats are import-only and never used for live recording)
 
 * delete person confirmation dialog title had Unicode curly-quote string delimiters (U+201C/D) instead of ASCII `"` — replaced so the file parses correctly
 * deleting a person now clears their ID from all speaker segments before removing the person row — previously sessions kept stale personId references pointing to a nonexistent profile

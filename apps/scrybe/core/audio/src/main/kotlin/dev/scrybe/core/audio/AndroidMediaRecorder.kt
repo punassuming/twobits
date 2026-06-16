@@ -204,24 +204,30 @@ class AndroidMediaRecorder
         private val AudioFormat.extension get() =
             when (this) {
                 AudioFormat.AAC -> "m4a"
+                AudioFormat.MP3 -> "mp3"
                 AudioFormat.MP4 -> "mp4"
                 AudioFormat.OGG -> "ogg"
+                AudioFormat.WAV -> "wav"
                 AudioFormat.WEBM -> "webm"
             }
 
         private val AudioFormat.outputFormat get() =
             when (this) {
                 AudioFormat.AAC -> MediaRecorder.OutputFormat.MPEG_4
+                AudioFormat.MP3 -> MediaRecorder.OutputFormat.MPEG_4
                 AudioFormat.MP4 -> MediaRecorder.OutputFormat.MPEG_4
                 AudioFormat.OGG -> MediaRecorder.OutputFormat.OGG
+                AudioFormat.WAV -> MediaRecorder.OutputFormat.MPEG_4
                 AudioFormat.WEBM -> MediaRecorder.OutputFormat.WEBM
             }
 
         private val AudioFormat.audioEncoder get() =
             when (this) {
                 AudioFormat.AAC -> MediaRecorder.AudioEncoder.AAC
+                AudioFormat.MP3 -> MediaRecorder.AudioEncoder.AAC
                 AudioFormat.MP4 -> MediaRecorder.AudioEncoder.AAC
                 AudioFormat.OGG -> MediaRecorder.AudioEncoder.VORBIS
+                AudioFormat.WAV -> MediaRecorder.AudioEncoder.AAC
                 AudioFormat.WEBM -> MediaRecorder.AudioEncoder.VORBIS
             }
 
