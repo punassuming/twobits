@@ -46,9 +46,17 @@
 
 ### Improvements
 
-**AI configuration** — standardized model picker layout:
-* "Transform model" and "Profile draft model" now use the shared `ModelRadioList` component inline — the same pattern used by the Transcription and ShelfSnap settings, with proper overflow handling and consistent row layout
-* cost label shortened to "$0.25 / $2.00" format — removes the verbose "per 1M tokens" suffix that caused excessive left-column wrapping
+**AI configuration** — model picker readability:
+* cost label moved below the model subtitle rather than trailing the row — fixes extreme text wrapping (model names broken to one word per line) on the narrow AlertDialog layout
+* cost label only shown when non-blank, so the Profile Draft model picker keeps its two-line rows clean
+
+**What's New dialog** — structured release notes:
+* multi-bullet entries now display as individual "• item" lines instead of a single dot-separated paragraph, making release notes easier to scan
+
+**File Manager** — import audio from device storage:
+* new "+" button in the File Manager toolbar opens the system file picker filtered to audio files
+* selected file is copied into Scrybe's recordings folder and registered as a new recording ready for transcription
+* orphaned recordings already present in the recordings folder continue to appear automatically with an Import button to register them
 
 **Session playback** — waveform and indicator layout:
 * waveform canvas height increased from 80 dp to 100 dp for a more prominent display
@@ -62,6 +70,10 @@
 **Transcript editing** — pre-formatted with paragraph breaks:
 * edit dialog now opens with the same sentence-level paragraph breaks and speaker labels that the read-only view shows, giving a clean starting point for edits
 ### Fixes
+
+* File Manager imports now read duration, sample rate, bitrate, and channel count from the file using MediaMetadataRetriever — previously all four values were stored as zero, causing recordings to display as 0 sec with no cost or insight data
+* File Manager imports now preserve the correct file extension for MP3 (audio/mpeg) and WAV (audio/wav) files — previously both were saved as .m4a, causing transcription to label them as audio/mp4
+* AudioFormat enum extended with MP3 and WAV entries; exhaustive when expressions in AndroidMediaRecorder updated to handle both (mapped to AAC/MPEG-4 fallbacks — these formats are import-only and never used for live recording)
 
 * delete person confirmation dialog title had Unicode curly-quote string delimiters (U+201C/D) instead of ASCII `"` — replaced so the file parses correctly
 * deleting a person now clears their ID from all speaker segments before removing the person row — previously sessions kept stale personId references pointing to a nonexistent profile

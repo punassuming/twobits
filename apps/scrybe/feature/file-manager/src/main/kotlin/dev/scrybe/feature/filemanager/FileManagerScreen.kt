@@ -1,5 +1,7 @@
 package dev.scrybe.feature.filemanager
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
@@ -52,6 +55,10 @@ fun FileManagerScreen(onNavigateBack: () -> Unit) {
     val viewModel: FileManagerViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val importLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+        ) { uri -> uri?.let { viewModel.importExternalFile(it) } }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { message ->
@@ -69,6 +76,9 @@ fun FileManagerScreen(onNavigateBack: () -> Unit) {
                     }
                 },
                 actions = {
+                    IconButton(onClick = { importLauncher.launch(arrayOf("audio/*")) }) {
+                        Icon(Icons.Default.Add, contentDescription = "Import audio file")
+                    }
                     IconButton(onClick = viewModel::refresh) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
