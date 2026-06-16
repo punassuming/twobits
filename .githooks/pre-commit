@@ -52,7 +52,7 @@ fi
 ok "Scrybe changelog update check"
 
 STAGED_SHELF_SNAP_CODE=$(echo "$STAGED_ALL" | grep -E \
-    "^apps/shelf-snap/|^\.github/workflows/shelf-snap" \
+    "^apps/shelf-snap/|^shared/|^\.github/workflows/shelf-snap" \
     || true)
 STAGED_SHELF_SNAP_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/shelf-snap/CHANGELOG.md" || true)
 
