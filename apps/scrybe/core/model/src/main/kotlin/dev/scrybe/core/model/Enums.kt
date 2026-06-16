@@ -34,8 +34,10 @@ enum class ProviderType {
 
 enum class AudioFormat {
     AAC,
+    MP3,
     MP4,
     OGG,
+    WAV,
     WEBM,
 }
 

@@ -1,6 +1,9 @@
 package dev.scrybe.feature.filemanager
 
 import android.content.Context
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.ViewModel
@@ -96,7 +99,7 @@ class FileManagerViewModel
                     }.toMutableList()
 
             if (recordingsDir.exists()) {
-                val audioExts = setOf("m4a", "mp4", "ogg", "webm")
+                val audioExts = setOf("m4a", "mp3", "mp4", "ogg", "wav", "webm")
                 recordingsDir
                     .listFiles()
                     ?.filter { it.extension.lowercase() in audioExts && it.absolutePath !in knownPaths }
@@ -163,6 +166,8 @@ class FileManagerViewModel
         private fun mimeExtension(mimeType: String?): String =
             when (mimeType?.lowercase()) {
                 "audio/mp4", "audio/aac", "audio/x-m4a" -> "m4a"
+                "audio/mpeg" -> "mp3"
+                "audio/wav", "audio/x-wav" -> "wav"
                 "audio/ogg" -> "ogg"
                 "audio/webm" -> "webm"
                 else -> "m4a"
@@ -170,18 +175,66 @@ class FileManagerViewModel
 
         private suspend fun createSession(file: File) {
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date(file.lastModified()))
+            val retriever = MediaMetadataRetriever()
+            val durationMs: Long
+            val sampleRateHz: Int
+            val encodingBitRate: Int
+            val channelCount: Int
+            try {
+                retriever.setDataSource(file.absolutePath)
+                durationMs =
+                    retriever
+                        .extractMetadata(
+                            MediaMetadataRetriever.METADATA_KEY_DURATION,
+                        )?.toLongOrNull() ?: 0L
+                sampleRateHz =
+                    retriever
+                        .extractMetadata(
+                            MediaMetadataRetriever.METADATA_KEY_SAMPLERATE,
+                        )?.toIntOrNull() ?: DEFAULT_SAMPLE_RATE
+                encodingBitRate =
+                    retriever
+                        .extractMetadata(
+                            MediaMetadataRetriever.METADATA_KEY_BITRATE,
+                        )?.toIntOrNull() ?: DEFAULT_BIT_RATE
+                channelCount =
+                    runCatching {
+                        val extractor = MediaExtractor()
+                        try {
+                            extractor.setDataSource(file.absolutePath)
+                            val audioTrackIndex =
+                                (0 until extractor.trackCount).firstOrNull { trackIndex ->
+                                    extractor
+                                        .getTrackFormat(trackIndex)
+                                        .getString(MediaFormat.KEY_MIME)
+                                        ?.startsWith("audio/") == true
+                                }
+                            if (audioTrackIndex != null) {
+                                extractor
+                                    .getTrackFormat(audioTrackIndex)
+                                    .getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                            } else {
+                                1
+                            }
+                        } finally {
+                            extractor.release()
+                        }
+                    }.getOrDefault(1)
+            } finally {
+                retriever.release()
+            }
             val entity =
                 RecordingSessionEntity(
                     id = UUID.randomUUID().toString(),
                     title = "Recording $timestamp",
                     tags = "",
                     audioFilePath = file.absolutePath,
-                    durationMs = 0L,
+                    durationMs = durationMs,
                     fileSizeBytes = file.length(),
                     audioFormat = audioFormatFromExt(file.extension),
-                    sampleRateHz = 0,
-                    encodingBitRate = 0,
-                    channelCount = 0,
+                    sampleRateHz = sampleRateHz,
+                    encodingBitRate = encodingBitRate,
+                    channelCount = channelCount,
                     waveformSamples = "",
                     status = "RECORDED",
                     isArchived = false,
@@ -196,11 +249,18 @@ class FileManagerViewModel
         private fun audioFormatFromExt(ext: String) =
             when (ext.lowercase()) {
                 "m4a" -> "AAC"
+                "mp3" -> "MP3"
                 "mp4" -> "MP4"
                 "ogg" -> "OGG"
+                "wav" -> "WAV"
                 "webm" -> "WEBM"
                 else -> "AAC"
             }
+
+        companion object {
+            private const val DEFAULT_SAMPLE_RATE = 48_000
+            private const val DEFAULT_BIT_RATE = 128_000
+        }
 
         fun deleteFile(absolutePath: String) {
             viewModelScope.launch {
