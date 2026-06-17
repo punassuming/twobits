@@ -139,7 +139,10 @@ class CameraViewModel @Inject constructor(
             val draft = Item(
                 photoPaths = paths,
                 category = result.category,
+                brand = result.brand,
+                model = result.model,
                 description = result.description,
+                tags = result.tags,
                 condition = result.condition,
                 estimatedValue = result.estimatedValue,
                 confidencePercent = result.confidencePercent,

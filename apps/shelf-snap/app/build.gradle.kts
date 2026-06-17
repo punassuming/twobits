@@ -65,11 +65,11 @@ android {
         abi { enableSplit = true }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
         // Material3's TopAppBar (and related components) are gated behind
         // @ExperimentalMaterial3Api, which is @RequiresOptIn(level = ERROR). They're
         // used across many screens, so opt in once here rather than annotating each

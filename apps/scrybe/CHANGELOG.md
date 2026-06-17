@@ -4,25 +4,25 @@
 
 ### Features
 
+**App Icon** — launcher refresh:
+* updated the Android launcher icon to better reflect the app's intent
+
 ### Improvements
 
-**AI configuration** — model picker readability:
-* cost label moved below the model subtitle rather than trailing the row — fixes extreme text wrapping (model names broken to one word per line) on the narrow AlertDialog layout
-* cost label only shown when non-blank, so the Profile Draft model picker keeps its two-line rows clean
+**Build system** — infrastructure and dependency upgrades:
+* upgraded Kotlin to 2.0.21 and KSP to 2.0.21-1.0.25
+* migrated to the Kotlin 2.0 Compose compiler plugin; deprecated `composeOptions` and `kotlinCompilerExtensionVersion` removed from all modules
+* renamed `:core:common` module to `:core:base` to prevent naming collisions with the `:common` module in the `../../shared` composite build
+* added `x86_64` to ABI splits to support running the app on standard Android emulators
+* replaced the `curl`-based pre-sync download of `sherpa-onnx` in `settings.gradle.kts` with a robust `:downloadSherpaOnnx` Gradle task using native Java APIs
+* automated `sherpa-onnx` availability by making all project compilation tasks depend on the new download task
 
-**What's New dialog** — structured release notes:
-* multi-bullet entries now display as individual "• item" lines instead of a single dot-separated paragraph, making release notes easier to scan
-
-**File Manager** — import audio from device storage:
-* new "+" button in the File Manager toolbar opens the system file picker filtered to audio files
-* selected file is copied into Scrybe's recordings folder and registered as a new recording ready for transcription
-* orphaned recordings already present in the recordings folder continue to appear automatically with an Import button to register them
+**License** — dual-licensing setup:
+* added standard GPLv3 license to both Scrybe and Shelf Snap apps to establish open source rights while preserving commercial/Pro distribution capability
 
 ### Fixes
 
-* File Manager imports now read duration, sample rate, bitrate, and channel count from the file using MediaMetadataRetriever — previously all four values were stored as zero, causing recordings to display as 0 sec with no cost or insight data
-* File Manager imports now preserve the correct file extension for MP3 (audio/mpeg) and WAV (audio/wav) files — previously both were saved as .m4a, causing transcription to label them as audio/mp4
-* AudioFormat enum extended with MP3 and WAV entries; exhaustive when expressions in AndroidMediaRecorder updated to handle both (mapped to AAC/MPEG-4 fallbacks — these formats are import-only and never used for live recording)
+* fixed Kotlin DSL "minus" operator error in `:service:recording` by correcting the Version Catalog accessor for `play-services-location` to `libs.play.services.location`
 * changelog enforcement now requires new `## Unreleased` bullets, not just a file touch — a cleanup-only edit no longer satisfies the pre-commit hook or CI check
 
 ## 1.14.0 (2026-06-15)
@@ -44,7 +44,6 @@
 * location capture now falls back to `PRIORITY_HIGH_ACCURACY` when the balanced-power request returns no fix (e.g. cold start with no cached location)
 * tapping the recording pill while already on the sessions list (minimized recording) now correctly restores the recording controls — previously the `launchSingleTop` navigate was a no-op and the lifecycle effect did not refire
 * start FAB is hidden while a recording is minimized — previously it remained visible and tapping it could send a second ACTION_START to the foreground service while a recording was already in progress
-
 
 ## 1.13.0 (2026-06-13)
 
@@ -86,20 +85,18 @@
 
 **Transcript editing** — pre-formatted with paragraph breaks:
 * edit dialog now opens with the same sentence-level paragraph breaks and speaker labels that the read-only view shows, giving a clean starting point for edits
+
 ### Fixes
 
 * File Manager imports now read duration, sample rate, bitrate, and channel count from the file using MediaMetadataRetriever — previously all four values were stored as zero, causing recordings to display as 0 sec with no cost or insight data
 * File Manager imports now preserve the correct file extension for MP3 (audio/mpeg) and WAV (audio/wav) files — previously both were saved as .m4a, causing transcription to label them as audio/mp4
 * AudioFormat enum extended with MP3 and WAV entries; exhaustive when expressions in AndroidMediaRecorder updated to handle both (mapped to AAC/MPEG-4 fallbacks — these formats are import-only and never used for live recording)
-
 * delete person confirmation dialog title had Unicode curly-quote string delimiters (U+201C/D) instead of ASCII `"` — replaced so the file parses correctly
 * deleting a person now clears their ID from all speaker segments before removing the person row — previously sessions kept stale personId references pointing to a nonexistent profile
 * custom recording type ID no longer cleared when a stop/pause/resume command arrives — only ACTION_START updates the pending custom type, so auto-transform runs with the correct profile after stop
 * back navigation no longer blocked during an active recording — the foreground service continues regardless of which screen is visible
 * folder groups now remain visible while searching in folder mode; empty folders are hidden from results instead of collapsing to a flat list
 * location tagging toggle moved from Intelligence to Recording section — it controls recording behaviour, not AI processing
-
-
 
 ## 1.12.0 (2026-06-11)
 
@@ -131,9 +128,6 @@
 
 * fixed compiler error in speaker management sheet caused by nested lambda destructuring
 
-
-
-
 ## 1.11.0 (2026-06-11)
 
 ### Features
@@ -157,10 +151,6 @@
 * transcript tab shows speaker color pills (colored 8 dp squares + labels) above the transcript when multiple speakers are detected
 
 ### Fixes
-
-
-
-
 
 ## 1.10.0 (2026-06-11)
 
@@ -190,15 +180,8 @@
 ### Fixes
 
 * copying a transcript now copies what is shown on screen — paragraph breaks and speaker labels included
-
 * diarization debug logs and persisted debug records now only written when the Diarization debug toggle is on — transcript content no longer stored or logged unconditionally
-
 * model selection rows clamp long subtitles to two lines so the cost label stays aligned
-
-
-
-
-
 
 ## 1.9.0 (2026-06-08)
 
@@ -219,62 +202,40 @@
 
 * CI now builds assembleRelease so R8 minification runs on every PR, catching ProGuard stripping issues before they reach the release workflow
 
-
-
-
-
-
 ## 1.8.3 (2026-06-06)
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
 
-
-
-
-
-
 ## 1.8.2 (2026-06-06)
 
 ### Improvements
 
-* broaden ProGuard rules to cover kotlinx-serialization serializer companions, commons-compress SPI factories, and generic-signature retention for Retrofit — prevents potential R8 stripping of runtime-required classes
+**ProGuard** — broader rules for serialization and networking:
+* covered kotlinx-serialization serializer companions, commons-compress SPI factories, and generic-signature retention for Retrofit — prevents potential R8 stripping of runtime-required classes
 
 ### Fixes
 
 * fix release APK staging — glob changed from `app-release*.apk` to `app-*release.apk` so ABI-split filenames (`app-arm64-v8a-release.apk`) are matched correctly
 
-
-
-
-
-
 ## 1.8.1 (2026-06-06)
 
 ### Improvements
 
-* release workflow no longer fires on PR CI completions — `branches: [main]` filter added to `workflow_run` trigger so it only activates when CI runs against `main`
+**GitHub Actions** — release workflow trigger restriction:
+* workflow no longer fires on PR CI completions — `branches: [main]` filter added to `workflow_run` trigger so it only activates when CI runs against `main`
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for protobuf annotation types referenced by MediaPipe LLM inference library but absent from its bundled protobuf-lite runtime
 
-
-
-
-
-
 ## 1.8.0 (2026-06-06)
 
 ### Improvements
 
+**GitHub Actions** — CI trigger optimization:
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
-
-
-
-
-
 
 ## 1.7.0 (2026-06-05)
 
@@ -292,128 +253,156 @@
 
 ### Improvements
 
+**GitHub Actions** — release workflow validation:
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
-
-
-
-
-
 
 ## 1.6.2 (2026-06-05)
 
 ### Improvements
 
+**GitHub Actions** — keystore validation:
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
-
-
-
-
-
 
 ## 1.6.1 (2026-06-04)
 
 ### Improvements
 
+**GitHub Actions** — duplicate release prevention:
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
-
-
-
-
-
 
 ## 1.6.0 (2026-06-04)
 
 ### Improvements
 
-* consolidate CI/CD workflows — shared `reusable-validate.yml` for changelog and manifest validation; rename `android-ci.yml` → `scrybe-ci.yml` and `release.yml` → `scrybe-release.yml`; standardise signing secret names to `SIGNING_*` across both apps; add `workflow_dispatch` trigger to release workflows
-* unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
-* standardise changelog location — move Scrybe changelog from repo root to `apps/scrybe/CHANGELOG.md` (matching Shelf Snap's `apps/shelf-snap/CHANGELOG.md`); update all CI workflow, pre-commit hook, manage-changelog.py, AGENTS.md, copilot-instructions.md, and codex skill references to new path; add per-app changelog gate in pre-commit hook covering both apps; fix `app/build.gradle.kts` changelog asset path accordingly
-* add per-app README files — create `apps/scrybe/README.md` with full feature table, recording modes, AI provider tiers, architecture diagram, module map, tech stack, and CI docs; expand root `README.md` into a TwoBits project overview covering design philosophy, privacy commitments, shared infrastructure, and monorepo layout; update `apps/shelf-snap/README.md` CI section to reference current workflow names
+**GitHub Actions** — consolidated CI/CD workflows:
+* shared `reusable-validate.yml` for changelog and manifest validation; rename `android-ci.yml` → `scrybe-ci.yml` and `release.yml` → `scrybe-release.yml`; standardise signing secret names to `SIGNING_*` across both apps; add `workflow_dispatch` trigger to release workflows
 
+**Documentation** — unified authoritative guides:
+* merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
 
+**Build system** — standardised changelog location:
+* move Scrybe changelog from repo root to `apps/scrybe/CHANGELOG.md` (matching Shelf Snap's `apps/shelf-snap/CHANGELOG.md`); update all CI workflow, pre-commit hook, manage-changelog.py, AGENTS.md, copilot-instructions.md, and codex skill references to new path; add per-app changelog gate in pre-commit hook covering both apps; fix `app/build.gradle.kts` changelog asset path accordingly
 
-
-
+**Documentation** — per-app README files:
+* create `apps/scrybe/README.md` with full feature table, recording modes, AI provider tiers, architecture diagram, module map, tech stack, and CI docs; expand root `README.md` into a TwoBits project overview covering design philosophy, privacy commitments, shared infrastructure, and monorepo layout; update `apps/shelf-snap/README.md` CI section to reference current workflow names
 
 ## 1.5.0 (2026-06-04)
 
 ### Improvements
 
+**GitHub Actions** — unified CI/CD setup:
 * consolidate CI/CD workflows — shared `reusable-validate.yml` for changelog and manifest validation; rename `android-ci.yml` → `scrybe-ci.yml` and `release.yml` → `scrybe-release.yml`; standardise signing secret names to `SIGNING_*` across both apps; add `workflow_dispatch` trigger to release workflows
+
+**Documentation** — monorepo migration and developer guidelines:
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
-
-
-
-
-
 
 ## 1.4.0 (2026-06-03)
 
 ### Features
 
+**AI configuration** — vision model selector in Shelf Snap:
 * add vision model selector for BYOK users in Shelf Snap — free-tier users can choose from GPT-4o, GPT-4o mini, GPT-5.4, GPT-5.4 mini, or GPT-4.1 mini for item photo analysis; selection persists in DataStore; Pro users continue to use the worker default
 
 ### Improvements
 
+**Managed API Proxy** — backend validation:
 * harden worker model validation — reject chat completions requests for any model not in the pricing table with HTTP 422 instead of silently falling back to gpt-5-mini pricing; prevents unexpected charges for newly added or expensive models
+
+**Managed API Proxy** — spend tracking serialization:
 * serialize worker spend tracking with Durable Objects — replace KV read-modify-write spend accounting with a SpendTracker Durable Object that atomically reserves budget before forwarding to OpenAI and settles to actual cost afterward; eliminates the race condition where concurrent requests could each read the same KV total and bypass the monthly spend cap
-
-
-
-
-
 
 ## 1.3.0 (2026-06-03)
 
 ### Improvements
 
+**Managed API Proxy** — vision pricing documentation:
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
-
-
-
-
-
 
 ## 1.2.0 (2026-06-03)
 
 ### Features
 
+**Marketing** — TwoBits landing site:
 * add twobits GitHub Pages marketing site — four-page static site in docs/ (index.html, scrybe.html, shelf-snap.html, privacy.html) copied pixel-faithfully from the Claude Design handoff; shared site.css with full design token system (DM Sans, dark palette, signal/ember/brand color scheme); pages workflow deploys to GitHub Pages on push to main; all inter-page links use clean URL-friendly filenames; covers landing, Scrybe product + Play Store listing, Shelf-Snap product + Play Store listing, Privacy data tables + FAQ
 
+**Billing** — interceptor sheet:
 * add ProGate composable to core:design — ModalBottomSheet paywall interceptor with two paths: “Go Pro” (purchase) and “Use your own API key” (navigate to settings); drop it anywhere an AI feature needs to be gated behind Pro or a BYOK key
 
 ### Improvements
 
+**Managed API Proxy** — user spend caps:
 * upgrade managed API proxy — rate-limited Cloudflare Worker now enforces a $2.00/month per-user spend cap tracked in KV; full GPT-5 and GPT-4.1 model pricing table (gpt-5-nano/mini/5/5.1/5.4/5.4-mini, gpt-4.1-nano/mini, gpt-4o/mini, whisper-1) synchronized with app model enums; vision calls via /v1/chat/completions billed correctly through prompt_tokens (image tiles counted server-side by OpenAI); streaming responses use include_usage injection to track token cost without buffering; spend keys auto-expire after 35 days
 
+**GitHub Actions** — release trigger validation:
 * fix Scrybe release stale check — release.yml now only considers itself stale when Scrybe-relevant files changed on main after the triggering commit; a concurrent shelf-snap version-bump push to main no longer suppresses a valid Scrybe release; push step retries with rebase to handle the concurrent-push race condition
+
+**GitHub Actions** — CI validation alignment:
 * align shelf-snap CI validation with Scrybe — shelf-snap-build.yml now runs changelog and validate jobs before building (validate-manifests.py --root apps/shelf-snap, manage-changelog.py validate + check-updated against apps/shelf-snap/CHANGELOG.md); shelf-snap-tag-release.yml replaces inline Python changelog promotion with manage-changelog.py has-unreleased-bullets + promote-release (skips release when no bullets, matching Scrybe's pattern); validate-manifests.py gains a --root argument so both apps reuse the same script; android-ci.yml updated to pass --root apps/scrybe explicitly; CLAUDE.md documents the shelf-snap changelog requirement
 
+**GitHub Actions** — trigger paths and artifact collection:
 * unify CI artifact output and triggers — android-ci.yml now uploads the Scrybe debug APK as a downloadable artifact and triggers on claude/** and copilot/** feature branches; shelf-snap-build.yml restructured to match Scrybe's single-Gradle-invocation pattern (lint + test + assembleDebug in one pass), drops redundant release APK build from CI (covered by shelf-snap-tag-release.yml on main), and reduces permissions to contents:read; all four shelf-snap workflows upgraded from setup-android@v3 to @v4 with explicit platform and build-tools package selection
 
-* fix composite build AndroidX property — add shared/gradle.properties with android.useAndroidX=true so the shared library modules (billing, design, etc.) resolve RevenueCat and Compose dependencies correctly; add pipefail to shelf-snap CI Gradle steps so build failures propagate correctly
+**Build system** — cross-module AndroidX property support:
+* fix composite build AndroidX property — add shared/gradle.properties with `android.useAndroidX=true` so the shared library modules (billing, design, etc.) resolve RevenueCat and Compose dependencies correctly; add pipefail to shelf-snap CI Gradle steps so build failures propagate correctly
+
+**Build system** — SettingsScreen compilation error fix:
 * fix SettingsScreen compile errors — add missing imports for CircularProgressIndicator, Spacer, and width used in the Pro subscription button; remove duplicate AutoAwesome import
+
+**Build system** — AGP version pinning:
 * align shelf-snap AGP to 8.7.3 — composite builds require a single AGP version across all included builds; shelf-snap was on 8.4.0 which conflicts with shared/ modules pinned to 8.7.3
-* fix BillingProviderModule KtLint violation — multiline BillingConfig(...) constructor call must start on a new line after the = operator per the multiline-expression-wrapping rule
+
+**Build system** — KtLint compliance fix:
+* fix BillingProviderModule KtLint violation — multiline BillingConfig(...) constructor call must start on a new line after the `=` operator per the multiline-expression-wrapping rule
+
+**Theme** — shared typography and shapes system:
 * migrate both app themes to shared design tokens — scrybe and shelf-snap now use TwoBitsTypography (DM Sans) and TwoBitsShapes from core:design; local Type.kt and Shape.kt become single-line aliases so existing symbol references continue to compile
+
+**Theme** — shelf-snap dark mode:
 * add ThemeMode support to shelf-snap — ShelfSnapTheme now accepts ThemeMode (SYSTEM/LIGHT/DARK) from core:design, matching scrybe's existing dark-mode architecture; wiring a settings toggle reads ThemeMode from DataStore
+
+**GitHub Actions** — shared dependencies build triggers:
 * both apps now rebuild when shared/** changes — android-ci.yml and shelf-snap-build.yml path filters now include shared/** alongside their respective app paths; shelf-snap tag-release also triggers on shared changes
+
+**Build system** — standardized versionCode formula:
 * align shelf-snap versionCode formula to scrybe — tag-release workflow now computes versionCode as major×1 000 000 + minor×1 000 + patch (e.g. 1.2.3 → 1002003) matching scrybe's formula; Play Store requires only monotonic increases so the jump from 2 is valid
 
+**Billing** — Pro subscription integration:
 * add Pro subscription tier — users can upgrade to Scrybe Pro ($1.99/month) via Google Play for managed OpenAI API access without requiring a personal API key; subscription status is surfaced at the top of the Settings screen
+
+**Billing** — RevenueCat SDK wiring:
 * add RevenueCat billing integration — core:billing module wraps RevenueCat Purchases SDK with a SubscriptionRepository and BillingManager providing subscription tier as a StateFlow; purchase, restore, and refresh flows are coroutine-based
+
+**Build system** — core dispatchers and results module:
 * add core:common shared module — Result<T> sealed interface, ReleaseNotesParser, AppDispatchers qualifier and enum, and a Hilt DispatchersModule providing IO and Default coroutine dispatchers under com.twobits.common
+
+**Build system** — credentials manager shared module:
 * add core:api-keys shared module — ApiKeyProvider interface, KeystoreApiKeyProvider (DataStore-backed, keyed by ProviderType), ApiKeyValidator, ApiKeyRouter (routes BYOK vs. managed Pro keys via api.twobits.app), ProUserIdProvider interface, and a Hilt ApiKeysModule under com.twobits.apikeys
+
+**Build system** — networked operations client module:
 * add core:network shared module — OkHttpClientFactory (configurable logging, AI-tuned timeouts), HttpErrorMapper for user-friendly HTTP error strings, and a Hilt NetworkModule providing a singleton OkHttpClient under com.twobits.network
+
+**Build system** — design library core:
 * add core:design shared module — DM Sans variable-font family, TwoBitsTypography (full Material 3 type scale), TwoBitsShapes (8/12/18/24/28dp radius scale), ThemeMode enum (SYSTEM/LIGHT/DARK), and shared Compose components: ApiKeyField, SubscriptionBanner, SettingsRow, ErrorCard, LoadingOverlay under com.twobits.design
 
+**Rebrand** — monorepo unified marketing layout:
 * rebrand monorepo to Two Bits — Cloudflare worker renamed to twobits-proxy, custom domain api.twobits.app configured in wrangler.toml, worker setup docs updated with deployment URL
+
+**Build system** — monorepo code migration:
 * migrate to monorepo — Shelf Snap app moved into apps/shelf-snap alongside apps/scrybe; all CI workflows unified under .github/workflows with per-app path filters; CLAUDE.md updated for monorepo layout
+
+**Build system** — directory renaming:
 * rename app directory from apps/android-whispering to apps/scrybe for clarity within the monorepo
+
+**GitHub Actions** — automated Play Store assets build:
 * release workflow now builds both APK and AAB (App Bundle) artifacts — AAB is attached to GitHub Releases for direct Google Play upload
+
+**Settings** — billing banner display:
 * settings screen surfaces Pro subscription card at the top with upgrade, restore, and error dismissal actions
 
 ### Fixes
 
+**Billing** — monorepo composite billing consolidation:
 * consolidate billing into shared core/billing module — BillingManager, SubscriptionRepository, SubscriptionTier, BillingConfig, and PurchaseCancelledException live once in core/billing under com.twobits.billing; both apps reference it via Gradle composite build (includeBuild); per-app Hilt BillingProviderModule supplies the RevenueCat key
+
+**Billing** — Purchases SDK upgrade regression:
 * fix BillingManager compile error — replace removed purchaseWith() with RevenueCat 8.x purchase(PurchaseParams, PurchaseCallback) API

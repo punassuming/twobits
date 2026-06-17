@@ -4,9 +4,20 @@
 
 ### Features
 
+**App Icon** — launcher refresh:
+* updated the Android launcher icon to better reflect the app's intent
+
 ### Improvements
 
+**Build configuration** — upgraded JVM target to 17:
+* bumped JVM target and Java compatibility to 17 across the app and all shared modules to support modern Android libraries and Kotlin 2.0
+
+**License** — dual-licensing setup:
+* added standard GPLv3 license to both Scrybe and Shelf Snap apps to establish open source rights while preserving commercial/Pro distribution capability
+
 ### Fixes
+
+* model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
 
 ## 1.8.0 (2026-06-12)
 

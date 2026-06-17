@@ -107,7 +107,10 @@ class ItemDetailViewModel
                     it.copy(
                         isAnalysing = false,
                         editCategory = result.category,
+                        editBrand = result.brand,
+                        editModel = result.model,
                         editDescription = result.description,
+                        editTags = result.tags,
                         editCondition = result.condition,
                         editEstimatedValue = "%.2f".format(result.estimatedValue),
                         item = item.copy(confidencePercent = result.confidencePercent),
