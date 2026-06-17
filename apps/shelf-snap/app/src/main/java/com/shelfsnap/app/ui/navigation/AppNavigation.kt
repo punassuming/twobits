@@ -14,6 +14,9 @@ import androidx.navigation.navArgument
 import com.shelfsnap.app.ui.camera.CameraScreen
 import com.shelfsnap.app.ui.inventory.InventoryScreen
 import com.shelfsnap.app.ui.itemdetail.ItemDetailScreen
+import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
+import com.shelfsnap.app.ui.itemdetail.MarketResearchScreen
+import com.shelfsnap.app.ui.settings.ProScreen
 import com.shelfsnap.app.ui.settings.SettingsScreen
 import com.shelfsnap.app.ui.summary.SummaryScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewScreen
@@ -80,7 +83,39 @@ fun AppNavigation() {
                         }
                     },
                     onAddPhoto = { navController.navigate(Screen.Camera.createRoute(itemId)) },
+                    onNavigateToMarketResearch = {
+                        navController.navigate(Screen.MarketResearch.createRoute(itemId))
+                    },
+                    onNavigateToListingSummary = {
+                        navController.navigate(Screen.ListingSummary.createRoute(itemId))
+                    },
                 )
+            }
+
+            composable(
+                route = Screen.MarketResearch.route,
+                arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
+            ) { backStackEntry ->
+                val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
+                MarketResearchScreen(
+                    itemId = itemId,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = Screen.ListingSummary.route,
+                arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
+            ) { backStackEntry ->
+                val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
+                ListingSummaryScreen(
+                    itemId = itemId,
+                    onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Screen.Pro.route) {
+                ProScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.Summary.route) {
@@ -94,6 +129,7 @@ fun AppNavigation() {
                     onBack = { navController.popBackStack() },
                     onWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
                     onAiConfig = { navController.navigate(Screen.AiConfig.route) },
+                    onNavigateToPro = { navController.navigate(Screen.Pro.route) },
                 )
             }
 

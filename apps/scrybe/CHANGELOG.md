@@ -4,6 +4,12 @@
 
 ### Features
 
+**Pro** — standalone subscription screen:
+* tier comparison: Try it / Pro / BYOK side-by-side
+* plan picker: annual ($1.99/mo) or monthly ($2.49/mo)
+* usage dashboard when Pro is active (transcription minutes, transforms, sessions)
+* why Pro highlights and BYOK explanation
+
 ### Improvements
 
 ### Fixes

@@ -58,6 +58,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onWhatsNew: () -> Unit = {},
     onAiConfig: () -> Unit = {},
+    onNavigateToPro: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -92,6 +93,7 @@ fun SettingsScreen(
                 onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                 onRestore = viewModel::restorePurchases,
                 onDismissError = viewModel::dismissPurchaseError,
+                onDetails = onNavigateToPro,
             )
 
             AiConfigCard(onClick = onAiConfig)
@@ -241,6 +243,7 @@ private fun ProSubscriptionCard(
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
     onDismissError: () -> Unit,
+    onDetails: () -> Unit = {},
 ) {
     ElevatedCard(shape = MaterialTheme.shapes.large) {
         Column(
@@ -311,6 +314,21 @@ private fun ProSubscriptionCard(
                     color = MaterialTheme.colorScheme.error,
                 )
                 TextButton(onClick = onDismissError) { Text("Dismiss") }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDetails) {
+                    Text("Details", style = MaterialTheme.typography.labelMedium)
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
             }
         }
     }

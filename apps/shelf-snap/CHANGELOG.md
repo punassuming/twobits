@@ -4,6 +4,19 @@
 
 ### Features
 
+**Pro** — standalone subscription screen:
+* tier comparison: Try it / Pro / BYOK side-by-side
+* plan picker: annual ($4.99/mo) or monthly ($5.99/mo)
+* usage dashboard when Pro is active (vision analyses, price searches, coupon lookups, listing generations)
+
+**Market Research** — promoted to standalone full-screen view:
+* access from the Market tab in Item Detail
+* all price analysis, comparable listings, and citations
+
+**Listing Summary** — promoted to standalone full-screen view:
+* access from the List tab in Item Detail
+* all platform listing management in one dedicated view
+
 ### Improvements
 
 ### Fixes
