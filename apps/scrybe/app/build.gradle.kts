@@ -3,6 +3,7 @@ import org.gradle.api.tasks.Copy
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
@@ -17,9 +18,6 @@ val bundleChangelogAsset =
         rename { "CHANGELOG.md" }
     }
 
-// Validate that all required signing variables are present together when a
-// keystore path is provided, so misconfiguration surfaces early with a clear
-// error instead of an opaque Gradle failure during APK signing.
 if (releaseKeystorePath != null) {
     listOf("STORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD").forEach { varName ->
         requireNotNull(System.getenv(varName)) {
@@ -38,7 +36,7 @@ android {
         applicationId = "dev.scrybe.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1014000 // Managed by release workflow: major * 1_000_000 + minor * 1_000 + patch
+        versionCode = 1014000
         versionName = "1.14.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -88,14 +86,12 @@ android {
     buildFeatures {
         compose = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
-    }
     splits {
         abi {
             isEnable = true
             reset()
-            include("arm64-v8a", "armeabi-v7a")
+            // Added x86_64 for emulator support
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = false
         }
     }
@@ -103,8 +99,6 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
-        // Prevent .so extraction at install time; the OS loads them directly
-        // from the compressed APK, reducing on-device storage footprint.
         jniLibs.useLegacyPackaging = false
     }
     sourceSets.getByName("main").assets.srcDir(generatedChangelogAssetsDir)
@@ -118,13 +112,15 @@ dependencies {
     implementation("com.twobits.core:billing")
     implementation("com.twobits.core:common")
     implementation("com.twobits.core:design")
+
     implementation(project(":core:audio"))
     implementation(project(":core:local-ai"))
-    implementation(project(":core:common"))
+    implementation(project(":core:base")) // Renamed from :core:common
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:transforms"))
+
     implementation(project(":feature:capture"))
     implementation(project(":feature:file-manager"))
     implementation(project(":feature:history"))

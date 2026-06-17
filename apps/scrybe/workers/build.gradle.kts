@@ -19,7 +19,7 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
-    implementation(project(":core:common"))
+    implementation(project(":core:base"))
     implementation(project(":core:transcription"))
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)

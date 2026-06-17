@@ -37,6 +37,12 @@ def main() -> int:
     check_parser.add_argument("--head-ref", required=True)
     check_parser.add_argument("--changelog", default="CHANGELOG.md")
 
+    staged_parser = subparsers.add_parser(
+        "check-staged-unreleased-new",
+        help="Fail if the staged changelog has no new ## Unreleased bullets compared to HEAD.",
+    )
+    staged_parser.add_argument("--changelog", required=True)
+
     has_bullets_parser = subparsers.add_parser(
         "has-unreleased-bullets",
         help="Print whether the Unreleased section contains any changelog bullets.",
@@ -83,6 +89,10 @@ def main() -> int:
     if args.command == "check-updated":
         changelog_path = resolve_path(args.changelog)
         return check_updated(changelog_path, args.base_ref, args.head_ref)
+
+    if args.command == "check-staged-unreleased-new":
+        changelog_path = resolve_path(args.changelog)
+        return check_staged_unreleased_new(changelog_path)
 
     if args.command == "has-unreleased-bullets":
         changelog_path = resolve_path(args.changelog)
@@ -194,7 +204,41 @@ def check_updated(changelog_path: Path, base_ref: str, head_ref: str) -> int:
             print(f"  - {path}", file=sys.stderr)
         return 1
 
-    print("CHANGELOG.md was updated alongside the requested changes.")
+    base_bullets = _extract_unreleased_bullets(_git_file_at_ref(f"{base_ref}:{changelog_rel}"))
+    head_bullets = _extract_unreleased_bullets(_git_file_at_ref(f"{head_ref}:{changelog_rel}"))
+    new_bullets = head_bullets - base_bullets
+    if not new_bullets:
+        print(
+            "CHANGELOG.md was modified but ## Unreleased has no new entries compared to base.",
+            file=sys.stderr,
+        )
+        print(
+            "Add at least one entry under ### Features, ### Improvements, or ### Fixes.",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"CHANGELOG.md updated with {len(new_bullets)} new unreleased bullet(s).")
+    return 0
+
+
+def check_staged_unreleased_new(changelog_path: Path) -> int:
+    repo_root = git_output("rev-parse", "--show-toplevel").strip()
+    changelog_rel = changelog_path.resolve().relative_to(Path(repo_root)).as_posix()
+    staged_bullets = _extract_unreleased_bullets(_git_file_at_ref(f":{changelog_rel}"))
+    head_bullets = _extract_unreleased_bullets(_git_file_at_ref(f"HEAD:{changelog_rel}"))
+    new_bullets = staged_bullets - head_bullets
+    if not new_bullets:
+        print(
+            f"{changelog_path.name} is staged but ## Unreleased has no new entries compared to HEAD.",
+            file=sys.stderr,
+        )
+        print(
+            "Add at least one entry under ### Features, ### Improvements, or ### Fixes.",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"Staged changelog has {len(new_bullets)} new unreleased bullet(s).")
     return 0
 
 
@@ -310,6 +354,26 @@ def has_new_unreleased_since_tag(
         file=sys.stderr,
     )
     return False
+
+
+def _git_file_at_ref(ref_path: str) -> str:
+    result = subprocess.run(["git", "show", ref_path], capture_output=True, text=True)
+    return result.stdout if result.returncode == 0 else ""
+
+
+def _extract_unreleased_bullets(content: str) -> set[str]:
+    in_unreleased = False
+    bullets: set[str] = set()
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped == UNRELEASED_HEADING:
+            in_unreleased = True
+            continue
+        if in_unreleased and stripped.startswith(SECTION_PREFIX):
+            break
+        if in_unreleased and stripped.startswith(("* ", "- ", "**")):
+            bullets.add(stripped)
+    return bullets
 
 
 def git_output(*args: str) -> str:

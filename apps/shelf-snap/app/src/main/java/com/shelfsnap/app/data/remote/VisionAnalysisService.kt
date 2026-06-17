@@ -234,7 +234,10 @@ class VisionAnalysisService
                 val obj = JsonParser.parseString(cleaned).asJsonObject
                 DraftItemResult(
                     category = obj.get("category")?.asString ?: "Other",
+                    brand = obj.get("brand")?.asString ?: "",
+                    model = obj.get("model")?.asString ?: "",
                     description = obj.get("description")?.asString ?: "",
+                    tags = obj.getAsJsonArray("tags")?.map { it.asString } ?: emptyList(),
                     condition =
                         runCatching {
                             Condition.valueOf(obj.get("condition")?.asString ?: "GOOD")
@@ -298,7 +301,10 @@ class VisionAnalysisService
         private fun errorResult(message: String) =
             DraftItemResult(
                 category = "",
+                brand = "",
+                model = "",
                 description = "",
+                tags = emptyList(),
                 condition = Condition.GOOD,
                 estimatedValue = 0.0,
                 confidencePercent = 0,
@@ -317,11 +323,11 @@ class VisionAnalysisService
                   "brand": "<brand or manufacturer name, or empty string if unknown>",
                   "model": "<model name or number, or empty string if unknown>",
                   "description": "<3–5 sentence marketplace listing description. Cover: overall condition and appearance, notable features or design elements, any visible defects or wear, material/fabric/finish if discernible, and how the item is best used. Write as if posting on eBay — specific, factual, no fluff.>",
+                  "tags": ["<6–10 searchable marketplace keywords — include brand name (if present), style/era, material, dominant color, use case, and condition descriptor. All lowercase.>"],
                   "condition": "<one of: EXCELLENT, GOOD, FAIR, POOR>",
                   "estimatedValue": <number, USD resale/donation estimate>,
                   "confidencePercent": <integer 0-100>
                 }
-                tags: 6–10 searchable marketplace keywords — include brand name (if present), style/era (e.g. "mid-century", "Y2K"), material, dominant color, use case (e.g. "home office", "outdoor"), and condition descriptor. All lowercase.
                 Do not include any explanation outside the JSON object.
                 """.trimIndent()
 
