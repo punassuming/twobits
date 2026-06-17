@@ -14,8 +14,7 @@
 * migrated to the Kotlin 2.0 Compose compiler plugin; deprecated `composeOptions` and `kotlinCompilerExtensionVersion` removed from all modules
 * renamed `:core:common` module to `:core:base` to prevent naming collisions...
 * added `x86_64` to ABI splits to support running the app on standard Android emulators
-* replaced the `curl`-based pre-sync download of `sherpa-onnx` in `settings.gradle.kts` with a robust `:downloadSherpaOnnx` Gradle task using native Java APIs
-* automated `sherpa-onnx` availability by making all project compilation tasks depend on the new download task
+* sherpa-onnx is now downloaded via native Java I/O in `settings.gradle.kts` (Gradle initialization phase) rather than via curl, removing the curl system dependency while guaranteeing the AAR is present before any dependency resolution occurs
 
 **License** — dual-licensing setup:
 * added standard GPLv3 license to both Scrybe and Shelf Snap apps to establish open source rights while preserving commercial/Pro distribution capability
@@ -23,7 +22,7 @@
 ### Fixes
 
 * fixed Kotlin DSL "minus" operator error in `:service:recording` by correcting the Version Catalog accessor for `play-services-location` to `libs.play.services.location`
-* fixed build failure in CI where dependency resolution for tasks other than `prepare` or `compile` (such as `lintVitalReportRelease` or `test`) failed due to `sherpa-onnx-android` not being downloaded yet, by making all subproject tasks depend on `:downloadSherpaOnnx`
+* fixed CI failure ("Could not find com.k2fsa:sherpa-onnx-android:1.13.0") — Gradle dependency resolution is a configuration-phase operation that runs before any task executes, so a task-level `dependsOn` cannot supply the AAR in time; the download is now performed unconditionally during Gradle initialization in `settings.gradle.kts`
 * changelog enforcement now requires new `## Unreleased` bullets, not just a file touch — a cleanup-only edit no longer satisfies the pre-commit hook or CI check
 
 ## 1.14.0 (2026-06-15)

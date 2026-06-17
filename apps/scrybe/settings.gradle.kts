@@ -12,6 +12,46 @@ pluginManagement {
     }
 }
 
+// ─── Sherpa-ONNX bootstrap ────────────────────────────────────────────────────
+// Dependency resolution runs during Gradle configuration (after settings but
+// before any task executes), so a downloadSherpaOnnx task always fires too late.
+// Pre-download the AAR here, in the initialization phase, so it exists in the
+// local-maven directory before Gradle attempts to resolve any configuration.
+val sherpaBootstrapVersion = "1.13.0"
+val sherpaBootstrapGroup = "com.k2fsa"
+val sherpaBootstrapArtifact = "sherpa-onnx-android"
+val localMavenDir = settingsDir.resolve(".gradle/local-maven")
+val sherpaAarDir =
+    localMavenDir.resolve(
+        "${sherpaBootstrapGroup.replace('.', '/')}/$sherpaBootstrapArtifact/$sherpaBootstrapVersion",
+    )
+val sherpaAarFile = sherpaAarDir.resolve("$sherpaBootstrapArtifact-$sherpaBootstrapVersion.aar")
+val sherpaPomFile = sherpaAarDir.resolve("$sherpaBootstrapArtifact-$sherpaBootstrapVersion.pom")
+
+if (!sherpaAarFile.exists()) {
+    logger.lifecycle("Downloading sherpa-onnx $sherpaBootstrapVersion...")
+    sherpaAarDir.mkdirs()
+    val downloadUrl =
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaBootstrapVersion" +
+            "/sherpa-onnx-$sherpaBootstrapVersion.aar"
+    java.net.URI(downloadUrl).toURL().openStream().use { input ->
+        sherpaAarFile.outputStream().use { output -> input.copyTo(output) }
+    }
+    sherpaPomFile.writeText(
+        """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <project>
+          <modelVersion>4.0.0</modelVersion>
+          <groupId>$sherpaBootstrapGroup</groupId>
+          <artifactId>$sherpaBootstrapArtifact</artifactId>
+          <version>$sherpaBootstrapVersion</version>
+          <packaging>aar</packaging>
+        </project>
+        """.trimIndent(),
+    )
+    logger.lifecycle("sherpa-onnx $sherpaBootstrapVersion downloaded.")
+}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {

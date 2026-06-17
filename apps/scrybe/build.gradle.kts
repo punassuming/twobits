@@ -1,4 +1,3 @@
-import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
 import java.net.URI
@@ -24,7 +23,7 @@ val localMavenDir = rootProject.projectDir.resolve(".gradle/local-maven")
 tasks.register("downloadSherpaOnnx") {
     group = "dependencies"
     description = "Downloads sherpa-onnx AAR and creates a local Maven repository."
-    
+
     val sherpaOnnxAarDir = localMavenDir.resolve("${sherpaOnnxGroup.replace('.', '/')}/$sherpaOnnxArtifactId/$sherpaOnnxVersion")
     val sherpaOnnxAar = file(sherpaOnnxAarDir.resolve("$sherpaOnnxArtifactId-$sherpaOnnxVersion.aar"))
     val sherpaOnnxPom = file(sherpaOnnxAarDir.resolve("$sherpaOnnxArtifactId-$sherpaOnnxVersion.pom"))
@@ -42,8 +41,9 @@ tasks.register("downloadSherpaOnnx") {
                     input.copyTo(output)
                 }
             }
-            
-            sherpaOnnxPom.writeText("""
+
+            sherpaOnnxPom.writeText(
+                """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <project>
                   <modelVersion>4.0.0</modelVersion>
@@ -52,7 +52,8 @@ tasks.register("downloadSherpaOnnx") {
                   <version>$sherpaOnnxVersion</version>
                   <packaging>aar</packaging>
                 </project>
-            """.trimIndent())
+                """.trimIndent(),
+            )
         }
     }
 }
@@ -70,7 +71,7 @@ subprojects {
     extensions.configure<KtlintExtension> {
         android.set(
             plugins.hasPlugin("com.android.application") ||
-                plugins.hasPlugin("com.android.library")
+                plugins.hasPlugin("com.android.library"),
         )
         outputToConsole.set(true)
         ignoreFailures.set(false)
@@ -78,11 +79,6 @@ subprojects {
             exclude("**/build/**")
             exclude("**/generated/**")
         }
-    }
-    
-    // Ensure download happens before any subproject task executes to avoid dependency resolution failures (e.g. during linting or testing)
-    tasks.configureEach {
-        dependsOn(":downloadSherpaOnnx")
     }
 }
 
