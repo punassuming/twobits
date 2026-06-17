@@ -67,10 +67,6 @@ subprojects {
         parallel = true
     }
 
-    tasks.withType<Detekt>().configureEach {
-        jvmTarget = "17"
-    }
-
     extensions.configure<KtlintExtension> {
         android.set(
             plugins.hasPlugin("com.android.application") ||
@@ -84,11 +80,9 @@ subprojects {
         }
     }
     
-    // Ensure download happens before any project needs to resolve dependencies
+    // Ensure download happens before any subproject task executes to avoid dependency resolution failures (e.g. during linting or testing)
     tasks.configureEach {
-        if (name.contains("prepare", ignoreCase = true) || name.contains("compile", ignoreCase = true)) {
-            dependsOn(":downloadSherpaOnnx")
-        }
+        dependsOn(":downloadSherpaOnnx")
     }
 }
 

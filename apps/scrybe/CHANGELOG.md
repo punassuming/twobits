@@ -12,7 +12,7 @@
 **Build system** — infrastructure and dependency upgrades:
 * upgraded Kotlin to 2.0.21 and KSP to 2.0.21-1.0.25
 * migrated to the Kotlin 2.0 Compose compiler plugin; deprecated `composeOptions` and `kotlinCompilerExtensionVersion` removed from all modules
-* renamed `:core:common` module to `:core:base` to prevent naming collisions with the `:common` module in the `../../shared` composite build
+* renamed `:core:common` module to `:core:base` to prevent naming collisions...
 * added `x86_64` to ABI splits to support running the app on standard Android emulators
 * replaced the `curl`-based pre-sync download of `sherpa-onnx` in `settings.gradle.kts` with a robust `:downloadSherpaOnnx` Gradle task using native Java APIs
 * automated `sherpa-onnx` availability by making all project compilation tasks depend on the new download task
@@ -23,6 +23,7 @@
 ### Fixes
 
 * fixed Kotlin DSL "minus" operator error in `:service:recording` by correcting the Version Catalog accessor for `play-services-location` to `libs.play.services.location`
+* fixed build failure in CI where dependency resolution for tasks other than `prepare` or `compile` (such as `lintVitalReportRelease` or `test`) failed due to `sherpa-onnx-android` not being downloaded yet, by making all subproject tasks depend on `:downloadSherpaOnnx`
 * changelog enforcement now requires new `## Unreleased` bullets, not just a file touch — a cleanup-only edit no longer satisfies the pre-commit hook or CI check
 
 ## 1.14.0 (2026-06-15)
