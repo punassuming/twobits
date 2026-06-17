@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 1.9.0 (2026-06-17)
+
+### Features
+
 **App Icon** — launcher refresh:
 * updated the Android launcher icon to better reflect the app's intent
 
@@ -18,6 +26,7 @@
 ### Fixes
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
+
 
 ## 1.8.0 (2026-06-12)
 
@@ -59,6 +68,7 @@
 * model picker dropdown compiles correctly — removed invalid import of `ExposedDropdownMenu` which is a scope-only composable accessed through `ExposedDropdownMenuBox`
 
 
+
 ## 1.7.0 (2026-06-11)
 
 ### Features
@@ -75,6 +85,7 @@
 
 
 
+
 ## 1.6.0 (2026-06-11)
 
 ### Features
@@ -88,6 +99,7 @@
 * test result (connected or error message) shown inline below the buttons
 
 ### Fixes
+
 
 
 
@@ -124,6 +136,7 @@
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
 * missing FilterChip import in MarketTab restored after wildcard-import replacement
+
 
 
 
@@ -167,6 +180,7 @@
 
 
 
+
 ## 1.3.1 (2026-06-06)
 
 ### Improvements
@@ -177,11 +191,13 @@
 
 
 
+
 ## 1.3.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -220,6 +236,7 @@
 
 
 
+
 ## 1.1.3 (2026-06-05)
 
 ### Improvements
@@ -230,11 +247,13 @@
 
 
 
+
 ## 1.1.2 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
+
 
 
 
@@ -251,12 +270,14 @@
 
 
 
+
 ## 1.1.0 (2026-06-04)
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
+
 
 
 
@@ -272,6 +293,7 @@
 
 
 
+
 ## 1.0.1 (2026-06-03)
 
 ### Features
@@ -282,9 +304,11 @@
 
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 
