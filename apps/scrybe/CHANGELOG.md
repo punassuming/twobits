@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 1.15.0 (2026-06-17)
+
+### Features
+
 **App Icon** — launcher refresh:
 * updated the Android launcher icon to better reflect the app's intent
 
@@ -25,6 +33,7 @@
 * fixed CI failure ("Could not find com.k2fsa:sherpa-onnx-android:1.13.0") — Gradle dependency resolution is a configuration-phase operation that runs before any task executes, so a task-level `dependsOn` cannot supply the AAR in time; the download is now performed unconditionally during Gradle initialization in `settings.gradle.kts`
 * changelog enforcement now requires new `## Unreleased` bullets, not just a file touch — a cleanup-only edit no longer satisfies the pre-commit hook or CI check
 
+
 ## 1.14.0 (2026-06-15)
 
 ### Features
@@ -44,6 +53,7 @@
 * location capture now falls back to `PRIORITY_HIGH_ACCURACY` when the balanced-power request returns no fix (e.g. cold start with no cached location)
 * tapping the recording pill while already on the sessions list (minimized recording) now correctly restores the recording controls — previously the `launchSingleTop` navigate was a no-op and the lifecycle effect did not refire
 * start FAB is hidden while a recording is minimized — previously it remained visible and tapping it could send a second ACTION_START to the foreground service while a recording was already in progress
+
 
 ## 1.13.0 (2026-06-13)
 
@@ -98,6 +108,7 @@
 * folder groups now remain visible while searching in folder mode; empty folders are hidden from results instead of collapsing to a flat list
 * location tagging toggle moved from Intelligence to Recording section — it controls recording behaviour, not AI processing
 
+
 ## 1.12.0 (2026-06-11)
 
 ### Features
@@ -128,6 +139,7 @@
 
 * fixed compiler error in speaker management sheet caused by nested lambda destructuring
 
+
 ## 1.11.0 (2026-06-11)
 
 ### Features
@@ -151,6 +163,7 @@
 * transcript tab shows speaker color pills (colored 8 dp squares + labels) above the transcript when multiple speakers are detected
 
 ### Fixes
+
 
 ## 1.10.0 (2026-06-11)
 
@@ -183,6 +196,7 @@
 * diarization debug logs and persisted debug records now only written when the Diarization debug toggle is on — transcript content no longer stored or logged unconditionally
 * model selection rows clamp long subtitles to two lines so the cost label stays aligned
 
+
 ## 1.9.0 (2026-06-08)
 
 ### Improvements
@@ -202,11 +216,13 @@
 
 * CI now builds assembleRelease so R8 minification runs on every PR, catching ProGuard stripping issues before they reach the release workflow
 
+
 ## 1.8.3 (2026-06-06)
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
+
 
 ## 1.8.2 (2026-06-06)
 
@@ -219,6 +235,7 @@
 
 * fix release APK staging — glob changed from `app-release*.apk` to `app-*release.apk` so ABI-split filenames (`app-arm64-v8a-release.apk`) are matched correctly
 
+
 ## 1.8.1 (2026-06-06)
 
 ### Improvements
@@ -230,12 +247,14 @@
 
 * fix R8 release build — add `-dontwarn` rules for protobuf annotation types referenced by MediaPipe LLM inference library but absent from its bundled protobuf-lite runtime
 
+
 ## 1.8.0 (2026-06-06)
 
 ### Improvements
 
 **GitHub Actions** — CI trigger optimization:
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 ## 1.7.0 (2026-06-05)
 
@@ -256,6 +275,7 @@
 **GitHub Actions** — release workflow validation:
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
 
+
 ## 1.6.2 (2026-06-05)
 
 ### Improvements
@@ -263,12 +283,14 @@
 **GitHub Actions** — keystore validation:
 * fail release workflow before commit/tag if keystore secret is invalid — early `Validate keystore secret` step catches bad base64 before any irreversible state is created; add `rebuild_for_tag` workflow_dispatch input to build and upload an APK for an existing tag after fixing secrets
 
+
 ## 1.6.1 (2026-06-04)
 
 ### Improvements
 
 **GitHub Actions** — duplicate release prevention:
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
+
 
 ## 1.6.0 (2026-06-04)
 
@@ -286,6 +308,7 @@
 **Documentation** — per-app README files:
 * create `apps/scrybe/README.md` with full feature table, recording modes, AI provider tiers, architecture diagram, module map, tech stack, and CI docs; expand root `README.md` into a TwoBits project overview covering design philosophy, privacy commitments, shared infrastructure, and monorepo layout; update `apps/shelf-snap/README.md` CI section to reference current workflow names
 
+
 ## 1.5.0 (2026-06-04)
 
 ### Improvements
@@ -295,6 +318,7 @@
 
 **Documentation** — monorepo migration and developer guidelines:
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
+
 
 ## 1.4.0 (2026-06-03)
 
@@ -311,12 +335,14 @@
 **Managed API Proxy** — spend tracking serialization:
 * serialize worker spend tracking with Durable Objects — replace KV read-modify-write spend accounting with a SpendTracker Durable Object that atomically reserves budget before forwarding to OpenAI and settles to actual cost afterward; eliminates the race condition where concurrent requests could each read the same KV total and bypass the monthly spend cap
 
+
 ## 1.3.0 (2026-06-03)
 
 ### Improvements
 
 **Managed API Proxy** — vision pricing documentation:
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
+
 
 ## 1.2.0 (2026-06-03)
 
