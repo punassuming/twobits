@@ -26,6 +26,13 @@
 
 **Billing** — purchase/restore logic now runs through a shared `PurchaseDelegate` in the shared billing module, removing duplicated billing orchestration across the apps.
 
+**Background price checks** — the app now actually tracks prices on its own:
+* a periodic WorkManager job refreshes price + coupons for every active product, honoring the check-frequency, Wi-Fi-only, and charging-only settings
+* it generates drops on target-hit and big-drop (≥ alert threshold) crossings and posts notifications, gated by the quiet-hours toggle (22:00–08:00 local)
+* three notification channels (price drops / coupons / provider issues); tapping a drop opens the app
+* requests the Android 13+ notification permission on launch
+* the worker resolves its dependencies via a Hilt entry point, so no custom WorkerFactory is required
+
 **Product detail** — surfaced the data the model already tracks:
 * price-history chart now plots observed price, effective price (incl. shipping/fees), and the target line, with 7D/30D/90D/All range selectors and a current/low/avg/high metrics row
 * added a coupons section with verification-state badges (Valid/Untested/Restricted/Expired), discount labels, and copy-to-clipboard
