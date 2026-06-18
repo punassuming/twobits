@@ -266,7 +266,7 @@ fun AIConfigScreen(
             }
 
             AiSectionCard(icon = Icons.Default.Search, title = "Web search for pricing") {
-                WebSearchSection(uiState = uiState, viewModel = viewModel)
+                WebSearchSection(uiState = uiState, viewModel = viewModel, hasPro = hasPro)
             }
 
             AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
@@ -299,7 +299,14 @@ fun AIConfigScreen(
 private fun WebSearchSection(
     uiState: SettingsUiState,
     viewModel: SettingsViewModel,
+    hasPro: Boolean,
 ) {
+    if (hasPro) {
+        AiProManagedCard(
+            description = "Web search managed via api.twobits.app — Jina AI (primary) with Brave Search as supplement. No keys required.",
+        )
+        return
+    }
     Text(
         text = stringResource(R.string.search_section_subtitle),
         style = MaterialTheme.typography.bodySmall,

@@ -38,6 +38,8 @@
 * added `x86_64` to ABI splits to support running the app on standard Android emulators
 * sherpa-onnx is now downloaded via native Java I/O in `settings.gradle.kts` (Gradle initialization phase) rather than via curl, removing the curl system dependency while guaranteeing the AAR is present before any dependency resolution occurs
 
+**Shared billing** — `BillingManager` and `SubscriptionRepository` expose `getAppUserId()` returning the RevenueCat app user ID, used by Shelf Snap to authenticate Worker proxy calls
+
 **License** — dual-licensing setup:
 * added standard GPLv3 license to both Scrybe and Shelf Snap apps to establish open source rights while preserving commercial/Pro distribution capability
 

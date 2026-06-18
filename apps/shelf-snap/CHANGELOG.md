@@ -4,6 +4,12 @@
 
 ### Features
 
+**Pro managed API** — vision, pricing, and web search route through api.twobits.app for Pro subscribers:
+* vision analysis and item identification call the Worker proxy (no OpenAI key required)
+* price research LLM synthesis calls the Worker proxy
+* web search for market research uses managed Jina AI via `/v1/shelfsnap/search` (no Jina/Brave key required)
+* AI config web search section shows a managed info card instead of key fields when Pro is active
+
 **Pro** — standalone subscription screen:
 * tier comparison: Try it / Pro / BYOK side-by-side
 * plan picker: annual ($4.99/mo) or monthly ($5.99/mo)
