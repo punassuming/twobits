@@ -1,6 +1,8 @@
 package dev.scrybe.feature.settings
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +57,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
 import dev.scrybe.core.common.ScrybeLayoutDefaults
+
+private const val PLAY_SUBSCRIPTIONS_URL = "https://play.google.com/store/account/subscriptions"
 
 private data class UsageItem(
     val label: String,
@@ -113,7 +117,7 @@ fun ProScreen(
                     PlanPickerSection(
                         selectedPlan = selectedPlan,
                         onSelectPlan = { selectedPlan = it },
-                        onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
+                        onUpgrade = { activity?.let { viewModel.startProPurchase(it, selectedPlan) } },
                         onRestore = viewModel::restorePurchases,
                     )
                 }
@@ -426,6 +430,7 @@ private fun PlanOption(
 
 @Composable
 private fun ProActivePlanCard(onRestore: () -> Unit) {
+    val context = LocalContext.current
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -459,7 +464,11 @@ private fun ProActivePlanCard(onRestore: () -> Unit) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
-                    onClick = {},
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PLAY_SUBSCRIPTIONS_URL)))
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.27f)),
                 ) {

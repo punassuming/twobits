@@ -25,10 +25,13 @@
 
 ### Improvements
 
+* purchase/restore logic now runs through a shared `PurchaseDelegate` in the shared billing module, removing duplicated billing orchestration across the apps
+
 ### Fixes
 
 * plan picker now correctly passes the selected plan (Annual / Monthly) to the purchase flow — previously always initiated a monthly purchase regardless of selection
 * Market and List tabs now switch in-place within the item detail screen sharing the same view model, so unsaved edits on the Details tab are preserved and suggested prices apply to the active form
+* "Manage subscription" on the active Pro card now opens the Google Play subscriptions page instead of doing nothing
 
 ## 1.9.0 (2026-06-17)
 

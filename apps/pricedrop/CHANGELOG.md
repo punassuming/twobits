@@ -24,6 +24,8 @@
 
 **Tooling** — PriceDrop now has its own CI workflow (build + unit tests + Android lint on every PR) and a ktlint `.editorconfig`, matching Scrybe and Shelf Snap.
 
+**Billing** — purchase/restore logic now runs through a shared `PurchaseDelegate` in the shared billing module, removing duplicated billing orchestration across the apps.
+
 **Data model** — expanded local schema for the full tracking experience:
 * new `Offer`, `Coupon`, and `Activity` entities plus DAOs; `WatchedProduct` gains shipping/fees/seller/source/confidence and `PriceEvent` gains effective price
 * added effective-price math (`item + shipping + fees − coupon`, never negative) with unit tests

@@ -20,7 +20,14 @@
 
 ### Improvements
 
+* purchase/restore logic now runs through a shared `PurchaseDelegate` in the shared billing module, removing duplicated billing orchestration across the apps
+* removed the empty `TranscriptionWorkerPlaceholder` stub from the workers module
+
 ### Fixes
+
+* Pro plan picker now passes the selected plan (annual / monthly) to the purchase flow — previously always initiated a monthly purchase regardless of selection
+* "Manage subscription" on the active Pro card now opens the Google Play subscriptions page instead of doing nothing
+* the "Orphaned" recording badge in File Manager is no longer rendered as a tappable chip
 
 ## 1.15.0 (2026-06-17)
 

@@ -10,11 +10,10 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.twobits.billing.BillingManager
-import com.twobits.billing.PurchaseCancelledException
+import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -47,17 +46,16 @@ class SettingsViewModel
     constructor(
         private val dataStore: DataStore<Preferences>,
         private val subscriptionRepo: SubscriptionRepository,
-        private val billingManager: BillingManager,
+        billingManager: BillingManager,
     ) : ViewModel() {
-        private val _isPurchasing = MutableStateFlow(false)
-        private val _purchaseError = MutableStateFlow<String?>(null)
+        private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
 
         val uiState: StateFlow<SettingsUiState> =
             combine(
                 dataStore.data,
                 subscriptionRepo.subscriptionTier,
-                _isPurchasing,
-                _purchaseError,
+                purchaseDelegate.isPurchasing,
+                purchaseDelegate.purchaseError,
             ) { prefs, tier, purchasing, error ->
                 SettingsUiState(
                     subscriptionTier = tier,
@@ -90,44 +88,9 @@ class SettingsViewModel
         fun startProPurchase(
             activity: Activity,
             plan: String = "monthly",
-        ) {
-            viewModelScope.launch {
-                _isPurchasing.value = true
-                _purchaseError.value = null
-                val pkg =
-                    if (plan == "annual") {
-                        billingManager.getAnnualPackage() ?: billingManager.getMonthlyPackage()
-                    } else {
-                        billingManager.getMonthlyPackage()
-                    }
-                if (pkg == null) {
-                    _purchaseError.value = "Subscription not available — try again shortly."
-                    _isPurchasing.value = false
-                    return@launch
-                }
-                billingManager
-                    .purchase(activity, pkg)
-                    .onFailure { e ->
-                        if (e !is PurchaseCancelledException) {
-                            _purchaseError.value = e.message ?: "Purchase failed."
-                        }
-                    }
-                _isPurchasing.value = false
-            }
-        }
+        ) = purchaseDelegate.startPurchase(activity, plan)
 
-        fun restorePurchases() {
-            viewModelScope.launch {
-                _isPurchasing.value = true
-                _purchaseError.value = null
-                billingManager
-                    .restorePurchases()
-                    .onFailure { _purchaseError.value = it.message ?: "Restore failed." }
-                _isPurchasing.value = false
-            }
-        }
+        fun restorePurchases() = purchaseDelegate.restore()
 
-        fun dismissPurchaseError() {
-            _purchaseError.value = null
-        }
+        fun dismissPurchaseError() = purchaseDelegate.dismissError()
     }
