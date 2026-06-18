@@ -75,7 +75,10 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             AIConfigScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.Pro.route) {
-            ProScreen(onNavigateBack = { navController.popBackStack() })
+            ProScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToByok = { navController.navigate(Screen.AiConfig.route) },
+            )
         }
         composable(Screen.WhatsNew.route) {
             WhatsNewScreen(onNavigateBack = { navController.popBackStack() })

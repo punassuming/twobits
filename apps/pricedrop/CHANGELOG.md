@@ -32,3 +32,5 @@
 ### Fixes
 
 * Pro entitlement now checks `pricedrop_pro` (was defaulting to the shared `pro` entitlement)
+* Pro upgrade CTA now initiates a real RevenueCat purchase (annual or monthly based on the selected plan) instead of a no-op; BYOK CTA routes to AI Config
+* annual plan selection is now correctly passed through to the purchase flow — previously always purchased the monthly package regardless of selection

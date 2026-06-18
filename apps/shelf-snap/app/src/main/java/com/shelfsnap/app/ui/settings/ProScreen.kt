@@ -82,7 +82,7 @@ fun ProScreen(
             } else {
                 BillingSection(
                     isPurchasing = uiState.isPurchasing,
-                    onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
+                    onUpgrade = { plan -> activity?.let { viewModel.startProPurchase(it, plan) } },
                     onRestore = viewModel::restorePurchases,
                 )
             }
@@ -278,7 +278,7 @@ private fun TierCard(
 @Composable
 private fun BillingSection(
     isPurchasing: Boolean,
-    onUpgrade: () -> Unit,
+    onUpgrade: (plan: String) -> Unit,
     onRestore: () -> Unit,
 ) {
     var selectedPlan by remember { mutableStateOf("annual") }
@@ -309,7 +309,7 @@ private fun BillingSection(
         )
     }
     Button(
-        onClick = onUpgrade,
+        onClick = { onUpgrade(selectedPlan) },
         modifier = Modifier.fillMaxWidth(),
         enabled = !isPurchasing,
         shape = RoundedCornerShape(14.dp),

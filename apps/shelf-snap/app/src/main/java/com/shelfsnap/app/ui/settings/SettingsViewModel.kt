@@ -473,11 +473,19 @@ class SettingsViewModel
             }
         }
 
-        fun startProPurchase(activity: Activity) {
+        fun startProPurchase(
+            activity: Activity,
+            plan: String = "monthly",
+        ) {
             viewModelScope.launch {
                 _isPurchasing.value = true
                 _purchaseError.value = null
-                val pkg = billingManager.getMonthlyPackage()
+                val pkg =
+                    if (plan == "annual") {
+                        billingManager.getAnnualPackage() ?: billingManager.getMonthlyPackage()
+                    } else {
+                        billingManager.getMonthlyPackage()
+                    }
                 if (pkg == null) {
                     _purchaseError.value = "Subscription not available — try again shortly."
                     _isPurchasing.value = false

@@ -202,13 +202,7 @@ fun ItemDetailScreen(
                 Column(Modifier.padding(padding).fillMaxSize()) {
                     DetailTabBar(
                         selected = uiState.tab,
-                        onSelect = { tab ->
-                            when (tab) {
-                                DetailTab.MARKET -> onNavigateToMarketResearch()
-                                DetailTab.LIST -> onNavigateToListingSummary()
-                                else -> viewModel.selectTab(tab)
-                            }
-                        },
+                        onSelect = viewModel::selectTab,
                     )
 
                     Box(Modifier.weight(1f)) {
