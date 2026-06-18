@@ -45,6 +45,10 @@ class WatchlistRepository
 
         fun observePriceHistory(productId: Long): Flow<List<PriceEvent>> = priceEventDao.observeForProduct(productId)
 
+        fun observeCoupons(productId: Long): Flow<List<Coupon>> = couponDao.observeForProduct(productId)
+
+        fun observeActivity(productId: Long): Flow<List<Activity>> = activityDao.observeForProduct(productId)
+
         /** Record an observed price, maintain tracked stats, and append to the activity log. */
         suspend fun recordPrice(
             productId: Long,

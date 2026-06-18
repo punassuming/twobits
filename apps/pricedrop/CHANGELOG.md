@@ -26,6 +26,13 @@
 
 **Billing** — purchase/restore logic now runs through a shared `PurchaseDelegate` in the shared billing module, removing duplicated billing orchestration across the apps.
 
+**Product detail** — surfaced the data the model already tracks:
+* price-history chart now plots observed price, effective price (incl. shipping/fees), and the target line, with 7D/30D/90D/All range selectors and a current/low/avg/high metrics row
+* added a coupons section with verification-state badges (Valid/Untested/Restricted/Expired), discount labels, and copy-to-clipboard
+* added an activity timeline (added / checked / dropped / coupon found / alert sent) with relative timestamps
+* the price overview now shows the effective price when shipping or fees apply
+* toolbar refresh action pulls the latest price and coupons from the Worker on demand
+
 **Data model** — expanded local schema for the full tracking experience:
 * new `Offer`, `Coupon`, and `Activity` entities plus DAOs; `WatchedProduct` gains shipping/fees/seller/source/confidence and `PriceEvent` gains effective price
 * added effective-price math (`item + shipping + fees − coupon`, never negative) with unit tests
