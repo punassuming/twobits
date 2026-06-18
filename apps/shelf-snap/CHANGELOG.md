@@ -39,6 +39,7 @@
 ### Fixes
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
+* `ProScreen` top bar extracted into private composable — satisfies ktlint function-body-expression rules without changing visible behaviour
 
 
 ## 1.8.0 (2026-06-12)

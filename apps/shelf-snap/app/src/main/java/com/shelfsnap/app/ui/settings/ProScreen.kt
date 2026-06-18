@@ -60,42 +60,7 @@ fun ProScreen(
     val isPro = uiState.subscriptionTier is SubscriptionTier.Pro
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Shelf Snap Pro", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            text = if (isPro) "Active · renews Jul 15, 2026" else "Choose how you want to use AI",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                    }
-                },
-                actions = {
-                    if (isPro) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                        ) {
-                            Text(
-                                "Active",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                    }
-                },
-            )
-        },
+        topBar = { ProTopBar(onBack = onBack, isPro = isPro) },
     ) { padding ->
         Column(
             modifier =
@@ -133,6 +98,47 @@ fun ProScreen(
             ByokNote()
         }
     }
+}
+
+@Composable
+private fun ProTopBar(
+    onBack: () -> Unit,
+    isPro: Boolean,
+) {
+    TopAppBar(
+        title = {
+            Column {
+                Text("Shelf Snap Pro", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = if (isPro) "Active · renews Jul 15, 2026" else "Choose how you want to use AI",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+            }
+        },
+        actions = {
+            if (isPro) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Text(
+                        "Active",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+            }
+        },
+    )
 }
 
 @Composable
