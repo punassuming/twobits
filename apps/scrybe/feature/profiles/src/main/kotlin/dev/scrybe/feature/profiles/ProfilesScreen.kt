@@ -2,6 +2,7 @@ package dev.scrybe.feature.profiles
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +79,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -302,6 +305,7 @@ fun ProfilesScreen(
                 viewModel.clearSuggestionState()
                 viewModel.closeAiCreator()
             },
+            onModelChange = viewModel::setProfileSuggestionModel,
             onSuggest = viewModel::suggestProfile,
             onSuggestionConsumed = viewModel::clearSuggestionState,
             onSaveSuggestion = { suggestion, isDefault ->
@@ -1171,6 +1175,7 @@ private fun AiProfileDraftDialog(
     selectedModelName: String,
     suggestionState: ProfileSuggestionUiState,
     onDismiss: () -> Unit,
+    onModelChange: (String) -> Unit,
     onSuggest: (String, String, String, List<String>) -> Unit,
     onSuggestionConsumed: () -> Unit,
     onSaveSuggestion: (dev.scrybe.core.transforms.ProfileSuggestion, Boolean) -> Unit,
@@ -1181,6 +1186,7 @@ private fun AiProfileDraftDialog(
     var seedDescription by remember { mutableStateOf("") }
     var isDefault by remember { mutableStateOf(false) }
     var latestSuggestion by remember { mutableStateOf<dev.scrybe.core.transforms.ProfileSuggestion?>(null) }
+    var refinePrompt by remember { mutableStateOf("") }
     val selectedModel = OpenAiProfileSuggestionModel.fromApiName(selectedModelName)
 
     LaunchedEffect(suggestionState) {
@@ -1214,7 +1220,10 @@ private fun AiProfileDraftDialog(
                     text = "AI Profile Draft",
                     style = MaterialTheme.typography.headlineSmall,
                 )
-                AiDraftModelInfoCard(selectedModel)
+                AiDraftModelPicker(
+                    selectedModel = selectedModel,
+                    onModelChange = onModelChange,
+                )
                 OutlinedTextField(
                     value = request,
                     onValueChange = { request = it },
@@ -1253,6 +1262,20 @@ private fun AiProfileDraftDialog(
                 }
                 latestSuggestion?.let { suggestion ->
                     AiDraftSuggestionCard(suggestion)
+                    AiRefinementSection(
+                        refinePrompt = refinePrompt,
+                        isLoading = suggestionState is ProfileSuggestionUiState.Loading,
+                        onPromptChange = { refinePrompt = it },
+                        onRefine = {
+                            onSuggest(
+                                "$request\n\nRefine the profile: $refinePrompt",
+                                seedName,
+                                seedDescription,
+                                emptyList(),
+                            )
+                            refinePrompt = ""
+                        },
+                    )
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1277,6 +1300,99 @@ private fun AiProfileDraftDialog(
                     onSaveSuggestion = onSaveSuggestion,
                     onEditSuggestion = onEditSuggestion,
                 )
+            }
+        }
+    }
+}
+
+private val DRAFT_MODEL_PICKER_OPTIONS =
+    listOf(
+        OpenAiProfileSuggestionModel.GPT_5_MINI,
+        OpenAiProfileSuggestionModel.GPT_5_NANO,
+        OpenAiProfileSuggestionModel.GPT_5,
+        OpenAiProfileSuggestionModel.GPT_5_4,
+    )
+
+@Composable
+private fun AiDraftModelPicker(
+    selectedModel: OpenAiProfileSuggestionModel,
+    onModelChange: (String) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("AI draft model", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
+                        .padding(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                DRAFT_MODEL_PICKER_OPTIONS.forEach { model ->
+                    val isSelected = model == selectedModel
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        onClick = { onModelChange(model.apiName) },
+                        shape = MaterialTheme.shapes.small,
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent,
+                    ) {
+                        Text(
+                            text = model.title.removePrefix("GPT-"),
+                            modifier = Modifier.padding(vertical = 6.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                }
+            }
+            Text(
+                selectedModel.supportingText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AiRefinementSection(
+    refinePrompt: String,
+    isLoading: Boolean,
+    onPromptChange: (String) -> Unit,
+    onRefine: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Refine with AI", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = refinePrompt,
+                    onValueChange = onPromptChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("e.g. Make it more concise, add a template for goals…") },
+                    minLines = 2,
+                    maxLines = 3,
+                )
+                Button(
+                    onClick = onRefine,
+                    enabled = refinePrompt.isNotBlank() && !isLoading,
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = "Refine", modifier = Modifier.size(18.dp))
+                    }
+                }
             }
         }
     }

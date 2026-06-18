@@ -188,6 +188,10 @@ class ProfilesViewModel
             }
         }
 
+        fun setProfileSuggestionModel(apiName: String) {
+            viewModelScope.launch { preferencesDataStore.setProfileSuggestionModel(apiName) }
+        }
+
         fun suggestProfile(
             userRequest: String,
             currentName: String,

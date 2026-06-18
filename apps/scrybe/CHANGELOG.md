@@ -10,6 +10,14 @@
 * usage dashboard when Pro is active (transcription minutes, transforms, sessions)
 * why Pro highlights and BYOK explanation
 
+**AI Config** — call budget tracker:
+* "API calls per session" card below the credential dock showing 1 call for transcription and 1–2 for transforms
+* dot indicators (primary / secondary color) and a plain-language note per call type
+
+**Profile AI draft** — model picker and agentic refinement:
+* segmented model picker in the AI Draft dialog: GPT-5 mini, GPT-5 nano, GPT-5, GPT-5.4 (persists to preferences)
+* "Refine with AI" section appears after a draft is generated — send a follow-up instruction to reshape the prompt without starting over
+
 ### Improvements
 
 ### Fixes
