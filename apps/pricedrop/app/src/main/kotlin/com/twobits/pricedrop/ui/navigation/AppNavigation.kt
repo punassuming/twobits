@@ -1,6 +1,14 @@
 package com.twobits.pricedrop.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,6 +19,7 @@ import com.twobits.pricedrop.ui.ask.AskScreen
 import com.twobits.pricedrop.ui.barcode.BarcodeScanScreen
 import com.twobits.pricedrop.ui.drops.DropsScreen
 import com.twobits.pricedrop.ui.onboarding.OnboardingScreen
+import com.twobits.pricedrop.ui.onboarding.OnboardingViewModel
 import com.twobits.pricedrop.ui.product.ProductDetailScreen
 import com.twobits.pricedrop.ui.pro.ProScreen
 import com.twobits.pricedrop.ui.search.SearchScreen
@@ -20,8 +29,18 @@ import com.twobits.pricedrop.ui.watch.WatchScreen
 import com.twobits.pricedrop.ui.whatsnew.WhatsNewScreen
 
 @Composable
-fun AppNavigation(navController: NavHostController = rememberNavController()) {
-    NavHost(navController = navController, startDestination = Screen.Watch.route) {
+fun AppNavigation(
+    navController: NavHostController = rememberNavController(),
+    onboardingViewModel: OnboardingViewModel = hiltViewModel(),
+) {
+    val onboardingComplete by onboardingViewModel.completed.collectAsState()
+    if (onboardingComplete == null) {
+        // Hold the start destination until the first-run flag has loaded.
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
+    val startDestination = if (onboardingComplete == true) Screen.Watch.route else Screen.Onboarding.route
+    NavHost(navController = navController, startDestination = startDestination) {
         composable(Screen.Watch.route) {
             WatchScreen(
                 onNavigateToProduct = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) },
@@ -86,6 +105,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onFinish = {
+                    onboardingViewModel.markComplete()
                     navController.navigate(Screen.Watch.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }

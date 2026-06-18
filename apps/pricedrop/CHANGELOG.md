@@ -33,6 +33,8 @@
 
 ### Fixes
 
+* barcode scan now resolves the scanned UPC through the Worker (`/v1/pricedrop/barcode`) and pre-fills the product before tracking, with a manual fallback when there is no catalog match — previously it returned a placeholder result after a fixed delay
+* first launch now shows the onboarding flow exactly once, gated by a persisted `onboarding_complete` flag — previously the app always opened straight to the watchlist and the onboarding screens were unreachable
 * Pro entitlement now checks `pricedrop_pro` (was defaulting to the shared `pro` entitlement)
 * Pro upgrade CTA now initiates a real RevenueCat purchase (annual or monthly based on the selected plan) instead of a no-op; BYOK CTA routes to AI Config
 * annual plan selection is now correctly passed through to the purchase flow — previously always purchased the monthly package regardless of selection

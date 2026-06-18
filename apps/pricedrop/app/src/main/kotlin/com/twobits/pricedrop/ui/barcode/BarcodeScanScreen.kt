@@ -118,8 +118,24 @@ fun BarcodeScanScreen(
                                     if (state.price != null) {
                                         Text(fmt.format(state.price), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
                                     }
+                                    if (!state.matched) {
+                                        Text(
+                                            "Not found in catalog — you can still track it and we'll look for matches.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                     Button(
-                                        onClick = { viewModel.addToWatchlist(state.title, state.price, state.barcode) { id -> onNavigateToProduct(id) } },
+                                        onClick = {
+                                            viewModel.addToWatchlist(
+                                                title = state.title,
+                                                price = state.price,
+                                                barcode = state.barcode,
+                                                asin = state.asin,
+                                                url = state.url,
+                                                imageUrl = state.imageUrl,
+                                            ) { id -> onNavigateToProduct(id) }
+                                        },
                                         modifier = Modifier.fillMaxWidth(),
                                     ) { Text("Watch this product") }
                                     androidx.compose.material3.OutlinedButton(
