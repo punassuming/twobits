@@ -7,7 +7,10 @@ import androidx.room.PrimaryKey
 data class PriceEvent(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val productId: Long,
+    /** Observed list price at this point in time. */
     val price: Double,
+    /** Estimated effective price (base + shipping + fees − coupon) when known; else equals [price]. */
+    val effectivePrice: Double = price,
     val retailer: String = "",
     val recordedAt: Long = System.currentTimeMillis(),
 )

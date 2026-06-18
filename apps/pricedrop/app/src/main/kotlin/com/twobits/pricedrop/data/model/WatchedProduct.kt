@@ -18,6 +18,13 @@ data class WatchedProduct(
     val asin: String = "",
     val upc: String = "",
     val retailers: String = "",
+    // Effective-price components for the best current offer.
+    val shipping: Double = 0.0,
+    val fees: Double = 0.0,
+    val seller: String = "",
+    // Provenance: which source produced the current price + match confidence (0–100).
+    val source: String = "",
+    val confidence: Int = 0,
     val addedAt: Long = System.currentTimeMillis(),
     val lastCheckedAt: Long = 0L,
     val trackedHigh: Double = 0.0,

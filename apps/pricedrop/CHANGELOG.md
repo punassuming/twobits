@@ -16,4 +16,19 @@
 
 ### Improvements
 
+**Live data** — wired the app to the TwoBits Worker (Pro passthrough):
+* product search now calls the real `/v1/pricedrop/search` endpoint instead of placeholder results
+* the Ask assistant now answers via the managed `/v1/chat/completions` proxy with a shopping-scoped prompt
+* added a network layer (OkHttp + Gson) reusing `shared/network`, with friendly error mapping and bearer auth from the RevenueCat user id
+* repository can now refresh current price, backfill Keepa price history, fetch coupons, and resolve scanned barcodes
+
+**Tooling** — PriceDrop now has its own CI workflow (build + unit tests + Android lint on every PR) and a ktlint `.editorconfig`, matching Scrybe and Shelf Snap.
+
+**Data model** — expanded local schema for the full tracking experience:
+* new `Offer`, `Coupon`, and `Activity` entities plus DAOs; `WatchedProduct` gains shipping/fees/seller/source/confidence and `PriceEvent` gains effective price
+* added effective-price math (`item + shipping + fees − coupon`, never negative) with unit tests
+* added a per-provider settings store (Off/BYOK/Pro modes + encrypted key storage) as the foundation for provider management
+
 ### Fixes
+
+* Pro entitlement now checks `pricedrop_pro` (was defaulting to the shared `pro` entitlement)
