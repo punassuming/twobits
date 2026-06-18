@@ -130,10 +130,11 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    // CameraX (no camerax-view — using core/camera2/lifecycle for barcode scanning)
+    // CameraX
     implementation(libs.camerax.core)
     implementation(libs.camerax.camera2)
     implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
 
     // DataStore
     implementation(libs.datastore.preferences)
