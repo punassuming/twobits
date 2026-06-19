@@ -203,7 +203,7 @@ private fun RecordingFileRow(
         },
         leadingContent = {
             if (entry.sessionId == null) {
-                AssistChip(onClick = {}, label = { Text("Orphaned") })
+                AssistChip(onClick = {}, enabled = false, label = { Text("Orphaned") })
             }
         },
         trailingContent = {

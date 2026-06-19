@@ -7,7 +7,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.twobits.billing.BillingManager
-import com.twobits.billing.PurchaseCancelledException
+import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import com.twobits.common.ReleaseNotes
@@ -176,8 +176,7 @@ class SettingsViewModel
         private val savedFiles = MutableStateFlow<List<SavedFileEntry>>(emptyList())
         private val apiKeyValidationStatus = MutableStateFlow(ApiKeyValidationStatus.Unknown)
         private val apiKeyValidationMessage = MutableStateFlow<String?>(null)
-        private val isPurchasing = MutableStateFlow(false)
-        private val purchaseError = MutableStateFlow<String?>(null)
+        private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
         private val profileSuggestionModelTestState =
             MutableStateFlow<ProfileSuggestionModelTestUiState>(ProfileSuggestionModelTestUiState.Idle)
         private val localMetadata =
@@ -404,8 +403,8 @@ class SettingsViewModel
         private val billingState =
             combine(
                 subscriptionRepository.subscriptionTier,
-                isPurchasing,
-                purchaseError,
+                purchaseDelegate.isPurchasing,
+                purchaseDelegate.purchaseError,
             ) { tier, purchasing, error ->
                 BillingState(tier = tier, isPurchasing = purchasing, purchaseError = error)
             }
@@ -703,41 +702,14 @@ class SettingsViewModel
             profileSuggestionModelTestState.value = ProfileSuggestionModelTestUiState.Idle
         }
 
-        fun startProPurchase(activity: Activity) {
-            viewModelScope.launch {
-                isPurchasing.value = true
-                purchaseError.value = null
-                val pkg = billingManager.getMonthlyPackage()
-                if (pkg == null) {
-                    purchaseError.value = "Subscription not available — try again shortly."
-                    isPurchasing.value = false
-                    return@launch
-                }
-                billingManager
-                    .purchase(activity, pkg)
-                    .onFailure { e ->
-                        if (e !is PurchaseCancelledException) {
-                            purchaseError.value = e.message ?: "Purchase failed."
-                        }
-                    }
-                isPurchasing.value = false
-            }
-        }
+        fun startProPurchase(
+            activity: Activity,
+            plan: String = "monthly",
+        ) = purchaseDelegate.startPurchase(activity, plan)
 
-        fun restorePurchases() {
-            viewModelScope.launch {
-                isPurchasing.value = true
-                purchaseError.value = null
-                billingManager
-                    .restorePurchases()
-                    .onFailure { purchaseError.value = it.message ?: "Restore failed." }
-                isPurchasing.value = false
-            }
-        }
+        fun restorePurchases() = purchaseDelegate.restore()
 
-        fun dismissPurchaseError() {
-            purchaseError.value = null
-        }
+        fun dismissPurchaseError() = purchaseDelegate.dismissError()
 
         fun refreshSavedFiles() {
             viewModelScope.launch {

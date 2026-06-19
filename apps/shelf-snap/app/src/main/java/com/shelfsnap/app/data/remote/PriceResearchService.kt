@@ -77,10 +77,15 @@ class PriceResearchService
         /**
          * Researches [item]'s resale value.
          *
-         * @param openAiKey OpenAI API key (required).
-         * @param searchProvider which web-search backend to use for evidence (may be NONE).
-         * @param searchKey API key for the search provider (blank for keyless/NONE).
+         * @param openAiKey OpenAI API key (required for BYOK; pass the RevenueCat user ID for Pro).
+         * @param searchProvider which web-search backend to use for BYOK evidence (may be NONE).
+         * @param searchKey API key for the BYOK search provider (blank for keyless/NONE).
          * @param model OpenAI model to use for price synthesis; defaults to [MODEL].
+         * @param openAiBaseUrl Override to route LLM calls through the TwoBits Worker proxy.
+         * @param openAiAuthHeader Override auth header (defaults to "Bearer $openAiKey").
+         * @param workerSearchUrl When non-null, web evidence is gathered via the Worker's
+         *   managed search endpoint instead of calling Jina/Brave directly.
+         * @param workerAuthHeader Auth header for [workerSearchUrl] calls.
          */
         suspend fun research(
             item: Item,
@@ -88,14 +93,24 @@ class PriceResearchService
             searchProvider: SearchProvider,
             searchKey: String,
             model: String = MODEL,
+            openAiBaseUrl: String = "https://api.openai.com",
+            openAiAuthHeader: String = "Bearer $openAiKey",
+            workerSearchUrl: String? = null,
+            workerAuthHeader: String? = null,
         ): PriceResearchResult =
             withContext(Dispatchers.IO) {
-                if (!ApiKeyValidator.isValid(openAiKey)) {
+                // Skip key validation when routing through the Worker proxy.
+                if (openAiBaseUrl == "https://api.openai.com" && !ApiKeyValidator.isValid(openAiKey)) {
                     return@withContext PriceResearchResult(error = ERROR_INVALID_KEY)
                 }
 
                 // Step 1 — best-effort web evidence.
-                val evidence = gatherEvidence(item, searchProvider, searchKey)
+                val evidence =
+                    if (workerSearchUrl != null && workerAuthHeader != null) {
+                        gatherWorkerEvidence(item, workerSearchUrl, workerAuthHeader)
+                    } else {
+                        gatherEvidence(item, searchProvider, searchKey)
+                    }
 
                 // Step 2 — synthesize via the model.
                 runCatching {
@@ -104,8 +119,8 @@ class PriceResearchService
                     val request =
                         Request
                             .Builder()
-                            .url("https://api.openai.com/$endpoint")
-                            .addHeader("Authorization", "Bearer $openAiKey")
+                            .url("$openAiBaseUrl/$endpoint")
+                            .addHeader("Authorization", openAiAuthHeader)
                             .addHeader("Content-Type", "application/json")
                             .post(gson.toJson(requestBody).toRequestBody(json))
                             .build()
@@ -156,6 +171,65 @@ class PriceResearchService
                 SearchEvidence(results = merged, providerKey = provider.key)
             } else {
                 SearchEvidence(providerKey = provider.key, error = lastError)
+            }
+        }
+
+        /**
+         * Variant of [gatherEvidence] that calls the Worker's managed Jina search endpoint
+         * instead of the user's own Jina/Brave key.
+         */
+        private suspend fun gatherWorkerEvidence(
+            item: Item,
+            workerUrl: String,
+            authHeader: String,
+        ): SearchEvidence {
+            val queries = buildSearchQueries(item)
+            val seen = mutableSetOf<String>()
+            val merged = mutableListOf<WebSearchResult>()
+            var lastError: String? = null
+
+            for (query in queries) {
+                if (merged.size >= MAX_SEARCH_RESULTS) break
+                runCatching {
+                    val bodyJson = """{"query":${gson.toJson(query)},"provider":"jina","limit":8}"""
+                    val req =
+                        Request
+                            .Builder()
+                            .url(workerUrl)
+                            .addHeader("Authorization", authHeader)
+                            .addHeader("Content-Type", "application/json")
+                            .post(bodyJson.toRequestBody(json))
+                            .build()
+                    client.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) throw IOException("Worker search ${resp.code}")
+                        val root = JsonParser.parseString(resp.body?.string() ?: "{}").asJsonObject
+                        root.getAsJsonArray("results")?.map { el ->
+                            val r = el.asJsonObject
+                            WebSearchResult(
+                                title = r.get("title")?.asString ?: "",
+                                url = r.get("url")?.asString ?: "",
+                                snippet = r.get("description")?.asString ?: "",
+                            )
+                        } ?: emptyList()
+                    }
+                }.fold(
+                    onSuccess = { results ->
+                        results.forEach { r ->
+                            if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
+                        }
+                    },
+                    onFailure = {
+                        Log.w(TAG, "Worker search failed for query '$query': ${it.message}")
+                        lastError = it.message ?: it.javaClass.simpleName
+                    },
+                )
+                if (merged.size >= MIN_RESULTS_EARLY_STOP) break
+            }
+
+            return if (merged.isNotEmpty()) {
+                SearchEvidence(results = merged, providerKey = "jina")
+            } else {
+                SearchEvidence(providerKey = "jina", error = lastError)
             }
         }
 

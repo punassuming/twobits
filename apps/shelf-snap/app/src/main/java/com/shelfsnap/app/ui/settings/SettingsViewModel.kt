@@ -18,7 +18,7 @@ import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.data.repository.ItemRepository
 import com.shelfsnap.app.util.ApiKeyValidator
 import com.twobits.billing.BillingManager
-import com.twobits.billing.PurchaseCancelledException
+import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -109,8 +109,7 @@ class SettingsViewModel
         private val _braveTestResult = MutableStateFlow<Boolean?>(null)
         private val _braveTestMessage = MutableStateFlow<String?>(null)
         private val _storage = MutableStateFlow(StorageInfo())
-        private val _isPurchasing = MutableStateFlow(false)
-        private val _purchaseError = MutableStateFlow<String?>(null)
+        private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
 
         init {
             viewModelScope.launch {
@@ -190,7 +189,7 @@ class SettingsViewModel
                     repository.observeMultiPhotoAnalysis(),
                 ) { a, b, c -> Triple(a, b, c) },
                 _storage,
-                combine(_isPurchasing, _purchaseError) { p, e -> p to e },
+                combine(purchaseDelegate.isPurchasing, purchaseDelegate.purchaseError) { p, e -> p to e },
             ) { autoAnalyze, keepPhotos, (conditionDetection, priceEstimate, multiPhoto), storage, (purchasing, purchaseError) ->
                 PrefsState(autoAnalyze, keepPhotos, conditionDetection, priceEstimate, multiPhoto, storage, purchasing, purchaseError)
             }
@@ -473,41 +472,14 @@ class SettingsViewModel
             }
         }
 
-        fun startProPurchase(activity: Activity) {
-            viewModelScope.launch {
-                _isPurchasing.value = true
-                _purchaseError.value = null
-                val pkg = billingManager.getMonthlyPackage()
-                if (pkg == null) {
-                    _purchaseError.value = "Subscription not available — try again shortly."
-                    _isPurchasing.value = false
-                    return@launch
-                }
-                billingManager
-                    .purchase(activity, pkg)
-                    .onFailure { e ->
-                        if (e !is PurchaseCancelledException) {
-                            _purchaseError.value = e.message ?: "Purchase failed."
-                        }
-                    }
-                _isPurchasing.value = false
-            }
-        }
+        fun startProPurchase(
+            activity: Activity,
+            plan: String = "monthly",
+        ) = purchaseDelegate.startPurchase(activity, plan)
 
-        fun restorePurchases() {
-            viewModelScope.launch {
-                _isPurchasing.value = true
-                _purchaseError.value = null
-                billingManager
-                    .restorePurchases()
-                    .onFailure { _purchaseError.value = it.message ?: "Restore failed." }
-                _isPurchasing.value = false
-            }
-        }
+        fun restorePurchases() = purchaseDelegate.restore()
 
-        fun dismissPurchaseError() {
-            _purchaseError.value = null
-        }
+        fun dismissPurchaseError() = purchaseDelegate.dismissError()
 
         private suspend fun computeStorage(): StorageInfo =
             withContext(Dispatchers.IO) {

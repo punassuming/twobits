@@ -60,6 +60,8 @@ class BillingManager(
             tier
         }
 
+    fun getAppUserId(): String = Purchases.sharedInstance.appUserID
+
     suspend fun restorePurchases(): Result<SubscriptionTier> =
         runCatching {
             val customerInfo = doRestorePurchases()

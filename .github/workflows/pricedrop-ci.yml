@@ -1,0 +1,85 @@
+name: PriceDrop CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'apps/pricedrop/**'
+      - 'shared/**'
+      - '.github/workflows/pricedrop-ci.yml'
+      - '.github/workflows/reusable-validate.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'apps/pricedrop/**'
+      - 'shared/**'
+      - '.github/workflows/pricedrop-ci.yml'
+      - '.github/workflows/reusable-validate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pricedrop-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    uses: ./.github/workflows/reusable-validate.yml
+    with:
+      changelog_path: apps/pricedrop/CHANGELOG.md
+      app_root: apps/pricedrop
+      require_changelog_update: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+      base_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      head_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+  build:
+    name: Build & Verify
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x apps/pricedrop/gradlew
+
+      # Debug variants: a clean compile + unit-test + lint check with no R8/signing.
+      - name: Build, lint & test
+        working-directory: apps/pricedrop
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pricedrop-lint-report-${{ github.run_number }}
+          path: apps/pricedrop/app/build/reports/lint-results-debug.*
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pricedrop-test-results-${{ github.run_number }}
+          path: apps/pricedrop/app/build/reports/tests/
+          retention-days: 14

@@ -4,9 +4,34 @@
 
 ### Features
 
+**Pro managed API** — vision, pricing, and web search route through api.twobits.app for Pro subscribers:
+* vision analysis and item identification call the Worker proxy (no OpenAI key required)
+* price research LLM synthesis calls the Worker proxy
+* web search for market research uses managed Jina AI via `/v1/shelfsnap/search` (no Jina/Brave key required)
+* AI config web search section shows a managed info card instead of key fields when Pro is active
+
+**Pro** — standalone subscription screen:
+* tier comparison: Try it / Pro / BYOK side-by-side
+* plan picker: annual ($4.99/mo) or monthly ($5.99/mo)
+* usage dashboard when Pro is active (vision analyses, price searches, coupon lookups, listing generations)
+
+**Market Research** — promoted to standalone full-screen view:
+* access from the Market tab in Item Detail
+* all price analysis, comparable listings, and citations
+
+**Listing Summary** — promoted to standalone full-screen view:
+* access from the List tab in Item Detail
+* all platform listing management in one dedicated view
+
 ### Improvements
 
+* purchase/restore logic now runs through a shared `PurchaseDelegate` in the shared billing module, removing duplicated billing orchestration across the apps
+
 ### Fixes
+
+* plan picker now correctly passes the selected plan (Annual / Monthly) to the purchase flow — previously always initiated a monthly purchase regardless of selection
+* Market and List tabs now switch in-place within the item detail screen sharing the same view model, so unsaved edits on the Details tab are preserved and suggested prices apply to the active form
+* "Manage subscription" on the active Pro card now opens the Google Play subscriptions page instead of doing nothing
 
 ## 1.9.0 (2026-06-17)
 
@@ -26,6 +51,7 @@
 ### Fixes
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
+* `ProScreen` top bar extracted into private composable — satisfies ktlint function-body-expression rules without changing visible behaviour
 
 
 ## 1.8.0 (2026-06-12)

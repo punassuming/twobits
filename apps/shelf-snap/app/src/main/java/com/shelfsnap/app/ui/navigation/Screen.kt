@@ -1,6 +1,8 @@
 package com.shelfsnap.app.ui.navigation
 
-sealed class Screen(val route: String) {
+sealed class Screen(
+    val route: String,
+) {
     data object Inventory : Screen("inventory")
 
     /** Camera supports an optional [itemId] to append photos to an existing item. */
@@ -12,8 +14,21 @@ sealed class Screen(val route: String) {
         fun createRoute(itemId: Long) = "item_detail/$itemId"
     }
 
+    data object MarketResearch : Screen("market_research/{itemId}") {
+        fun createRoute(itemId: Long) = "market_research/$itemId"
+    }
+
+    data object ListingSummary : Screen("listing_summary/{itemId}") {
+        fun createRoute(itemId: Long) = "listing_summary/$itemId"
+    }
+
+    data object Pro : Screen("pro")
+
     data object Summary : Screen("summary")
+
     data object Settings : Screen("settings")
+
     data object WhatsNew : Screen("whats_new")
+
     data object AiConfig : Screen("ai_config")
 }

@@ -19,6 +19,7 @@ import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.AIConfigScreen
 import dev.scrybe.feature.settings.PeopleScreen
+import dev.scrybe.feature.settings.ProScreen
 import dev.scrybe.feature.settings.SettingsScreen
 import dev.scrybe.feature.tasks.TaskInboxScreen
 
@@ -44,6 +45,8 @@ sealed class Screen(
     object WhatsNew : Screen("whats_new")
 
     object People : Screen("people")
+
+    object Pro : Screen("pro")
 }
 
 @Composable
@@ -142,6 +145,7 @@ fun ScrybeNavHost(navController: NavHostController) {
                 onNavigateToAiConfig = { navController.navigate(Screen.AiConfig.route) },
                 onNavigateToWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
                 onNavigateToPeople = { navController.navigate(Screen.People.route) },
+                onNavigateToPro = { navController.navigate(Screen.Pro.route) },
             )
         }
         composable(Screen.AiConfig.route) {
@@ -162,6 +166,9 @@ fun ScrybeNavHost(navController: NavHostController) {
                     }
                 },
             )
+        }
+        composable(Screen.Pro.route) {
+            ProScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

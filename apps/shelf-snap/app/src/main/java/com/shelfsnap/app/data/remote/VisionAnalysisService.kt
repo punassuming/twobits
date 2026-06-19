@@ -74,15 +74,21 @@ class VisionAnalysisService
         /**
          * Analyses [photoPaths] and returns a [DraftItemResult].
          * Returns a result with [DraftItemResult.error] set if the call fails.
+         *
+         * [baseUrl] and [authHeader] can be overridden to route through the TwoBits
+         * Worker proxy in Pro mode instead of calling OpenAI directly.
          */
         suspend fun analyse(
             photoPaths: List<String>,
             apiKey: String,
             model: String,
+            baseUrl: String = "https://api.openai.com",
+            authHeader: String = "Bearer $apiKey",
         ): DraftItemResult =
             withContext(Dispatchers.IO) {
                 // Fail fast on a missing/obviously-invalid key — no network round-trip needed.
-                if (!ApiKeyValidator.isValid(apiKey)) {
+                // Skip validation when routing through the Worker (the key is a RevenueCat user ID).
+                if (baseUrl == "https://api.openai.com" && !ApiKeyValidator.isValid(apiKey)) {
                     Log.w(TAG, "Analysis aborted: API key missing or invalid format")
                     return@withContext errorResult(ERROR_INVALID_KEY)
                 }
@@ -98,8 +104,8 @@ class VisionAnalysisService
                     val request =
                         Request
                             .Builder()
-                            .url("https://api.openai.com/$endpoint")
-                            .addHeader("Authorization", "Bearer $apiKey")
+                            .url("$baseUrl/$endpoint")
+                            .addHeader("Authorization", authHeader)
                             .addHeader("Content-Type", "application/json")
                             .post(gson.toJson(requestBody).toRequestBody(json))
                             .build()

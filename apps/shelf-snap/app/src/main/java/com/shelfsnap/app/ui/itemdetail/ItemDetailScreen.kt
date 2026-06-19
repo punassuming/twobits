@@ -94,6 +94,8 @@ fun ItemDetailScreen(
     onBack: () -> Unit,
     onDeleted: () -> Unit,
     onAddPhoto: () -> Unit = {},
+    onNavigateToMarketResearch: () -> Unit = {},
+    onNavigateToListingSummary: () -> Unit = {},
     viewModel: ItemDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -198,7 +200,10 @@ fun ItemDetailScreen(
 
             uiState.item != null ->
                 Column(Modifier.padding(padding).fillMaxSize()) {
-                    DetailTabBar(selected = uiState.tab, onSelect = viewModel::selectTab)
+                    DetailTabBar(
+                        selected = uiState.tab,
+                        onSelect = viewModel::selectTab,
+                    )
 
                     Box(Modifier.weight(1f)) {
                         when (uiState.tab) {

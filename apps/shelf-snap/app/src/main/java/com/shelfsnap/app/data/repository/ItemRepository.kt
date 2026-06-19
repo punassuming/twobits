@@ -16,6 +16,7 @@ import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.search.SearchProvider
+import com.twobits.billing.SubscriptionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -30,8 +31,10 @@ class ItemRepository
         private val visionService: VisionAnalysisService,
         private val priceResearchService: PriceResearchService,
         private val dataStore: DataStore<Preferences>,
+        private val subscriptionRepository: SubscriptionRepository,
     ) {
         companion object {
+            private const val WORKER_BASE = "https://api.twobits.app"
             private val KEY_API_KEY = stringPreferencesKey("openai_api_key")
             private val KEY_SEARCH_PROVIDER = stringPreferencesKey("search_provider")
             private val KEY_SEARCH_API_KEY = stringPreferencesKey("search_api_key") // legacy — migration fallback for Jina
@@ -71,12 +74,23 @@ class ItemRepository
         suspend fun analysePhotos(
             photoPaths: List<String>,
             modelOverride: VisionModel? = null,
-        ): DraftItemResult =
-            when (val source = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok") {
-                "pro" -> DraftItemResult(error = "Pro vision is not yet available in this build.")
+        ): DraftItemResult {
+            val model = (modelOverride ?: getVisionModel()).apiName
+            return when (dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok") {
+                "pro" -> {
+                    val appUserId = subscriptionRepository.getAppUserId()
+                    visionService.analyse(
+                        photoPaths = photoPaths,
+                        apiKey = appUserId,
+                        model = model,
+                        baseUrl = WORKER_BASE,
+                        authHeader = "Bearer $appUserId",
+                    )
+                }
                 "local" -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
-                else -> visionService.analyse(photoPaths, getApiKey(), (modelOverride ?: getVisionModel()).apiName)
+                else -> visionService.analyse(photoPaths, getApiKey(), model)
             }
+        }
 
         // ── Price research ──────────────────────────────────────────────────────────
 
@@ -85,8 +99,21 @@ class ItemRepository
          * configured web-search provider. Caller must check [PriceResearchResult.error].
          */
         suspend fun researchPrice(item: Item): PriceResearchResult =
-            when (val source = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok") {
-                "pro" -> PriceResearchResult(error = "Pro pricing is not yet available in this build.")
+            when (dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok") {
+                "pro" -> {
+                    val appUserId = subscriptionRepository.getAppUserId()
+                    priceResearchService.research(
+                        item = item,
+                        openAiKey = appUserId,
+                        searchProvider = SearchProvider.NONE,
+                        searchKey = "",
+                        model = getReasoningModel().apiName,
+                        openAiBaseUrl = WORKER_BASE,
+                        openAiAuthHeader = "Bearer $appUserId",
+                        workerSearchUrl = "$WORKER_BASE/v1/shelfsnap/search",
+                        workerAuthHeader = "Bearer $appUserId",
+                    )
+                }
                 "local" -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
                 else ->
                     priceResearchService.research(

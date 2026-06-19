@@ -4,9 +4,30 @@
 
 ### Features
 
+**Pro** — standalone subscription screen:
+* tier comparison: Try it / Pro / BYOK side-by-side
+* plan picker: annual ($1.99/mo) or monthly ($2.49/mo)
+* usage dashboard when Pro is active (transcription minutes, transforms, sessions)
+* why Pro highlights and BYOK explanation
+
+**AI Config** — call budget tracker:
+* "API calls per session" card below the credential dock showing 1 call for transcription and 1–2 for transforms
+* dot indicators (primary / secondary color) and a plain-language note per call type
+
+**Profile AI draft** — model picker and agentic refinement:
+* segmented model picker in the AI Draft dialog: GPT-5 mini, GPT-5 nano, GPT-5, GPT-5.4 (persists to preferences)
+* "Refine with AI" section appears after a draft is generated — send a follow-up instruction to reshape the prompt without starting over
+
 ### Improvements
 
+* purchase/restore logic now runs through a shared `PurchaseDelegate` in the shared billing module, removing duplicated billing orchestration across the apps
+* removed the empty `TranscriptionWorkerPlaceholder` stub from the workers module
+
 ### Fixes
+
+* Pro plan picker now passes the selected plan (annual / monthly) to the purchase flow — previously always initiated a monthly purchase regardless of selection
+* "Manage subscription" on the active Pro card now opens the Google Play subscriptions page instead of doing nothing
+* the "Orphaned" recording badge in File Manager is no longer rendered as a tappable chip
 
 ## 1.15.0 (2026-06-17)
 
@@ -23,6 +44,8 @@
 * renamed `:core:common` module to `:core:base` to prevent naming collisions...
 * added `x86_64` to ABI splits to support running the app on standard Android emulators
 * sherpa-onnx is now downloaded via native Java I/O in `settings.gradle.kts` (Gradle initialization phase) rather than via curl, removing the curl system dependency while guaranteeing the AAR is present before any dependency resolution occurs
+
+**Shared billing** — `BillingManager` and `SubscriptionRepository` expose `getAppUserId()` returning the RevenueCat app user ID, used by Shelf Snap to authenticate Worker proxy calls
 
 **License** — dual-licensing setup:
 * added standard GPLv3 license to both Scrybe and Shelf Snap apps to establish open source rights while preserving commercial/Pro distribution capability

@@ -98,6 +98,7 @@ fun SettingsScreen(
     onNavigateToAiConfig: () -> Unit = {},
     onNavigateToWhatsNew: () -> Unit = {},
     onNavigateToPeople: () -> Unit = {},
+    onNavigateToPro: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -168,6 +169,7 @@ fun SettingsScreen(
                     onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                     onRestore = viewModel::restorePurchases,
                     onDismissError = viewModel::dismissPurchaseError,
+                    onNavigateToPro = onNavigateToPro,
                 )
 
                 ProfilesProminentCard(onClick = onNavigateToProfiles)
@@ -839,6 +841,7 @@ private fun ProSubscriptionCard(
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
     onDismissError: () -> Unit,
+    onNavigateToPro: () -> Unit,
 ) {
     AppSectionCard(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -889,6 +892,9 @@ private fun ProSubscriptionCard(
                 TextButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
                     Text("Restore purchases")
                 }
+                TextButton(onClick = onNavigateToPro, modifier = Modifier.fillMaxWidth()) {
+                    Text("See plans →")
+                }
             }
             SubscriptionTier.Pro -> {
                 Text(
@@ -898,6 +904,9 @@ private fun ProSubscriptionCard(
                 )
                 TextButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
                     Text("Restore purchases")
+                }
+                TextButton(onClick = onNavigateToPro, modifier = Modifier.fillMaxWidth()) {
+                    Text("Details →")
                 }
             }
         }
