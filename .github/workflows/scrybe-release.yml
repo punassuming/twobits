@@ -185,7 +185,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          git rebase origin/main
+          git rebase --autostash origin/main
           git add "$build_file" apps/scrybe/CHANGELOG.md
           git diff --staged --quiet || git commit -m "chore: prepare release ${version_name} (${version_code}) [skip ci]"
           git push origin HEAD:main

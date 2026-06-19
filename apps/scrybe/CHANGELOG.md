@@ -7,6 +7,7 @@
 ### Improvements
 
 * migrated to shared `gradle/libs.versions.toml` version catalog across all three apps; upgraded Compose BOM to 2024.12.01, coreKtx to 1.15.0, lifecycleRuntimeKtx to 2.8.7, and navigationCompose to 2.8.5
+* release workflow now uses `git rebase --autostash` so the changelog changes written by `promote-release` are preserved across the rebase instead of aborting it
 
 ### Fixes
 
