@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.0.1 (2026-06-19)
+
+### Features
+
 **PriceDrop** — initial release:
 * watch screen with live price watchlist, alert status badges, and coupon chips
 * drops feed showing price drops, coupons found, and historical lows
