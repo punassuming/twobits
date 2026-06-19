@@ -12,6 +12,7 @@ This file is the authoritative instruction source for AI coding agents working i
 apps/
   scrybe/          — Scrybe Android app (voice recording + Whisper transcription)
   shelf-snap/      — Shelf Snap Android app (camera inventory + price research)
+  price-drop/      — PriceDrop Android app (price tracking + deal alerts)
 shared/            — Gradle composite build: shared library modules (billing, common, api-keys, network, design)
 ```
 
@@ -377,6 +378,10 @@ Both release workflows compute the next semantic version from conventional commi
 ### Shelf Snap
 - **`shelf-snap-ci.yml`** — runs on push to `main`, `copilot/**`, `claude/**`, and on PRs targeting `main` (path-filtered to Shelf Snap files). Jobs: `validate` (changelog + manifests) → `build` (assembleDebug, testDebugUnitTest, lintDebug).
 - **`shelf-snap-release.yml`** — triggers on successful `shelf-snap-ci.yml` run on `main`. Computes next version, promotes changelog, bumps app version, creates tag and GitHub Release with signed APK/AAB.
+
+### PriceDrop
+- **`pricedrop-ci.yml`** — runs on push to `main`, `copilot/**`, `claude/**`, and on PRs targeting `main` (path-filtered to PriceDrop files). Jobs: `validate` (changelog) → `build` (assembleRelease, testDebugUnitTest, lintRelease).
+- **`pricedrop-release.yml`** — triggers on successful `pricedrop-ci.yml` run on `main`. Computes next version, promotes changelog, bumps app version, creates tag and GitHub Release with signed APK/AAB.
 
 ### Shared
 - **`reusable-validate.yml`** — shared changelog validation and manifest validation logic, called by both CI workflows.

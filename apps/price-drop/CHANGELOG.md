@@ -6,6 +6,15 @@
 
 ### Improvements
 
+**Notifications** — aligned appearance with design mockup:
+* per-type accent color: below-target = green, coupon = yellow, big-drop = coral, provider error = red
+* expanded notification body via BigTextStyle: full message + summary sub-text (e.g. "Down from $299.99")
+* "Open item" action button visible in expanded notification shade
+* coupon notifications include a "Copy CODE" action that writes the code to the clipboard
+* `CouponCopyReceiver` registered in manifest to handle the clipboard action
+
+* renamed app module directory from `apps/pricedrop` to `apps/price-drop` for naming consistency with the other apps
+
 ### Fixes
 
 ## 0.0.1 (2026-06-19)

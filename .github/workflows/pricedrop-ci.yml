@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'apps/pricedrop/**'
+      - 'apps/price-drop/**'
       - 'shared/**'
       - 'gradle/libs.versions.toml'
       - '.github/workflows/pricedrop-ci.yml'
@@ -13,7 +13,7 @@ on:
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'apps/pricedrop/**'
+      - 'apps/price-drop/**'
       - 'shared/**'
       - 'gradle/libs.versions.toml'
       - '.github/workflows/pricedrop-ci.yml'
@@ -30,8 +30,8 @@ jobs:
     name: Validate
     uses: ./.github/workflows/reusable-validate.yml
     with:
-      changelog_path: apps/pricedrop/CHANGELOG.md
-      app_root: apps/pricedrop
+      changelog_path: apps/price-drop/CHANGELOG.md
+      app_root: apps/price-drop
       require_changelog_update: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
       base_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
       head_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -62,10 +62,10 @@ jobs:
           packages: "platforms;android-35 build-tools;35.0.0"
 
       - name: Grant execute permission for gradlew
-        run: chmod +x apps/pricedrop/gradlew
+        run: chmod +x apps/price-drop/gradlew
 
       - name: Build, lint & test
-        working-directory: apps/pricedrop
+        working-directory: apps/price-drop
         shell: bash
         run: |
           set -euo pipefail
@@ -76,7 +76,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pricedrop-lint-report-${{ github.run_number }}
-          path: apps/pricedrop/app/build/reports/lint-results-release.*
+          path: apps/price-drop/app/build/reports/lint-results-release.*
           if-no-files-found: ignore
           retention-days: 14
 
@@ -85,7 +85,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pricedrop-test-results-${{ github.run_number }}
-          path: apps/pricedrop/app/build/reports/tests/
+          path: apps/price-drop/app/build/reports/tests/
           retention-days: 14
 
       - name: Record android/verified commit status
@@ -104,6 +104,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pricedrop-release-${{ github.sha }}
-          path: apps/pricedrop/app/build/outputs/apk/release/app-release.apk
+          path: apps/price-drop/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14

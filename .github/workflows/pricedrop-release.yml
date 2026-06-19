@@ -57,7 +57,7 @@ jobs:
           # Main moved ahead. Only mark stale if PriceDrop-relevant files changed
           # after head_sha — a concurrent Scrybe/Shelf Snap version bump pushed to main
           # should not suppress a valid PriceDrop release.
-          pricedrop_ahead="$(git log "${head_sha}..origin/main" -- apps/pricedrop/CHANGELOG.md apps/pricedrop/ shared/ --oneline)"
+          pricedrop_ahead="$(git log "${head_sha}..origin/main" -- apps/price-drop/CHANGELOG.md apps/price-drop/ shared/ --oneline)"
           if [ -n "$pricedrop_ahead" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
             echo "Skipping release for stale SHA $head_sha — newer PriceDrop commits on main."
@@ -73,7 +73,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/pricedrop/CHANGELOG.md)"
+          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/price-drop/CHANGELOG.md)"
 
           # Guard against duplicate releases: if all bullets were already
           # present at the last PriceDrop tag, treat the release as already done.
@@ -82,15 +82,15 @@ jobs:
             if [ -n "$latest_tag" ]; then
               has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py \
                 has-new-unreleased-since-tag \
-                --changelog apps/pricedrop/CHANGELOG.md \
+                --changelog apps/price-drop/CHANGELOG.md \
                 --tag "$latest_tag" \
-                --fallback-changelog apps/pricedrop/CHANGELOG.md)"
+                --fallback-changelog apps/price-drop/CHANGELOG.md)"
             fi
           fi
 
           echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
           if [ "$has_bullets" != "true" ]; then
-            echo "Skipping release — no new unreleased bullets in apps/pricedrop/CHANGELOG.md since the last tag."
+            echo "Skipping release — no new unreleased bullets in apps/price-drop/CHANGELOG.md since the last tag."
           fi
 
       # Computes the next semantic version from conventional commits since the
@@ -142,7 +142,7 @@ jobs:
 
       - name: Grant execute permission for gradlew
         if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
-        run: chmod +x apps/pricedrop/gradlew
+        run: chmod +x apps/price-drop/gradlew
 
       - name: Promote changelog release section
         if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
@@ -153,7 +153,7 @@ jobs:
           release_notes_path="${{ runner.temp }}/release-notes.md"
           python3 apps/scrybe/scripts/manage-changelog.py \
             promote-release \
-            --changelog apps/pricedrop/CHANGELOG.md \
+            --changelog apps/price-drop/CHANGELOG.md \
             --version "${{ steps.version.outputs.new_version }}" \
             --date "$(date -u +%Y-%m-%d)" \
             --release-notes-output "$release_notes_path"
@@ -170,14 +170,14 @@ jobs:
           version_name="${{ steps.version.outputs.new_version }}"
           IFS='.' read -r major minor patch <<< "$version_name"
           version_code="$((major * 1000000 + minor * 1000 + patch))"
-          build_file="apps/pricedrop/app/build.gradle.kts"
+          build_file="apps/price-drop/app/build.gradle.kts"
 
           sed -Ei "s/versionName = \"[^\"]*\"/versionName = \"${version_name}\"/" "$build_file"
           sed -Ei "s/versionCode = [0-9]+/versionCode = ${version_code}/" "$build_file"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$build_file" apps/pricedrop/CHANGELOG.md
+          git add "$build_file" apps/price-drop/CHANGELOG.md
           git diff --staged --quiet || git commit -m "chore(release): pricedrop-${{ steps.version.outputs.new_tag }} [skip ci]"
           git push origin HEAD:main || {
             git fetch origin main
@@ -234,10 +234,10 @@ jobs:
         if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         id: asset
         run: |
-          src=$(ls apps/pricedrop/app/build/outputs/apk/release/app-release*.apk | head -n1)
+          src=$(ls apps/price-drop/app/build/outputs/apk/release/app-release*.apk | head -n1)
           dest="${{ steps.version.outputs.new_tag }}.apk"
           cp "$src" "$dest"
-          cp apps/pricedrop/app/build/outputs/bundle/release/app-release.aab \
+          cp apps/price-drop/app/build/outputs/bundle/release/app-release.aab \
              "${{ steps.version.outputs.new_tag }}.aab" || true
           echo "path=$dest" >> "$GITHUB_OUTPUT"
 
@@ -281,7 +281,7 @@ jobs:
           packages: "platforms;android-35 build-tools;35.0.0"
 
       - name: Grant execute permission for gradlew
-        run: chmod +x apps/pricedrop/gradlew
+        run: chmod +x apps/price-drop/gradlew
 
       - name: Set up release signing
         env:
@@ -318,10 +318,10 @@ jobs:
       - name: Stage release assets
         id: asset
         run: |
-          src=$(ls apps/pricedrop/app/build/outputs/apk/release/app-release*.apk | head -n1)
+          src=$(ls apps/price-drop/app/build/outputs/apk/release/app-release*.apk | head -n1)
           dest="${{ inputs.rebuild_for_tag }}.apk"
           cp "$src" "$dest"
-          cp apps/pricedrop/app/build/outputs/bundle/release/app-release.aab \
+          cp apps/price-drop/app/build/outputs/bundle/release/app-release.aab \
              "${{ inputs.rebuild_for_tag }}.aab" || true
           echo "path=$dest" >> "$GITHUB_OUTPUT"
 
