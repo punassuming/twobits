@@ -6,14 +6,18 @@ on:
     paths:
       - 'apps/pricedrop/**'
       - 'shared/**'
+      - 'gradle/libs.versions.toml'
       - '.github/workflows/pricedrop-ci.yml'
+      - '.github/workflows/pricedrop-release.yml'
       - '.github/workflows/reusable-validate.yml'
   pull_request:
     branches: [ "main" ]
     paths:
       - 'apps/pricedrop/**'
       - 'shared/**'
+      - 'gradle/libs.versions.toml'
       - '.github/workflows/pricedrop-ci.yml'
+      - '.github/workflows/pricedrop-release.yml'
       - '.github/workflows/reusable-validate.yml'
   workflow_dispatch:
 
@@ -38,6 +42,7 @@ jobs:
     needs: validate
     permissions:
       contents: read
+      statuses: write
     timeout-minutes: 45
 
     steps:
@@ -59,20 +64,19 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x apps/pricedrop/gradlew
 
-      # Debug variants: a clean compile + unit-test + lint check with no R8/signing.
       - name: Build, lint & test
         working-directory: apps/pricedrop
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon
+          ./gradlew assembleRelease testDebugUnitTest lintRelease --no-daemon
 
       - name: Upload lint report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pricedrop-lint-report-${{ github.run_number }}
-          path: apps/pricedrop/app/build/reports/lint-results-debug.*
+          path: apps/pricedrop/app/build/reports/lint-results-release.*
           if-no-files-found: ignore
           retention-days: 14
 
@@ -82,4 +86,24 @@ jobs:
         with:
           name: pricedrop-test-results-${{ github.run_number }}
           path: apps/pricedrop/app/build/reports/tests/
+          retention-days: 14
+
+      - name: Record android/verified commit status
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"assembleRelease, tests, lint all passed\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+
+      - name: Upload release APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pricedrop-release-${{ github.sha }}
+          path: apps/pricedrop/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
           retention-days: 14

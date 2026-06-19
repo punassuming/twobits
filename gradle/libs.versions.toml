@@ -1,0 +1,175 @@
+# Shared version catalog for all TwoBits apps.
+# Update a version here once to apply it across Scrybe, Shelf Snap, and PriceDrop.
+#
+# Alias naming: where two apps historically used different alias names for the
+# same Maven artifact, both aliases are kept so existing build.gradle.kts files
+# need no changes. App-specific deps are included with a comment noting which
+# app(s) use them.
+
+[versions]
+# ── Build tooling ─────────────────────────────────────────────────────────────
+agp = "8.7.3"
+kotlin = "2.0.21"
+ksp = "2.0.21-1.0.25"
+detekt = "1.23.7"                 # Scrybe only
+ktlint = "12.1.1"                 # Scrybe only
+
+# ── AndroidX core ─────────────────────────────────────────────────────────────
+appcompat = "1.7.0"               # Scrybe only
+coreKtx = "1.15.0"
+lifecycleRuntimeKtx = "2.8.7"
+activityCompose = "1.9.3"
+composeBom = "2024.12.01"
+navigationCompose = "2.8.5"
+
+# ── DI ────────────────────────────────────────────────────────────────────────
+hilt = "2.51.1"
+hiltNavigationCompose = "1.2.0"   # also governs hilt-work (same androidx.hilt group version)
+
+# ── Persistence ───────────────────────────────────────────────────────────────
+room = "2.6.1"
+datastore = "1.1.1"
+
+# ── Networking ────────────────────────────────────────────────────────────────
+okhttp = "4.12.0"
+gson = "2.11.0"                   # Shelf Snap, PriceDrop
+retrofit = "2.11.0"               # Scrybe only
+
+# ── Kotlin extras ─────────────────────────────────────────────────────────────
+kotlinxCoroutines = "1.9.0"
+kotlinxSerializationJson = "1.6.3" # Scrybe only
+
+# ── Camera ────────────────────────────────────────────────────────────────────
+cameraX = "1.3.4"                 # Shelf Snap, PriceDrop
+
+# ── Background work ───────────────────────────────────────────────────────────
+workManager = "2.10.0"            # PriceDrop only
+
+# ── Billing ───────────────────────────────────────────────────────────────────
+revenuecat = "8.7.0"
+
+# ── UI extras ─────────────────────────────────────────────────────────────────
+accompanistPermissions = "0.34.0" # Shelf Snap, PriceDrop
+coil = "2.7.0"                    # Shelf Snap only
+vico = "2.1.2"                    # PriceDrop only
+
+# ── ML / device ───────────────────────────────────────────────────────────────
+mediapipeTasksGenai = "0.10.27"   # Scrybe only
+mlkitBarcode = "17.3.0"           # PriceDrop only
+commonsCompress = "1.27.1"        # Scrybe only
+playServicesLocation = "21.3.0"   # Scrybe only
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+junit = "4.13.2"
+junitExt = "1.2.1"
+espressoCore = "3.6.1"
+
+[libraries]
+# ── AndroidX core ─────────────────────────────────────────────────────────────
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+
+# ── Compose ───────────────────────────────────────────────────────────────────
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+
+# Scrybe-style aliases (libs.androidx.compose.ui etc.)
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+
+# Shelf Snap / PriceDrop aliases (libs.androidx.ui etc.) — same artifacts
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+
+# ── Navigation ────────────────────────────────────────────────────────────────
+androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+
+# ── DI ────────────────────────────────────────────────────────────────────────
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltNavigationCompose" }
+
+# ── Room (Scrybe-style aliases) ───────────────────────────────────────────────
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
+# Room (Shelf Snap / PriceDrop aliases) — same artifacts
+room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
+# ── DataStore ─────────────────────────────────────────────────────────────────
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+
+# ── Networking ────────────────────────────────────────────────────────────────
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-kotlinx-serialization-converter = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version = "1.0.0" }
+
+# ── Kotlin extras ─────────────────────────────────────────────────────────────
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+
+# ── Camera ────────────────────────────────────────────────────────────────────
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraX" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
+
+# ── Background work ───────────────────────────────────────────────────────────
+work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+
+# ── Billing ───────────────────────────────────────────────────────────────────
+revenuecat-purchases = { group = "com.revenuecat.purchases", name = "purchases", version.ref = "revenuecat" }
+
+# ── UI extras ─────────────────────────────────────────────────────────────────
+accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+
+# ── ML / device ───────────────────────────────────────────────────────────────
+mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeTasksGenai" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit-ext = { group = "androidx.test.ext", name = "junit", version.ref = "junitExt" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitExt" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
