@@ -57,6 +57,7 @@ import com.twobits.pricedrop.data.model.ActivityType
 import com.twobits.pricedrop.data.model.Coupon
 import com.twobits.pricedrop.data.model.CouponState
 import com.twobits.pricedrop.data.model.DiscountType
+import com.twobits.pricedrop.data.model.Offer
 import com.twobits.pricedrop.data.model.PriceEvent
 import com.twobits.pricedrop.domain.EffectivePrice
 import java.text.NumberFormat
@@ -127,6 +128,12 @@ fun ProductDetailScreen(
                     lowestPrice = product.trackedLow.takeIf { it < Double.MAX_VALUE },
                     fmt = fmt,
                 )
+            }
+            if (uiState.offers.isNotEmpty()) {
+                item { SectionHeader("Other sellers") }
+                items(uiState.offers, key = { "offer-${it.id}" }) { offer ->
+                    OfferRow(offer = offer, fmt = fmt)
+                }
             }
             if (uiState.priceHistory.size >= 2) {
                 item {
@@ -230,6 +237,68 @@ private fun PriceOverviewCard(
                 }
                 if (lowestPrice != null) {
                     PriceLabel("All-time low", fmt.format(lowestPrice))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfferRow(
+    offer: Offer,
+    fmt: NumberFormat,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    offer.seller.ifBlank { offer.retailer },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                val shippingLine =
+                    if (offer.shipping > 0.0) {
+                        "+ ${fmt.format(offer.shipping)} shipping"
+                    } else {
+                        "Free shipping"
+                    }
+                Text(
+                    shippingLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    fmt.format(offer.effectivePrice),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                val availLabel =
+                    when (offer.availability) {
+                        "in_stock" -> "In stock"
+                        "out_of_stock" -> "Out of stock"
+                        else -> null
+                    }
+                if (availLabel != null) {
+                    Text(
+                        availLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

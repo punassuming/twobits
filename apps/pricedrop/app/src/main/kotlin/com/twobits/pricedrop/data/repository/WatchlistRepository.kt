@@ -2,6 +2,7 @@ package com.twobits.pricedrop.data.repository
 
 import com.twobits.pricedrop.data.local.ActivityDao
 import com.twobits.pricedrop.data.local.CouponDao
+import com.twobits.pricedrop.data.local.OfferDao
 import com.twobits.pricedrop.data.local.PriceEventDao
 import com.twobits.pricedrop.data.local.WatchedProductDao
 import com.twobits.pricedrop.data.model.Activity
@@ -9,12 +10,14 @@ import com.twobits.pricedrop.data.model.ActivityType
 import com.twobits.pricedrop.data.model.Coupon
 import com.twobits.pricedrop.data.model.CouponState
 import com.twobits.pricedrop.data.model.DiscountType
+import com.twobits.pricedrop.data.model.Offer
 import com.twobits.pricedrop.data.model.PriceEvent
 import com.twobits.pricedrop.data.model.WatchedProduct
 import com.twobits.pricedrop.data.remote.PriceDropApiClient
 import com.twobits.pricedrop.data.remote.PriceParser
 import com.twobits.pricedrop.data.remote.model.BarcodeMatch
 import com.twobits.pricedrop.data.remote.model.SearchHit
+import com.twobits.pricedrop.domain.EffectivePrice
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,6 +30,7 @@ class WatchlistRepository
         private val priceEventDao: PriceEventDao,
         private val couponDao: CouponDao,
         private val activityDao: ActivityDao,
+        private val offerDao: OfferDao,
         private val api: PriceDropApiClient,
     ) {
         fun observeAll(): Flow<List<WatchedProduct>> = watchedProductDao.observeAll()
@@ -48,6 +52,38 @@ class WatchlistRepository
         fun observeCoupons(productId: Long): Flow<List<Coupon>> = couponDao.observeForProduct(productId)
 
         fun observeActivity(productId: Long): Flow<List<Activity>> = activityDao.observeForProduct(productId)
+
+        fun observeOffers(productId: Long): Flow<List<Offer>> = offerDao.observeForProduct(productId)
+
+        /** Refresh competing-seller offers for a product from the price endpoint. */
+        suspend fun refreshOffers(productId: Long) {
+            val product = watchedProductDao.getById(productId) ?: return
+            val resp =
+                when {
+                    product.asin.isNotBlank() -> api.price(asin = product.asin)
+                    product.upc.isNotBlank() -> api.price(upc = product.upc)
+                    else -> return
+                }
+            if (!resp.found) return
+            val offers =
+                resp.offers.mapNotNull { dto ->
+                    val base = dto.price ?: return@mapNotNull null
+                    val ship = dto.shipping ?: 0.0
+                    Offer(
+                        productId = productId,
+                        retailer = "amazon.com",
+                        seller = dto.seller.orEmpty(),
+                        basePrice = base,
+                        shipping = ship,
+                        effectivePrice = EffectivePrice.compute(base = base, shipping = ship),
+                        availability = dto.availability ?: "unknown",
+                        url = dto.url.orEmpty(),
+                        source = "rainforest",
+                    )
+                }
+            offerDao.deleteForProduct(productId)
+            offerDao.insertAll(offers)
+        }
 
         /** Record an observed price, maintain tracked stats, and append to the activity log. */
         suspend fun recordPrice(

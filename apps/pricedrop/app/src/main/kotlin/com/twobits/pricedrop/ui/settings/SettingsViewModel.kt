@@ -10,6 +10,9 @@ import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import com.twobits.pricedrop.data.provider.PriceDropProvider
+import com.twobits.pricedrop.data.provider.ProviderMode
+import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.settings.SettingsPrefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +21,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class ProviderState(val mode: ProviderMode, val key: String)
 
 data class SettingsUiState(
     val subscriptionTier: SubscriptionTier = SubscriptionTier.Free,
@@ -36,6 +41,7 @@ class SettingsViewModel
     constructor(
         private val dataStore: DataStore<Preferences>,
         private val subscriptionRepo: SubscriptionRepository,
+        private val providerStore: ProviderSettingsStore,
         billingManager: BillingManager,
     ) : ViewModel() {
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
@@ -73,6 +79,31 @@ class SettingsViewModel
 
         fun setQuietHours(enabled: Boolean) {
             viewModelScope.launch { dataStore.edit { it[SettingsPrefs.QUIET_HOURS] = enabled } }
+        }
+
+        val providerStates: StateFlow<Map<PriceDropProvider, ProviderState>> =
+            combine(
+                PriceDropProvider.entries.map { p ->
+                    combine(providerStore.observeMode(p), providerStore.observeKey(p)) { mode, key ->
+                        p to ProviderState(mode, key)
+                    }
+                },
+            ) { pairs ->
+                pairs.toMap()
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+        fun setProviderMode(
+            p: PriceDropProvider,
+            mode: ProviderMode,
+        ) {
+            viewModelScope.launch { providerStore.setMode(p, mode) }
+        }
+
+        fun setProviderKey(
+            p: PriceDropProvider,
+            key: String,
+        ) {
+            viewModelScope.launch { providerStore.setKey(p, key) }
         }
 
         fun startProPurchase(

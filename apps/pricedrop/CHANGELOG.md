@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Improvements
+
+**AI Config** — per-provider routing and BYOK support:
+* AI Config screen now shows a per-provider card (OpenAI, Web search, Shopping, Keepa, Coupons) with an Off / BYOK / Pro segmented toggle
+* BYOK mode stores the user's API key and routes calls directly to the upstream provider; OpenAI BYOK bypasses the TwoBits proxy entirely
+* Pro mode uses a fixed internally-managed model — not user-configurable
+
+**Offer comparison** — multi-retailer price rows on Product Detail:
+* `pdPrice` Worker handler now surfaces Rainforest's `sellers_results.listings` as an `offers[]` array alongside the buybox winner
+* Product Detail refreshes competing-seller offers and shows them in an "Other sellers" section sorted by effective price (base + shipping)
+
 ### Features
 
 **PriceDrop** — initial release:

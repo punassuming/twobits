@@ -17,6 +17,14 @@ data class SearchResultDto(
     @SerializedName("url") val url: String? = null,
 )
 
+data class OfferDto(
+    @SerializedName("seller") val seller: String? = null,
+    @SerializedName("price") val price: Double? = null,
+    @SerializedName("shipping") val shipping: Double? = null,
+    @SerializedName("availability") val availability: String? = null,
+    @SerializedName("url") val url: String? = null,
+)
+
 data class PriceResponseDto(
     @SerializedName("found") val found: Boolean = false,
     @SerializedName("title") val title: String? = null,
@@ -25,6 +33,7 @@ data class PriceResponseDto(
     @SerializedName("currency") val currency: String? = null,
     @SerializedName("availability") val availability: String? = null,
     @SerializedName("url") val url: String? = null,
+    @SerializedName("offers") val offers: List<OfferDto> = emptyList(),
 )
 
 data class HistoryResponseDto(

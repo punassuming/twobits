@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.twobits.pricedrop.data.model.Activity
 import com.twobits.pricedrop.data.model.Coupon
 import com.twobits.pricedrop.data.model.Drop
+import com.twobits.pricedrop.data.model.Offer
 import com.twobits.pricedrop.data.model.PriceEvent
 import com.twobits.pricedrop.data.model.WatchedProduct
 import com.twobits.pricedrop.data.repository.DropsRepository
@@ -20,6 +21,7 @@ data class ProductDetailUiState(
     val priceHistory: List<PriceEvent> = emptyList(),
     val drops: List<Drop> = emptyList(),
     val coupons: List<Coupon> = emptyList(),
+    val offers: List<Offer> = emptyList(),
     val activity: List<Activity> = emptyList(),
     val isRefreshing: Boolean = false,
     val isLoading: Boolean = true,
@@ -60,6 +62,11 @@ class ProductDetailViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            watchlistRepo.observeOffers(productId).collect { offers ->
+                _uiState.value = _uiState.value.copy(offers = offers)
+            }
+        }
+        viewModelScope.launch {
             watchlistRepo.observeActivity(productId).collect { activity ->
                 _uiState.value = _uiState.value.copy(activity = activity)
             }
@@ -73,6 +80,7 @@ class ProductDetailViewModel @Inject constructor(
             val product = watchlistRepo.getById(productId)
             runCatching {
                 watchlistRepo.refreshPrice(productId)
+                watchlistRepo.refreshOffers(productId)
                 val query = product?.title.orEmpty().ifBlank { product?.brand.orEmpty() }
                 if (query.isNotBlank()) watchlistRepo.fetchCoupons(productId, query)
             }
