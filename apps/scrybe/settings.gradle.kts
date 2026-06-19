@@ -59,6 +59,11 @@ dependencyResolutionManagement {
         mavenCentral()
         maven { url = settingsDir.resolve(".gradle/local-maven").toPath().toUri() }
     }
+    versionCatalogs {
+        create("libs") {
+            from(files("../../gradle/libs.versions.toml"))
+        }
+    }
 }
 
 includeBuild("../../shared") {

@@ -1,16 +1,16 @@
-name: Scrybe Release
+name: PriceDrop Release
 
 on:
   workflow_run:
     workflows:
-      - Scrybe CI
+      - PriceDrop CI
     branches: [main]
     types:
       - completed
   workflow_dispatch:
     inputs:
       rebuild_for_tag:
-        description: 'Rebuild signed APK for an existing tag (e.g. scrybe-v1.6.1). Use after fixing SIGNING_* secrets. Skips changelog and version steps.'
+        description: 'Rebuild signed APK for an existing tag (e.g. pricedrop-v1.0.1). Use after fixing SIGNING_* secrets. Skips changelog and version steps.'
         required: false
         type: string
 
@@ -18,7 +18,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: scrybe-release-main
+  group: pricedrop-release-main
   cancel-in-progress: false
 
 jobs:
@@ -54,16 +54,16 @@ jobs:
             exit 0
           fi
 
-          # Main moved ahead. Only mark stale if Scrybe-relevant files changed
-          # after head_sha — a concurrent shelf-snap version bump pushed to main
-          # should not suppress a valid Scrybe release.
-          scrybe_ahead="$(git log "${head_sha}..origin/main" -- apps/scrybe/CHANGELOG.md apps/scrybe/ shared/ --oneline)"
-          if [ -n "$scrybe_ahead" ]; then
+          # Main moved ahead. Only mark stale if PriceDrop-relevant files changed
+          # after head_sha — a concurrent Scrybe/Shelf Snap version bump pushed to main
+          # should not suppress a valid PriceDrop release.
+          pricedrop_ahead="$(git log "${head_sha}..origin/main" -- apps/pricedrop/CHANGELOG.md apps/pricedrop/ shared/ --oneline)"
+          if [ -n "$pricedrop_ahead" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
-            echo "Skipping release for stale SHA $head_sha — newer Scrybe commits on main."
+            echo "Skipping release for stale SHA $head_sha — newer PriceDrop commits on main."
           else
             echo "stale=false" >> "$GITHUB_OUTPUT"
-            echo "Main advanced with non-Scrybe commits only; rebasing release onto current main."
+            echo "Main advanced with non-PriceDrop commits only; rebasing release onto current main."
             git checkout -B main origin/main
           fi
 
@@ -73,31 +73,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/scrybe/CHANGELOG.md)"
+          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/pricedrop/CHANGELOG.md)"
 
           # Guard against duplicate releases: if all bullets were already
-          # present at the last Scrybe tag (e.g. a rebase preserved stale
-          # ## Unreleased content), treat the release as already done.
+          # present at the last PriceDrop tag, treat the release as already done.
           if [ "$has_bullets" = "true" ]; then
-            latest_tag="$(git tag -l 'scrybe-v*' --sort=-v:refname | head -1)"
+            latest_tag="$(git tag -l 'pricedrop-v*' --sort=-v:refname | head -1)"
             if [ -n "$latest_tag" ]; then
               has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py \
                 has-new-unreleased-since-tag \
-                --changelog apps/scrybe/CHANGELOG.md \
+                --changelog apps/pricedrop/CHANGELOG.md \
                 --tag "$latest_tag" \
-                --fallback-changelog CHANGELOG.md)"
+                --fallback-changelog apps/pricedrop/CHANGELOG.md)"
             fi
           fi
 
           echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
-
           if [ "$has_bullets" != "true" ]; then
-            echo "Skipping release because apps/scrybe/CHANGELOG.md has no new unreleased bullets since the last tag."
+            echo "Skipping release — no new unreleased bullets in apps/pricedrop/CHANGELOG.md since the last tag."
           fi
 
       # Computes the next semantic version from conventional commits since the
-      # last tag without creating the tag yet. Version bumping rules:
+      # last pricedrop tag. Version bumping rules:
       #   feat:           → minor bump
       #   fix:, chore:, etc. → patch bump (default_bump)
       #   BREAKING CHANGE → major bump
@@ -107,15 +104,15 @@ jobs:
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: minor
-          tag_prefix: scrybe-v
+          default_bump: patch
+          tag_prefix: pricedrop-v
           dry_run: true
 
       # Validate the keystore secret BEFORE any irreversible state is created
       # (changelog promotion, version commit, tag push). A bad base64 value
       # here aborts the workflow cleanly with no orphaned tags or commits.
       - name: Validate keystore secret
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         shell: bash
         env:
           KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
@@ -130,7 +127,7 @@ jobs:
           fi
 
       - name: Set up JDK 17
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -138,38 +135,34 @@ jobs:
           cache: gradle
 
       - name: Set up Android SDK
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         uses: android-actions/setup-android@v4
         with:
           packages: "platforms;android-35 build-tools;35.0.0"
 
       - name: Grant execute permission for gradlew
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
-        run: chmod +x apps/scrybe/gradlew
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
+        run: chmod +x apps/pricedrop/gradlew
 
       - name: Promote changelog release section
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         id: changelog
         shell: bash
         run: |
           set -euo pipefail
-
           release_notes_path="${{ runner.temp }}/release-notes.md"
           python3 apps/scrybe/scripts/manage-changelog.py \
             promote-release \
-            --changelog apps/scrybe/CHANGELOG.md \
+            --changelog apps/pricedrop/CHANGELOG.md \
             --version "${{ steps.version.outputs.new_version }}" \
             --date "$(date -u +%Y-%m-%d)" \
             --release-notes-output "$release_notes_path"
-
           echo "release_notes_path=$release_notes_path" >> "$GITHUB_OUTPUT"
 
-      # Updates app version metadata so the repository always reflects the
-      # latest released version. versionCode is derived from semantic versioning
-      # as major * 1,000,000 + minor * 1,000 + patch (monotonic for Android installs).
+      # versionCode: major * 1,000,000 + minor * 1,000 + patch (matches Scrybe/Shelf Snap convention).
       # Tagged [skip ci] to prevent the push from re-triggering this workflow.
       - name: Bump app version in build.gradle.kts
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -177,115 +170,87 @@ jobs:
           version_name="${{ steps.version.outputs.new_version }}"
           IFS='.' read -r major minor patch <<< "$version_name"
           version_code="$((major * 1000000 + minor * 1000 + patch))"
-          build_file="apps/scrybe/app/build.gradle.kts"
+          build_file="apps/pricedrop/app/build.gradle.kts"
 
-          sed -Ei "s/versionCode = [0-9]+/versionCode = ${version_code}/" "$build_file"
           sed -Ei "s/versionName = \"[^\"]*\"/versionName = \"${version_name}\"/" "$build_file"
+          sed -Ei "s/versionCode = [0-9]+/versionCode = ${version_code}/" "$build_file"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git rebase origin/main
-          git add "$build_file" apps/scrybe/CHANGELOG.md
-          git diff --staged --quiet || git commit -m "chore: prepare release ${version_name} (${version_code}) [skip ci]"
-          git push origin HEAD:main
+          git add "$build_file" apps/pricedrop/CHANGELOG.md
+          git diff --staged --quiet || git commit -m "chore(release): pricedrop-${{ steps.version.outputs.new_tag }} [skip ci]"
+          git push origin HEAD:main || {
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          }
 
       - name: Create release tag
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         shell: bash
         run: |
           set -euo pipefail
-
           git tag "${{ steps.version.outputs.new_tag }}"
           git push origin "${{ steps.version.outputs.new_tag }}"
 
+      # If all four SIGNING_* secrets are configured, the release APK is signed
+      # with that keystore. Otherwise a one-off keystore is generated.
       - name: Set up release signing
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
-        run: |
-          if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS_VAL" ] && [ -n "$KEY_PASS" ]; then
-            printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "${{ runner.temp }}/scrybe-release.jks"
-            echo "STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
-            echo "KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
-          else
-            keytool -genkeypair -v -storetype PKCS12 \
-              -keystore "${{ runner.temp }}/scrybe-release.jks" \
-              -alias scrybe \
-              -keyalg RSA -keysize 2048 \
-              -validity 36500 \
-              -storepass scrybe_ks_pass \
-              -keypass scrybe_ks_pass \
-              -dname "CN=Scrybe, O=Scrybe, C=US" -noprompt
-            echo "STORE_PASSWORD=scrybe_ks_pass" >> "$GITHUB_ENV"
-            echo "KEY_ALIAS=scrybe" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=scrybe_ks_pass" >> "$GITHUB_ENV"
-          fi
-          echo "KEYSTORE_PATH=${{ runner.temp }}/scrybe-release.jks" >> "$GITHUB_ENV"
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
+        id: keystore
         env:
           KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
           STORE_PASS: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
           KEY_ALIAS_VAL: ${{ secrets.SIGNING_KEY_ALIAS }}
           KEY_PASS: ${{ secrets.SIGNING_KEY_PASSWORD }}
-
-      - name: Validate release signing inputs
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
-        shell: bash
         run: |
-          set -euo pipefail
-
-          keytool -list \
-            -keystore "$KEYSTORE_PATH" \
-            -storepass "$STORE_PASSWORD" \
-            -alias "$KEY_ALIAS" \
-            >/dev/null
-
-          keytool -importkeystore \
-            -srckeystore "$KEYSTORE_PATH" \
-            -srcstorepass "$STORE_PASSWORD" \
-            -srcalias "$KEY_ALIAS" \
-            -srckeypass "$KEY_PASSWORD" \
-            -destkeystore "${{ runner.temp }}/keystore-validation.p12" \
-            -deststoretype PKCS12 \
-            -deststorepass validate_pass \
-            -destkeypass validate_pass \
-            -noprompt \
-            >/dev/null
-
-          rm -f "${{ runner.temp }}/keystore-validation.p12"
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS_VAL" ] && [ -n "$KEY_PASS" ]; then
+            printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "$RUNNER_TEMP/release.keystore"
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+          else
+            keytool -genkeypair -v -storetype PKCS12 \
+              -keystore "$RUNNER_TEMP/release.keystore" \
+              -alias pricedrop \
+              -keyalg RSA -keysize 2048 \
+              -validity 36500 \
+              -storepass pricedrop_ks_pass \
+              -keypass pricedrop_ks_pass \
+              -dname "CN=PriceDrop, O=PriceDrop, C=US" -noprompt
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=pricedrop_ks_pass" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=pricedrop" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=pricedrop_ks_pass" >> "$GITHUB_ENV"
+          fi
 
       - name: Build release APK and AAB
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
-        working-directory: apps/scrybe
-        shell: bash
-        run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
+        working-directory: apps/pricedrop
+        run: ./gradlew assembleRelease bundleRelease --no-daemon
 
       - name: Stage release assets
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         id: asset
         run: |
-          src=$(ls apps/scrybe/app/build/outputs/apk/release/app-*release.apk | head -n1)
+          src=$(ls apps/pricedrop/app/build/outputs/apk/release/app-release*.apk | head -n1)
           dest="${{ steps.version.outputs.new_tag }}.apk"
           cp "$src" "$dest"
-          src_aab=apps/scrybe/app/build/outputs/bundle/release/app-release.aab
-          [ -f "$src_aab" ] && cp "$src_aab" "${{ steps.version.outputs.new_tag }}.aab" || true
+          cp apps/pricedrop/app/build/outputs/bundle/release/app-release.aab \
+             "${{ steps.version.outputs.new_tag }}.aab" || true
           echo "path=$dest" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release and upload artifacts
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.new_tag }}
-          name: Scrybe v${{ steps.version.outputs.new_version }}
+          name: PriceDrop v${{ steps.version.outputs.new_version }}
           body_path: ${{ steps.changelog.outputs.release_notes_path }}
           files: |
             ${{ steps.asset.outputs.path }}
             ${{ steps.version.outputs.new_tag }}.aab
-
-      - name: Sync to origin/main
-        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
-        run: |
-          git fetch origin main
-          git reset --hard origin/main
 
   # Triggered via workflow_dispatch with rebuild_for_tag set.
   # Use this to build and upload a signed APK for an orphaned tag (one that was
@@ -316,7 +281,7 @@ jobs:
           packages: "platforms;android-35 build-tools;35.0.0"
 
       - name: Grant execute permission for gradlew
-        run: chmod +x apps/scrybe/gradlew
+        run: chmod +x apps/pricedrop/gradlew
 
       - name: Set up release signing
         env:
@@ -326,37 +291,44 @@ jobs:
           KEY_PASS: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS_VAL" ] && [ -n "$KEY_PASS" ]; then
-            printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "${{ runner.temp }}/scrybe-release.jks"
-            echo "STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
-            echo "KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+            printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "$RUNNER_TEMP/release.keystore"
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
           else
             keytool -genkeypair -v -storetype PKCS12 \
-              -keystore "${{ runner.temp }}/scrybe-release.jks" \
-              -alias scrybe \
+              -keystore "$RUNNER_TEMP/release.keystore" \
+              -alias pricedrop \
               -keyalg RSA -keysize 2048 \
               -validity 36500 \
-              -storepass scrybe_ks_pass \
-              -keypass scrybe_ks_pass \
-              -dname "CN=Scrybe, O=Scrybe, C=US" -noprompt
-            echo "STORE_PASSWORD=scrybe_ks_pass" >> "$GITHUB_ENV"
-            echo "KEY_ALIAS=scrybe" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=scrybe_ks_pass" >> "$GITHUB_ENV"
+              -storepass pricedrop_ks_pass \
+              -keypass pricedrop_ks_pass \
+              -dname "CN=PriceDrop, O=PriceDrop, C=US" -noprompt
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_PASSWORD=pricedrop_ks_pass" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_ALIAS=pricedrop" >> "$GITHUB_ENV"
+            echo "SIGNING_KEY_PASSWORD=pricedrop_ks_pass" >> "$GITHUB_ENV"
           fi
-          echo "KEYSTORE_PATH=${{ runner.temp }}/scrybe-release.jks" >> "$GITHUB_ENV"
 
       - name: Build release APK and AAB
-        working-directory: apps/scrybe
-        shell: bash
-        run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
+        working-directory: apps/pricedrop
+        run: ./gradlew assembleRelease bundleRelease --no-daemon
 
       - name: Stage release assets
         id: asset
         run: |
-          src=$(ls apps/scrybe/app/build/outputs/apk/release/app-*release.apk | head -n1)
+          src=$(ls apps/pricedrop/app/build/outputs/apk/release/app-release*.apk | head -n1)
           dest="${{ inputs.rebuild_for_tag }}.apk"
           cp "$src" "$dest"
-          src_aab=apps/scrybe/app/build/outputs/bundle/release/app-release.aab
-          [ -f "$src_aab" ] && cp "$src_aab" "${{ inputs.rebuild_for_tag }}.aab" || true
+          cp apps/pricedrop/app/build/outputs/bundle/release/app-release.aab \
+             "${{ inputs.rebuild_for_tag }}.aab" || true
           echo "path=$dest" >> "$GITHUB_OUTPUT"
 
+      - name: Upload APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.rebuild_for_tag }}
+          files: |
+            ${{ steps.asset.outputs.path }}
+            ${{ inputs.rebuild_for_tag }}.aab
