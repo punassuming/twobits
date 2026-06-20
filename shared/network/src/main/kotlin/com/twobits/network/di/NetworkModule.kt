@@ -6,6 +6,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
@@ -15,4 +16,12 @@ object NetworkModule {
     @Provides
     @Singleton
     fun providesOkHttpClient(): OkHttpClient = OkHttpClientFactory.create(debug = BuildConfig.DEBUG)
+
+    @Provides
+    @Singleton
+    fun providesNetworkJson(): Json =
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
 }

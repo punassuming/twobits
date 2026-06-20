@@ -25,7 +25,7 @@ dependencies {
     implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:base"))
-    implementation(project(":core:network"))
+    implementation("com.twobits.core:network")
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
     implementation(libs.retrofit)

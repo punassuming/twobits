@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* `shared/network` now provides a `Json` (kotlinx.serialization) singleton in addition to `OkHttpClient`, consolidating serialization config alongside the HTTP client
+
 ### Fixes
 
 * ktlint and detekt quality gates now run in CI and locally (pre-commit hook), matching Scrybe
