@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* `scrybe/core/network` deleted; `OkHttpClient` and `Json` providers merged into `shared/network`; `core:transcription` and `core:transforms` now depend on `com.twobits.core:network` (resolved via composite-build substitution)
+
 ### Fixes
 
 * shared/design Compose BOM updated to 2024.12.01 (was hardcoded 2024.06.00)

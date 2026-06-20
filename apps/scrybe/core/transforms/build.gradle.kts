@@ -25,7 +25,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:base"))
     implementation(project(":core:datastore"))
-    implementation(project(":core:network"))
+    implementation("com.twobits.core:network")
     implementation(project(":core:transcription"))
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
