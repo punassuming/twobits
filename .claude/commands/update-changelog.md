@@ -37,6 +37,6 @@ Add entries under `### Features`, `### Improvements`, or `### Fixes` inside `## 
 ## Validate after editing
 
 ```bash
-python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md
-python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md
+python3 scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md
+python3 scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md
 ```

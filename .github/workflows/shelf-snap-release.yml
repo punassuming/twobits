@@ -73,14 +73,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/shelf-snap/CHANGELOG.md)"
+          has_bullets="$(python3 scripts/manage-changelog.py has-unreleased-bullets --changelog apps/shelf-snap/CHANGELOG.md)"
 
           # Guard against duplicate releases: if all bullets were already
           # present at the last Shelf Snap tag, treat the release as already done.
           if [ "$has_bullets" = "true" ]; then
             latest_tag="$(git tag -l 'shelf-snap-v*' --sort=-v:refname | head -1)"
             if [ -n "$latest_tag" ]; then
-              has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py \
+              has_bullets="$(python3 scripts/manage-changelog.py \
                 has-new-unreleased-since-tag \
                 --changelog apps/shelf-snap/CHANGELOG.md \
                 --tag "$latest_tag" \
@@ -151,7 +151,7 @@ jobs:
         run: |
           set -euo pipefail
           release_notes_path="${{ runner.temp }}/release-notes.md"
-          python3 apps/scrybe/scripts/manage-changelog.py \
+          python3 scripts/manage-changelog.py \
             promote-release \
             --changelog apps/shelf-snap/CHANGELOG.md \
             --version "${{ steps.version.outputs.new_version }}" \

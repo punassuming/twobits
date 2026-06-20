@@ -155,7 +155,7 @@ jobs:
       - name: Build, lint & test
         working-directory: apps/scrybe
         shell: bash
-        run: bash scripts/ci-gradle-retry.sh assembleRelease testDebugUnitTest lint ktlintCheck detekt
+        run: bash ../../scripts/ci-gradle-retry.sh assembleRelease testDebugUnitTest lint ktlintCheck detekt
 
       - name: Upload release APK
         if: success()

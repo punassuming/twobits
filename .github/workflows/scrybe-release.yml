@@ -74,7 +74,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py has-unreleased-bullets --changelog apps/scrybe/CHANGELOG.md)"
+          has_bullets="$(python3 scripts/manage-changelog.py has-unreleased-bullets --changelog apps/scrybe/CHANGELOG.md)"
 
           # Guard against duplicate releases: if all bullets were already
           # present at the last Scrybe tag (e.g. a rebase preserved stale
@@ -82,7 +82,7 @@ jobs:
           if [ "$has_bullets" = "true" ]; then
             latest_tag="$(git tag -l 'scrybe-v*' --sort=-v:refname | head -1)"
             if [ -n "$latest_tag" ]; then
-              has_bullets="$(python3 apps/scrybe/scripts/manage-changelog.py \
+              has_bullets="$(python3 scripts/manage-changelog.py \
                 has-new-unreleased-since-tag \
                 --changelog apps/scrybe/CHANGELOG.md \
                 --tag "$latest_tag" \
@@ -155,7 +155,7 @@ jobs:
           set -euo pipefail
 
           release_notes_path="${{ runner.temp }}/release-notes.md"
-          python3 apps/scrybe/scripts/manage-changelog.py \
+          python3 scripts/manage-changelog.py \
             promote-release \
             --changelog apps/scrybe/CHANGELOG.md \
             --version "${{ steps.version.outputs.new_version }}" \
@@ -257,7 +257,7 @@ jobs:
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
         working-directory: apps/scrybe
         shell: bash
-        run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
+        run: bash ../../scripts/ci-gradle-retry.sh assembleRelease bundleRelease
 
       - name: Stage release assets
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
@@ -348,7 +348,7 @@ jobs:
       - name: Build release APK and AAB
         working-directory: apps/scrybe
         shell: bash
-        run: bash scripts/ci-gradle-retry.sh assembleRelease bundleRelease
+        run: bash ../../scripts/ci-gradle-retry.sh assembleRelease bundleRelease
 
       - name: Stage release assets
         id: asset

@@ -42,10 +42,10 @@ This activates the tracked pre-commit hook in `.githooks/pre-commit`. It runs ch
 cd apps/scrybe
 
 # 1. Validate changelog structure
-python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md
+python3 ../../scripts/manage-changelog.py validate --changelog CHANGELOG.md
 
 # 2. Validate all AndroidManifest.xml files
-python3 scripts/validate-manifests.py
+python3 ../../scripts/validate-manifests.py
 
 # 3. Auto-fix Kotlin formatting (must run BEFORE ktlintCheck)
 ./gradlew ktlintFormat --no-daemon
@@ -69,8 +69,8 @@ python3 scripts/validate-manifests.py
 One-liner:
 
 ```bash
-python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md && \
-  python3 scripts/validate-manifests.py && \
+python3 ../../scripts/manage-changelog.py validate --changelog CHANGELOG.md && \
+  python3 ../../scripts/validate-manifests.py && \
   ./gradlew ktlintFormat assembleDebug testDebugUnitTest lint ktlintCheck detekt --no-daemon
 ```
 
@@ -80,8 +80,8 @@ python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md && \
 cd apps/shelf-snap
 
 # Fast checks (no Android SDK required)
-python3 ../scrybe/scripts/manage-changelog.py validate --changelog CHANGELOG.md
-python3 ../scrybe/scripts/validate-manifests.py --root .
+python3 ../../scripts/manage-changelog.py validate --changelog CHANGELOG.md
+python3 ../../scripts/validate-manifests.py --root .
 
 # Full build + test + lint (requires Android SDK)
 ./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon
@@ -263,8 +263,8 @@ Update the relevant `CHANGELOG.md` `## Unreleased` section before any commit des
 
 Validate commands:
 ```bash
-python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md
-python3 apps/scrybe/scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md
+python3 scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md
+python3 scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md
 ```
 
 The CI `changelog` job blocks merges when the changelog was not updated alongside other tracked changes. Do **not** invent version numbers — the release workflow promotes `Unreleased` automatically.

@@ -9,6 +9,7 @@
 ### Fixes
 
 * shared/design Compose BOM updated to 2024.12.01 (was hardcoded 2024.06.00)
+* shared scripts (manage-changelog.py, validate-manifests.py, ci-gradle-retry.sh) moved from apps/scrybe/scripts/ to repo-level scripts/ so all three apps reference a single copy
 
 ## 1.17.0 (2026-06-19)
 

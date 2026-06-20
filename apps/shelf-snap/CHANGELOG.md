@@ -9,6 +9,7 @@
 ### Fixes
 
 * ktlint and detekt quality gates now run in CI and locally (pre-commit hook), matching Scrybe
+* shared scripts (manage-changelog.py, validate-manifests.py) moved to repo-level scripts/ — release workflow paths updated
 * Gradle parallel/caching/configuration-cache flags enabled for faster builds
 * shared/design Compose BOM updated to 2024.12.01 (was hardcoded 2024.06.00)
 

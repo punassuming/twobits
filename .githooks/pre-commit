@@ -24,17 +24,17 @@ warn() { echo -e "${YELLOW}PRE-COMMIT WARN:${NC} $*" >&2; }
 ok()   { echo -e "${GREEN}PRE-COMMIT OK:${NC}   $*"; }
 
 # ── 1. Changelog structure ────────────────────────────────────────────────────
-python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+python3 "$REPO_ROOT/scripts/manage-changelog.py" \
     validate --changelog "$SCRYBE_DIR/CHANGELOG.md" \
     || fail "apps/scrybe/CHANGELOG.md structure is invalid."
 ok "Scrybe changelog structure"
 
-python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+python3 "$REPO_ROOT/scripts/manage-changelog.py" \
     validate --changelog "$SHELF_SNAP_DIR/CHANGELOG.md" \
     || fail "apps/shelf-snap/CHANGELOG.md structure is invalid."
 ok "Shelf Snap changelog structure"
 
-python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+python3 "$REPO_ROOT/scripts/manage-changelog.py" \
     validate --changelog "$PRICE_DROP_DIR/CHANGELOG.md" \
     || fail "apps/price-drop/CHANGELOG.md structure is invalid."
 ok "PriceDrop changelog structure"
@@ -56,7 +56,7 @@ if [[ -n "$STAGED_SCRYBE_CODE" && -z "$STAGED_SCRYBE_CHANGELOG" ]]; then
     fail "Stage an apps/scrybe/CHANGELOG.md update and re-commit."
 fi
 if [[ -n "$STAGED_SCRYBE_CODE" && -n "$STAGED_SCRYBE_CHANGELOG" ]]; then
-    python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+    python3 "$REPO_ROOT/scripts/manage-changelog.py" \
         check-staged-unreleased-new --changelog "$SCRYBE_DIR/CHANGELOG.md" \
         || fail "apps/scrybe/CHANGELOG.md must have new ## Unreleased bullets when Scrybe code changes."
 fi
@@ -74,7 +74,7 @@ if [[ -n "$STAGED_SHELF_SNAP_CODE" && -z "$STAGED_SHELF_SNAP_CHANGELOG" ]]; then
     fail "Stage an apps/shelf-snap/CHANGELOG.md update and re-commit."
 fi
 if [[ -n "$STAGED_SHELF_SNAP_CODE" && -n "$STAGED_SHELF_SNAP_CHANGELOG" ]]; then
-    python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+    python3 "$REPO_ROOT/scripts/manage-changelog.py" \
         check-staged-unreleased-new --changelog "$SHELF_SNAP_DIR/CHANGELOG.md" \
         || fail "apps/shelf-snap/CHANGELOG.md must have new ## Unreleased bullets when Shelf Snap code changes."
 fi
@@ -92,14 +92,14 @@ if [[ -n "$STAGED_PRICE_DROP_CODE" && -z "$STAGED_PRICE_DROP_CHANGELOG" ]]; then
     fail "Stage an apps/price-drop/CHANGELOG.md update and re-commit."
 fi
 if [[ -n "$STAGED_PRICE_DROP_CODE" && -n "$STAGED_PRICE_DROP_CHANGELOG" ]]; then
-    python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+    python3 "$REPO_ROOT/scripts/manage-changelog.py" \
         check-staged-unreleased-new --changelog "$PRICE_DROP_DIR/CHANGELOG.md" \
         || fail "apps/price-drop/CHANGELOG.md must have new ## Unreleased bullets when PriceDrop code changes."
 fi
 ok "PriceDrop changelog update check"
 
 # ── 2. AndroidManifest.xml files ─────────────────────────────────────────────
-(cd "$SCRYBE_DIR" && python3 scripts/validate-manifests.py) \
+python3 "$REPO_ROOT/scripts/validate-manifests.py" --root "$SCRYBE_DIR" \
     || fail "AndroidManifest.xml validation failed."
 ok "AndroidManifest.xml files"
 
@@ -224,7 +224,7 @@ STAGED_GRADLE=$(echo "$STAGED_ALL" \
     | grep -E "build\.gradle\.kts$|libs\.versions\.toml$" || true)
 if [[ -n "$STAGED_GRADLE" ]]; then
     echo "Checking external dependency URLs…"
-    python3 "$SCRYBE_DIR/scripts/validate-external-urls.py" \
+    python3 "$REPO_ROOT/scripts/validate-external-urls.py" \
         || fail "One or more dependency download URLs are unreachable. Fix the URL and re-commit."
     ok "External dependency URLs"
 fi
@@ -252,8 +252,11 @@ if [[ -n "$STAGED_KT_SOURCES" ]]; then
         | paste -sd ',' -)
 
     DETEKT_EXIT=0
+    # Each app root has its own detekt.yml matching the owning project's root.
+    # Find the config closest to the files being checked (fall back to Scrybe's).
+    DETEKT_CONFIG="$SCRYBE_DIR/detekt.yml"
     java -jar "$DETEKT_JAR" \
-        --config "$SCRYBE_DIR/detekt.yml" \
+        --config "$DETEKT_CONFIG" \
         --input "$DETEKT_INPUT" \
         --base-path "$REPO_ROOT" \
         2>&1 || DETEKT_EXIT=$?

@@ -20,8 +20,8 @@ Before every `git commit`, run the following and ensure **all checks pass**. Do 
 cd apps/scrybe
 
 # Validate changelog and manifests
-python3 scripts/manage-changelog.py validate --changelog CHANGELOG.md
-python3 scripts/validate-manifests.py
+python3 ../../scripts/manage-changelog.py validate --changelog CHANGELOG.md
+python3 ../../scripts/validate-manifests.py
 
 # Auto-fix formatting FIRST, then build + test + lint
 ./gradlew ktlintFormat assembleDebug testDebugUnitTest lint ktlintCheck detekt --no-daemon
@@ -32,7 +32,7 @@ python3 scripts/validate-manifests.py
 ```bash
 cd apps/shelf-snap
 
-python3 ../scrybe/scripts/manage-changelog.py validate --changelog CHANGELOG.md
+python3 ../../scripts/manage-changelog.py validate --changelog CHANGELOG.md
 ./gradlew assembleDebug testDebugUnitTest lintDebug --no-daemon
 ```
 

@@ -16,6 +16,7 @@
 **Barcode scan** — camera bind failures now show an error card instead of a frozen preview
 
 * ktlint and detekt quality gates now run locally (pre-commit hook) and in CI for PriceDrop, matching Scrybe
+* shared scripts (manage-changelog.py) moved to repo-level scripts/ — release workflow paths updated
 * Gradle parallel/caching/configuration-cache flags enabled for faster builds
 
 **Notifications** — aligned appearance with design mockup:
