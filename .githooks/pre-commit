@@ -10,6 +10,7 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SCRYBE_DIR="$REPO_ROOT/apps/scrybe"
 SHELF_SNAP_DIR="$REPO_ROOT/apps/shelf-snap"
+PRICE_DROP_DIR="$REPO_ROOT/apps/price-drop"
 KTLINT_VERSION="1.5.0"
 DETEKT_VERSION="1.23.7"
 
@@ -32,6 +33,11 @@ python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
     validate --changelog "$SHELF_SNAP_DIR/CHANGELOG.md" \
     || fail "apps/shelf-snap/CHANGELOG.md structure is invalid."
 ok "Shelf Snap changelog structure"
+
+python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+    validate --changelog "$PRICE_DROP_DIR/CHANGELOG.md" \
+    || fail "apps/price-drop/CHANGELOG.md structure is invalid."
+ok "PriceDrop changelog structure"
 
 # ── 1b. Changelog update required for code changes ───────────────────────────
 # If any tracked code file is staged for a given app, that app's CHANGELOG.md
@@ -74,6 +80,24 @@ if [[ -n "$STAGED_SHELF_SNAP_CODE" && -n "$STAGED_SHELF_SNAP_CHANGELOG" ]]; then
 fi
 ok "Shelf Snap changelog update check"
 
+STAGED_PRICE_DROP_CODE=$(echo "$STAGED_ALL" | grep -E \
+    "^apps/price-drop/|^shared/|^\.github/workflows/pricedrop" \
+    || true)
+STAGED_PRICE_DROP_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/price-drop/CHANGELOG.md" || true)
+
+if [[ -n "$STAGED_PRICE_DROP_CODE" && -z "$STAGED_PRICE_DROP_CHANGELOG" ]]; then
+    echo -e "${RED}apps/price-drop/CHANGELOG.md must be updated when PriceDrop code files change.${NC}" >&2
+    echo "Staged PriceDrop code files with no changelog entry:" >&2
+    echo "$STAGED_PRICE_DROP_CODE" | sed 's/^/  - /' >&2
+    fail "Stage an apps/price-drop/CHANGELOG.md update and re-commit."
+fi
+if [[ -n "$STAGED_PRICE_DROP_CODE" && -n "$STAGED_PRICE_DROP_CHANGELOG" ]]; then
+    python3 "$SCRYBE_DIR/scripts/manage-changelog.py" \
+        check-staged-unreleased-new --changelog "$PRICE_DROP_DIR/CHANGELOG.md" \
+        || fail "apps/price-drop/CHANGELOG.md must have new ## Unreleased bullets when PriceDrop code changes."
+fi
+ok "PriceDrop changelog update check"
+
 # ── 2. AndroidManifest.xml files ─────────────────────────────────────────────
 (cd "$SCRYBE_DIR" && python3 scripts/validate-manifests.py) \
     || fail "AndroidManifest.xml validation failed."
@@ -102,7 +126,7 @@ fi
 
 # Collect staged .kt / .kts files within both app directories.
 STAGED_KT=$(git diff --cached --name-only --diff-filter=ACM \
-    | grep -E "^apps/(scrybe|shelf-snap)/.*\.kts?$" || true)
+    | grep -E "^apps/(scrybe|shelf-snap|price-drop)/.*\.kts?$" || true)
 
 if [[ -z "$STAGED_KT" ]]; then
     ok "Kotlin formatting (no .kt/.kts files staged)"

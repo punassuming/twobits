@@ -92,6 +92,7 @@ fun BarcodeScanScreen(
                 CameraPreview(
                     modifier = Modifier.fillMaxSize(),
                     onBarcodeDetected = viewModel::onBarcodeDetected,
+                    onError = viewModel::reportCameraError,
                 )
                 when (val state = uiState) {
                     is BarcodeUiState.Scanning -> {
@@ -161,7 +162,11 @@ fun BarcodeScanScreen(
 
 @Composable
 @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
-private fun CameraPreview(modifier: Modifier, onBarcodeDetected: (String) -> Unit) {
+private fun CameraPreview(
+    modifier: Modifier,
+    onBarcodeDetected: (String) -> Unit,
+    onError: (String) -> Unit,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
@@ -174,22 +179,25 @@ private fun CameraPreview(modifier: Modifier, onBarcodeDetected: (String) -> Uni
                 val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                 cameraProviderFuture.addListener({
                     val cameraProvider = cameraProviderFuture.get()
-                    val preview = Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
-                    }
-                    val analysis = ImageAnalysis.Builder()
-                        .setTargetResolution(Size(1280, 720))
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
+                    val preview =
+                        Preview.Builder().build().also {
+                            it.setSurfaceProvider(previewView.surfaceProvider)
+                        }
+                    val analysis =
+                        ImageAnalysis
+                            .Builder()
+                            .setTargetResolution(Size(1280, 720))
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
                     analysis.setAnalyzer(executor) { proxy ->
                         val mediaImage = proxy.image
                         if (mediaImage != null) {
                             val image = InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees)
-                            scanner.process(image)
+                            scanner
+                                .process(image)
                                 .addOnSuccessListener { barcodes ->
                                     barcodes.firstOrNull()?.rawValue?.let { onBarcodeDetected(it) }
-                                }
-                                .addOnCompleteListener { proxy.close() }
+                                }.addOnCompleteListener { proxy.close() }
                         } else {
                             proxy.close()
                         }
@@ -197,7 +205,10 @@ private fun CameraPreview(modifier: Modifier, onBarcodeDetected: (String) -> Uni
                     try {
                         cameraProvider.unbindAll()
                         cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
-                    } catch (_: Exception) { }
+                    } catch (e: Exception) {
+                        android.util.Log.e("BarcodeScanner", "Camera bind failed", e)
+                        onError("Camera unavailable: ${e.message}")
+                    }
                 }, ContextCompat.getMainExecutor(ctx))
             }
         },

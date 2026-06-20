@@ -70,7 +70,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew assembleRelease testDebugUnitTest lintRelease --no-daemon
+          ./gradlew assembleRelease testDebugUnitTest lintRelease ktlintCheck detekt --no-daemon
 
       - name: Upload lint report
         if: always()

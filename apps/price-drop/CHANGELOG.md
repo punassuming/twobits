@@ -6,6 +6,18 @@
 
 ### Improvements
 
+**Watch screen** — filter chips now work:
+* tapping "Drops", "Coupons", or "Big drops" filters the watchlist to products with matching active alerts
+* "All" restores the full list
+
+**Product detail** — refresh errors are now surfaced:
+* pull-to-refresh failures show a snackbar instead of silently doing nothing
+
+**Barcode scan** — camera bind failures now show an error card instead of a frozen preview
+
+* ktlint and detekt quality gates now run locally (pre-commit hook) and in CI for PriceDrop, matching Scrybe
+* Gradle parallel/caching/configuration-cache flags enabled for faster builds
+
 **Notifications** — aligned appearance with design mockup:
 * per-type accent color: below-target = green, coupon = yellow, big-drop = coral, provider error = red
 * expanded notification body via BigTextStyle: full message + summary sub-text (e.g. "Down from $299.99")

@@ -27,6 +27,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,7 +66,10 @@ import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-private enum class ChartRange(val label: String, val millis: Long?) {
+private enum class ChartRange(
+    val label: String,
+    val millis: Long?,
+) {
     WEEK("7D", TimeUnit.DAYS.toMillis(7)),
     MONTH("30D", TimeUnit.DAYS.toMillis(30)),
     QUARTER("90D", TimeUnit.DAYS.toMillis(90)),
@@ -83,8 +88,16 @@ fun ProductDetailScreen(
 
     val fmt = NumberFormat.getCurrencyInstance(Locale.US)
     var showTargetEditor by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.refreshError) {
+        val error = uiState.refreshError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(error)
+        viewModel.clearRefreshError()
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(uiState.product?.title ?: "Product", maxLines = 1) },
@@ -190,7 +203,9 @@ fun ProductDetailScreen(
                     label = { Text("Target price") },
                     prefix = { Text("$") },
                     singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions =
+                        androidx.compose.foundation.text
+                            .KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
             },
             confirmButton = {
@@ -306,7 +321,10 @@ private fun OfferRow(
 }
 
 @Composable
-private fun PriceLabel(label: String, value: String) {
+private fun PriceLabel(
+    label: String,
+    value: String,
+) {
     Column {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
@@ -357,7 +375,10 @@ private fun PriceHistoryCard(
 }
 
 @Composable
-private fun PriceHistoryChart(history: List<PriceEvent>, targetPrice: Double?) {
+private fun PriceHistoryChart(
+    history: List<PriceEvent>,
+    targetPrice: Double?,
+) {
     val modelProducer = remember { CartesianChartModelProducer() }
     LaunchedEffect(history, targetPrice) {
         modelProducer.runTransaction {
@@ -392,7 +413,10 @@ private fun MetricsRow(
 }
 
 @Composable
-private fun Metric(label: String, value: String?) {
+private fun Metric(
+    label: String,
+    value: String?,
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -440,7 +464,10 @@ private fun discountLabel(coupon: Coupon): String =
     }
 
 @Composable
-private fun StateBadge(label: String, color: Color) {
+private fun StateBadge(
+    label: String,
+    color: Color,
+) {
     Surface(shape = MaterialTheme.shapes.extraSmall, color = color.copy(alpha = 0.15f)) {
         Text(
             label,

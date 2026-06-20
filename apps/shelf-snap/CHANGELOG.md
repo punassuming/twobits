@@ -8,6 +8,10 @@
 
 ### Fixes
 
+* ktlint and detekt quality gates now run in CI and locally (pre-commit hook), matching Scrybe
+* Gradle parallel/caching/configuration-cache flags enabled for faster builds
+* shared/design Compose BOM updated to 2024.12.01 (was hardcoded 2024.06.00)
+
 ## 1.11.0 (2026-06-19)
 
 ### Features

@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* shared/design Compose BOM updated to 2024.12.01 (was hardcoded 2024.06.00)
+
 ## 1.17.0 (2026-06-19)
 
 ### Features
