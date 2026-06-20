@@ -17,6 +17,7 @@
 
 * ktlint and detekt quality gates now run locally (pre-commit hook) and in CI for PriceDrop, matching Scrybe
 * shared scripts (manage-changelog.py) moved to repo-level scripts/ — release workflow paths updated
+* What's New screen now uses the shared ReleaseNotesParser and WhatsNewScreenLayout — structured groups, animated expand/collapse, and "Current version" badge now visible
 * CI and release workflows consolidated into reusable-build.yml and reusable-release.yml; per-app workflows are now thin callers
 * shared/network, shared/common, shared/billing, shared/api-keys build.gradle.kts now reference the shared version catalog (libs.*) instead of hardcoded version strings
 * Gradle parallel/caching/configuration-cache flags enabled for faster builds
