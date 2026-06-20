@@ -227,7 +227,7 @@ jobs:
 
       - name: Build release APK and AAB
         if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true' && steps.version.outputs.new_tag != ''
-        working-directory: apps/pricedrop
+        working-directory: apps/price-drop
         run: ./gradlew assembleRelease bundleRelease --no-daemon
 
       - name: Stage release assets
@@ -312,7 +312,7 @@ jobs:
           fi
 
       - name: Build release APK and AAB
-        working-directory: apps/pricedrop
+        working-directory: apps/price-drop
         run: ./gradlew assembleRelease bundleRelease --no-daemon
 
       - name: Stage release assets
