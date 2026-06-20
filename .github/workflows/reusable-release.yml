@@ -1,0 +1,412 @@
+name: Reusable App Release
+
+# Shared release logic for all three Android apps.
+# Called by scrybe-release.yml, shelf-snap-release.yml, and pricedrop-release.yml.
+#
+# Signing env vars (both naming conventions are set so all three apps' Gradle configs work):
+#   KEYSTORE_PATH / SIGNING_STORE_FILE  — path to the decoded keystore
+#   STORE_PASSWORD / SIGNING_STORE_PASSWORD
+#   KEY_ALIAS / SIGNING_KEY_ALIAS
+#   KEY_PASSWORD / SIGNING_KEY_PASSWORD
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        description: 'Display name used in release title and log messages (e.g. PriceDrop)'
+        type: string
+        required: true
+      app_root:
+        description: 'App root directory relative to repo root (e.g. apps/price-drop)'
+        type: string
+        required: true
+      tag_prefix:
+        description: 'Tag prefix for version tagging (e.g. pricedrop-v)'
+        type: string
+        required: true
+      default_bump:
+        description: 'Default semver bump when no feat:/fix: prefix — minor or patch'
+        type: string
+        required: false
+        default: patch
+      keystore_alias:
+        description: 'Key alias used when generating the fallback keystore (e.g. pricedrop)'
+        type: string
+        required: true
+      keystore_storepass:
+        description: 'Store/key password used when generating the fallback keystore'
+        type: string
+        required: true
+      use_retry_script:
+        description: 'Use scripts/ci-gradle-retry.sh instead of ./gradlew (for Scrybe)'
+        type: boolean
+        required: false
+        default: false
+      head_sha:
+        description: 'Commit SHA to release (github.event.workflow_run.head_sha or github.sha)'
+        type: string
+        required: false
+        default: ''
+      rebuild_for_tag:
+        description: 'Rebuild APK for this existing tag (empty = normal release)'
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Normal release ──────────────────────────────────────────────────────────
+  release:
+    name: Tag, Release, and Build APK
+    runs-on: ubuntu-latest
+    if: inputs.rebuild_for_tag == ''
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.head_sha || github.sha }}
+
+      - name: Verify release target
+        id: release_target
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          head_sha="${{ inputs.head_sha || github.sha }}"
+          git fetch origin main --tags
+          main_sha="$(git rev-parse origin/main)"
+
+          if [ "$main_sha" = "$head_sha" ]; then
+            git checkout -B main "$head_sha"
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Main moved ahead. Only mark stale if app-relevant files changed after
+          # head_sha — a concurrent release from another app should not suppress this one.
+          app_ahead="$(git log "${head_sha}..origin/main" -- ${{ inputs.app_root }}/CHANGELOG.md ${{ inputs.app_root }}/ shared/ --oneline)"
+          if [ -n "$app_ahead" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping release for stale SHA $head_sha — newer ${{ inputs.app_name }} commits on main."
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+            echo "Main advanced with non-${{ inputs.app_name }} commits only; rebasing release onto current main."
+            git checkout -B main origin/main
+          fi
+
+      - name: Check unreleased changelog content
+        if: steps.release_target.outputs.stale != 'true'
+        id: changelog_ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          has_bullets="$(python3 scripts/manage-changelog.py has-unreleased-bullets --changelog ${{ inputs.app_root }}/CHANGELOG.md)"
+
+          # Guard against duplicate releases: if all bullets were already present at
+          # the last tag for this app, treat the release as already done.
+          if [ "$has_bullets" = "true" ]; then
+            latest_tag="$(git tag -l '${{ inputs.tag_prefix }}*' --sort=-v:refname | head -1)"
+            if [ -n "$latest_tag" ]; then
+              has_bullets="$(python3 scripts/manage-changelog.py \
+                has-new-unreleased-since-tag \
+                --changelog ${{ inputs.app_root }}/CHANGELOG.md \
+                --tag "$latest_tag" \
+                --fallback-changelog ${{ inputs.app_root }}/CHANGELOG.md)"
+            fi
+          fi
+
+          echo "has_bullets=$has_bullets" >> "$GITHUB_OUTPUT"
+          if [ "$has_bullets" != "true" ]; then
+            echo "Skipping release — no new unreleased bullets in ${{ inputs.app_root }}/CHANGELOG.md since the last tag."
+          fi
+
+      # Computes the next semantic version from conventional commits since the last tag.
+      # Version bumping rules:
+      #   feat:           → minor bump
+      #   fix:, chore:, etc. → patch bump (default_bump)
+      #   BREAKING CHANGE → major bump
+      - name: Compute next version
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
+        id: version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: ${{ inputs.default_bump }}
+          tag_prefix: ${{ inputs.tag_prefix }}
+          dry_run: true
+
+      # Validate the keystore secret BEFORE any irreversible state is created
+      # (changelog promotion, version commit, tag push). A bad base64 value here
+      # aborts the workflow cleanly with no orphaned tags or commits.
+      - name: Validate keystore secret
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -n "$KEYSTORE_B64" ]; then
+            if ! printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > /dev/null 2>&1; then
+              echo "::error::SIGNING_KEYSTORE_BASE64 contains invalid base64."
+              echo "::error::Re-encode your keystore: base64 -w0 release.keystore (Linux) or base64 release.keystore | tr -d '\\n' (macOS)"
+              exit 1
+            fi
+          fi
+
+      - name: Set up JDK 17
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
+      - name: Grant execute permission for gradlew
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        run: chmod +x ${{ inputs.app_root }}/gradlew
+
+      - name: Promote changelog release section
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        id: changelog
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_notes_path="${{ runner.temp }}/release-notes.md"
+          python3 scripts/manage-changelog.py \
+            promote-release \
+            --changelog ${{ inputs.app_root }}/CHANGELOG.md \
+            --version "${{ steps.version.outputs.new_version }}" \
+            --date "$(date -u +%Y-%m-%d)" \
+            --release-notes-output "$release_notes_path"
+          echo "release_notes_path=$release_notes_path" >> "$GITHUB_OUTPUT"
+
+      # Updates app version metadata so the repository always reflects the latest
+      # released version. versionCode: major * 1,000,000 + minor * 1,000 + patch.
+      # Tagged [skip ci] to prevent the push from re-triggering this workflow.
+      - name: Bump app version in build.gradle.kts
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version_name="${{ steps.version.outputs.new_version }}"
+          IFS='.' read -r major minor patch <<< "$version_name"
+          version_code="$((major * 1000000 + minor * 1000 + patch))"
+          build_file="${{ inputs.app_root }}/app/build.gradle.kts"
+
+          sed -Ei "s/versionCode = [0-9]+/versionCode = ${version_code}/" "$build_file"
+          sed -Ei "s/versionName = \"[^\"]*\"/versionName = \"${version_name}\"/" "$build_file"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git rebase --autostash origin/main
+          git add "$build_file" ${{ inputs.app_root }}/CHANGELOG.md
+          git diff --staged --quiet || git commit -m "chore(release): ${{ inputs.tag_prefix }}${version_name} [skip ci]"
+          git push origin HEAD:main || {
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          }
+
+      - name: Create release tag
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          git tag "${{ steps.version.outputs.new_tag }}"
+          git push origin "${{ steps.version.outputs.new_tag }}"
+
+      - name: Set up release signing
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        id: keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          KEY_ALIAS_VAL: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          keystore_file="${{ runner.temp }}/release.keystore"
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS_VAL" ] && [ -n "$KEY_PASS" ]; then
+            printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "$keystore_file"
+          else
+            keytool -genkeypair -v -storetype PKCS12 \
+              -keystore "$keystore_file" \
+              -alias "${{ inputs.keystore_alias }}" \
+              -keyalg RSA -keysize 2048 \
+              -validity 36500 \
+              -storepass "${{ inputs.keystore_storepass }}" \
+              -keypass "${{ inputs.keystore_storepass }}" \
+              -dname "CN=${{ inputs.app_name }}, O=${{ inputs.app_name }}, C=US" -noprompt
+            STORE_PASS="${{ inputs.keystore_storepass }}"
+            KEY_ALIAS_VAL="${{ inputs.keystore_alias }}"
+            KEY_PASS="${{ inputs.keystore_storepass }}"
+          fi
+          # Set both naming conventions so all three apps' Gradle signing configs work.
+          echo "KEYSTORE_PATH=$keystore_file" >> "$GITHUB_ENV"
+          echo "STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_FILE=$keystore_file" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+
+      - name: Validate release signing inputs
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          keytool -list \
+            -keystore "$KEYSTORE_PATH" \
+            -storepass "$STORE_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            >/dev/null
+          keytool -importkeystore \
+            -srckeystore "$KEYSTORE_PATH" \
+            -srcstorepass "$STORE_PASSWORD" \
+            -srcalias "$KEY_ALIAS" \
+            -srckeypass "$KEY_PASSWORD" \
+            -destkeystore "${{ runner.temp }}/keystore-validation.p12" \
+            -deststoretype PKCS12 \
+            -deststorepass validate_pass \
+            -destkeypass validate_pass \
+            -noprompt \
+            >/dev/null
+          rm -f "${{ runner.temp }}/keystore-validation.p12"
+
+      - name: Build release APK and AAB
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        working-directory: ${{ inputs.app_root }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.use_retry_script }}" = "true" ]; then
+            bash ../../scripts/ci-gradle-retry.sh assembleRelease bundleRelease
+          else
+            ./gradlew assembleRelease bundleRelease --no-daemon
+          fi
+
+      - name: Stage release assets
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        id: asset
+        run: |
+          src=$(ls ${{ inputs.app_root }}/app/build/outputs/apk/release/app-*release*.apk | head -n1)
+          dest="${{ steps.version.outputs.new_tag }}.apk"
+          cp "$src" "$dest"
+          src_aab=${{ inputs.app_root }}/app/build/outputs/bundle/release/app-release.aab
+          [ -f "$src_aab" ] && cp "$src_aab" "${{ steps.version.outputs.new_tag }}.aab" || true
+          echo "path=$dest" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release and upload artifacts
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.new_tag }}
+          name: ${{ inputs.app_name }} v${{ steps.version.outputs.new_version }}
+          body_path: ${{ steps.changelog.outputs.release_notes_path }}
+          files: |
+            ${{ steps.asset.outputs.path }}
+            ${{ steps.version.outputs.new_tag }}.aab
+
+  # ── Rebuild APK for an existing tag ────────────────────────────────────────
+  # Triggered via workflow_dispatch with rebuild_for_tag set.
+  # Use this to build and upload a signed APK for an orphaned tag (one that was
+  # created by the release job but whose APK build failed before uploading).
+  # Fix SIGNING_KEYSTORE_BASE64 first, then dispatch with the tag name.
+  rebuild:
+    name: Rebuild APK for Existing Tag
+    runs-on: ubuntu-latest
+    if: inputs.rebuild_for_tag != ''
+
+    steps:
+      - name: Checkout at tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.rebuild_for_tag }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ${{ inputs.app_root }}/gradlew
+
+      - name: Set up release signing
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          KEY_ALIAS_VAL: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          keystore_file="${{ runner.temp }}/release.keystore"
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS_VAL" ] && [ -n "$KEY_PASS" ]; then
+            printf '%s' "$KEYSTORE_B64" | tr -d '\r\n' | base64 --decode > "$keystore_file"
+          else
+            keytool -genkeypair -v -storetype PKCS12 \
+              -keystore "$keystore_file" \
+              -alias "${{ inputs.keystore_alias }}" \
+              -keyalg RSA -keysize 2048 \
+              -validity 36500 \
+              -storepass "${{ inputs.keystore_storepass }}" \
+              -keypass "${{ inputs.keystore_storepass }}" \
+              -dname "CN=${{ inputs.app_name }}, O=${{ inputs.app_name }}, C=US" -noprompt
+            STORE_PASS="${{ inputs.keystore_storepass }}"
+            KEY_ALIAS_VAL="${{ inputs.keystore_alias }}"
+            KEY_PASS="${{ inputs.keystore_storepass }}"
+          fi
+          echo "KEYSTORE_PATH=$keystore_file" >> "$GITHUB_ENV"
+          echo "STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_FILE=$keystore_file" >> "$GITHUB_ENV"
+          echo "SIGNING_STORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_ALIAS=$KEY_ALIAS_VAL" >> "$GITHUB_ENV"
+          echo "SIGNING_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+
+      - name: Build release APK and AAB
+        working-directory: ${{ inputs.app_root }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.use_retry_script }}" = "true" ]; then
+            bash ../../scripts/ci-gradle-retry.sh assembleRelease bundleRelease
+          else
+            ./gradlew assembleRelease bundleRelease --no-daemon
+          fi
+
+      - name: Stage release assets
+        id: asset
+        run: |
+          src=$(ls ${{ inputs.app_root }}/app/build/outputs/apk/release/app-*release*.apk | head -n1)
+          dest="${{ inputs.rebuild_for_tag }}.apk"
+          cp "$src" "$dest"
+          src_aab=${{ inputs.app_root }}/app/build/outputs/bundle/release/app-release.aab
+          [ -f "$src_aab" ] && cp "$src_aab" "${{ inputs.rebuild_for_tag }}.aab" || true
+          echo "path=$dest" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.rebuild_for_tag }}
+          files: |
+            ${{ steps.asset.outputs.path }}
+            ${{ inputs.rebuild_for_tag }}.aab

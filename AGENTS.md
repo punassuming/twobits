@@ -371,20 +371,23 @@ Both release workflows compute the next semantic version from conventional commi
 
 ## CI pipeline
 
-### Scrybe
-- **`scrybe-ci.yml`** — runs on push to `main`, `copilot/**`, `claude/**`, and on PRs targeting `main` (path-filtered to Scrybe files). Jobs: `validate` (changelog + manifests) → `build` (assembleDebug, testDebugUnitTest, lint, ktlintCheck, detekt). A `detect-changes` job skips the build step for version-only commits by inheriting the previous `android/verified` commit status.
-- **`scrybe-release.yml`** — triggers on successful `scrybe-ci.yml` run on `main`. Computes next semantic version from conventional commits, promotes changelog, bumps app version, creates tag and GitHub Release with signed APK/AAB.
+Each app's CI and release workflow is a thin caller that passes app-specific inputs to shared reusable workflows.
 
-### Shelf Snap
-- **`shelf-snap-ci.yml`** — runs on push to `main`, `copilot/**`, `claude/**`, and on PRs targeting `main` (path-filtered to Shelf Snap files). Jobs: `validate` (changelog + manifests) → `build` (assembleDebug, testDebugUnitTest, lintDebug).
-- **`shelf-snap-release.yml`** — triggers on successful `shelf-snap-ci.yml` run on `main`. Computes next version, promotes changelog, bumps app version, creates tag and GitHub Release with signed APK/AAB.
+### Per-app CI workflows (thin callers)
+- **`scrybe-ci.yml`** — path-filtered to Scrybe files. Jobs: `validate` → `detect-changes` (skips build for version-only commits) → `build`.
+- **`shelf-snap-ci.yml`** — path-filtered to Shelf Snap files. Jobs: `validate` → `build`.
+- **`pricedrop-ci.yml`** — path-filtered to PriceDrop files. Jobs: `validate` → `build`.
 
-### PriceDrop
-- **`pricedrop-ci.yml`** — runs on push to `main`, `copilot/**`, `claude/**`, and on PRs targeting `main` (path-filtered to PriceDrop files). Jobs: `validate` (changelog) → `build` (assembleRelease, testDebugUnitTest, lintRelease).
-- **`pricedrop-release.yml`** — triggers on successful `pricedrop-ci.yml` run on `main`. Computes next version, promotes changelog, bumps app version, creates tag and GitHub Release with signed APK/AAB.
+### Per-app release workflows (thin callers)
+Each triggers on its respective CI passing on `main` and via `workflow_dispatch`. `rebuild_for_tag` dispatches the rebuild job instead.
+- **`scrybe-release.yml`** — `tag_prefix: scrybe-v`, `default_bump: minor` (Scrybe gets minor bumps for new features)
+- **`shelf-snap-release.yml`** — `tag_prefix: shelf-snap-v`, `default_bump: patch`
+- **`pricedrop-release.yml`** — `tag_prefix: pricedrop-v`, `default_bump: patch`
 
-### Shared
-- **`reusable-validate.yml`** — shared changelog validation and manifest validation logic, called by both CI workflows.
+### Shared reusable workflows
+- **`reusable-validate.yml`** — changelog structure + update enforcement, manifest validation. Called by all three CI workflows.
+- **`reusable-build.yml`** — Gradle build + test + lint + ktlint + detekt. Inputs: `app_root`, `app_name`, `gradle_tasks`, `use_retry_script`.
+- **`reusable-release.yml`** — full release pipeline: stale-SHA check, changelog gate, semver tagging, signing, APK build, GitHub Release. Inputs: `app_name`, `app_root`, `tag_prefix`, `default_bump`, `keystore_alias`, `keystore_storepass`, `use_retry_script`, `head_sha`, `rebuild_for_tag`.
 - **`pages.yml`** — deploys the `docs/` folder to GitHub Pages on push to `main`.
 
 Signing secrets (same names for both apps): `SIGNING_KEYSTORE_BASE64`, `SIGNING_KEYSTORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`. If not configured, the release workflow generates a one-off keystore so the APK is still installable.

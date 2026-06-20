@@ -10,6 +10,7 @@
 
 * shared/design Compose BOM updated to 2024.12.01 (was hardcoded 2024.06.00)
 * shared scripts (manage-changelog.py, validate-manifests.py, ci-gradle-retry.sh) moved from apps/scrybe/scripts/ to repo-level scripts/ so all three apps reference a single copy
+* CI and release workflows consolidated into reusable-build.yml and reusable-release.yml; per-app workflows are now thin callers (~1 400 lines of copy-paste reduced to ~600)
 
 ## 1.17.0 (2026-06-19)
 
