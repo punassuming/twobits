@@ -6,7 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ApiKeyValidatorTest {
-
     @Test
     fun `valid key with sk prefix and sufficient length is accepted`() {
         assertTrue(ApiKeyValidator.isValid("sk-abcdefghijklmnopqrstuvwxyz"))

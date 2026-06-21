@@ -8,7 +8,7 @@
 
 ### Fixes
 
-* ktlint formatting fixes across source and test source files (trailing commas, annotation placement, multiline expressions, blank lines)
+* ktlint formatting fixes across source and test source files (trailing commas, annotation placement, multiline expressions, blank lines, blank lines at class body start)
 
 ## 1.11.0 (2026-06-19)
 
