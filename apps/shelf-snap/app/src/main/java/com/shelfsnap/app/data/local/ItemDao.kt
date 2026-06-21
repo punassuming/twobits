@@ -5,7 +5,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ItemDao {
-
     @Query("SELECT * FROM items ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<ItemEntity>>
 
@@ -15,7 +14,7 @@ interface ItemDao {
                   lower(category) LIKE '%' || lower(:query) || '%' OR
                   lower(description) LIKE '%' || lower(:query) || '%' OR
                   lower(brand) LIKE '%' || lower(:query) || '%')
-           ORDER BY updatedAt DESC"""
+           ORDER BY updatedAt DESC""",
     )
     fun observeFiltered(query: String): Flow<List<ItemEntity>>
 
