@@ -9,6 +9,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source and test source files (trailing commas, multiline expressions, blank lines at class body start, parameter formatting in ItemThumb and PlatformUi components)
+* ktlint formatting fixes in CameraScreen, CameraViewModel, AppModule, BillingProviderModule, LocalModelManager, Migrations, Condition, Item, DraftItemResult, and WebSearchResolver
 
 ## 1.11.0 (2026-06-19)
 

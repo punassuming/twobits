@@ -66,7 +66,7 @@ fun CameraScreen(
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     itemId: Long = -1L,
-    viewModel: CameraViewModel = hiltViewModel()
+    viewModel: CameraViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -103,19 +103,19 @@ fun CameraScreen(
                 TextButton(onClick = viewModel::saveWithoutAnalysis) {
                     Text(stringResource(R.string.save_without_analysis))
                 }
-            }
+            },
         )
     }
 
     val appendMode = uiState.appendToItemId != null
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { _ ->
         if (!cameraPermission.status.isGranted) {
             CameraPermissionRequest(
                 modifier = Modifier.fillMaxSize(),
-                onRequest = { cameraPermission.launchPermissionRequest() }
+                onRequest = { cameraPermission.launchPermissionRequest() },
             )
         } else {
             CameraContent(
@@ -131,7 +131,7 @@ fun CameraScreen(
                 onAnalyseAndSave = viewModel::onAnalyseClicked,
                 onCommitAppend = viewModel::commitAppend,
                 onCaptureError = viewModel::showError,
-                context = context
+                context = context,
             )
         }
     }
@@ -140,16 +140,16 @@ fun CameraScreen(
 @Composable
 private fun CameraPermissionRequest(
     modifier: Modifier = Modifier,
-    onRequest: () -> Unit
+    onRequest: () -> Unit,
 ) {
     Column(
         modifier = modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = stringResource(R.string.camera_permission_required),
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
         )
         Spacer(Modifier.height(16.dp))
         Button(onClick = onRequest) {
@@ -172,7 +172,7 @@ private fun CameraContent(
     onAnalyseAndSave: () -> Unit,
     onCommitAppend: () -> Unit,
     onCaptureError: (String) -> Unit,
-    context: Context
+    context: Context,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
@@ -186,33 +186,36 @@ private fun CameraContent(
     previewPath?.let { path ->
         Dialog(onDismissRequest = { previewPath = null }) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Black),
             ) {
                 AsyncImage(
                     model = File(path),
                     contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 480.dp),
-                    contentScale = ContentScale.Fit
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 480.dp),
+                    contentScale = ContentScale.Fit,
                 )
                 IconButton(
                     onClick = { previewPath = null },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .size(32.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(32.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), CircleShape),
                 ) {
                     Icon(
                         Icons.Default.Close,
                         contentDescription = stringResource(R.string.close),
                         tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
@@ -223,9 +226,10 @@ private fun CameraContent(
         Column(modifier = Modifier.fillMaxSize()) {
             // ── Camera viewfinder ──────────────────────────────────────────
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
             ) {
                 AndroidView(
                     factory = { ctx ->
@@ -233,12 +237,15 @@ private fun CameraContent(
                         val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                         cameraProviderFuture.addListener({
                             val cameraProvider = cameraProviderFuture.get()
-                            val preview = Preview.Builder().build().also {
-                                it.setSurfaceProvider(previewView.surfaceProvider)
-                            }
-                            val capture = ImageCapture.Builder()
-                                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                                .build()
+                            val preview =
+                                Preview.Builder().build().also {
+                                    it.setSurfaceProvider(previewView.surfaceProvider)
+                                }
+                            val capture =
+                                ImageCapture
+                                    .Builder()
+                                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                    .build()
                             imageCapture = capture
                             runCatching {
                                 cameraProvider.unbindAll()
@@ -246,89 +253,95 @@ private fun CameraContent(
                                     lifecycleOwner,
                                     CameraSelector.DEFAULT_BACK_CAMERA,
                                     preview,
-                                    capture
+                                    capture,
                                 )
                             }
                         }, ContextCompat.getMainExecutor(ctx))
                         previewView
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 )
 
                 ViewfinderOverlay()
 
                 if (flashAlpha.value > 0f) {
                     Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(Color.White.copy(alpha = flashAlpha.value))
+                        modifier =
+                            Modifier
+                                .matchParentSize()
+                                .background(Color.White.copy(alpha = flashAlpha.value)),
                     )
                 }
 
                 // Top controls overlay
                 Row(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Black.copy(alpha = 0.60f), Color.Transparent)
-                            )
-                        )
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .fillMaxWidth()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Black.copy(alpha = 0.60f), Color.Transparent),
+                                ),
+                            ).padding(horizontal = 8.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CamIconBtn(icon = Icons.Default.Close, onClick = onBack)
                     Spacer(modifier = Modifier.weight(1f))
                     CamIconBtn(
                         icon = if (flashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
                         onClick = onToggleFlash,
-                        active = flashOn
+                        active = flashOn,
                     )
                 }
 
                 // AI tip pill
-                val tipText = if (capturedPaths.isEmpty())
-                    stringResource(R.string.hint_center_item)
-                else
-                    stringResource(R.string.hint_photos_captured, capturedPaths.size)
+                val tipText =
+                    if (capturedPaths.isEmpty()) {
+                        stringResource(R.string.hint_center_item)
+                    } else {
+                        stringResource(R.string.hint_photos_captured, capturedPaths.size)
+                    }
                 Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 12.dp)
-                        .background(Color.Black.copy(alpha = 0.60f), CircleShape)
-                        .padding(horizontal = 14.dp, vertical = 5.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 12.dp)
+                            .background(Color.Black.copy(alpha = 0.60f), CircleShape)
+                            .padding(horizontal = 14.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(
                         Icons.Default.AutoAwesome,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(14.dp),
                     )
                     Text(
                         text = tipText,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.88f)
+                        color = Color.White.copy(alpha = 0.88f),
                     )
                 }
             }
 
             // ── Dark bottom panel ──────────────────────────────────────────
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF0A0A0A))
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF0A0A0A))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
                 // Photo strip
                 if (capturedPaths.isNotEmpty()) {
                     LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         items(capturedPaths) { path ->
                             val index = capturedPaths.indexOf(path)
@@ -337,49 +350,55 @@ private fun CameraContent(
                                 AsyncImage(
                                     model = File(path),
                                     contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .then(
-                                            if (isLatest) Modifier.border(
-                                                2.dp,
-                                                MaterialTheme.colorScheme.primary,
-                                                RoundedCornerShape(14.dp)
-                                            ) else Modifier
-                                        )
-                                        .clickable { previewPath = path },
-                                    contentScale = ContentScale.Crop
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .then(
+                                                if (isLatest) {
+                                                    Modifier.border(
+                                                        2.dp,
+                                                        MaterialTheme.colorScheme.primary,
+                                                        RoundedCornerShape(14.dp),
+                                                    )
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ).clickable { previewPath = path },
+                                    contentScale = ContentScale.Crop,
                                 )
                                 IconButton(
                                     onClick = { onRemovePhoto(path) },
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .size(22.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
-                                            CircleShape
-                                        )
+                                    modifier =
+                                        Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(22.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                                                CircleShape,
+                                            ),
                                 ) {
                                     Icon(
                                         Icons.Default.Close,
                                         contentDescription = stringResource(R.string.delete),
                                         tint = Color.White,
-                                        modifier = Modifier.size(14.dp)
+                                        modifier = Modifier.size(14.dp),
                                     )
                                 }
                                 Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(4.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Color.Black.copy(alpha = 0.5f))
-                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                    modifier =
+                                        Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(4.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color.Black.copy(alpha = 0.5f))
+                                            .padding(horizontal = 5.dp, vertical = 1.dp),
                                 ) {
                                     Text(
                                         text = "${index + 1}",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
+                                        color = Color.White,
                                     )
                                 }
                             }
@@ -390,78 +409,84 @@ private fun CameraContent(
 
                 // Shutter row: gallery thumb | shutter | analyse pill
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = if (capturedPaths.isEmpty()) 8.dp else 2.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = if (capturedPaths.isEmpty()) 8.dp else 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     // Gallery thumbnail — shows first captured photo
                     Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .then(
-                                if (capturedPaths.isNotEmpty())
-                                    Modifier.clickable { previewPath = capturedPaths.first() }
-                                else Modifier
-                            ),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .then(
+                                    if (capturedPaths.isNotEmpty()) {
+                                        Modifier.clickable { previewPath = capturedPaths.first() }
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         if (capturedPaths.isNotEmpty()) {
                             AsyncImage(
                                 model = File(capturedPaths.first()),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
                             )
                         } else {
                             Icon(
                                 Icons.Default.PhotoCamera,
                                 contentDescription = null,
                                 tint = Color.White.copy(alpha = 0.25f),
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(22.dp),
                             )
                         }
                     }
 
                     // Shutter — classic white ring
                     Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .clickable {
-                                val file = ImageUtils.createImageFile(context)
-                                if (file == null) {
-                                    onCaptureError(storageUnavailableMessage)
-                                    return@clickable
-                                }
-                                imageCapture?.flashMode =
-                                    if (flashOn) ImageCapture.FLASH_MODE_ON
-                                    else ImageCapture.FLASH_MODE_OFF
-                                val outputOptions =
-                                    ImageCapture.OutputFileOptions.Builder(file).build()
-                                imageCapture?.takePicture(
-                                    outputOptions, executor,
-                                    object : ImageCapture.OnImageSavedCallback {
-                                        override fun onImageSaved(
-                                            output: ImageCapture.OutputFileResults
-                                        ) {
-                                            onPhotoCaptured(file.absolutePath)
-                                            scope.launch {
-                                                flashAlpha.snapTo(0.4f)
-                                                flashAlpha.animateTo(0f, tween(250))
-                                            }
-                                        }
-                                        override fun onError(e: ImageCaptureException) {
-                                            file.delete()
-                                            onCaptureError(captureFailedMessage)
-                                        }
+                        modifier =
+                            Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    val file = ImageUtils.createImageFile(context)
+                                    if (file == null) {
+                                        onCaptureError(storageUnavailableMessage)
+                                        return@clickable
                                     }
-                                )
-                            },
-                        contentAlignment = Alignment.Center
+                                    imageCapture?.flashMode =
+                                        if (flashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
+                                    val outputOptions =
+                                        ImageCapture.OutputFileOptions.Builder(file).build()
+                                    imageCapture?.takePicture(
+                                        outputOptions,
+                                        executor,
+                                        object : ImageCapture.OnImageSavedCallback {
+                                            override fun onImageSaved(
+                                                output: ImageCapture.OutputFileResults,
+                                            ) {
+                                                onPhotoCaptured(file.absolutePath)
+                                                scope.launch {
+                                                    flashAlpha.snapTo(0.4f)
+                                                    flashAlpha.animateTo(0f, tween(250))
+                                                }
+                                            }
+
+                                            override fun onError(e: ImageCaptureException) {
+                                                file.delete()
+                                                onCaptureError(captureFailedMessage)
+                                            }
+                                        },
+                                    )
+                                },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val r = size.minDimension / 2f
@@ -475,60 +500,68 @@ private fun CameraContent(
                     Box(contentAlignment = Alignment.Center) {
                         when {
                             capturedPaths.isEmpty() -> Spacer(Modifier.size(44.dp))
-                            appendMode -> Surface(
-                                onClick = onCommitAppend,
-                                shape = RoundedCornerShape(22.dp),
-                                color = MaterialTheme.colorScheme.primary
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(
-                                        horizontal = 14.dp, vertical = 8.dp
-                                    ),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            appendMode ->
+                                Surface(
+                                    onClick = onCommitAppend,
+                                    shape = RoundedCornerShape(22.dp),
+                                    color = MaterialTheme.colorScheme.primary,
                                 ) {
-                                    Icon(
-                                        Icons.Default.AddAPhoto,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = "Add (${capturedPaths.size})",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
+                                    Row(
+                                        modifier =
+                                            Modifier.padding(
+                                                horizontal = 14.dp,
+                                                vertical = 8.dp,
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AddAPhoto,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Text(
+                                            text = "Add (${capturedPaths.size})",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                        )
+                                    }
                                 }
-                            }
-                            else -> Surface(
-                                onClick = onAnalyseAndSave,
-                                shape = RoundedCornerShape(22.dp),
-                                color = MaterialTheme.colorScheme.primary
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(
-                                        horizontal = 14.dp, vertical = 8.dp
-                                    ),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            else ->
+                                Surface(
+                                    onClick = onAnalyseAndSave,
+                                    shape = RoundedCornerShape(22.dp),
+                                    color = MaterialTheme.colorScheme.primary,
                                 ) {
-                                    Icon(
-                                        Icons.Default.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = stringResource(
-                                            R.string.analyse_count, capturedPaths.size
-                                        ),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
+                                    Row(
+                                        modifier =
+                                            Modifier.padding(
+                                                horizontal = 14.dp,
+                                                vertical = 8.dp,
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Text(
+                                            text =
+                                                stringResource(
+                                                    R.string.analyse_count,
+                                                    capturedPaths.size,
+                                                ),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                        )
+                                    }
                                 }
-                            }
                         }
                     }
                 }
@@ -539,78 +572,85 @@ private fun CameraContent(
         if (isAnalysing) {
             AnalysingView(
                 photoCount = capturedPaths.size,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
         }
     }
 }
 
 @Composable
-private fun AnalysingView(photoCount: Int, modifier: Modifier = Modifier) {
+private fun AnalysingView(
+    photoCount: Int,
+    modifier: Modifier = Modifier,
+) {
     val progress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         progress.animateTo(
             targetValue = 0.95f,
-            animationSpec = tween(durationMillis = 12000, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 12000, easing = FastOutSlowInEasing),
         )
     }
-    val steps = listOf(
-        0.20f to "Reading photos",
-        0.45f to "Identifying item",
-        0.70f to "Fetching market data",
-        0.88f to "Estimating value",
-        1.00f to "Generating description"
-    )
+    val steps =
+        listOf(
+            0.20f to "Reading photos",
+            0.45f to "Identifying item",
+            0.70f to "Fetching market data",
+            0.88f to "Estimating value",
+            1.00f to "Generating description",
+        )
     val currentStep = steps.firstOrNull { progress.value <= it.first }?.second ?: "Finalising…"
 
     Column(
-        modifier = modifier
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 32.dp),
+        modifier =
+            modifier
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 Icons.Default.AutoAwesome,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(38.dp),
             )
         }
         Spacer(Modifier.height(24.dp))
         Text(
             text = stringResource(R.string.analyzing),
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.height(4.dp))
         Text(
             text = "Processing $photoCount photo${if (photoCount != 1) "s" else ""}…",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(28.dp))
         @Suppress("DEPRECATION")
         LinearProgressIndicator(
             progress = progress.value,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
         )
         Spacer(Modifier.height(8.dp))
         Text(
             text = currentStep,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
         )
     }
 }
@@ -619,16 +659,17 @@ private fun AnalysingView(photoCount: Int, modifier: Modifier = Modifier) {
 private fun CamIconBtn(
     icon: ImageVector,
     onClick: () -> Unit,
-    active: Boolean = false
+    active: Boolean = false,
 ) {
     val tint = if (active) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.85f)
     Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent)
+                .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
     }
@@ -639,26 +680,28 @@ private fun CamIconBtn(
 private fun AddAnotherHint() {
     val outline = Color.White.copy(alpha = 0.4f)
     Box(
-        modifier = Modifier
-            .size(96.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .drawBehind {
-                drawRoundRect(
-                    color = outline,
-                    cornerRadius = CornerRadius(12.dp.toPx()),
-                    style = Stroke(
-                        width = 1.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))
+        modifier =
+            Modifier
+                .size(96.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .drawBehind {
+                    drawRoundRect(
+                        color = outline,
+                        cornerRadius = CornerRadius(12.dp.toPx()),
+                        style =
+                            Stroke(
+                                width = 1.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)),
+                            ),
                     )
-                )
-            },
-        contentAlignment = Alignment.Center
+                },
+        contentAlignment = Alignment.Center,
     ) {
         Icon(
             Icons.Default.AddAPhoto,
             contentDescription = null,
             tint = outline,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(22.dp),
         )
     }
 }
