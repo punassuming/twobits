@@ -14,6 +14,7 @@
 * shared scripts (manage-changelog.py, validate-manifests.py, ci-gradle-retry.sh) moved from apps/scrybe/scripts/ to repo-level scripts/ so all three apps reference a single copy
 * CI and release workflows consolidated into reusable-build.yml and reusable-release.yml; per-app workflows are now thin callers (~1 400 lines of copy-paste reduced to ~600)
 * scrybe-ci.yml build job inlined (was calling reusable-build.yml which doesn't exist on main yet; will re-wire once reusable-build.yml lands)
+* shared/settings.gradle.kts now declares the version catalog so shared modules can use libs.* references
 * shared/network, shared/common, shared/billing, shared/api-keys build.gradle.kts now reference the shared version catalog (libs.*) instead of hardcoded version strings
 
 ## 1.17.0 (2026-06-19)
