@@ -8,7 +8,7 @@
 
 ### Fixes
 
-* ktlint formatting fixes across source and test source files (trailing commas, annotation placement, multiline expressions, blank lines, blank lines at class body start)
+* ktlint formatting fixes across source and test source files (trailing commas, multiline expressions, blank lines at class body start, parameter formatting in ItemThumb and PlatformUi components)
 
 ## 1.11.0 (2026-06-19)
 
