@@ -48,14 +48,15 @@ android {
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
-            } else {
-                // Debug-signed so the artifact is still installable for testing.
-                signingConfigs.getByName("debug")
-            }
+            signingConfig =
+                if (hasReleaseSigning) {
+                    signingConfigs.getByName("release")
+                } else {
+                    // Debug-signed so the artifact is still installable for testing.
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 
@@ -83,7 +84,7 @@ android {
     }
 
     sourceSets.getByName("main").assets.srcDir(
-        layout.buildDirectory.dir("generated/assets/changelog")
+        layout.buildDirectory.dir("generated/assets/changelog"),
     )
 
     lint {
