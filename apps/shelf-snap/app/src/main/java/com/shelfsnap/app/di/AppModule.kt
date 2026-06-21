@@ -20,11 +20,13 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext ctx: Context): AppDatabase =
-        Room.databaseBuilder(ctx, AppDatabase::class.java, "shelf_snap.db")
+    fun provideDatabase(
+        @ApplicationContext ctx: Context,
+    ): AppDatabase =
+        Room
+            .databaseBuilder(ctx, AppDatabase::class.java, "shelf_snap.db")
             .addMigrations(MIGRATION_2_3)
             .fallbackToDestructiveMigrationFrom(1)
             .build()
@@ -34,6 +36,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideDataStore(@ApplicationContext ctx: Context): DataStore<Preferences> =
-        ctx.dataStore
+    fun provideDataStore(
+        @ApplicationContext ctx: Context,
+    ): DataStore<Preferences> = ctx.dataStore
 }

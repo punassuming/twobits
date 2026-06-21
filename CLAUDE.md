@@ -35,6 +35,6 @@ The `multiline-expression-wrapping` rule cannot be auto-fixed. See AGENTS.md §"
 
 ## Changelog rule — enforced by pre-commit hook
 
-The `.githooks/pre-commit` hook **blocks the commit** if code files in `apps/scrybe/` or `apps/shelf-snap/` are staged but the corresponding `CHANGELOG.md` is not. Do not use `SKIP_KTLINT=1` to bypass this — update the changelog instead.
+The `.githooks/pre-commit` hook **blocks the commit** if code files in `apps/scrybe/`, `apps/shelf-snap/`, or `apps/price-drop/` are staged but the corresponding `CHANGELOG.md` is not. Do not use `SKIP_KTLINT=1` to bypass this — update the changelog instead.
 
 Use `/project:update-changelog` when you need a reminder of the exact format.

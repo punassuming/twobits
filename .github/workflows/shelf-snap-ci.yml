@@ -10,6 +10,7 @@ on:
       - '.github/workflows/shelf-snap-ci.yml'
       - '.github/workflows/shelf-snap-release.yml'
       - '.github/workflows/reusable-validate.yml'
+      - '.github/workflows/reusable-build.yml'
   pull_request:
     branches: [ "main" ]
     paths:
@@ -19,6 +20,7 @@ on:
       - '.github/workflows/shelf-snap-ci.yml'
       - '.github/workflows/shelf-snap-release.yml'
       - '.github/workflows/reusable-validate.yml'
+      - '.github/workflows/reusable-build.yml'
   workflow_dispatch:
 
 concurrency:
@@ -64,20 +66,17 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x apps/shelf-snap/gradlew
 
-      # Single Gradle invocation matching the scrybe-ci pattern.
       - name: Build, lint & test
         working-directory: apps/shelf-snap
         shell: bash
-        run: |
-          set -euo pipefail
-          ./gradlew assembleRelease testDebugUnitTest lintRelease --no-daemon
+        run: ./gradlew assembleRelease testDebugUnitTest lintRelease ktlintCheck detekt --no-daemon
 
       - name: Upload lint report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: shelf-snap-lint-report-${{ github.run_number }}
-          path: apps/shelf-snap/app/build/reports/lint-results-release.*
+          path: apps/shelf-snap/app/build/reports/lint-results-*.*
           if-no-files-found: ignore
           retention-days: 14
 
@@ -87,24 +86,29 @@ jobs:
         with:
           name: shelf-snap-test-results-${{ github.run_number }}
           path: apps/shelf-snap/app/build/reports/tests/
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Record android/verified commit status
         if: success()
+        continue-on-error: true
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -s -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Content-Type: application/json" \
+          set -euo pipefail
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"assembleRelease, tests, lint all passed\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"assembleRelease testDebugUnitTest lintRelease ktlintCheck detekt passed\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 
       - name: Upload release APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: shelf-snap-release-${{ github.sha }}
-          path: apps/shelf-snap/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
+          path: apps/shelf-snap/app/build/outputs/apk/release/app-*release*.apk
+          if-no-files-found: warn
           retention-days: 14

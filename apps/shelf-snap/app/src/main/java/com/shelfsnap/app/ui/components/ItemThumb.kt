@@ -37,6 +37,7 @@ import java.io.File
  */
 fun categoryIcon(category: String): ImageVector {
     val c = category.lowercase()
+
     fun match(vararg keys: String) = keys.any { c.contains(it) }
     return when {
         match("coat", "jacket", "parka", "cloth", "apparel", "shirt", "dress", "outerwear", "pant") -> Icons.Default.Checkroom
@@ -61,7 +62,7 @@ fun ItemThumb(
     item: Item,
     size: Dp,
     modifier: Modifier = Modifier,
-    showCount: Boolean = false
+    showCount: Boolean = false,
 ) {
     val corner = size * 0.22f
     val shape = RoundedCornerShape(corner)
@@ -71,42 +72,45 @@ fun ItemThumb(
             AsyncImage(
                 model = File(photo),
                 contentDescription = null,
-                modifier = Modifier
-                    .size(size)
-                    .clip(shape),
-                contentScale = ContentScale.Crop
+                modifier =
+                    Modifier
+                        .size(size)
+                        .clip(shape),
+                contentScale = ContentScale.Crop,
             )
         } else {
             Box(
-                modifier = Modifier
-                    .size(size)
-                    .clip(shape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
+                modifier =
+                    Modifier
+                        .size(size)
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     categoryIcon(item.category),
                     contentDescription = null,
                     modifier = Modifier.size(size * 0.46f),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
 
         if (showCount && item.photoPaths.size > 1) {
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(2.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(2.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                        .padding(horizontal = 5.dp, vertical = 1.dp),
             ) {
                 Text(
                     text = "${item.photoPaths.size}",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }

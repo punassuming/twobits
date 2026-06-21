@@ -147,7 +147,6 @@ Room Database  ──────────────────►  Record
 | `:core:export` | Core | `ExportCoordinator`, Markdown / Text / JSON / Obsidian exporters |
 | `:core:database` | Core | Room database, entities, DAOs |
 | `:core:datastore` | Core | DataStore preferences (API keys, theme, recording defaults, model selection) |
-| `:core:network` | Core | `OkHttpClient`, `Retrofit`, JSON serialisation config, `OpenAiApiKeyValidator` |
 | `:core:model` | Core | Shared domain models and enums |
 | `:core:common` | Core | Coroutine dispatcher qualifiers, `Result` extensions, release-notes parser |
 

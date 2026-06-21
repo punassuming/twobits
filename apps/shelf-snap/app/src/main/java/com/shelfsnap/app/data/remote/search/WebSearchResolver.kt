@@ -9,14 +9,17 @@ import javax.inject.Singleton
  * added by registering another [WebSearchService].
  */
 @Singleton
-class WebSearchResolver @Inject constructor(
-    private val brave: BraveSearchService,
-    private val jina: JinaAiSearchService,
-) {
-    /** Returns the service for [provider], or null when web search is disabled. */
-    fun resolve(provider: SearchProvider): WebSearchService? = when (provider) {
-        SearchProvider.NONE -> null
-        SearchProvider.BRAVE -> brave
-        SearchProvider.JINA -> jina
+class WebSearchResolver
+    @Inject
+    constructor(
+        private val brave: BraveSearchService,
+        private val jina: JinaAiSearchService,
+    ) {
+        /** Returns the service for [provider], or null when web search is disabled. */
+        fun resolve(provider: SearchProvider): WebSearchService? =
+            when (provider) {
+                SearchProvider.NONE -> null
+                SearchProvider.BRAVE -> brave
+                SearchProvider.JINA -> jina
+            }
     }
-}

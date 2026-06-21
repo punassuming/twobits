@@ -16,9 +16,10 @@ import javax.inject.Singleton
 object BillingProviderModule {
     @Provides
     @Singleton
-    fun provideBillingConfig(): BillingConfig = BillingConfig(
-        revenueCatPublicKey = "YOUR_REVENUECAT_PUBLIC_KEY",
-    )
+    fun provideBillingConfig(): BillingConfig =
+        BillingConfig(
+            revenueCatPublicKey = "YOUR_REVENUECAT_PUBLIC_KEY",
+        )
 
     @Provides
     @Singleton
@@ -29,6 +30,5 @@ object BillingProviderModule {
 
     @Provides
     @Singleton
-    fun provideSubscriptionRepository(billingManager: BillingManager): SubscriptionRepository =
-        SubscriptionRepository(billingManager)
+    fun provideSubscriptionRepository(billingManager: BillingManager): SubscriptionRepository = SubscriptionRepository(billingManager)
 }

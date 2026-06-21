@@ -5,7 +5,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PriceRangeBarTest {
-
     @Test
     fun `marker sits at the midpoint for a centered value`() {
         assertEquals(0.5f, priceMarkerFraction(low = 10.0, high = 30.0, value = 20.0), 0.001f)

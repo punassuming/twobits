@@ -11,7 +11,6 @@ import java.net.SocketTimeoutException
  * friendly, user-facing messages (mirrors VisionAnalysisErrorTest).
  */
 class PriceResearchErrorTest {
-
     @Test
     fun `401 and 403 map to invalid key message`() {
         assertEquals(PriceResearchService.ERROR_INVALID_KEY, PriceResearchService.friendlyHttpError(401))
@@ -33,7 +32,7 @@ class PriceResearchErrorTest {
     fun `timeout maps to timeout message`() {
         assertEquals(
             PriceResearchService.ERROR_TIMEOUT,
-            PriceResearchService.friendlyNetworkError(SocketTimeoutException("timeout"))
+            PriceResearchService.friendlyNetworkError(SocketTimeoutException("timeout")),
         )
     }
 
@@ -41,7 +40,7 @@ class PriceResearchErrorTest {
     fun `generic IO error maps to network message`() {
         assertEquals(
             PriceResearchService.ERROR_NETWORK,
-            PriceResearchService.friendlyNetworkError(IOException("boom"))
+            PriceResearchService.friendlyNetworkError(IOException("boom")),
         )
     }
 
@@ -49,7 +48,7 @@ class PriceResearchErrorTest {
     fun `unexpected exception maps to unknown message`() {
         assertEquals(
             PriceResearchService.ERROR_UNKNOWN,
-            PriceResearchService.friendlyNetworkError(IllegalStateException("?"))
+            PriceResearchService.friendlyNetworkError(IllegalStateException("?")),
         )
     }
 }

@@ -8,7 +8,13 @@ import com.shelfsnap.app.util.ApiKeyValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,58 +31,61 @@ data class InventoryUiState(
     // Counts over the full (search-matched) set, for the filter chip labels.
     val totalCount: Int = 0,
     val listedCount: Int = 0,
-    val draftCount: Int = 0
+    val draftCount: Int = 0,
 )
 
 @HiltViewModel
-class InventoryViewModel @Inject constructor(
-    private val repository: ItemRepository
-) : ViewModel() {
+class InventoryViewModel
+    @Inject
+    constructor(
+        private val repository: ItemRepository,
+    ) : ViewModel() {
+        private val _searchQuery = MutableStateFlow("")
+        private val _filter = MutableStateFlow(InventoryFilter.ALL)
 
-    private val _searchQuery = MutableStateFlow("")
-    private val _filter = MutableStateFlow(InventoryFilter.ALL)
+        @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+        val uiState: StateFlow<InventoryUiState> =
+            combine(
+                _searchQuery
+                    .debounce(200)
+                    .flatMapLatest { query -> repository.search(query) },
+                _searchQuery,
+                _filter,
+                repository.observeApiKey(),
+            ) { items, query, filter, apiKey ->
+                InventoryUiState(
+                    items = items.filter { it.matches(filter) },
+                    searchQuery = query,
+                    filter = filter,
+                    isLoading = false,
+                    hasApiKey = ApiKeyValidator.isValid(apiKey),
+                    totalCount = items.size,
+                    listedCount = items.count { it.listings.isNotEmpty() },
+                    draftCount = items.count { it.isDraft },
+                )
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = InventoryUiState(),
+            )
 
-    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
-    val uiState: StateFlow<InventoryUiState> = combine(
-        _searchQuery
-            .debounce(200)
-            .flatMapLatest { query -> repository.search(query) },
-        _searchQuery,
-        _filter,
-        repository.observeApiKey()
-    ) { items, query, filter, apiKey ->
-        InventoryUiState(
-            items = items.filter { it.matches(filter) },
-            searchQuery = query,
-            filter = filter,
-            isLoading = false,
-            hasApiKey = ApiKeyValidator.isValid(apiKey),
-            totalCount = items.size,
-            listedCount = items.count { it.listings.isNotEmpty() },
-            draftCount = items.count { it.isDraft }
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = InventoryUiState()
-    )
+        private fun Item.matches(filter: InventoryFilter): Boolean =
+            when (filter) {
+                InventoryFilter.ALL -> true
+                InventoryFilter.LISTED -> listings.isNotEmpty()
+                InventoryFilter.UNLISTED -> listings.isEmpty() && !isDraft
+                InventoryFilter.DRAFT -> isDraft
+            }
 
-    private fun Item.matches(filter: InventoryFilter): Boolean = when (filter) {
-        InventoryFilter.ALL -> true
-        InventoryFilter.LISTED -> listings.isNotEmpty()
-        InventoryFilter.UNLISTED -> listings.isEmpty() && !isDraft
-        InventoryFilter.DRAFT -> isDraft
+        fun onSearchQueryChange(query: String) {
+            _searchQuery.value = query
+        }
+
+        fun onFilterChange(filter: InventoryFilter) {
+            _filter.value = filter
+        }
+
+        fun deleteItem(id: Long) {
+            viewModelScope.launch { repository.delete(id) }
+        }
     }
-
-    fun onSearchQueryChange(query: String) {
-        _searchQuery.value = query
-    }
-
-    fun onFilterChange(filter: InventoryFilter) {
-        _filter.value = filter
-    }
-
-    fun deleteItem(id: Long) {
-        viewModelScope.launch { repository.delete(id) }
-    }
-}

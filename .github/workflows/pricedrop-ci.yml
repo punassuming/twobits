@@ -4,21 +4,23 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'apps/pricedrop/**'
+      - 'apps/price-drop/**'
       - 'shared/**'
       - 'gradle/libs.versions.toml'
       - '.github/workflows/pricedrop-ci.yml'
       - '.github/workflows/pricedrop-release.yml'
       - '.github/workflows/reusable-validate.yml'
+      - '.github/workflows/reusable-build.yml'
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'apps/pricedrop/**'
+      - 'apps/price-drop/**'
       - 'shared/**'
       - 'gradle/libs.versions.toml'
       - '.github/workflows/pricedrop-ci.yml'
       - '.github/workflows/pricedrop-release.yml'
       - '.github/workflows/reusable-validate.yml'
+      - '.github/workflows/reusable-build.yml'
   workflow_dispatch:
 
 concurrency:
@@ -30,8 +32,8 @@ jobs:
     name: Validate
     uses: ./.github/workflows/reusable-validate.yml
     with:
-      changelog_path: apps/pricedrop/CHANGELOG.md
-      app_root: apps/pricedrop
+      changelog_path: apps/price-drop/CHANGELOG.md
+      app_root: apps/price-drop
       require_changelog_update: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
       base_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
       head_sha: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
@@ -62,21 +64,19 @@ jobs:
           packages: "platforms;android-35 build-tools;35.0.0"
 
       - name: Grant execute permission for gradlew
-        run: chmod +x apps/pricedrop/gradlew
+        run: chmod +x apps/price-drop/gradlew
 
       - name: Build, lint & test
-        working-directory: apps/pricedrop
+        working-directory: apps/price-drop
         shell: bash
-        run: |
-          set -euo pipefail
-          ./gradlew assembleRelease testDebugUnitTest lintRelease --no-daemon
+        run: ./gradlew assembleRelease testDebugUnitTest lintRelease ktlintCheck detekt --no-daemon
 
       - name: Upload lint report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pricedrop-lint-report-${{ github.run_number }}
-          path: apps/pricedrop/app/build/reports/lint-results-release.*
+          path: apps/price-drop/app/build/reports/lint-results-*.*
           if-no-files-found: ignore
           retention-days: 14
 
@@ -85,25 +85,30 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pricedrop-test-results-${{ github.run_number }}
-          path: apps/pricedrop/app/build/reports/tests/
+          path: apps/price-drop/app/build/reports/tests/
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Record android/verified commit status
         if: success()
+        continue-on-error: true
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -s -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Content-Type: application/json" \
+          set -euo pipefail
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"assembleRelease, tests, lint all passed\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
+            -d "{\"state\":\"success\",\"context\":\"android/verified\",\"description\":\"assembleRelease testDebugUnitTest lintRelease ktlintCheck detekt passed\",\"target_url\":\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"
 
       - name: Upload release APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: pricedrop-release-${{ github.sha }}
-          path: apps/pricedrop/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
+          path: apps/price-drop/app/build/outputs/apk/release/app-*release*.apk
+          if-no-files-found: warn
           retention-days: 14

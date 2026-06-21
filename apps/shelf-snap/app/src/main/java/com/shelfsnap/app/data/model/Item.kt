@@ -33,7 +33,7 @@ data class Item(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     // ── v3: primary photo index ───────────────────────────────────────────────
-    val primaryPhotoIndex: Int = 0
+    val primaryPhotoIndex: Int = 0,
 ) {
     /** True when the item has at least one active (not sold) platform listing. */
     val hasActiveListing: Boolean

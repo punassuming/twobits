@@ -64,9 +64,6 @@ scrybe/
         ├── service/
         │   └── recording/            ← :service:recording
         ├── workers/                  ← :workers
-        ├── scripts/
-        │   ├── manage-changelog.py   ← Changelog validation / promotion
-        │   └── validate-manifests.py ← CI manifest validation
         ├── gradle/
         │   └── libs.versions.toml    ← Version catalog
         ├── detekt.yml                ← Static analysis config
@@ -111,7 +108,7 @@ docker compose run --rm android-dev
 docker compose run --rm android-dev ./gradlew assembleDebug
 docker compose run --rm android-dev ./gradlew lint
 docker compose run --rm android-dev ./gradlew testDebugUnitTest
-docker compose run --rm android-dev python3 scripts/validate-manifests.py
+docker compose run --rm android-dev python3 ../../scripts/validate-manifests.py
 ```
 
 The `android-dev` service mounts the repository into `/workspace`, uses `apps/scrybe/` as its working directory, and persists the Gradle cache in a named Docker volume. The image provides Gradle 8.9 on JDK 17 together with the Android SDK platform tools, API 35, and build-tools 35.0.0.
@@ -146,8 +143,8 @@ All commands are run from `apps/scrybe/`.
 | KtLint check | `./gradlew ktlintCheck` | Formatting check |
 | KtLint format | `./gradlew ktlintFormat` | Auto-fix formatting |
 | Full check | `./gradlew check` | Runs lint + tests + detekt + ktlint |
-| Changelog validation | `python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md` | Verifies the required `Unreleased` structure |
-| Manifest validation | `python3 scripts/validate-manifests.py` | Validates all `AndroidManifest.xml` files |
+| Changelog validation | `python3 ../../scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md` | Verifies the required `Unreleased` structure |
+| Manifest validation | `python3 ../../scripts/validate-manifests.py` | Validates all `AndroidManifest.xml` files |
 
 > **Tip:** Append `--no-daemon` to any Gradle command when running in CI or constrained environments to avoid background daemon overhead.
 
@@ -556,8 +553,8 @@ Before requesting a review, make sure:
 - [ ] `./gradlew lint` reports no new issues
 - [ ] `./gradlew ktlintCheck` passes (or run `./gradlew ktlintFormat` to auto-fix)
 - [ ] `./gradlew detekt` passes
-- [ ] `python3 scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md` exits 0
-- [ ] `python3 scripts/validate-manifests.py` exits 0 (if you changed any manifest)
+- [ ] `python3 ../../scripts/manage-changelog.py validate --changelog ../../CHANGELOG.md` exits 0
+- [ ] `python3 ../../scripts/validate-manifests.py` exits 0 (if you changed any manifest)
 - [ ] `CHANGELOG.md` `## Unreleased` reflects the user-facing impact of the change before requesting a merge to `main`
 - [ ] New public interfaces / classes have KDoc comments
 - [ ] Any new Hilt module is installed in the correct component (`SingletonComponent` for app-scoped dependencies)

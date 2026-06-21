@@ -11,7 +11,6 @@ import java.net.SocketTimeoutException
  * user-facing messages shown in the camera screen.
  */
 class VisionAnalysisErrorTest {
-
     @Test
     fun `401 and 403 map to invalid key message`() {
         assertEquals(VisionAnalysisService.ERROR_INVALID_KEY, VisionAnalysisService.friendlyHttpError(401))
@@ -33,7 +32,7 @@ class VisionAnalysisErrorTest {
     fun `timeout maps to timeout message`() {
         assertEquals(
             VisionAnalysisService.ERROR_TIMEOUT,
-            VisionAnalysisService.friendlyNetworkError(SocketTimeoutException("timeout"))
+            VisionAnalysisService.friendlyNetworkError(SocketTimeoutException("timeout")),
         )
     }
 
@@ -41,7 +40,7 @@ class VisionAnalysisErrorTest {
     fun `generic IO error maps to network message`() {
         assertEquals(
             VisionAnalysisService.ERROR_NETWORK,
-            VisionAnalysisService.friendlyNetworkError(IOException("boom"))
+            VisionAnalysisService.friendlyNetworkError(IOException("boom")),
         )
     }
 
@@ -49,7 +48,7 @@ class VisionAnalysisErrorTest {
     fun `unexpected exception maps to unknown message`() {
         assertEquals(
             VisionAnalysisService.ERROR_UNKNOWN,
-            VisionAnalysisService.friendlyNetworkError(IllegalStateException("?"))
+            VisionAnalysisService.friendlyNetworkError(IllegalStateException("?")),
         )
     }
 }

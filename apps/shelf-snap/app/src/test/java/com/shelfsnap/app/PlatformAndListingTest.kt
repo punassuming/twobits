@@ -12,7 +12,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlatformAndListingTest {
-
     @Test
     fun `platform keys round-trip via fromKey`() {
         Platform.entries.forEach { p ->
@@ -28,18 +27,20 @@ class PlatformAndListingTest {
 
     @Test
     fun `hasActiveListing reflects an active listing`() {
-        val item = Item(
-            listings = listOf(PlatformListing("ebay", ListingStatus.ACTIVE, 25.0))
-        )
+        val item =
+            Item(
+                listings = listOf(PlatformListing("ebay", ListingStatus.ACTIVE, 25.0)),
+            )
         assertTrue(item.hasActiveListing)
         assertFalse(item.hasSold)
     }
 
     @Test
     fun `hasSold reflects a sold listing and is not active`() {
-        val item = Item(
-            listings = listOf(PlatformListing("mercari", ListingStatus.SOLD, 30.0))
-        )
+        val item =
+            Item(
+                listings = listOf(PlatformListing("mercari", ListingStatus.SOLD, 30.0)),
+            )
         assertTrue(item.hasSold)
         assertFalse(item.hasActiveListing)
     }

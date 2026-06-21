@@ -21,6 +21,6 @@ android {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    api("com.revenuecat.purchases:purchases:8.7.0")
+    implementation(libs.kotlinx.coroutines.android)
+    api(libs.revenuecat.purchases)
 }

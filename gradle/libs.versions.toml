@@ -11,8 +11,8 @@
 agp = "8.7.3"
 kotlin = "2.0.21"
 ksp = "2.0.21-1.0.25"
-detekt = "1.23.7"                 # Scrybe only
-ktlint = "12.1.1"                 # Scrybe only
+detekt = "1.23.7"
+ktlint = "12.1.1"
 
 # ── AndroidX core ─────────────────────────────────────────────────────────────
 appcompat = "1.7.0"               # Scrybe only

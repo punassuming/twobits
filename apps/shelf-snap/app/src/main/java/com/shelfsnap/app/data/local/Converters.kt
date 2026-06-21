@@ -8,7 +8,6 @@ import com.shelfsnap.app.data.model.MarketResearch
 import com.shelfsnap.app.data.model.PlatformListing
 
 class Converters {
-
     private val gson = Gson()
 
     @TypeConverter

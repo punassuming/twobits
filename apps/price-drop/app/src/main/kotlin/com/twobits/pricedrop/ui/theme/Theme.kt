@@ -1,0 +1,98 @@
+package com.twobits.pricedrop.ui.theme
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import com.twobits.design.ThemeMode
+import com.twobits.design.TwoBitsShapes
+import com.twobits.design.TwoBitsTypography
+
+private val LightColorScheme =
+    lightColorScheme(
+        primary = Primary,
+        onPrimary = OnPrimary,
+        primaryContainer = PrimaryContainer,
+        onPrimaryContainer = OnPrimaryContainer,
+        secondary = Secondary,
+        onSecondary = OnSecondary,
+        secondaryContainer = SecondaryContainer,
+        onSecondaryContainer = OnSecondaryContainer,
+        tertiary = Tertiary,
+        onTertiary = OnTertiary,
+        tertiaryContainer = TertiaryContainer,
+        onTertiaryContainer = OnTertiaryContainer,
+        background = Background,
+        onBackground = OnBackground,
+        surface = Surface,
+        onSurface = OnSurface,
+        surfaceVariant = SurfaceVariant,
+        onSurfaceVariant = OnSurfaceVariant,
+        surfaceContainerHighest = SurfaceContainerHighest,
+        surfaceContainerHigh = SurfaceContainerHigh,
+        surfaceContainer = SurfaceContainer,
+        surfaceContainerLow = SurfaceContainerLow,
+        surfaceContainerLowest = SurfaceContainerLowest,
+        outline = Outline,
+        outlineVariant = OutlineVariant,
+        error = Error,
+        onError = OnError,
+        errorContainer = ErrorContainer,
+        onErrorContainer = OnErrorContainer,
+    )
+
+private val DarkColorScheme =
+    darkColorScheme(
+        primary = DarkPrimary,
+        onPrimary = DarkOnPrimary,
+        primaryContainer = DarkPrimaryContainer,
+        onPrimaryContainer = DarkOnPrimaryContainer,
+        secondary = DarkSecondary,
+        onSecondary = DarkOnSecondary,
+        secondaryContainer = DarkSecondaryContainer,
+        onSecondaryContainer = DarkOnSecondaryContainer,
+        tertiary = DarkTertiary,
+        onTertiary = DarkOnTertiary,
+        tertiaryContainer = DarkTertiaryContainer,
+        onTertiaryContainer = DarkOnTertiaryContainer,
+        background = DarkBackground,
+        onBackground = DarkOnBackground,
+        surface = DarkSurface,
+        onSurface = DarkOnSurface,
+        surfaceVariant = DarkSurfaceVariant,
+        onSurfaceVariant = DarkOnSurfaceVariant,
+        surfaceContainerLowest = DarkSurfaceContainerLowest,
+        surfaceContainerLow = DarkSurfaceContainerLow,
+        surfaceContainer = DarkSurfaceContainer,
+        surfaceContainerHigh = DarkSurfaceContainerHigh,
+        surfaceContainerHighest = DarkSurfaceContainerHighest,
+        outline = DarkOutline,
+        outlineVariant = DarkOutlineVariant,
+        error = DarkError,
+        onError = DarkOnError,
+        errorContainer = DarkErrorContainer,
+        onErrorContainer = DarkOnErrorContainer,
+    )
+
+@Composable
+fun PriceDropTheme(
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    content: @Composable () -> Unit,
+) {
+    val darkTheme =
+        when (themeMode) {
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+        }
+    val colorScheme =
+        if (darkTheme) DarkColorScheme else LightColorScheme
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = TwoBitsTypography,
+        shapes = TwoBitsShapes,
+        content = content,
+    )
+}

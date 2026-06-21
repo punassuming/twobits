@@ -13,3 +13,4 @@ apps/scrybe/.gradle-user-home-ci/
 .guh/
 .gradle-project-cache/
 local.properties
+.claude/worktrees/

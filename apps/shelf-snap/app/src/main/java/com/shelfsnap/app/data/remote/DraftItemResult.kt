@@ -14,5 +14,5 @@ data class DraftItemResult(
     val estimatedValue: Double = 0.0,
     /** 0-100 confidence score from the model. */
     val confidencePercent: Int = 0,
-    val error: String? = null
+    val error: String? = null,
 )

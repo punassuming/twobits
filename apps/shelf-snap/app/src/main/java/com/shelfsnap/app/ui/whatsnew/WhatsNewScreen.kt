@@ -13,14 +13,20 @@ fun WhatsNewScreen(
     onNavigate: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val releases = remember {
-        val text = runCatching {
-            context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
-        }.getOrNull().orEmpty()
-        ReleaseNotesParser.parseReleaseHistory(text)
-            .mapIndexed { i, notes -> notes.toWhatsNewRelease(isLatest = i == 0) }
-            .filter { it.categories.isNotEmpty() }
-    }
+    val releases =
+        remember {
+            val text =
+                runCatching {
+                    context.assets
+                        .open("CHANGELOG.md")
+                        .bufferedReader()
+                        .use { it.readText() }
+                }.getOrNull().orEmpty()
+            ReleaseNotesParser
+                .parseReleaseHistory(text)
+                .mapIndexed { i, notes -> notes.toWhatsNewRelease(isLatest = i == 0) }
+                .filter { it.categories.isNotEmpty() }
+        }
     WhatsNewScreenLayout(
         title = "What's New",
         releases = releases,

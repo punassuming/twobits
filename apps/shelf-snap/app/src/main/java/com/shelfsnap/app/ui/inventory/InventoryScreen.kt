@@ -116,29 +116,37 @@ fun InventoryScreen(
                 TextField(
                     value = uiState.searchQuery,
                     onValueChange = viewModel::onSearchQueryChange,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     placeholder = { Text(stringResource(R.string.search_items)) },
                     leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null,
-                            modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
                     },
                     trailingIcon = {
                         if (uiState.searchQuery.isNotEmpty()) {
                             IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = null,
-                                    modifier = Modifier.size(16.dp))
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
                             }
                         }
                     },
                     singleLine = true,
                     shape = RoundedCornerShape(20.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                    ),
+                    colors =
+                        TextFieldDefaults.colors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                        ),
                 )
 
                 if (!uiState.isLoading) {
@@ -161,34 +169,37 @@ fun InventoryScreen(
             }
 
             when {
-                uiState.isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    androidx.compose.material3.CircularProgressIndicator()
-                }
-
-                uiState.items.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    if (uiState.searchQuery.isNotBlank()) {
-                        Text(
-                            text = stringResource(R.string.no_items_match_search),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(32.dp),
-                        )
-                    } else {
-                        InventoryWalkthrough(onSettingsClick = onSettingsClick)
+                uiState.isLoading ->
+                    Box(Modifier.fillMaxSize(), Alignment.Center) {
+                        androidx.compose.material3.CircularProgressIndicator()
                     }
-                }
 
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(uiState.items, key = { it.id }) { item ->
-                        InventoryItemCard(
-                            item = item,
-                            onClick = { onItemClick(item.id) },
-                        )
+                uiState.items.isEmpty() ->
+                    Box(Modifier.fillMaxSize(), Alignment.Center) {
+                        if (uiState.searchQuery.isNotBlank()) {
+                            Text(
+                                text = stringResource(R.string.no_items_match_search),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(32.dp),
+                            )
+                        } else {
+                            InventoryWalkthrough(onSettingsClick = onSettingsClick)
+                        }
                     }
-                }
+
+                else ->
+                    LazyColumn(
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 88.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(uiState.items, key = { it.id }) { item ->
+                            InventoryItemCard(
+                                item = item,
+                                onClick = { onItemClick(item.id) },
+                            )
+                        }
+                    }
             }
         }
     }
@@ -196,15 +207,17 @@ fun InventoryScreen(
 
 @Composable
 private fun InventoryWalkthrough(onSettingsClick: () -> Unit) {
-    val steps = listOf(
-        Triple(Icons.Default.PhotoCamera, R.string.walkthrough_step1_title, R.string.walkthrough_step1_body),
-        Triple(Icons.Default.AutoAwesome, R.string.walkthrough_step2_title, R.string.walkthrough_step2_body),
-        Triple(Icons.Default.Sell, R.string.walkthrough_step3_title, R.string.walkthrough_step3_body),
-    )
+    val steps =
+        listOf(
+            Triple(Icons.Default.PhotoCamera, R.string.walkthrough_step1_title, R.string.walkthrough_step1_body),
+            Triple(Icons.Default.AutoAwesome, R.string.walkthrough_step2_title, R.string.walkthrough_step2_body),
+            Triple(Icons.Default.Sell, R.string.walkthrough_step3_title, R.string.walkthrough_step3_body),
+        )
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 32.dp, vertical = 16.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
@@ -221,10 +234,11 @@ private fun InventoryWalkthrough(onSettingsClick: () -> Unit) {
                 verticalAlignment = Alignment.Top,
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    modifier =
+                        Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -263,9 +277,10 @@ private fun InventoryItemCard(
 ) {
     val estimateColor = LocalEstimateLabel.current
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shape = RoundedCornerShape(16.dp),
     ) {
@@ -284,11 +299,15 @@ private fun InventoryItemCard(
                     verticalAlignment = Alignment.Top,
                 ) {
                     Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                        val title = buildString {
-                            val parts = listOf(item.brand, item.model).filter { it.isNotBlank() }
-                            if (parts.isNotEmpty()) append(parts.joinToString(" "))
-                            else append(item.category)
-                        }
+                        val title =
+                            buildString {
+                                val parts = listOf(item.brand, item.model).filter { it.isNotBlank() }
+                                if (parts.isNotEmpty()) {
+                                    append(parts.joinToString(" "))
+                                } else {
+                                    append(item.category)
+                                }
+                            }
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleSmall,
@@ -311,8 +330,12 @@ private fun InventoryItemCard(
                             text = "$" + "%.0f".format(item.estimatedValue),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (item.confidencePercent >= 90) estimateColor
-                                    else MaterialTheme.colorScheme.onSurface,
+                            color =
+                                if (item.confidencePercent >= 90) {
+                                    estimateColor
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                         )
                         if (item.confidencePercent > 0) {
                             Text(
@@ -357,17 +380,19 @@ private fun InventoryFilterRow(
     draftCount: Int,
     onFilterChange: (InventoryFilter) -> Unit,
 ) {
-    val chips = listOf(
-        InventoryFilter.ALL to stringResource(R.string.filter_all, totalCount),
-        InventoryFilter.LISTED to stringResource(R.string.filter_listed, listedCount),
-        InventoryFilter.UNLISTED to stringResource(R.string.filter_unlisted),
-        InventoryFilter.DRAFT to stringResource(R.string.filter_drafts, draftCount),
-    )
+    val chips =
+        listOf(
+            InventoryFilter.ALL to stringResource(R.string.filter_all, totalCount),
+            InventoryFilter.LISTED to stringResource(R.string.filter_listed, listedCount),
+            InventoryFilter.UNLISTED to stringResource(R.string.filter_unlisted),
+            InventoryFilter.DRAFT to stringResource(R.string.filter_drafts, draftCount),
+        )
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         chips.forEach { (mode, label) ->
@@ -383,18 +408,20 @@ private fun InventoryFilterRow(
 @Composable
 private fun ListingStatusPill(item: Item) {
     when {
-        item.hasSold -> StatusPill(
-            label = stringResource(R.string.status_sold),
-            icon = Icons.Default.CheckCircle,
-            container = MaterialTheme.colorScheme.secondaryContainer,
-            content = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
-        item.hasActiveListing -> StatusPill(
-            label = stringResource(R.string.status_listed),
-            icon = Icons.Default.Sell,
-            container = MaterialTheme.colorScheme.primaryContainer,
-            content = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
+        item.hasSold ->
+            StatusPill(
+                label = stringResource(R.string.status_sold),
+                icon = Icons.Default.CheckCircle,
+                container = MaterialTheme.colorScheme.secondaryContainer,
+                content = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        item.hasActiveListing ->
+            StatusPill(
+                label = stringResource(R.string.status_listed),
+                icon = Icons.Default.Sell,
+                container = MaterialTheme.colorScheme.primaryContainer,
+                content = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
     }
 }
 
@@ -424,10 +451,11 @@ private fun PlatformDots(item: Item) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         platforms.forEach { platform ->
             Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(platform.brandColor()),
+                modifier =
+                    Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(platform.brandColor()),
             )
         }
     }
@@ -440,10 +468,11 @@ private fun SummaryBanner(
     onSummaryClick: () -> Unit,
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable(onClick = onSummaryClick),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .clickable(onClick = onSummaryClick),
         color = MaterialTheme.colorScheme.primaryContainer,
         shape = RoundedCornerShape(16.dp),
     ) {
@@ -459,13 +488,14 @@ private fun SummaryBanner(
                 modifier = Modifier.size(18.dp),
             )
             Text(
-                text = buildString {
-                    append(itemCount)
-                    append(" item")
-                    if (itemCount != 1) append("s")
-                    append("  ·  Est. total: \$")
-                    append(totalEstimate.toInt())
-                },
+                text =
+                    buildString {
+                        append(itemCount)
+                        append(" item")
+                        if (itemCount != 1) append("s")
+                        append("  ·  Est. total: \$")
+                        append(totalEstimate.toInt())
+                    },
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -499,9 +529,10 @@ internal fun ConditionBadge(condition: Condition) {
     }
 }
 
-fun conditionColor(condition: Condition): Color = when (condition) {
-    Condition.EXCELLENT -> ConditionExcellent
-    Condition.GOOD -> ConditionGood
-    Condition.FAIR -> ConditionFair
-    Condition.POOR -> ConditionPoor
-}
+fun conditionColor(condition: Condition): Color =
+    when (condition) {
+        Condition.EXCELLENT -> ConditionExcellent
+        Condition.GOOD -> ConditionGood
+        Condition.FAIR -> ConditionFair
+        Condition.POOR -> ConditionPoor
+    }

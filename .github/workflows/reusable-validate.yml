@@ -43,14 +43,14 @@ jobs:
           fetch-depth: 0
 
       - name: Validate changelog structure
-        run: python3 apps/scrybe/scripts/manage-changelog.py validate --changelog ${{ inputs.changelog_path }}
+        run: python3 scripts/manage-changelog.py validate --changelog ${{ inputs.changelog_path }}
 
       - name: Require changelog update for main-bound changes
         if: inputs.require_changelog_update && inputs.base_sha != '' && inputs.head_sha != ''
         shell: bash
         run: |
           set -euo pipefail
-          python3 apps/scrybe/scripts/manage-changelog.py \
+          python3 scripts/manage-changelog.py \
             check-updated \
             --base-ref "${{ inputs.base_sha }}" \
             --head-ref "${{ inputs.head_sha }}" \
@@ -68,4 +68,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate AndroidManifest.xml files
-        run: python3 apps/scrybe/scripts/validate-manifests.py --root ${{ inputs.app_root }}
+        run: python3 scripts/validate-manifests.py --root ${{ inputs.app_root }}
