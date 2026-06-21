@@ -132,9 +132,18 @@ fun WatchScreen(
     if (showAddSheet) {
         AddOrAskSheet(
             onDismiss = { showAddSheet = false },
-            onSearch = { showAddSheet = false; onNavigateToSearch() },
-            onBarcode = { showAddSheet = false; onNavigateToBarcode() },
-            onAsk = { showAddSheet = false; onNavigateToAsk() },
+            onSearch = {
+                showAddSheet = false
+                onNavigateToSearch()
+            },
+            onBarcode = {
+                showAddSheet = false
+                onNavigateToBarcode()
+            },
+            onAsk = {
+                showAddSheet = false
+                onNavigateToAsk()
+            },
         )
     }
 }
@@ -159,13 +168,18 @@ private fun EmptyWatchlist() {
 }
 
 @Composable
-private fun WatchCard(product: WatchedProduct, onClick: () -> Unit, onRemove: () -> Unit) {
+private fun WatchCard(
+    product: WatchedProduct,
+    onClick: () -> Unit,
+    onRemove: () -> Unit,
+) {
     val fmt = NumberFormat.getCurrencyInstance(Locale.US)
-    val pctChange = if (product.trackedHigh > 0 && product.currentPrice > 0) {
-        ((product.currentPrice - product.trackedHigh) / product.trackedHigh * 100).toInt()
-    } else {
-        0
-    }
+    val pctChange =
+        if (product.trackedHigh > 0 && product.currentPrice > 0) {
+            ((product.currentPrice - product.trackedHigh) / product.trackedHigh * 100).toInt()
+        } else {
+            0
+        }
 
     Card(
         onClick = onClick,

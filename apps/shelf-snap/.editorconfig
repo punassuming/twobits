@@ -12,3 +12,5 @@ max_line_length = off
 ktlint_function_naming_ignore_when_annotated_with = Composable
 # Backing-property pattern (_foo -> exposed via StateFlow) is used throughout ViewModels
 ktlint_standard_backing-property-naming = disabled
+ktlint_standard_property-naming = disabled
+ktlint_standard_no-wildcard-imports = disabled

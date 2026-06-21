@@ -7,7 +7,6 @@ package com.shelfsnap.app.util
  * reused by both the Settings screen and the analysis pre-check.
  */
 object ApiKeyValidator {
-
     /** OpenAI keys are well over this length; this only guards against obvious junk. */
     private const val MIN_LENGTH = 20
 

@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.io.File
 import javax.inject.Inject
 
 data class SummaryUiState(
@@ -22,53 +21,57 @@ data class SummaryUiState(
     val totalValue: Double = 0.0,
     val isLoading: Boolean = true,
     val exportedPath: String? = null,
-    val exportError: String? = null
+    val exportError: String? = null,
 )
 
 @HiltViewModel
-class SummaryViewModel @Inject constructor(
-    private val repository: ItemRepository,
-    private val csvExporter: CsvExporter
-) : ViewModel() {
-
-    private val _extra = MutableStateFlow(
-        Pair<String?, String?>(null, null) // exportedPath, exportError
-    )
-
-    val uiState: StateFlow<SummaryUiState> = combine(
-        repository.observeAll(),
-        _extra
-    ) { items, extra ->
-        SummaryUiState(
-            items = items,
-            totalValue = items.sumOf { it.estimatedValue },
-            isLoading = false,
-            exportedPath = extra.first,
-            exportError = extra.second
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = SummaryUiState()
-    )
-
-    fun exportCsv(context: Context) {
-        viewModelScope.launch {
-            val items = uiState.value.items
-            val outputDir = context.getExternalFilesDir(null) ?: context.filesDir
-            val result = csvExporter.export(items, outputDir)
-            result.fold(
-                onSuccess = { file ->
-                    _extra.update { Pair(file.absolutePath, null) }
-                },
-                onFailure = { e ->
-                    _extra.update { Pair(null, e.message ?: "Unknown error") }
-                }
+class SummaryViewModel
+    @Inject
+    constructor(
+        private val repository: ItemRepository,
+        private val csvExporter: CsvExporter,
+    ) : ViewModel() {
+        private val _extra =
+            MutableStateFlow(
+                // exportedPath, exportError
+                Pair<String?, String?>(null, null),
             )
+
+        val uiState: StateFlow<SummaryUiState> =
+            combine(
+                repository.observeAll(),
+                _extra,
+            ) { items, extra ->
+                SummaryUiState(
+                    items = items,
+                    totalValue = items.sumOf { it.estimatedValue },
+                    isLoading = false,
+                    exportedPath = extra.first,
+                    exportError = extra.second,
+                )
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = SummaryUiState(),
+            )
+
+        fun exportCsv(context: Context) {
+            viewModelScope.launch {
+                val items = uiState.value.items
+                val outputDir = context.getExternalFilesDir(null) ?: context.filesDir
+                val result = csvExporter.export(items, outputDir)
+                result.fold(
+                    onSuccess = { file ->
+                        _extra.update { Pair(file.absolutePath, null) }
+                    },
+                    onFailure = { e ->
+                        _extra.update { Pair(null, e.message ?: "Unknown error") }
+                    },
+                )
+            }
+        }
+
+        fun clearExportStatus() {
+            _extra.update { Pair(null, null) }
         }
     }
-
-    fun clearExportStatus() {
-        _extra.update { Pair(null, null) }
-    }
-}

@@ -31,25 +31,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-private data class OnboardingPage(val icon: ImageVector, val title: String, val body: String)
-
-private val PAGES = listOf(
-    OnboardingPage(
-        icon = Icons.Filled.Notifications,
-        title = "Never overpay",
-        body = "PriceDrop watches products you care about and alerts you the moment the price falls below your target.",
-    ),
-    OnboardingPage(
-        icon = Icons.Filled.Lock,
-        title = "Your privacy first",
-        body = "Price checks run through our secure proxy. Your API keys never leave your device. No account required.",
-    ),
-    OnboardingPage(
-        icon = Icons.Filled.AutoAwesome,
-        title = "AI-powered research",
-        body = "Ask our AI to find deals, look up price history, or discover coupons — all in plain language.",
-    ),
+private data class OnboardingPage(
+    val icon: ImageVector,
+    val title: String,
+    val body: String,
 )
+
+private val PAGES =
+    listOf(
+        OnboardingPage(
+            icon = Icons.Filled.Notifications,
+            title = "Never overpay",
+            body = "PriceDrop watches products you care about and alerts you the moment the price falls below your target.",
+        ),
+        OnboardingPage(
+            icon = Icons.Filled.Lock,
+            title = "Your privacy first",
+            body = "Price checks run through our secure proxy. Your API keys never leave your device. No account required.",
+        ),
+        OnboardingPage(
+            icon = Icons.Filled.AutoAwesome,
+            title = "AI-powered research",
+            body = "Ask our AI to find deals, look up price history, or discover coupons — all in plain language.",
+        ),
+    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

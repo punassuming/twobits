@@ -12,12 +12,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class DropsViewModel @Inject constructor(
-    private val dropsRepo: DropsRepository,
-) : ViewModel() {
+class DropsViewModel
+    @Inject
+    constructor(
+        private val dropsRepo: DropsRepository,
+    ) : ViewModel() {
+        val drops: StateFlow<List<Drop>> =
+            dropsRepo
+                .observeActiveDrops()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val drops: StateFlow<List<Drop>> = dropsRepo.observeActiveDrops()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    fun dismiss(id: Long) { viewModelScope.launch { dropsRepo.dismiss(id) } }
-}
+        fun dismiss(id: Long) {
+            viewModelScope.launch { dropsRepo.dismiss(id) }
+        }
+    }

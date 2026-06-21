@@ -87,15 +87,20 @@ fun DropsScreen(
 }
 
 @Composable
-private fun DropCard(drop: Drop, onClick: () -> Unit, onDismiss: () -> Unit) {
+private fun DropCard(
+    drop: Drop,
+    onClick: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     val fmt = NumberFormat.getCurrencyInstance(Locale.US)
-    val (icon, label) = when (drop.type) {
-        "below_target" -> Icons.Filled.CheckCircle to "Below target"
-        "coupon" -> Icons.Filled.LocalOffer to "Coupon available"
-        "big_drop" -> Icons.Filled.TrendingDown to "Big drop"
-        "historical_low" -> Icons.Filled.TrendingDown to "Historical low"
-        else -> Icons.Filled.Notifications to "Price drop"
-    }
+    val (icon, label) =
+        when (drop.type) {
+            "below_target" -> Icons.Filled.CheckCircle to "Below target"
+            "coupon" -> Icons.Filled.LocalOffer to "Coupon available"
+            "big_drop" -> Icons.Filled.TrendingDown to "Big drop"
+            "historical_low" -> Icons.Filled.TrendingDown to "Historical low"
+            else -> Icons.Filled.Notifications to "Price drop"
+        }
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),

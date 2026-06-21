@@ -3,17 +3,17 @@ package com.twobits.pricedrop.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ── Light palette — PriceDrop DS: primary=Coral Red, secondary=Green, tertiary=Amber ──
-val Primary = Color(0xFFC0382A)           // Coral red light
+val Primary = Color(0xFFC0382A) // Coral red light
 val OnPrimary = Color(0xFFFFFFFF)
 val PrimaryContainer = Color(0xFFFFDAD6)
 val OnPrimaryContainer = Color(0xFF410000)
 
-val Secondary = Color(0xFF1E8E5A)         // Green light
+val Secondary = Color(0xFF1E8E5A) // Green light
 val OnSecondary = Color(0xFFFFFFFF)
 val SecondaryContainer = Color(0xFFA4F2C5)
 val OnSecondaryContainer = Color(0xFF003820)
 
-val Tertiary = Color(0xFF9A6A00)          // Amber light — Pro accent
+val Tertiary = Color(0xFF9A6A00) // Amber light — Pro accent
 val OnTertiary = Color(0xFFFFFFFF)
 val TertiaryContainer = Color(0xFFFFE98B)
 val OnTertiaryContainer = Color(0xFF3D2E00)
@@ -39,17 +39,17 @@ val ErrorContainer = Color(0xFFFFDAD6)
 val OnErrorContainer = Color(0xFF410000)
 
 // ── Dark palette — PriceDrop DS: primary=Coral Red, secondary=Green, tertiary=Amber ──
-val DarkPrimary = Color(0xFFFF8066)       // Coral red dark
+val DarkPrimary = Color(0xFFFF8066) // Coral red dark
 val DarkOnPrimary = Color(0xFF1A0600)
 val DarkPrimaryContainer = Color(0xFF3D1600)
 val DarkOnPrimaryContainer = Color(0xFFFFD9CF)
 
-val DarkSecondary = Color(0xFF88D7A8)     // Green dark
+val DarkSecondary = Color(0xFF88D7A8) // Green dark
 val DarkOnSecondary = Color(0xFF003820)
 val DarkSecondaryContainer = Color(0xFF005231)
 val DarkOnSecondaryContainer = Color(0xFFA4F2C5)
 
-val DarkTertiary = Color(0xFFFFD580)      // Amber dark — Pro accent
+val DarkTertiary = Color(0xFFFFD580) // Amber dark — Pro accent
 val DarkOnTertiary = Color(0xFF3D2E00)
 val DarkTertiaryContainer = Color(0xFF584500)
 val DarkOnTertiaryContainer = Color(0xFFFFE98B)

@@ -6,19 +6,9 @@
 
 ### Improvements
 
-* `shared/network` now provides a `Json` (kotlinx.serialization) singleton in addition to `OkHttpClient`, consolidating serialization config alongside the HTTP client
-
 ### Fixes
 
-* ktlint and detekt quality gates now run in CI and locally (pre-commit hook), matching Scrybe
-* shared scripts (manage-changelog.py, validate-manifests.py) moved to repo-level scripts/ — release workflow paths updated
-* CI and release workflows consolidated into reusable-build.yml and reusable-release.yml; per-app workflows are now thin callers
-* shelf-snap-ci.yml build job inlined (reusable-build.yml doesn't exist on main yet; will re-wire once it lands)
-* shared/settings.gradle.kts now declares the version catalog so shared modules can use libs.* references
-* app/build.gradle.kts ktlint fixes: trailing commas and multiline-expression alignment
-* shared/network, shared/common, shared/billing, shared/api-keys build.gradle.kts now reference the shared version catalog (libs.*) instead of hardcoded version strings
-* Gradle parallel/caching/configuration-cache flags enabled for faster builds
-* shared/design Compose BOM updated to 2024.12.01 (was hardcoded 2024.06.00)
+* ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
 
 ## 1.11.0 (2026-06-19)
 

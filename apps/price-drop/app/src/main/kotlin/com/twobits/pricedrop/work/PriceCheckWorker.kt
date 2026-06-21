@@ -25,7 +25,6 @@ class PriceCheckWorker(
     appContext: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
-
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface Deps {
@@ -44,7 +43,12 @@ class PriceCheckWorker(
             val prefs = deps.dataStore().data.first()
             val quietNow = (prefs[SettingsPrefs.QUIET_HOURS] ?: false) && isQuietTime()
 
-            val products = deps.watchlistRepository().observeAll().first().filter { it.isActive }
+            val products =
+                deps
+                    .watchlistRepository()
+                    .observeAll()
+                    .first()
+                    .filter { it.isActive }
             for (product in products) {
                 val before = product.currentPrice
                 runCatching { deps.watchlistRepository().refreshPrice(product.id) }

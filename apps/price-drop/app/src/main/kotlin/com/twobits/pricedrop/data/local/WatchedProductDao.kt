@@ -30,5 +30,9 @@ interface WatchedProductDao {
     suspend fun deactivate(id: Long)
 
     @Query("UPDATE watched_products SET currentPrice = :price, lastCheckedAt = :checkedAt WHERE id = :id")
-    suspend fun updatePrice(id: Long, price: Double, checkedAt: Long)
+    suspend fun updatePrice(
+        id: Long,
+        price: Double,
+        checkedAt: Long,
+    )
 }

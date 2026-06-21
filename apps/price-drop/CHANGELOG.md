@@ -6,35 +6,9 @@
 
 ### Improvements
 
-**Watch screen** — filter chips now work:
-* tapping "Drops", "Coupons", or "Big drops" filters the watchlist to products with matching active alerts
-* "All" restores the full list
-
-**Product detail** — refresh errors are now surfaced:
-* pull-to-refresh failures show a snackbar instead of silently doing nothing
-
-**Barcode scan** — camera bind failures now show an error card instead of a frozen preview
-
-* ktlint and detekt quality gates now run locally (pre-commit hook) and in CI for PriceDrop, matching Scrybe
-* shared scripts (manage-changelog.py) moved to repo-level scripts/ — release workflow paths updated
-* What's New screen now uses the shared ReleaseNotesParser and WhatsNewScreenLayout — structured groups, animated expand/collapse, and "Current version" badge now visible
-* CI and release workflows consolidated into reusable-build.yml and reusable-release.yml; per-app workflows are now thin callers
-* pricedrop-ci.yml build job inlined (reusable-build.yml doesn't exist on main yet; will re-wire once it lands)
-* shared/settings.gradle.kts now declares the version catalog so shared modules can use libs.* references
-* app/build.gradle.kts ktlint fixes: trailing commas and multiline-expression alignment
-* shared/network, shared/common, shared/billing, shared/api-keys build.gradle.kts now reference the shared version catalog (libs.*) instead of hardcoded version strings
-* Gradle parallel/caching/configuration-cache flags enabled for faster builds
-
-**Notifications** — aligned appearance with design mockup:
-* per-type accent color: below-target = green, coupon = yellow, big-drop = coral, provider error = red
-* expanded notification body via BigTextStyle: full message + summary sub-text (e.g. "Down from $299.99")
-* "Open item" action button visible in expanded notification shade
-* coupon notifications include a "Copy CODE" action that writes the code to the clipboard
-* `CouponCopyReceiver` registered in manifest to handle the clipboard action
-
-* renamed app module directory from `apps/pricedrop` to `apps/price-drop` for naming consistency with the other apps
-
 ### Fixes
+
+* ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
 
 ## 0.0.1 (2026-06-19)
 

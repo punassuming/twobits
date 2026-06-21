@@ -41,12 +41,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 
-private val SUGGESTIONS = listOf(
-    "Find me the best deal on AirPods Pro",
-    "Watch Sony WH-1000XM5 for under $250",
-    "Is there a coupon for Nike shoes?",
-    "What's the historical low price for a Kindle?",
-)
+private val SUGGESTIONS =
+    listOf(
+        "Find me the best deal on AirPods Pro",
+        "Watch Sony WH-1000XM5 for under $250",
+        "Is there a coupon for Nike shoes?",
+        "What's the historical low price for a Kindle?",
+    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -152,9 +153,10 @@ private fun ChatBubble(message: ChatMessage) {
     ) {
         Card(
             modifier = Modifier.widthIn(max = 300.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
         ) {
             Text(
                 text = message.content,

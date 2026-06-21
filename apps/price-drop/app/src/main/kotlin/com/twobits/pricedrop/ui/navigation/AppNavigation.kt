@@ -20,8 +20,8 @@ import com.twobits.pricedrop.ui.barcode.BarcodeScanScreen
 import com.twobits.pricedrop.ui.drops.DropsScreen
 import com.twobits.pricedrop.ui.onboarding.OnboardingScreen
 import com.twobits.pricedrop.ui.onboarding.OnboardingViewModel
-import com.twobits.pricedrop.ui.product.ProductDetailScreen
 import com.twobits.pricedrop.ui.pro.ProScreen
+import com.twobits.pricedrop.ui.product.ProductDetailScreen
 import com.twobits.pricedrop.ui.search.SearchScreen
 import com.twobits.pricedrop.ui.settings.AIConfigScreen
 import com.twobits.pricedrop.ui.settings.SettingsScreen

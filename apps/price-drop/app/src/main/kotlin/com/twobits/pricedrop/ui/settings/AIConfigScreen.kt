@@ -184,7 +184,10 @@ private fun ProviderCard(
 }
 
 @Composable
-private fun SectionCard2(title: String, content: @Composable () -> Unit) {
+private fun SectionCard2(
+    title: String,
+    content: @Composable () -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
