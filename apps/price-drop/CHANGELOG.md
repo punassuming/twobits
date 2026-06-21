@@ -8,7 +8,16 @@
 
 ### Fixes
 
+## 0.1.0 (2026-06-21)
+
+### Features
+
+### Improvements
+
+### Fixes
+
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 ## 0.0.1 (2026-06-19)
 
