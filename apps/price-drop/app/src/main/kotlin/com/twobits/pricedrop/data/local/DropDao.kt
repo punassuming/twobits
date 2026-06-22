@@ -24,6 +24,9 @@ interface DropDao {
     @Query("UPDATE drops SET isDismissed = 1 WHERE productId = :productId")
     suspend fun dismissAllForProduct(productId: Long)
 
+    @Query("UPDATE drops SET isDismissed = 1")
+    suspend fun dismissAll()
+
     @Query("SELECT COUNT(*) FROM drops WHERE isDismissed = 0")
     fun observeActiveCount(): Flow<Int>
 }

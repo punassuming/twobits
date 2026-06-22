@@ -238,5 +238,6 @@ class ProfilesViewModel
                 iconName = entity.iconName,
                 colorName = entity.colorName,
                 mode = entity.mode?.let { runCatching { RecordingMode.valueOf(it) }.getOrNull() },
+                useCount = entity.useCount,
             )
     }

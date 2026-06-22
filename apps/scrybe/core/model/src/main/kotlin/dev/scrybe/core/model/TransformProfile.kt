@@ -12,4 +12,5 @@ data class TransformProfile(
     val iconName: String = "MIC",
     val colorName: String = "BLUE",
     val mode: RecordingMode? = null,
+    val useCount: Int = 0,
 )

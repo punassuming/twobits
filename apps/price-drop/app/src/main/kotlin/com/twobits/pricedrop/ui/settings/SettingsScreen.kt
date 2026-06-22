@@ -123,11 +123,35 @@ fun SettingsScreen(
                 }
             }
             item {
+                SectionCard(title = "Privacy") {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text("Local-first storage") },
+                            supportingContent = { Text("All data stays on this device. No account required.") },
+                        )
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text("Clear search history") },
+                            trailingContent = {
+                                TextButton(onClick = viewModel::clearSearchHistory) { Text("Clear") }
+                            },
+                        )
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text("Export data") },
+                            supportingContent = { Text("Share watchlist as JSON") },
+                            trailingContent = {
+                                TextButton(onClick = viewModel::exportData) { Text("Export") }
+                            },
+                        )
+                    }
+                }
+            }
+            item {
                 SectionCard(title = "About") {
                     Column {
                         ListItem(
                             headlineContent = { Text("What's new") },
-                            modifier = Modifier.let { if (true) it else it },
                         )
                         TextButton(onClick = onNavigateToWhatsNew, modifier = Modifier.padding(horizontal = 8.dp)) {
                             Text("See release notes")

@@ -55,6 +55,7 @@ data class PlatformListing(
     val platformKey: String,
     val status: ListingStatus,
     val price: Double,
+    val listingUrl: String? = null,
 )
 
 enum class ListingStatus {

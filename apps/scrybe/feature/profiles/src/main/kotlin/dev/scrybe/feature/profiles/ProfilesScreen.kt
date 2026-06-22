@@ -440,6 +440,13 @@ private fun ProfileRowHeader(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            if (profile.useCount > 0) {
+                Text(
+                    text = "Used ${profile.useCount}×",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onSetDefault, enabled = !profile.isDefault) {

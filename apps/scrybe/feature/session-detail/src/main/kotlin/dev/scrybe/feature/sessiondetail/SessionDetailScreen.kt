@@ -335,6 +335,7 @@ fun SessionDetailScreen(
                             onSkipBack = viewModel::skipBackward,
                             onSkipForward = viewModel::skipForward,
                             onSeek = viewModel::seekPlayback,
+                            onCycleSpeed = viewModel::cycleSpeed,
                             onSpeakerClick = { speakerId -> speakerAssignTarget = speakerId },
                             onManageSpeakers = { showSpeakerManageSheet = true },
                         )

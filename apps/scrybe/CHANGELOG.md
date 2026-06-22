@@ -6,6 +6,15 @@
 
 ### Improvements
 
+**Profile use count** — track and display how often each profile is used:
+* "Used N×" caption shown on each profile card after at least one successful transform
+* use count persists in the database (Room migration 14→15) and increments on every successful transform run
+
+**Playback speed pill** — variable-speed audio playback:
+* speed pill appears to the left of transport controls and cycles through 0.5×, 0.75×, 1×, 1.25×, 1.5×, 2× on each tap
+* pill background switches to `primaryContainer` when speed is not 1× for at-a-glance visibility
+* `AudioPlayer.setPlaybackSpeed()` implemented via `MediaPlayer.PlaybackParams` (API 23+, safe on minSdk 26)
+
 ### Fixes
 
 ## 1.18.0 (2026-06-21)

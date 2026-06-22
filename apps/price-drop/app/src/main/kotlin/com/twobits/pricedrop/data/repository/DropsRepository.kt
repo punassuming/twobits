@@ -23,4 +23,6 @@ class DropsRepository
         suspend fun dismiss(id: Long) = dropDao.dismiss(id)
 
         suspend fun dismissAllForProduct(productId: Long) = dropDao.dismissAllForProduct(productId)
+
+        suspend fun dismissAll() = dropDao.dismissAll()
     }

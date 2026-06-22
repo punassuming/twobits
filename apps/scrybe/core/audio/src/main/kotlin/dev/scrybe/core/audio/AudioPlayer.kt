@@ -17,4 +17,6 @@ interface AudioPlayer {
     fun seekTo(positionMs: Long)
 
     fun stop()
+
+    fun setPlaybackSpeed(speed: Float)
 }

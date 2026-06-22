@@ -6,7 +6,19 @@
 
 ### Improvements
 
+**Inventory** — sort and updated filter chips:
+* Sort button now opens a bottom sheet with 5 options: Newest first, Oldest first, Value (high/low), A → Z
+* filter chips updated to All · Drafts · Listed · Sold (replacing the Unlisted chip)
+* Sold filter shows only items with at least one platform listing in Sold status
+
+**Listing URL tracker** — track live listing URLs per platform:
+* active listing rows show an "Paste listing URL after publishing…" text field when no URL is set
+* saving a URL replaces the field with a tappable link chip that opens the listing in the browser
+* `PlatformListing.listingUrl` persisted in the item's JSON listings field
+
 ### Fixes
+
+* `MarketTab` comp status chip used the removed `filter_unlisted` string resource — replaced with `status_listed`
 
 ## 1.12.0 (2026-06-21)
 

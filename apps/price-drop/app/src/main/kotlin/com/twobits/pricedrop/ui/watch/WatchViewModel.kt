@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,13 +41,15 @@ class WatchViewModel
 
         val activeFilter = MutableStateFlow("All")
 
+        val refreshingId = MutableStateFlow<Long?>(null)
+
         val watchlist: StateFlow<List<WatchedProduct>> =
             combine(allProducts, activeDrops, activeFilter) { products, drops, filter ->
                 when (filter) {
-                    "Drops" -> {
-                        val productIdsWithDrops = drops.map { it.productId }.toSet()
-                        products.filter { it.id in productIdsWithDrops }
-                    }
+                    "Below target" ->
+                        products.filter { p ->
+                            p.targetPrice != null && p.currentPrice > 0 && p.currentPrice <= p.targetPrice
+                        }
                     "Coupons" -> {
                         val productIdsWithCoupons =
                             drops
@@ -55,14 +58,14 @@ class WatchViewModel
                                 .toSet()
                         products.filter { it.id in productIdsWithCoupons }
                     }
-                    "Big drops" -> {
-                        val productIdsWithBigDrops =
-                            drops
-                                .filter { it.type == PriceDropNotifier.TYPE_BIG_DROP }
-                                .map { it.productId }
-                                .toSet()
-                        products.filter { it.id in productIdsWithBigDrops }
+                    "Needs check" -> {
+                        val staleThresholdMs = TimeUnit.HOURS.toMillis(12)
+                        val now = System.currentTimeMillis()
+                        products.filter { p ->
+                            p.isActive && (p.lastCheckedAt == 0L || now - p.lastCheckedAt > staleThresholdMs)
+                        }
                     }
+                    "Paused" -> products.filter { !it.isActive }
                     else -> products
                 }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -73,5 +76,27 @@ class WatchViewModel
 
         fun removeItem(id: Long) {
             viewModelScope.launch { watchlistRepo.remove(id) }
+        }
+
+        fun pauseItem(id: Long) {
+            viewModelScope.launch {
+                val product = watchlistRepo.getById(id) ?: return@launch
+                watchlistRepo.update(product.copy(isActive = false))
+            }
+        }
+
+        fun resumeItem(id: Long) {
+            viewModelScope.launch {
+                val product = watchlistRepo.getById(id) ?: return@launch
+                watchlistRepo.update(product.copy(isActive = true))
+            }
+        }
+
+        fun refreshItem(id: Long) {
+            viewModelScope.launch {
+                refreshingId.value = id
+                runCatching { watchlistRepo.refreshPrice(id) }
+                refreshingId.value = null
+            }
         }
     }

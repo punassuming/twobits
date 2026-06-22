@@ -14,6 +14,7 @@ object SettingsPrefs {
     val CHARGING_ONLY = booleanPreferencesKey("charging_only")
     val QUIET_HOURS = booleanPreferencesKey("quiet_hours")
     val API_URL = stringPreferencesKey("api_base_url")
+    val SEARCH_HISTORY = stringPreferencesKey("search_history")
 
     const val DEFAULT_CHECK_FREQ_HOURS = 6
     const val DEFAULT_API_URL = "https://api.twobits.app"

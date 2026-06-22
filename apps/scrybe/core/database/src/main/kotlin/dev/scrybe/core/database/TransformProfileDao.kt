@@ -28,4 +28,7 @@ interface TransformProfileDao {
 
     @Query("DELETE FROM transform_profiles WHERE id = :id")
     suspend fun deleteProfile(id: String)
+
+    @Query("UPDATE transform_profiles SET useCount = useCount + 1 WHERE id = :id")
+    suspend fun incrementUseCount(id: String)
 }

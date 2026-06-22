@@ -230,6 +230,7 @@ class SessionTransformCoordinator
                     createdAt = System.currentTimeMillis(),
                 )
             transcriptDao.insertTranscript(transcript)
+            transformProfileDao.incrementUseCount(profile.id)
             transformRunDao.insertRun(
                 TransformRunEntity(
                     id = runId,

@@ -101,6 +101,7 @@ class SessionDetailViewModel
 
         private val _uiState = MutableStateFlow<SessionDetailUiState>(SessionDetailUiState.Loading)
         val uiState: StateFlow<SessionDetailUiState> = _uiState.asStateFlow()
+        private val playbackSpeedFlow = MutableStateFlow(1.0f)
         private val isTransforming = MutableStateFlow(false)
         private val isFetchingSpeakerInfo = MutableStateFlow(false)
         private val isExtractingTasks = MutableStateFlow(false)
@@ -129,11 +130,18 @@ class SessionDetailViewModel
             val persons: List<Person>,
         )
 
+        private data class PlaybackBundle(
+            val playbackState: PlaybackState,
+            val showRenameAfterRecording: Boolean,
+            val renamePromptDismissed: Boolean,
+            val playbackSpeed: Float,
+        )
+
         private data class DetailContext(
             val defaultProfileId: String?,
             val isTransforming: Boolean,
             val isFetchingSpeakerInfo: Boolean,
-            val playbackBundle: Triple<PlaybackState, Boolean, Boolean>,
+            val playbackBundle: PlaybackBundle,
             val sideData: SideData,
         )
 
@@ -172,8 +180,9 @@ class SessionDetailViewModel
                         audioPlayer.playbackState,
                         preferencesDataStore.showRenameAfterRecording,
                         renamePromptDismissed,
-                    ) { playbackState, showRenameAfterRecording, renamePromptDismissed ->
-                        Triple(playbackState, showRenameAfterRecording, renamePromptDismissed)
+                        playbackSpeedFlow,
+                    ) { playbackState, showRenameAfterRecording, renamePromptDismissed, playbackSpeed ->
+                        PlaybackBundle(playbackState, showRenameAfterRecording, renamePromptDismissed, playbackSpeed)
                     }
                 val sideData =
                     combine(
@@ -246,7 +255,7 @@ class SessionDetailViewModel
                 ) { sessionBundle, detailContext, tasks, (extractingTasks, debugState) ->
                     val (sessionEntity, transcriptEntities, profileEntities) = sessionBundle
                     val (defaultProfileId, isTransforming, isFetchingSpeakerInfo, playbackBundle, sideData) = detailContext
-                    val (playbackState, showRenameAfterRecording, renamePromptDismissed) = playbackBundle
+                    val (playbackState, showRenameAfterRecording, renamePromptDismissed, playbackSpeed) = playbackBundle
                     val (tagSuggestion, speakerSegments, persons) = sideData
                     if (sessionEntity == null) {
                         SessionDetailUiState.Error("Session not found")
@@ -306,6 +315,7 @@ class SessionDetailViewModel
                                         isDefault = entity.isDefault,
                                         modelName = entity.modelName,
                                         mode = entity.mode?.let { runCatching { RecordingMode.valueOf(it) }.getOrNull() },
+                                        useCount = entity.useCount,
                                     )
                                 }
                         val originalTranscript =
@@ -353,6 +363,7 @@ class SessionDetailViewModel
                                 } else {
                                     recordingSession.durationMs
                                 },
+                            playbackSpeed = playbackSpeed,
                             shouldPromptForRename =
                                 shouldPromptForRename(
                                     session = recordingSession,
@@ -593,6 +604,15 @@ class SessionDetailViewModel
         fun skipForward() {
             val state = _uiState.value as? SessionDetailUiState.Success ?: return
             seekPlayback((state.playbackPositionMs + 10_000L).coerceAtMost(state.playbackDurationMs))
+        }
+
+        fun cycleSpeed() {
+            val speeds = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+            val current = playbackSpeedFlow.value
+            val nextIndex = (speeds.indexOf(current) + 1).mod(speeds.size)
+            val next = speeds[nextIndex]
+            playbackSpeedFlow.value = next
+            audioPlayer.setPlaybackSpeed(next)
         }
 
         fun renameSession(newTitle: String) {

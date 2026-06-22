@@ -25,6 +25,7 @@ class AndroidMediaPlayer
         private var progressJob: Job? = null
         private var currentFilePath: String? = null
         private val playerLock = Any()
+        private var currentSpeed: Float = 1.0f
 
         override suspend fun play(filePath: String): Result<Unit> =
             runCatching {
@@ -99,6 +100,13 @@ class AndroidMediaPlayer
                 mediaPlayer = null
                 currentFilePath = null
                 _playbackState.value = PlaybackState()
+            }
+        }
+
+        override fun setPlaybackSpeed(speed: Float) {
+            synchronized(playerLock) {
+                currentSpeed = speed
+                mediaPlayer?.playbackParams = mediaPlayer?.playbackParams?.setSpeed(speed) ?: return
             }
         }
 

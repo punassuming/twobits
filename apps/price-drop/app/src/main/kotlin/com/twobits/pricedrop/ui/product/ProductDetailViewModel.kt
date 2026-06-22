@@ -110,4 +110,11 @@ class ProductDetailViewModel
         fun dismissAllDrops(productId: Long) {
             viewModelScope.launch { dropsRepo.dismissAllForProduct(productId) }
         }
+
+        fun toggleActive(productId: Long) {
+            viewModelScope.launch {
+                val product = watchlistRepo.getById(productId) ?: return@launch
+                watchlistRepo.update(product.copy(isActive = !product.isActive))
+            }
+        }
     }
