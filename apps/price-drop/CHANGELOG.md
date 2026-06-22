@@ -19,6 +19,8 @@
 
 ### Fixes
 
+* restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 ## 0.2.0 (2026-06-22)
 
 ### Features
