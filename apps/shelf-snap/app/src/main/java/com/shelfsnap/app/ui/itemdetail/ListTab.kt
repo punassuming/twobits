@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Share
@@ -34,6 +35,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -152,6 +154,7 @@ fun ListTab(
                         listing = listing,
                         onLaunch = { launchPlatform(platform, platform.formatListingText(item)) },
                         onMarkSold = { viewModel.markSold(listing.platformKey) },
+                        onSetUrl = { url -> viewModel.setListingUrl(listing.platformKey, url) },
                     )
                 }
             }
@@ -261,8 +264,13 @@ private fun ActiveListingRow(
     listing: PlatformListing,
     onLaunch: () -> Unit,
     onMarkSold: () -> Unit,
+    onSetUrl: (String) -> Unit,
 ) {
     val platform = Platform.fromKey(listing.platformKey) ?: return
+    val uriHandler = LocalUriHandler.current
+    var urlInput by remember(listing.platformKey, listing.listingUrl) {
+        mutableStateOf(listing.listingUrl ?: "")
+    }
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
@@ -313,6 +321,41 @@ private fun ActiveListingRow(
                     Spacer(Modifier.width(6.dp))
                     Text("Mark sold", style = MaterialTheme.typography.labelMedium)
                 }
+            }
+            if (listing.listingUrl != null) {
+                TextButton(
+                    onClick = { runCatching { uriHandler.openUri(listing.listingUrl) } },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                ) {
+                    Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = listing.listingUrl,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                    )
+                }
+            } else {
+                OutlinedTextField(
+                    value = urlInput,
+                    onValueChange = { urlInput = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            "Paste listing URL after publishing…",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    },
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    singleLine = true,
+                    trailingIcon = {
+                        if (urlInput.isNotBlank()) {
+                            IconButton(onClick = { onSetUrl(urlInput) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Default.Link, contentDescription = "Save URL", modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    },
+                )
             }
         }
     }

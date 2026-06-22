@@ -264,6 +264,29 @@ class ItemDetailViewModel
             }
         }
 
+        fun setListingUrl(
+            platformKey: String,
+            url: String,
+        ) {
+            val item = _uiState.value.item ?: return
+            viewModelScope.launch {
+                val updated =
+                    item.copy(
+                        listings =
+                            item.listings.map { l ->
+                                if (l.platformKey == platformKey) {
+                                    l.copy(listingUrl = url.trim().takeIf { it.isNotBlank() })
+                                } else {
+                                    l
+                                }
+                            },
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                repository.update(updated)
+                _uiState.update { it.copy(item = updated) }
+            }
+        }
+
         fun delete() {
             val item = _uiState.value.item ?: return
             viewModelScope.launch {
