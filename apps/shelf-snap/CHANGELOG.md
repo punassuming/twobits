@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) — groundwork for unified AI-configuration UI across the apps; no change to Shelf Snap behaviour yet
+
 ### Fixes
 
 ## 1.13.0 (2026-06-22)

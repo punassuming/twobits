@@ -6,6 +6,14 @@
 
 ### Improvements
 
+**AI Configuration** — credential save validation and consistent provider cards:
+* each provider (OpenAI, Web search, Shopping, Keepa, Coupons) now shows Save, Test, and Clear actions with inline success/error feedback
+* keys are format-validated on save and test — invalid keys are flagged instead of being silently accepted
+* provider cards now use the shared design-system credential component for a consistent look across the suite
+
+**About** — version and privacy parity:
+* About section now shows the app version plus a Privacy policy link, matching Shelf Snap and Scrybe
+
 ### Fixes
 
 ## 0.2.0 (2026-06-22)

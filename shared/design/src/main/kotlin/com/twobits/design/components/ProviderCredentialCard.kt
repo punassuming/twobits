@@ -1,0 +1,221 @@
+package com.twobits.design.components
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+
+/** One selectable access mode for a [ProviderCredentialCard] (e.g. Off / BYOK / Pro). */
+data class CredentialModeOption(
+    val value: String,
+    val label: String,
+    val color: Color,
+    val locked: Boolean = false,
+)
+
+/**
+ * Generic per-provider credential card: a title, a mode segment (any set of modes — Off/BYOK/Pro,
+ * Pro/BYOK/Local, etc.), and — when the key-bearing mode is selected — an API-key field with
+ * Save / Test / Clear actions and colored validation feedback.
+ *
+ * Generalizes [AiCredentialsDock] (which is OpenAI-single-key shaped) so apps with several
+ * independent providers (PriceDrop) can present each one consistently while reusing the same
+ * save/validation behaviour Shelf Snap already has.
+ */
+@Composable
+fun ProviderCredentialCard(
+    title: String,
+    modes: List<CredentialModeOption>,
+    selectedMode: String,
+    keyMode: String,
+    apiKey: String,
+    isValidating: Boolean,
+    validationMessage: String?,
+    isKeyValid: Boolean?,
+    onModeChange: (String) -> Unit,
+    onApiKeyChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onTest: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+    modeInfo: Map<String, String> = emptyMap(),
+) {
+    var showKey by rememberSaveable(title) { mutableStateOf(false) }
+
+    ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            ModeSegment(
+                modes = modes,
+                selected = selectedMode,
+                onChange = onModeChange,
+            )
+
+            if (selectedMode == keyMode) {
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = onApiKeyChange,
+                    label = { Text("API key") },
+                    placeholder = { Text("sk-…") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    visualTransformation =
+                        if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        TextButton(onClick = { showKey = !showKey }) {
+                            Text(if (showKey) "Hide" else "Show")
+                        }
+                    },
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = onSave,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isValidating,
+                    ) {
+                        if (isValidating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        } else {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Text("Save", modifier = Modifier.padding(start = 4.dp))
+                        }
+                    }
+                    Button(
+                        onClick = onClear,
+                        modifier = Modifier.weight(1f),
+                        enabled = apiKey.isNotBlank() && !isValidating,
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.error,
+                            ),
+                    ) {
+                        Text("Clear")
+                    }
+                    TextButton(
+                        onClick = onTest,
+                        modifier = Modifier.weight(1f),
+                        enabled = apiKey.isNotBlank() && !isValidating,
+                    ) {
+                        Text("Test")
+                    }
+                }
+                if (validationMessage != null) {
+                    Text(
+                        text = validationMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color =
+                            when (isKeyValid) {
+                                true -> MaterialTheme.colorScheme.primary
+                                false -> MaterialTheme.colorScheme.error
+                                null -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                    )
+                }
+            } else {
+                val info = modeInfo[selectedMode]
+                if (info != null) {
+                    Text(
+                        text = info,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModeSegment(
+    modes: List<CredentialModeOption>,
+    selected: String,
+    onChange: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        modes.forEach { mode ->
+            val isSelected = selected == mode.value
+            Surface(
+                onClick = { if (!mode.locked) onChange(mode.value) },
+                shape = RoundedCornerShape(10.dp),
+                color =
+                    if (isSelected) {
+                        mode.color.copy(alpha = 0.22f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                modifier = Modifier.weight(1f),
+            ) {
+                Row(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (mode.locked) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(12.dp).padding(end = 3.dp),
+                        )
+                    }
+                    Text(
+                        text = mode.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (isSelected) mode.color else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
