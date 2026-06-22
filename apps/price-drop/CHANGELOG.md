@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.3.0 (2026-06-22)
+
+### Features
+
 **Ask AI — persistent multi-turn chat:**
 * conversation history now persists across app restarts (stored in Room `chat_messages` table)
 * all previous turns are included in each API request so the assistant maintains context across multiple messages
@@ -28,6 +36,7 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 
 ## 0.2.0 (2026-06-22)
 
@@ -65,6 +74,7 @@
 ### Fixes
 
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -74,6 +84,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 
