@@ -1,5 +1,13 @@
 package dev.scrybe.feature.filemanager
 
+import java.io.File
+
+data class PendingImport(
+    val file: File,
+    val defaultTimestampMs: Long,
+    val deleteOnCancel: Boolean,
+)
+
 data class RecordingFileEntry(
     val absolutePath: String,
     val displayName: String,
