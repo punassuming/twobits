@@ -18,6 +18,8 @@
 
 ### Fixes
 
+* `MarketTab` comp status chip used the removed `filter_unlisted` string resource — replaced with `status_listed`
+
 ## 1.12.0 (2026-06-21)
 
 ### Features

@@ -553,7 +553,7 @@ private fun CompListingRow(comp: MarketComp) {
                 val statusColor = if (comp.sold) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                 Surface(shape = RoundedCornerShape(50), color = statusColor.copy(alpha = 0.14f)) {
                     Text(
-                        text = if (comp.sold) stringResource(R.string.status_sold) else stringResource(R.string.filter_unlisted),
+                        text = if (comp.sold) stringResource(R.string.status_sold) else stringResource(R.string.status_listed),
                         style = MaterialTheme.typography.labelSmall,
                         color = statusColor,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
