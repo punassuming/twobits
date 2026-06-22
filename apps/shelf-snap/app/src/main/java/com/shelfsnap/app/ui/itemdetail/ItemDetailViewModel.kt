@@ -48,6 +48,7 @@ data class ItemDetailUiState(
     val editPrimaryPhotoIndex: Int = 0,
     val visionSource: String = "byok",
     val overrideVisionModel: VisionModel? = null,
+    val lastAnalysisModel: VisionModel? = null,
 )
 
 @HiltViewModel
@@ -114,6 +115,7 @@ class ItemDetailViewModel
                         editCondition = result.condition,
                         editEstimatedValue = "%.2f".format(result.estimatedValue),
                         item = item.copy(confidencePercent = result.confidencePercent),
+                        lastAnalysisModel = modelOverride ?: VisionModel.default,
                     )
                 }
             }

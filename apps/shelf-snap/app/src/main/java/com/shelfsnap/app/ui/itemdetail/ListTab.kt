@@ -183,6 +183,7 @@ fun ListTab(
                 )
                 if (platform.listingTips.isNotBlank()) {
                     PlatformTipsRow(
+                        platformName = platform.displayName,
                         tips = platform.listingTips,
                         expanded = tipsExpanded,
                         onToggle = { tipsExpanded = !tipsExpanded },
@@ -411,6 +412,7 @@ private fun PlatformToggleRow(
 
 @Composable
 private fun PlatformTipsRow(
+    platformName: String,
     tips: String,
     expanded: Boolean,
     onToggle: () -> Unit,
@@ -433,7 +435,7 @@ private fun PlatformTipsRow(
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                "Tips",
+                "$platformName listing tips",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

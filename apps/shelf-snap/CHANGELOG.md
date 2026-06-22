@@ -7,8 +7,11 @@
 ### Improvements
 
 * shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop; Shelf Snap web-search key panels (Jina, Brave) now also use `ProviderCredentialCard` for consistent save/test/clear feedback
+* platform listing-tips toggle now shows platform name in the label ("eBay listing tips") instead of the generic "Tips"
 
 ### Fixes
+
+* replace hardcoded "GPT-4o analysis" label with the actual model name used during analysis (tracked as `lastAnalysisModel` in UI state; defaults to `VisionModel.default.displayName` for items analysed before this version)
 
 ## 1.13.0 (2026-06-22)
 
