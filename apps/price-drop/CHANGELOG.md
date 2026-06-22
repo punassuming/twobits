@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* added `apps/price-drop/README.md` with features table, architecture diagram, data model, AI provider tiers, setup guide, and CI/CD section
+
 ### Fixes
 
 ## 0.1.0 (2026-06-21)
