@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.19.0 (2026-06-22)
+
+### Features
+
+### Improvements
+
 **Profile use count** — track and display how often each profile is used:
 * "Used N×" caption shown on each profile card after at least one successful transform
 * use count persists in the database (Room migration 14→15) and increments on every successful transform run
@@ -16,6 +24,7 @@
 * `AudioPlayer.setPlaybackSpeed()` implemented via `MediaPlayer.PlaybackParams` (API 23+, safe on minSdk 26)
 
 ### Fixes
+
 
 ## 1.18.0 (2026-06-21)
 
@@ -35,6 +44,7 @@
 * shared/network, shared/common, shared/billing, shared/api-keys build.gradle.kts now reference the shared version catalog (libs.*) instead of hardcoded version strings
 
 
+
 ## 1.17.0 (2026-06-19)
 
 ### Features
@@ -45,6 +55,7 @@
 * release workflow now uses `git rebase --autostash` so the changelog changes written by `promote-release` are preserved across the rebase instead of aborting it
 
 ### Fixes
+
 
 
 
@@ -80,6 +91,7 @@
 
 
 
+
 ## 1.15.0 (2026-06-17)
 
 ### Features
@@ -111,6 +123,7 @@
 
 
 
+
 ## 1.14.0 (2026-06-15)
 
 ### Features
@@ -130,6 +143,7 @@
 * location capture now falls back to `PRIORITY_HIGH_ACCURACY` when the balanced-power request returns no fix (e.g. cold start with no cached location)
 * tapping the recording pill while already on the sessions list (minimized recording) now correctly restores the recording controls — previously the `launchSingleTop` navigate was a no-op and the lifecycle effect did not refire
 * start FAB is hidden while a recording is minimized — previously it remained visible and tapping it could send a second ACTION_START to the foreground service while a recording was already in progress
+
 
 
 
@@ -192,6 +206,7 @@
 
 
 
+
 ## 1.12.0 (2026-06-11)
 
 ### Features
@@ -226,6 +241,7 @@
 
 
 
+
 ## 1.11.0 (2026-06-11)
 
 ### Features
@@ -249,6 +265,7 @@
 * transcript tab shows speaker color pills (colored 8 dp squares + labels) above the transcript when multiple speakers are detected
 
 ### Fixes
+
 
 
 
@@ -289,6 +306,7 @@
 
 
 
+
 ## 1.9.0 (2026-06-08)
 
 ### Improvements
@@ -312,11 +330,13 @@
 
 
 
+
 ## 1.8.3 (2026-06-06)
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
+
 
 
 
@@ -337,6 +357,7 @@
 
 
 
+
 ## 1.8.1 (2026-06-06)
 
 ### Improvements
@@ -352,12 +373,14 @@
 
 
 
+
 ## 1.8.0 (2026-06-06)
 
 ### Improvements
 
 **GitHub Actions** — CI trigger optimization:
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -386,6 +409,7 @@
 
 
 
+
 ## 1.6.2 (2026-06-05)
 
 ### Improvements
@@ -397,12 +421,14 @@
 
 
 
+
 ## 1.6.1 (2026-06-04)
 
 ### Improvements
 
 **GitHub Actions** — duplicate release prevention:
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
+
 
 
 
@@ -428,6 +454,7 @@
 
 
 
+
 ## 1.5.0 (2026-06-04)
 
 ### Improvements
@@ -437,6 +464,7 @@
 
 **Documentation** — monorepo migration and developer guidelines:
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
+
 
 
 
@@ -461,12 +489,14 @@
 
 
 
+
 ## 1.3.0 (2026-06-03)
 
 ### Improvements
 
 **Managed API Proxy** — vision pricing documentation:
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
+
 
 
 
