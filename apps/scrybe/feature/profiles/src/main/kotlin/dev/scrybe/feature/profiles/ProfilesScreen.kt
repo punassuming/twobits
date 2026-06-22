@@ -1189,8 +1189,6 @@ private fun AiProfileDraftDialog(
     onEditSuggestion: (dev.scrybe.core.transforms.ProfileSuggestion, Boolean) -> Unit,
 ) {
     var request by remember { mutableStateOf("") }
-    var seedName by remember { mutableStateOf("") }
-    var seedDescription by remember { mutableStateOf("") }
     var isDefault by remember { mutableStateOf(false) }
     var latestSuggestion by remember { mutableStateOf<dev.scrybe.core.transforms.ProfileSuggestion?>(null) }
     var refinePrompt by remember { mutableStateOf("") }
@@ -1199,8 +1197,6 @@ private fun AiProfileDraftDialog(
     LaunchedEffect(suggestionState) {
         val success = suggestionState as? ProfileSuggestionUiState.Success ?: return@LaunchedEffect
         latestSuggestion = success.suggestion
-        if (seedName.isBlank()) seedName = success.suggestion.name
-        if (seedDescription.isBlank()) seedDescription = success.suggestion.description
         onSuggestionConsumed()
     }
 
@@ -1225,7 +1221,7 @@ private fun AiProfileDraftDialog(
             ) {
                 Text(
                     text = "AI Profile Draft",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                 )
                 AiDraftModelPicker(
                     selectedModel = selectedModel,
@@ -1241,25 +1237,6 @@ private fun AiProfileDraftDialog(
                         Text("Example: turn meeting transcripts into action items with owners and due dates.")
                     },
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = seedName,
-                        onValueChange = { seedName = it },
-                        label = { Text("Seed name") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                    )
-                    OutlinedTextField(
-                        value = seedDescription,
-                        onValueChange = { seedDescription = it },
-                        label = { Text("Seed description") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                    )
-                }
                 if (suggestionState is ProfileSuggestionUiState.Error) {
                     Text(
                         text = suggestionState.message,
@@ -1276,8 +1253,8 @@ private fun AiProfileDraftDialog(
                         onRefine = {
                             onSuggest(
                                 "$request\n\nRefine the profile: $refinePrompt",
-                                seedName,
-                                seedDescription,
+                                "",
+                                "",
                                 emptyList(),
                             )
                             refinePrompt = ""
@@ -1300,8 +1277,6 @@ private fun AiProfileDraftDialog(
                     latestSuggestion = latestSuggestion,
                     isDefault = isDefault,
                     request = request,
-                    seedName = seedName,
-                    seedDescription = seedDescription,
                     onDismiss = onDismiss,
                     onSuggest = onSuggest,
                     onSaveSuggestion = onSaveSuggestion,
@@ -1488,8 +1463,6 @@ private fun AiDraftActions(
     latestSuggestion: dev.scrybe.core.transforms.ProfileSuggestion?,
     isDefault: Boolean,
     request: String,
-    seedName: String,
-    seedDescription: String,
     onDismiss: () -> Unit,
     onSuggest: (String, String, String, List<String>) -> Unit,
     onSaveSuggestion: (dev.scrybe.core.transforms.ProfileSuggestion, Boolean) -> Unit,
@@ -1513,7 +1486,7 @@ private fun AiDraftActions(
             }
         } else {
             Button(
-                onClick = { onSuggest(request, seedName, seedDescription, emptyList()) },
+                onClick = { onSuggest(request, "", "", emptyList()) },
                 enabled = !isLoading && request.isNotBlank(),
             ) {
                 if (isLoading) {

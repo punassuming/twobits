@@ -8,6 +8,10 @@
 
 * shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop and Shelf Snap; no change to Scrybe behaviour
 
+**AI Profile Draft dialog** — tightened layout and removed redundant seed fields:
+* "Seed name" and "Seed description" fields removed — the AI generates a name and description from the request; users refine via the refinement section after the first draft
+* dialog title scaled down from `headlineSmall` to `titleLarge` for better proportion
+
 **Live transcript panel** — the recording screen now shows a contextual panel during capture:
 * pulsing microphone indicator while recording ("Transcript will appear when recording stops")
 * spinner + "Saving and transcribing…" during the stop/save phase
