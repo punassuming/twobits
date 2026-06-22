@@ -48,6 +48,7 @@ sealed interface SessionDetailUiState {
         val isPlaying: Boolean = false,
         val playbackPositionMs: Long = 0L,
         val playbackDurationMs: Long = 0L,
+        val playbackSpeed: Float = 1.0f,
         val shouldPromptForRename: Boolean = false,
         val tagSuggestionState: TagSuggestionUiState = TagSuggestionUiState.Idle,
         val isFetchingSpeakerInfo: Boolean = false,

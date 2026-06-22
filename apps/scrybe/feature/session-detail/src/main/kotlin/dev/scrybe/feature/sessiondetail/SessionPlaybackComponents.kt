@@ -72,6 +72,7 @@ internal fun PlaybackCard(
     onSkipBack: () -> Unit,
     onSkipForward: () -> Unit,
     onSeek: (Long) -> Unit,
+    onCycleSpeed: () -> Unit = {},
     onSpeakerClick: (speakerId: String) -> Unit = {},
     onManageSpeakers: (() -> Unit)? = null,
 ) {
@@ -134,6 +135,8 @@ internal fun PlaybackCard(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            SpeedPill(speed = state.playbackSpeed, onClick = onCycleSpeed)
+            Spacer(Modifier.width(8.dp))
             IconButton(onClick = onSkipBack, modifier = Modifier.size(44.dp)) {
                 Icon(
                     Icons.Filled.Replay10,
@@ -700,6 +703,32 @@ internal fun RenamePromptDialog(
         },
     )
 }
+
+@Composable
+private fun SpeedPill(
+    speed: Float,
+    onClick: () -> Unit,
+) {
+    val isNonDefault = speed != 1.0f
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        color = if (isNonDefault) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = if (isNonDefault) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Text(
+            text = formatSpeed(speed),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
+}
+
+private fun formatSpeed(speed: Float): String =
+    when {
+        speed == speed.toLong().toFloat() -> "${speed.toLong()}×"
+        else -> "$speed×"
+    }
 
 private fun formatPlaybackTime(valueMs: Long): String {
     val totalSeconds = valueMs / 1000
