@@ -23,6 +23,23 @@ Seven built-in modes, each shaping how the AI processes your transcript. Create 
 | **Interview** | Q&A format with questions and answers separated |
 | **Journal** | Personal reflection with key moments and themes |
 
+### Custom recording types
+
+Custom types let you define any recording workflow beyond the seven built-in modes. Create one via **Mode picker → New type**:
+
+1. **Name** — shown on history cards as a badge instead of the built-in mode label.
+2. **Transform profile** *(optional)* — link a transform profile whose system prompt shapes AI output. Use `{{transcript}}` anywhere in the system prompt as a placeholder for the raw transcript text. If no profile is linked, the recording uses its associated profile at transform time.
+
+**Example system prompt for a legal intake:**
+```
+Summarise the following intake call as structured case notes.
+Include: date, parties, key facts, relief sought, next steps.
+
+{{transcript}}
+```
+
+Custom types are stored locally (Room `custom_recording_types` table) and survive reinstall via standard Android backup if enabled. They appear in the mode picker beneath the built-in modes and are shown by name on history/detail cards.
+
 ---
 
 ## AI provider options
@@ -198,7 +215,13 @@ cd apps/scrybe
 ./gradlew installDebug
 ```
 
-After first launch, open **Settings → API Configuration** and either paste your OpenAI API key or enable on-device mode to download Whisper and Gemma models.
+After first launch, open **Settings → API Configuration** and choose a provider:
+
+| Mode | What you need |
+|------|---------------|
+| **BYOK** | An OpenAI API key — get one at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Paste it in Settings → API Configuration → Save. Transcription uses `whisper-1`; transforms use `gpt-4o-mini` (or your selected model). You pay OpenAI directly at standard rates. |
+| **Scrybe Pro** | Subscribe in Settings → Pro ($1.99/mo). No key required — requests route through `api.twobits.app`. A $2/month per-user spend cap is enforced server-side. |
+| **Fully local** | No key or subscription needed. Tap **Download models** in Settings → API Configuration to download Whisper (tiny/base/small, 150 MB – 1.5 GB) and Gemma 2 2B (~2.6 GB). Everything runs on-device. |
 
 ### Containerized development
 

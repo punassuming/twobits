@@ -7,6 +7,7 @@
 ### Improvements
 
 * shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop and Shelf Snap; no change to Scrybe behaviour
+* README: added a "Custom recording types" guide (system prompt authoring, `{{transcript}}` placeholder, persistence); expanded Quick Start provider table with BYOK/Pro/local key-setup steps
 
 **AI Profile Draft dialog** — tightened layout and removed redundant seed fields:
 * "Seed name" and "Seed description" fields removed — the AI generates a name and description from the request; users refine via the refinement section after the first draft

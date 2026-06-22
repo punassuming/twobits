@@ -8,6 +8,7 @@
 
 * shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop; Shelf Snap web-search key panels (Jina, Brave) now also use `ProviderCredentialCard` for consistent save/test/clear feedback
 * platform listing-tips toggle now shows platform name in the label ("eBay listing tips") instead of the generic "Tips"
+* README: updated Setup section to clarify which providers need keys (OpenAI + optional Jina AI or Brave) with direct links; updated feature descriptions to reflect current model names
 
 ### Fixes
 

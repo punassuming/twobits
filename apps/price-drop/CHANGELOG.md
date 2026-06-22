@@ -11,6 +11,9 @@
 
 ### Improvements
 
+**Documentation** — provider setup and BYOK status:
+* README: added "Getting your OpenAI key (BYOK)" step-by-step section; clarified that only OpenAI BYOK is functional today (other providers route to Pro until per-provider adapters land); updated data model table with `ChatMessageEntity`; updated architecture with `ChatMessageDao`
+
 **AI Configuration** — credential save validation and consistent provider cards:
 * each provider (OpenAI, Web search, Shopping, Keepa, Coupons) now shows Save, Test, and Clear actions with inline success/error feedback
 * keys are format-validated on save and test — invalid keys are flagged instead of being silently accepted

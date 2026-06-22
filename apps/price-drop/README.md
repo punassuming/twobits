@@ -18,7 +18,7 @@ An Android app that monitors product prices, fires drop alerts when your target 
 | **Background checks** | PriceCheckWorker runs on a configurable schedule (default 6 h) with Wi-Fi-preferred constraints. Batched notifications group multiple simultaneous drops. |
 | **Coupons** | Coupon codes are tested and validated; state (valid / expired / restricted) is shown per-code with discount amount. |
 | **Barcode scan** | Point camera at any product barcode or QR code. ML Kit Barcode Scanning extracts the UPC/EAN; the app looks up the product title and current price automatically. |
-| **AI shopping assistant** | Chat-based interface for price questions, deal hunting, and product comparisons. Supports BYOK (OpenAI key) and Pro managed API. |
+| **AI shopping assistant** | Chat-based interface for price questions, deal hunting, and product comparisons. Supports BYOK (OpenAI key) and Pro managed API. Conversation history persists across restarts; full multi-turn context is sent with each message. |
 | **Multi-provider support** | OpenAI for AI chat; Keepa / SerpAPI for price lookup; Jina AI for web search; CouponLayer for coupon discovery. All configurable per-provider. |
 | **Onboarding** | Three-page first-run walkthrough. No account required — watchlist and history live only on the device. |
 
@@ -30,9 +30,9 @@ An Android app that monitors product prices, fires drop alerts when your target 
 com.twobits.pricedrop
 ├── data/
 │   ├── local/        Room database (PriceDropDatabase, WatchedProductDao, DropDao,
-│   │                 CouponDao, PriceEventDao, OfferDao, ActivityDao)
+│   │                 CouponDao, PriceEventDao, OfferDao, ActivityDao, ChatMessageDao)
 │   ├── model/        Domain models (WatchedProduct, Drop, Coupon, PriceEvent,
-│   │                 Offer, Activity, AlertType)
+│   │                 Offer, Activity, AlertType, ChatMessageEntity)
 │   ├── remote/       PriceDropApiClient (Worker proxy), PriceDropDtos, PriceParser,
 │   │                 SearchHit
 │   ├── repository/   WatchlistRepository, DropsRepository — single sources of truth
@@ -86,6 +86,7 @@ PriceCheckWorker (WorkManager, ~6h)
 | `Coupon` | `id`, `productId`, `code`, `description`, `discountType`, `discountValue`, `state` (`UNVERIFIED` · `TESTED_VALID` · `EXPIRED` · `RESTRICTED`), `source`, `store`, `expiresAt` |
 | `Offer` | `id`, `productId`, `seller`, `sellerRating`, `price`, `shipping`, `fees`, `condition`, `availability` |
 | `Activity` | `id`, `productId`, `type` (`ADDED` · `CHECKED` · `DROPPED` · `COUPON_FOUND` · `ALERT_SENT` · `OPENED`), `detail`, `timestamp` |
+| `ChatMessageEntity` | `id` (autoGenerate), `role` (`user`/`assistant`), `content`, `timestamp` — persists the Ask AI conversation so context survives restarts |
 
 `AlertType` enum: `BELOW_TARGET`, `PERCENTAGE_DROP`, `BIG_DROP`, `COUPON_FOUND`.
 
@@ -97,13 +98,21 @@ PriceCheckWorker (WorkManager, ~6h)
 
 | Provider | BYOK | Pro | Off |
 |----------|------|-----|-----|
-| **OpenAI** (AI chat) | Paste own key in Settings → AI Config | Managed via `api.twobits.app` | Chat unavailable |
-| **SerpAPI** (price search) | Planned | Managed | Falls back to direct scrape |
-| **Keepa** (Amazon history) | Planned | Managed | Amazon history unavailable |
-| **Jina AI** (web search) | Planned | Managed | Web context unavailable |
-| **CouponLayer** (coupons) | Planned | Managed | Coupon discovery unavailable |
+| **OpenAI** (AI chat) | Paste own key in Settings → AI Config — **fully functional** | Managed via `api.twobits.app` | Chat unavailable |
+| **SerpAPI** (price search) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Price search unavailable |
+| **Keepa** (Amazon history) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Amazon history unavailable |
+| **Jina AI** (web search) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Web context unavailable |
+| **CouponLayer** (coupons) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Coupon discovery unavailable |
+
+**BYOK today:** Only OpenAI (AI chat) works in BYOK mode. The other providers accept key input in the UI but route through the Pro proxy until per-provider request/response adapters are implemented (`PriceDropApiClient` has the routing stub; set `ProviderMode.BYOK` to enable when adapters land).
 
 Pro routes all requests through `api.twobits.app` (Cloudflare Worker). The entitlement ID is `pricedrop_pro`. A per-user monthly spend cap is enforced server-side via a Durable Object.
+
+### Getting your OpenAI key (BYOK)
+
+1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys) and sign in.
+2. Click **Create new secret key** — copy the `sk-...` value immediately (shown only once).
+3. In the app, open **Settings → AI Configuration → OpenAI → BYOK**, paste the key, and tap **Save**. A quick validation check confirms connectivity.
 
 ---
 
