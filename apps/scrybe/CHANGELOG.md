@@ -8,6 +8,11 @@
 
 * shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop and Shelf Snap; no change to Scrybe behaviour
 
+**Live transcript panel** — the recording screen now shows a contextual panel during capture:
+* pulsing microphone indicator while recording ("Transcript will appear when recording stops")
+* spinner + "Saving and transcribing…" during the stop/save phase
+* static message when auto-transcription is disabled in Settings
+
 **Playback marker legend** — color-coded dot strips are now self-describing:
 * a compact legend row appears below the dot strips when there is data to show (topics and/or sentiment)
 * orange dot = Topics, green = Positive, grey = Neutral, red = Negative

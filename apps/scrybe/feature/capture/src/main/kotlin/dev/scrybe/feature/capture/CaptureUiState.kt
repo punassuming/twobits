@@ -19,6 +19,7 @@ data class CaptureUiState(
     val selectedSessionIds: Set<String> = emptySet(),
     val customTypes: List<CustomRecordingType> = emptyList(),
     val minimized: Boolean = false,
+    val autoTranscribeEnabled: Boolean = true,
 ) {
     val isSelecting: Boolean get() = selectedSessionIds.isNotEmpty()
 }
