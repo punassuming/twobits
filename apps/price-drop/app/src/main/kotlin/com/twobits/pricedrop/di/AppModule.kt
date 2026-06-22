@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.twobits.pricedrop.data.local.ActivityDao
+import com.twobits.pricedrop.data.local.ChatMessageDao
 import com.twobits.pricedrop.data.local.CouponDao
 import com.twobits.pricedrop.data.local.DropDao
 import com.twobits.pricedrop.data.local.OfferDao
@@ -52,6 +53,9 @@ object AppModule {
 
     @Provides
     fun provideActivityDao(db: PriceDropDatabase): ActivityDao = db.activityDao()
+
+    @Provides
+    fun provideChatMessageDao(db: PriceDropDatabase): ChatMessageDao = db.chatMessageDao()
 
     @Provides
     @Singleton

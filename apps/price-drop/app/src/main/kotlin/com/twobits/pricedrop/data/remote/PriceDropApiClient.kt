@@ -101,10 +101,14 @@ class PriceDropApiClient
             return post("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java, base, auth)
         }
 
-        /** Shopping-scoped chat. Pro routes through the Worker's OpenAI proxy; BYOK calls api.openai.com directly. */
+        /**
+         * Shopping-scoped chat. Pro routes through the Worker's OpenAI proxy; BYOK calls
+         * api.openai.com directly. [history] is the full conversation (all user + assistant turns)
+         * including the new user message as the last entry; the system prompt is prepended here.
+         */
         suspend fun chat(
             systemPrompt: String,
-            userMessage: String,
+            history: List<com.twobits.pricedrop.ui.ask.ChatMessage>,
         ): String {
             val (base, auth) = resolveConfig(PriceDropProvider.OPENAI)
             val model = if (base == PRO_BASE_URL) PRO_CHAT_MODEL else BYOK_CHAT_MODEL
@@ -116,12 +120,14 @@ class PriceDropApiClient
                             addProperty("content", systemPrompt)
                         },
                     )
-                    add(
-                        JsonObject().apply {
-                            addProperty("role", "user")
-                            addProperty("content", userMessage)
-                        },
-                    )
+                    history.forEach { msg ->
+                        add(
+                            JsonObject().apply {
+                                addProperty("role", msg.role)
+                                addProperty("content", msg.content)
+                            },
+                        )
+                    }
                 }
             val body =
                 JsonObject().apply {

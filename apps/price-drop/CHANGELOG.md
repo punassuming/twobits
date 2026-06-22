@@ -4,6 +4,11 @@
 
 ### Features
 
+**Ask AI — persistent multi-turn chat:**
+* conversation history now persists across app restarts (stored in Room `chat_messages` table)
+* all previous turns are included in each API request so the assistant maintains context across multiple messages
+* a "Clear chat" button in the top bar lets users start a fresh conversation
+
 ### Improvements
 
 **AI Configuration** — credential save validation and consistent provider cards:
