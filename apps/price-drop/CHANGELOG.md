@@ -11,6 +11,9 @@
 * keys are format-validated on save and test — invalid keys are flagged instead of being silently accepted
 * provider cards now use the shared design-system credential component for a consistent look across the suite
 
+**Pro plans** — now uses the shared `ProTierCard` design-system component:
+* Free / Pro / BYOK tier cards extracted to shared design module; visual output unchanged
+
 **About** — version and privacy parity:
 * About section now shows the app version plus a Privacy policy link, matching Shelf Snap and Scrybe
 

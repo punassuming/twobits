@@ -6,7 +6,7 @@
 
 ### Improvements
 
-* shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) — groundwork for unified AI-configuration UI across the apps; no change to Scrybe behaviour yet
+* shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop and Shelf Snap; no change to Scrybe behaviour
 
 ### Fixes
 

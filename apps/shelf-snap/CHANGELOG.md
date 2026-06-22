@@ -6,7 +6,7 @@
 
 ### Improvements
 
-* shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) — groundwork for unified AI-configuration UI across the apps; no change to Shelf Snap behaviour yet
+* shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop; Shelf Snap web-search key panels (Jina, Brave) now also use `ProviderCredentialCard` for consistent save/test/clear feedback
 
 ### Fixes
 

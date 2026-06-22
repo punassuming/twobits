@@ -44,9 +44,12 @@ data class CredentialModeOption(
 )
 
 /**
- * Generic per-provider credential card: a title, a mode segment (any set of modes — Off/BYOK/Pro,
- * Pro/BYOK/Local, etc.), and — when the key-bearing mode is selected — an API-key field with
- * Save / Test / Clear actions and colored validation feedback.
+ * Generic per-provider credential card: a title, an optional mode segment (any set of modes —
+ * Off/BYOK/Pro, Pro/BYOK/Local, etc.), and — when the key-bearing mode is selected — an API-key
+ * field with Save / Test / Clear actions and colored validation feedback.
+ *
+ * When [modes] has fewer than 2 entries the mode segment is hidden and the key field is shown
+ * unconditionally (useful for single-mode panels such as Shelf Snap's web-search key panels).
  *
  * Generalizes [AiCredentialsDock] (which is OpenAI-single-key shaped) so apps with several
  * independent providers (PriceDrop) can present each one consistently while reusing the same
@@ -55,20 +58,22 @@ data class CredentialModeOption(
 @Composable
 fun ProviderCredentialCard(
     title: String,
-    modes: List<CredentialModeOption>,
+    modes: List<CredentialModeOption> = emptyList(),
     selectedMode: String,
     keyMode: String,
     apiKey: String,
     isValidating: Boolean,
     validationMessage: String?,
     isKeyValid: Boolean?,
-    onModeChange: (String) -> Unit,
+    onModeChange: (String) -> Unit = {},
     onApiKeyChange: (String) -> Unit,
     onSave: () -> Unit,
     onTest: () -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
     modeInfo: Map<String, String> = emptyMap(),
+    keyLabel: String = "API key",
+    keyHint: String? = null,
 ) {
     var showKey by rememberSaveable(title) { mutableStateOf(false) }
 
@@ -83,18 +88,20 @@ fun ProviderCredentialCard(
                 fontWeight = FontWeight.SemiBold,
             )
 
-            ModeSegment(
-                modes = modes,
-                selected = selectedMode,
-                onChange = onModeChange,
-            )
+            if (modes.size >= 2) {
+                ModeSegment(
+                    modes = modes,
+                    selected = selectedMode,
+                    onChange = onModeChange,
+                )
+            }
 
-            if (selectedMode == keyMode) {
+            if (modes.size < 2 || selectedMode == keyMode) {
                 OutlinedTextField(
                     value = apiKey,
                     onValueChange = onApiKeyChange,
-                    label = { Text("API key") },
-                    placeholder = { Text("sk-…") },
+                    label = { Text(keyLabel) },
+                    supportingText = keyHint?.let { { Text(it) } },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     visualTransformation =
@@ -158,7 +165,7 @@ fun ProviderCredentialCard(
                             },
                     )
                 }
-            } else {
+            } else if (modes.size >= 2) {
                 val info = modeInfo[selectedMode]
                 if (info != null) {
                     Text(

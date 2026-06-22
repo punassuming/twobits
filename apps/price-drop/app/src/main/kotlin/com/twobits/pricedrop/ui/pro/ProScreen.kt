@@ -2,24 +2,13 @@ package com.twobits.pricedrop.ui.pro
 
 import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -35,12 +24,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.ProTierCard
 import com.twobits.pricedrop.ui.settings.SettingsViewModel
 
 private val FREE_FEATURES = listOf("5 watched products", "Daily price checks", "Basic drop alerts")
@@ -98,19 +86,17 @@ fun ProScreen(
                 }
             }
             item {
-                TierCard(
+                ProTierCard(
                     title = "Try it free",
                     price = "Free",
                     features = FREE_FEATURES,
-                    isHighlighted = false,
                     ctaLabel = "Current plan",
                     ctaEnabled = false,
-                    isLoading = false,
                     onCta = {},
                 )
             }
             item {
-                TierCard(
+                ProTierCard(
                     title = "Pro",
                     price = if (selectedPlan == "annual") "$4.99/mo" else "$5.99/mo",
                     features = PRO_FEATURES,
@@ -122,14 +108,11 @@ fun ProScreen(
                 )
             }
             item {
-                TierCard(
+                ProTierCard(
                     title = "BYOK",
                     price = "Your API costs",
                     features = BYOK_FEATURES,
-                    isHighlighted = false,
                     ctaLabel = "Set up BYOK",
-                    ctaEnabled = true,
-                    isLoading = false,
                     onCta = onNavigateToByok,
                 )
             }
@@ -142,80 +125,6 @@ fun ProScreen(
                     )
                     TextButton(onClick = viewModel::dismissPurchaseError) { Text("Dismiss") }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TierCard(
-    title: String,
-    price: String,
-    features: List<String>,
-    isHighlighted: Boolean,
-    ctaLabel: String,
-    ctaEnabled: Boolean,
-    isLoading: Boolean,
-    onCta: () -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    if (isHighlighted) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-            ),
-    ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (isHighlighted) {
-                    Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                }
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-            Text(
-                price,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                features.forEach { feature ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Filled.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
-                        Text(feature, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-            Button(
-                onClick = onCta,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = ctaEnabled,
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
-                Text(if (isLoading) "Processing…" else ctaLabel)
             }
         }
     }
