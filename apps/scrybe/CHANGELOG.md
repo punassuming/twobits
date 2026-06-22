@@ -13,6 +13,7 @@
 * custom recording type name now displays correctly in the history badge — previously all custom-typed sessions showed "Journal" because `customTypeId` was not mapped into `RecordingSession` and the badge only read `RecordingMode`
 * audio import now shows an actionable error ("Could not read file — format may not be supported") instead of a raw hex code when `setDataSource` fails
 * imported recordings now prompt for a date before import, defaulting to the file's last-modified timestamp; the chosen date is used as the session's `createdAt` so history sort order is correct
+* fix build: add `@OptIn(ExperimentalMaterial3Api::class)` to `ImportTimestampDialog` (DatePicker/DatePickerDialog APIs still experimental in the Compose BOM in use)
 
 ## 1.19.0 (2026-06-22)
 

@@ -309,6 +309,7 @@ private fun formatSize(bytes: Long): String =
 
 private fun formatDate(ms: Long): String = SimpleDateFormat("MMM d, yyyy", Locale.US).format(Date(ms))
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ImportTimestampDialog(
     pendingImport: PendingImport,
