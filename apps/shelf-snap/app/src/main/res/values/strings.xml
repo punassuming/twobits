@@ -70,9 +70,9 @@
 
     <!-- v2: inventory filters & listing status -->
     <string name="filter_all">All (%1$d)</string>
-    <string name="filter_listed">Listed (%1$d)</string>
-    <string name="filter_unlisted">Unlisted</string>
     <string name="filter_drafts">Drafts (%1$d)</string>
+    <string name="filter_listed">Listed (%1$d)</string>
+    <string name="filter_sold">Sold (%1$d)</string>
     <string name="status_listed">Listed</string>
     <string name="status_sold">Sold</string>
     <string name="no_items_match_search">No items match that search.</string>
