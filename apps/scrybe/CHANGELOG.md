@@ -10,6 +10,8 @@
 
 ### Fixes
 
+* custom recording type name now displays correctly in the history badge — previously all custom-typed sessions showed "Journal" because `customTypeId` was not mapped into `RecordingSession` and the badge only read `RecordingMode`
+
 ## 1.19.0 (2026-06-22)
 
 ### Features
