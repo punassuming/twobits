@@ -1,5 +1,7 @@
 package com.twobits.pricedrop.ui.watch
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,8 +22,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TrendingDown
@@ -29,6 +36,9 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -49,12 +59,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.pricedrop.data.model.WatchedProduct
 import java.text.NumberFormat
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +82,7 @@ fun WatchScreen(
     val watchlist by viewModel.watchlist.collectAsState()
     val dropCount by viewModel.activeDropCount.collectAsState()
     val filter by viewModel.activeFilter.collectAsState()
+    val refreshingId by viewModel.refreshingId.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -97,7 +110,7 @@ fun WatchScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            val filters = listOf("All", "Drops", "Coupons", "Big drops")
+            val filters = listOf("All", "Below target", "Coupons", "Needs check", "Paused")
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -120,8 +133,12 @@ fun WatchScreen(
                     items(watchlist, key = { it.id }) { product ->
                         WatchCard(
                             product = product,
+                            isRefreshing = refreshingId == product.id,
                             onClick = { onNavigateToProduct(product.id) },
                             onRemove = { viewModel.removeItem(product.id) },
+                            onPause = { viewModel.pauseItem(product.id) },
+                            onResume = { viewModel.resumeItem(product.id) },
+                            onRefresh = { viewModel.refreshItem(product.id) },
                         )
                     }
                 }
@@ -161,8 +178,16 @@ private fun EmptyWatchlist() {
                 modifier = Modifier.size(56.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text("No watched products", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Tap 'Add or ask' to start tracking prices", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "No watched products",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "Tap 'Add or ask' to start tracking prices",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -170,50 +195,180 @@ private fun EmptyWatchlist() {
 @Composable
 private fun WatchCard(
     product: WatchedProduct,
+    isRefreshing: Boolean,
     onClick: () -> Unit,
     onRemove: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onRefresh: () -> Unit,
 ) {
     val fmt = NumberFormat.getCurrencyInstance(Locale.US)
+    val context = LocalContext.current
     val pctChange =
         if (product.trackedHigh > 0 && product.currentPrice > 0) {
             ((product.currentPrice - product.trackedHigh) / product.trackedHigh * 100).toInt()
         } else {
             0
         }
+    val isBelowTarget =
+        product.targetPrice != null &&
+            product.currentPrice > 0 &&
+            product.currentPrice <= product.targetPrice
+    var menuExpanded by remember { mutableStateOf(false) }
 
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(product.title, style = MaterialTheme.typography.titleSmall, maxLines = 2)
-                Text(
-                    fmt.format(product.currentPrice),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                if (product.targetPrice != null) {
+        Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 8.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(product.title, style = MaterialTheme.typography.titleSmall, maxLines = 2)
                     Text(
-                        "Target: ${fmt.format(product.targetPrice)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fmt.format(product.currentPrice),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isBelowTarget) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                     )
+                    if (product.targetPrice != null) {
+                        Text(
+                            "Target: ${fmt.format(product.targetPrice)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (isBelowTarget) {
+                        val savings = product.targetPrice!! - product.currentPrice
+                        SuggestionChip(
+                            onClick = {},
+                            label = {
+                                Text(
+                                    "Below target · save ${fmt.format(savings)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            },
+                        )
+                    } else if (pctChange < 0) {
+                        SuggestionChip(
+                            onClick = {},
+                            label = { Text("$pctChange% vs high") },
+                            icon = {
+                                Icon(Icons.Filled.TrendingDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                            },
+                        )
+                    }
+                    if (!product.isActive) {
+                        Text(
+                            "Paused",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-                if (pctChange < 0) {
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text("$pctChange% vs high") },
-                        icon = { Icon(Icons.Filled.TrendingDown, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                    )
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More options", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Refresh") },
+                            leadingIcon = {
+                                if (isRefreshing) {
+                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(Icons.Filled.Refresh, contentDescription = null)
+                                }
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onRefresh()
+                            },
+                        )
+                        if (product.isActive) {
+                            DropdownMenuItem(
+                                text = { Text("Pause") },
+                                leadingIcon = { Icon(Icons.Filled.Pause, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onPause()
+                                },
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text("Resume") },
+                                leadingIcon = { Icon(Icons.Filled.PlayArrow, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    onResume()
+                                },
+                            )
+                        }
+                        if (product.productUrl.isNotBlank()) {
+                            DropdownMenuItem(
+                                text = { Text("Open retailer") },
+                                leadingIcon = { Icon(Icons.Filled.OpenInBrowser, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(product.productUrl)))
+                                },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text("Remove") },
+                            leadingIcon = { Icon(Icons.Filled.Close, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onRemove()
+                            },
+                        )
+                    }
                 }
             }
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Close, contentDescription = "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
+            LastCheckedRow(product = product, isRefreshing = isRefreshing, onRefresh = onRefresh)
+        }
+    }
+}
+
+@Composable
+private fun LastCheckedRow(
+    product: WatchedProduct,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+) {
+    val now = System.currentTimeMillis()
+    val lastCheckedLabel =
+        when {
+            product.lastCheckedAt == 0L -> "Never checked"
+            else -> {
+                val diffMs = now - product.lastCheckedAt
+                when {
+                    diffMs < TimeUnit.MINUTES.toMillis(2) -> "Just now"
+                    diffMs < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diffMs)}m ago"
+                    diffMs < TimeUnit.DAYS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toHours(diffMs)}h ago"
+                    else -> "${TimeUnit.MILLISECONDS.toDays(diffMs)}d ago"
+                }
             }
         }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (isRefreshing) {
+            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
+        } else {
+            IconButton(onClick = onRefresh, modifier = Modifier.size(20.dp)) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Refresh", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Text(
+            "Last checked: $lastCheckedLabel",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -226,8 +381,16 @@ private fun AddOrAskSheet(
     onAsk: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Add or ask", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 8.dp))
+        Column(
+            Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                "Add or ask",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
             Spacer(Modifier.height(8.dp))
             listOf(
                 Triple(Icons.Filled.Search, "Search by name or URL", onSearch),

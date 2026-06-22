@@ -4,6 +4,31 @@
 
 ### Features
 
+**Watch** — redesigned filter chips and per-card actions:
+* filter chips updated to All / Below target / Coupons / Needs check / Paused for clearer intent
+* three-dot context menu on each card with Refresh, Pause/Resume, Open retailer, and Remove actions
+* below-target banner shows savings amount when current price ≤ target
+* last-checked timestamp footer with inline refresh spinner per card
+
+**Drops** — section grouping and dismiss all:
+* drops now grouped into Ready to buy · New coupons · Big drops · Historical lows sections
+* section headers show a color-coded icon and drop count
+* "Mark all done" button in the top bar dismisses all active drops at once
+
+**Search** — alert type picker:
+* confirm dialog now shows radio buttons to choose the alert type: Below target price / Any % drop / Coupon found
+* selected alert type is persisted on the watched product
+
+**Ask** — expanded suggestion chips:
+* updated from 4 to 6 suggestion chips covering: find cheaper, good deal check, find coupons, compare, track until drop, free shipping filter
+
+**Product detail** — Buy now and tracking rules:
+* "Buy now" button opens the retailer URL directly in the browser
+* "Tracking rules" card shows target price (with Edit link), alert type, and Pause/Resume toggle
+
+**Settings** — privacy section:
+* new Privacy section with local-first storage description, clear search history action, and export data action
+
 ### Improvements
 
 * added `apps/price-drop/README.md` with features table, architecture diagram, data model, AI provider tiers, setup guide, and CI/CD section

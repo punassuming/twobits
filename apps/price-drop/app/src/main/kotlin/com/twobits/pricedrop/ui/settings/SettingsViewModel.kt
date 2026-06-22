@@ -22,7 +22,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class ProviderState(val mode: ProviderMode, val key: String)
+data class ProviderState(
+    val mode: ProviderMode,
+    val key: String,
+)
 
 data class SettingsUiState(
     val subscriptionTier: SubscriptionTier = SubscriptionTier.Free,
@@ -114,4 +117,16 @@ class SettingsViewModel
         fun restorePurchases() = purchaseDelegate.restore()
 
         fun dismissPurchaseError() = purchaseDelegate.dismissError()
+
+        fun clearSearchHistory() {
+            viewModelScope.launch {
+                dataStore.edit { prefs ->
+                    prefs.remove(SettingsPrefs.SEARCH_HISTORY)
+                }
+            }
+        }
+
+        fun exportData() {
+            // Export triggered via share sheet — placeholder for Intent dispatch in the UI layer.
+        }
     }

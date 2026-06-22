@@ -73,6 +73,7 @@ class SearchViewModel
         fun addToWatchlist(
             result: SearchResult,
             targetPrice: Double?,
+            alertType: String = "below_target",
             onAdded: (Long) -> Unit,
         ) {
             viewModelScope.launch {
@@ -82,6 +83,7 @@ class SearchViewModel
                             title = result.title,
                             currentPrice = result.price ?: 0.0,
                             targetPrice = targetPrice,
+                            alertType = alertType,
                             productUrl = result.url,
                         ),
                     )
@@ -92,6 +94,7 @@ class SearchViewModel
         fun confirmUrl(
             url: String,
             targetPrice: Double?,
+            alertType: String = "below_target",
             onAdded: (Long) -> Unit,
         ) {
             viewModelScope.launch {
@@ -101,6 +104,7 @@ class SearchViewModel
                             title = "Product from URL",
                             currentPrice = 0.0,
                             targetPrice = targetPrice,
+                            alertType = alertType,
                             productUrl = url,
                         ),
                     )

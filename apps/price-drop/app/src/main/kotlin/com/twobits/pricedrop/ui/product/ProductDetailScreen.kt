@@ -1,5 +1,7 @@
 package com.twobits.pricedrop.ui.product
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,13 +19,16 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -44,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,6 +67,7 @@ import com.twobits.pricedrop.data.model.CouponState
 import com.twobits.pricedrop.data.model.DiscountType
 import com.twobits.pricedrop.data.model.Offer
 import com.twobits.pricedrop.data.model.PriceEvent
+import com.twobits.pricedrop.data.model.WatchedProduct
 import com.twobits.pricedrop.domain.EffectivePrice
 import java.text.NumberFormat
 import java.util.Locale
@@ -126,6 +133,7 @@ fun ProductDetailScreen(
             return@Scaffold
         }
         val product = uiState.product ?: return@Scaffold
+        val context = LocalContext.current
 
         LazyColumn(
             modifier = Modifier.padding(padding),
@@ -140,6 +148,25 @@ fun ProductDetailScreen(
                     targetPrice = product.targetPrice,
                     lowestPrice = product.trackedLow.takeIf { it < Double.MAX_VALUE },
                     fmt = fmt,
+                )
+            }
+            if (product.productUrl.isNotBlank()) {
+                item {
+                    Button(
+                        onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(product.productUrl)))
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Buy now")
+                    }
+                }
+            }
+            item {
+                TrackingRulesCard(
+                    product = product,
+                    onEditTarget = { showTargetEditor = true },
+                    onToggleActive = { viewModel.toggleActive(productId) },
                 )
             }
             if (uiState.offers.isNotEmpty()) {
@@ -254,6 +281,58 @@ private fun PriceOverviewCard(
                     PriceLabel("All-time low", fmt.format(lowestPrice))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TrackingRulesCard(
+    product: WatchedProduct,
+    onEditTarget: () -> Unit,
+    onToggleActive: () -> Unit,
+) {
+    val fmt = NumberFormat.getCurrencyInstance(Locale.US)
+    val alertLabel =
+        when (product.alertType) {
+            "below_target" -> "Below target price"
+            "any_drop" -> "Any % drop"
+            "coupon" -> "Coupon found"
+            else -> product.alertType.replace('_', ' ')
+        }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column {
+            Text(
+                "Tracking rules",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+            )
+            ListItem(
+                headlineContent = { Text("Target price") },
+                supportingContent = {
+                    Text(product.targetPrice?.let { fmt.format(it) } ?: "Not set")
+                },
+                trailingContent = {
+                    TextButton(onClick = onEditTarget) { Text("Edit") }
+                },
+            )
+            HorizontalDivider()
+            ListItem(
+                headlineContent = { Text("Alert type") },
+                supportingContent = { Text(alertLabel) },
+            )
+            HorizontalDivider()
+            ListItem(
+                headlineContent = { Text(if (product.isActive) "Tracking active" else "Tracking paused") },
+                trailingContent = {
+                    TextButton(onClick = onToggleActive) {
+                        Text(if (product.isActive) "Pause" else "Resume")
+                    }
+                },
+            )
         }
     }
 }

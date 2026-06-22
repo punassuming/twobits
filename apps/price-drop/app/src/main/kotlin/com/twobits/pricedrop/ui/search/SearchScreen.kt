@@ -4,11 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -24,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -35,11 +39,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.text.NumberFormat
 import java.util.Locale
+
+private data class AlertOption(
+    val label: String,
+    val value: String,
+)
+
+private val ALERT_OPTIONS =
+    listOf(
+        AlertOption("Below target price", "below_target"),
+        AlertOption("Any % drop", "any_drop"),
+        AlertOption("Coupon found", "coupon"),
+    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +95,11 @@ fun SearchScreen(
             when (val state = uiState) {
                 is SearchUiState.Idle -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Search by name, brand, or paste a product URL", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "Search by name, brand, or paste a product URL",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
                 is SearchUiState.Loading -> {
@@ -103,7 +124,11 @@ fun SearchScreen(
                                     supportingContent = { Text(result.source) },
                                     trailingContent = {
                                         if (result.price != null) {
-                                            Text(fmt.format(result.price), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                            Text(
+                                                fmt.format(result.price),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
                                         }
                                     },
                                 )
@@ -113,8 +138,8 @@ fun SearchScreen(
                                     title = result.title,
                                     currentPrice = result.price,
                                     onDismiss = { showConfirm = false },
-                                    onConfirm = { target ->
-                                        viewModel.addToWatchlist(result, target) { id -> onNavigateToProduct(id) }
+                                    onConfirm = { target, alertType ->
+                                        viewModel.addToWatchlist(result, target, alertType) { id -> onNavigateToProduct(id) }
                                     },
                                 )
                             }
@@ -128,8 +153,8 @@ fun SearchScreen(
                             title = "Track this URL",
                             currentPrice = state.price,
                             onDismiss = { showConfirm = false },
-                            onConfirm = { target ->
-                                viewModel.confirmUrl(state.url, target) { id -> onNavigateToProduct(id) }
+                            onConfirm = { target, alertType ->
+                                viewModel.confirmUrl(state.url, target, alertType) { id -> onNavigateToProduct(id) }
                             },
                         )
                     }
@@ -149,9 +174,10 @@ private fun TargetPriceDialog(
     title: String,
     currentPrice: Double?,
     onDismiss: () -> Unit,
-    onConfirm: (Double?) -> Unit,
+    onConfirm: (Double?, String) -> Unit,
 ) {
     var targetInput by remember { mutableStateOf("") }
+    var selectedAlertType by remember { mutableStateOf(ALERT_OPTIONS.first()) }
     val fmt = NumberFormat.getCurrencyInstance(Locale.US)
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
@@ -159,22 +185,55 @@ private fun TargetPriceDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium)
-                if (currentPrice != null) Text("Current price: ${fmt.format(currentPrice)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (currentPrice != null) {
+                    Text(
+                        "Current price: ${fmt.format(currentPrice)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 OutlinedTextField(
                     value = targetInput,
                     onValueChange = { targetInput = it },
                     label = { Text("Target price (optional)") },
                     prefix = { Text("$") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                    keyboardOptions =
+                        KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
                 )
+                Text(
+                    "Alert me when:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Column(modifier = Modifier.selectableGroup()) {
+                    ALERT_OPTIONS.forEach { option ->
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .selectable(
+                                        selected = selectedAlertType == option,
+                                        onClick = { selectedAlertType = option },
+                                        role = Role.RadioButton,
+                                    ).padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            RadioButton(selected = selectedAlertType == option, onClick = null)
+                            Text(option.label, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val target = targetInput.toDoubleOrNull()
-                onConfirm(target)
-            }) { Text("Watch") }
+            Button(
+                onClick = {
+                    val target = targetInput.toDoubleOrNull()
+                    onConfirm(target, selectedAlertType.value)
+                },
+            ) { Text("Watch") }
         },
         dismissButton = {
             androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") }

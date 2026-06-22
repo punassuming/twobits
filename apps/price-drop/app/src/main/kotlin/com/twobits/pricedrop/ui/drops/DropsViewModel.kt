@@ -25,4 +25,8 @@ class DropsViewModel
         fun dismiss(id: Long) {
             viewModelScope.launch { dropsRepo.dismiss(id) }
         }
+
+        fun dismissAll() {
+            viewModelScope.launch { dropsRepo.dismissAll() }
+        }
     }

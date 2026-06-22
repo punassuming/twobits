@@ -43,10 +43,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 private val SUGGESTIONS =
     listOf(
-        "Find me the best deal on AirPods Pro",
-        "Watch Sony WH-1000XM5 for under $250",
-        "Is there a coupon for Nike shoes?",
-        "What's the historical low price for a Kindle?",
+        "Find me a cheaper alternative",
+        "Is this a good deal right now?",
+        "Find coupons for this product",
+        "Compare similar products",
+        "Track until the price drops",
+        "Only show free shipping options",
     )
 
 @OptIn(ExperimentalMaterial3Api::class)
