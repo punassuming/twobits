@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.2.0 (2026-06-22)
+
+### Features
+
 **Watch** — redesigned filter chips and per-card actions:
 * filter chips updated to All / Below target / Coupons / Needs check / Paused for clearer intent
 * three-dot context menu on each card with Refresh, Pause/Resume, Open retailer, and Remove actions
@@ -35,6 +43,7 @@
 
 ### Fixes
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -44,6 +53,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 ## 0.0.1 (2026-06-19)
