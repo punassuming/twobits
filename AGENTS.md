@@ -215,6 +215,48 @@ Column {
 }
 ```
 
+### 7. String resource rename — grep all usages before removing the key
+
+When you rename or delete a string resource key from `strings.xml`, **every** `.kt` file in the same app module that references the old key will fail to compile with `Unresolved reference`. IDEs and the pre-commit hook do not catch cross-file reference breakage for resource IDs.
+
+**Mandatory step before removing or renaming any `R.string.FOO` key:**
+
+```bash
+# Run from the app root (e.g. apps/shelf-snap/ or apps/price-drop/)
+grep -r "R\.string\.OLD_KEY_NAME" app/src/
+```
+
+Every hit must be updated in the same commit as the `strings.xml` change. Do not stage `strings.xml` without also staging the referencing `.kt` files.
+
+```kotlin
+// strings.xml — you removed filter_unlisted and added filter_sold
+// WRONG — forgot to update a secondary usage in MarketTab.kt
+text = if (comp.sold) stringResource(R.string.status_sold) else stringResource(R.string.filter_unlisted)
+
+// CORRECT — update all occurrences when the key is renamed
+text = if (comp.sold) stringResource(R.string.status_sold) else stringResource(R.string.status_listed)
+```
+
+### 8. KtLint `backing-property-naming` — `_` prefix requires a matching public val
+
+KtLint treats any `private` property whose name begins with `_` as a backing property that must have a corresponding public val of the same name without `_`. If there is no public counterpart, the lint check fails.
+
+**Rule:** Never use the `_` prefix on a `private MutableStateFlow` (or any private field) unless you also expose a matching `public val` without `_`. Use a descriptive name such as `xyzFlow` or `activeXyzState` instead.
+
+```kotlin
+// WRONG — ktlint rejects _playbackSpeed because there is no public val playbackSpeed
+private val _playbackSpeed = MutableStateFlow(1.0f)
+
+// CORRECT option A — expose a public counterpart
+private val _playbackSpeed = MutableStateFlow(1.0f)
+val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
+
+// CORRECT option B — drop the _ prefix entirely when no public exposure is needed
+private val playbackSpeedFlow = MutableStateFlow(1.0f)
+```
+
+This pattern is consistent with all other private `MutableStateFlow` fields in Scrybe ViewModels (e.g. `isTransforming`, `isFetchingSpeakerInfo`) which use descriptive names without `_`.
+
 ---
 
 ## Branch management — always rebase onto origin/main before starting work AND before pushing
