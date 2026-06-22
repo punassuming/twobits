@@ -107,6 +107,10 @@ internal fun PlaybackCard(
                 durationMs = state.playbackDurationMs,
                 modifier = Modifier.fillMaxWidth().height(14.dp),
             )
+            MarkerLegend(
+                hasTopicMarkers = state.topicMarkers.isNotEmpty(),
+                hasSentimentSegments = state.sentimentSegments.isNotEmpty(),
+            )
         }
         PlaybackSeekBar(
             progress =
@@ -574,6 +578,42 @@ internal fun PerSpeakerTimelineSection(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MarkerLegend(
+    hasTopicMarkers: Boolean,
+    hasSentimentSegments: Boolean,
+) {
+    if (!hasTopicMarkers && !hasSentimentSegments) return
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 2.dp),
+    ) {
+        if (hasTopicMarkers) {
+            LegendChip(color = Color(0xFFFF9800), label = "Topics")
+        }
+        if (hasSentimentSegments) {
+            LegendChip(color = Color(0xFF4CAF50), label = "Positive")
+            LegendChip(color = Color(0xFF9E9E9E), label = "Neutral")
+            LegendChip(color = Color(0xFFF44336), label = "Negative")
+        }
+    }
+}
+
+@Composable
+private fun LegendChip(
+    color: Color,
+    label: String,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.size(8.dp).background(color.copy(alpha = 0.88f), CircleShape))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

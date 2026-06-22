@@ -8,6 +8,10 @@
 
 * shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop and Shelf Snap; no change to Scrybe behaviour
 
+**Playback marker legend** — color-coded dot strips are now self-describing:
+* a compact legend row appears below the dot strips when there is data to show (topics and/or sentiment)
+* orange dot = Topics, green = Positive, grey = Neutral, red = Negative
+
 ### Fixes
 
 * custom recording type name now displays correctly in the history badge — previously all custom-typed sessions showed "Journal" because `customTypeId` was not mapped into `RecordingSession` and the badge only read `RecordingMode`
