@@ -55,6 +55,9 @@ class FileManagerViewModel
         private val _events = MutableSharedFlow<String>()
         val events: SharedFlow<String> = _events.asSharedFlow()
 
+        private val _pendingImport = MutableStateFlow<PendingImport?>(null)
+        val pendingImport: StateFlow<PendingImport?> = _pendingImport.asStateFlow()
+
         private val recordingsDir: File by lazy { context.filesDir.resolve("recordings") }
 
         init {
@@ -138,13 +141,8 @@ class FileManagerViewModel
         }
 
         fun importOrphan(absolutePath: String) {
-            viewModelScope.launch {
-                runCatching { createSession(File(absolutePath)) }
-                    .onSuccess {
-                        refresh()
-                        _events.emit("Recording imported")
-                    }.onFailure { _events.emit(it.message ?: "Import failed") }
-            }
+            val file = File(absolutePath)
+            _pendingImport.value = PendingImport(file, file.lastModified(), deleteOnCancel = false)
         }
 
         fun importExternalFile(uri: Uri) {
@@ -155,12 +153,29 @@ class FileManagerViewModel
                     context.contentResolver.openInputStream(uri)!!.use { src ->
                         dest.outputStream().use { dst -> src.copyTo(dst) }
                     }
-                    createSession(dest)
-                }.onSuccess {
-                    refresh()
-                    _events.emit("Recording imported")
+                    dest
+                }.onSuccess { file ->
+                    _pendingImport.value = PendingImport(file, file.lastModified(), deleteOnCancel = true)
                 }.onFailure { _events.emit(it.message ?: "Import failed") }
             }
+        }
+
+        fun confirmImport(timestampMs: Long) {
+            val pending = _pendingImport.value ?: return
+            _pendingImport.value = null
+            viewModelScope.launch {
+                runCatching { createSession(pending.file, timestampMs) }
+                    .onSuccess {
+                        refresh()
+                        _events.emit("Recording imported")
+                    }.onFailure { _events.emit(it.message ?: "Import failed") }
+            }
+        }
+
+        fun dismissImport() {
+            val pending = _pendingImport.value ?: return
+            _pendingImport.value = null
+            if (pending.deleteOnCancel) pending.file.delete()
         }
 
         private fun mimeExtension(mimeType: String?): String =
@@ -173,15 +188,25 @@ class FileManagerViewModel
                 else -> "m4a"
             }
 
-        private suspend fun createSession(file: File) {
-            val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date(file.lastModified()))
+        private suspend fun createSession(
+            file: File,
+            createdAtMs: Long = file.lastModified(),
+        ) {
+            val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date(createdAtMs))
             val retriever = MediaMetadataRetriever()
             val durationMs: Long
             val sampleRateHz: Int
             val encodingBitRate: Int
             val channelCount: Int
             try {
-                retriever.setDataSource(file.absolutePath)
+                try {
+                    retriever.setDataSource(file.absolutePath)
+                } catch (e: Exception) {
+                    throw RuntimeException(
+                        "Could not read \"${file.name}\" — the audio format may not be supported",
+                        e,
+                    )
+                }
                 durationMs =
                     retriever
                         .extractMetadata(
@@ -240,7 +265,7 @@ class FileManagerViewModel
                     isArchived = false,
                     estimatedTranscriptionCostUsd = null,
                     folderId = null,
-                    createdAt = file.lastModified(),
+                    createdAt = createdAtMs,
                     updatedAt = System.currentTimeMillis(),
                 )
             sessionDao.insertSession(entity)

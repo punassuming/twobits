@@ -29,9 +29,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.pricedrop.BuildConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -148,14 +150,31 @@ fun SettingsScreen(
                 }
             }
             item {
+                val uriHandler = LocalUriHandler.current
                 SectionCard(title = "About") {
                     Column {
                         ListItem(
-                            headlineContent = { Text("What's new") },
+                            headlineContent = { Text("PriceDrop v${BuildConfig.VERSION_NAME}") },
+                            supportingContent = { Text("Local-first. Your data stays on this device.") },
                         )
-                        TextButton(onClick = onNavigateToWhatsNew, modifier = Modifier.padding(horizontal = 8.dp)) {
-                            Text("See release notes")
-                        }
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text("What's new") },
+                            supportingContent = { Text("Recent changes & release notes") },
+                            trailingContent = {
+                                TextButton(onClick = onNavigateToWhatsNew) { Text("See notes") }
+                            },
+                        )
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text("Privacy policy") },
+                            supportingContent = { Text("punassuming.github.io/twobits/privacy") },
+                            trailingContent = {
+                                TextButton(
+                                    onClick = { uriHandler.openUri("https://punassuming.github.io/twobits/privacy.html") },
+                                ) { Text("Open") }
+                            },
+                        )
                     }
                 }
             }

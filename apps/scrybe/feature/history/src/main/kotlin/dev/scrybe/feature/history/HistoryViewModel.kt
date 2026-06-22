@@ -13,6 +13,7 @@ import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.common.sanitizeFileName
+import dev.scrybe.core.database.CustomRecordingTypeDao
 import dev.scrybe.core.database.FolderDao
 import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.database.PersonDao
@@ -115,6 +116,7 @@ class HistoryViewModel
         private val folderDao: FolderDao,
         private val speakerSegmentDao: SpeakerSegmentDao,
         private val personDao: PersonDao,
+        private val customRecordingTypeDao: CustomRecordingTypeDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
@@ -218,10 +220,17 @@ class HistoryViewModel
                 transcriptDao.getAllTranscripts(),
                 historyUiInputs,
                 transformingSessionIds,
-                combine(folderNavState, openTaskCountsPerSession) { nav, counts -> nav to counts },
+                combine(
+                    folderNavState,
+                    openTaskCountsPerSession,
+                    customRecordingTypeDao.getAll(),
+                ) { nav, counts, customTypes ->
+                    Triple(nav, counts, customTypes.associate { it.id to it.name })
+                },
             ) { entities, transcripts, inputs, currentlyTransforming, folderNavAndCounts ->
                 val folderNav = folderNavAndCounts.first
                 val taskCounts = folderNavAndCounts.second
+                val customTypeNameMap = folderNavAndCounts.third
                 val speakerPersonNames = folderNav.speakerPersonNames
                 val taskCountMap = taskCounts.associate { it.sessionId to it.count }
                 val sessions =
@@ -248,6 +257,7 @@ class HistoryViewModel
                             sentimentJson = entity.sentimentJson,
                             topicsJson = entity.topicsJson,
                             mode = RecordingMode.valueOf(entity.mode),
+                            customTypeId = entity.customTypeId,
                             createdAt = Instant.ofEpochMilli(entity.createdAt),
                             updatedAt = Instant.ofEpochMilli(entity.updatedAt),
                         )
@@ -300,6 +310,7 @@ class HistoryViewModel
                                 transcriptPreview = latestTranscriptBySession[session.id],
                                 speakerCount = speakerPersonNames[session.id]?.size ?: 0,
                                 openTaskCount = taskCountMap[session.id] ?: 0,
+                                customTypeName = session.customTypeId?.let { customTypeNameMap[it] },
                             )
                         }
 
@@ -348,6 +359,7 @@ class HistoryViewModel
                                         transcriptPreview = latestTranscriptBySession[session.id],
                                         speakerCount = speakerPersonNames[session.id]?.size ?: 0,
                                         openTaskCount = taskCountMap[session.id] ?: 0,
+                                        customTypeName = session.customTypeId?.let { customTypeNameMap[it] },
                                     )
                                 }
                         }

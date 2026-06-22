@@ -157,7 +157,10 @@ private fun historyModeIcon(mode: RecordingMode): ImageVector =
     }
 
 @Composable
-private fun HistoryModeBadge(mode: RecordingMode) {
+private fun HistoryModeBadge(
+    mode: RecordingMode,
+    customTypeName: String? = null,
+) {
     val accentColor = modeAccentColor(mode, MaterialTheme.colorScheme)
     Surface(
         shape = CircleShape,
@@ -169,7 +172,7 @@ private fun HistoryModeBadge(mode: RecordingMode) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(historyModeIcon(mode), contentDescription = null, modifier = Modifier.size(11.dp), tint = accentColor)
-            Text(mode.label, style = MaterialTheme.typography.labelSmall, color = accentColor)
+            Text(customTypeName ?: mode.label, style = MaterialTheme.typography.labelSmall, color = accentColor)
         }
     }
 }
@@ -259,7 +262,7 @@ private fun RecordRowContent(
         Column(modifier = Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(item.session.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                HistoryModeBadge(mode = item.session.mode)
+                HistoryModeBadge(mode = item.session.mode, customTypeName = item.customTypeName)
                 item.session.locationLabel?.let { loc ->
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -10,11 +10,14 @@ import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import com.twobits.pricedrop.data.provider.CredentialCheck
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.settings.SettingsPrefs
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -25,6 +28,15 @@ import javax.inject.Inject
 data class ProviderState(
     val mode: ProviderMode,
     val key: String,
+    val isValidating: Boolean = false,
+    val validationMessage: String? = null,
+    val isKeyValid: Boolean? = null,
+)
+
+private data class ProviderValidation(
+    val isValidating: Boolean = false,
+    val message: String? = null,
+    val isValid: Boolean? = null,
 )
 
 data class SettingsUiState(
@@ -84,7 +96,10 @@ class SettingsViewModel
             viewModelScope.launch { dataStore.edit { it[SettingsPrefs.QUIET_HOURS] = enabled } }
         }
 
-        val providerStates: StateFlow<Map<PriceDropProvider, ProviderState>> =
+        // Transient, non-persisted save/test feedback keyed by provider.
+        private val validationStates = MutableStateFlow<Map<PriceDropProvider, ProviderValidation>>(emptyMap())
+
+        private val baseStates: Flow<Map<PriceDropProvider, ProviderState>> =
             combine(
                 PriceDropProvider.entries.map { p ->
                     combine(providerStore.observeMode(p), providerStore.observeKey(p)) { mode, key ->
@@ -93,6 +108,18 @@ class SettingsViewModel
                 },
             ) { pairs ->
                 pairs.toMap()
+            }
+
+        val providerStates: StateFlow<Map<PriceDropProvider, ProviderState>> =
+            combine(baseStates, validationStates) { base, validation ->
+                base.mapValues { (p, state) ->
+                    val v = validation[p] ?: return@mapValues state
+                    state.copy(
+                        isValidating = v.isValidating,
+                        validationMessage = v.message,
+                        isKeyValid = v.isValid,
+                    )
+                }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
         fun setProviderMode(
@@ -106,7 +133,45 @@ class SettingsViewModel
             p: PriceDropProvider,
             key: String,
         ) {
-            viewModelScope.launch { providerStore.setKey(p, key) }
+            viewModelScope.launch {
+                providerStore.setKey(p, key)
+                val result = CredentialCheck.check(p, key)
+                setValidation(
+                    p,
+                    ProviderValidation(
+                        message = if (result.isValid) "Saved" else result.message,
+                        isValid = result.isValid,
+                    ),
+                )
+            }
+        }
+
+        fun testProviderKey(
+            p: PriceDropProvider,
+            key: String,
+        ) {
+            setValidation(p, ProviderValidation(isValidating = true))
+            viewModelScope.launch {
+                val result = CredentialCheck.check(p, key)
+                setValidation(
+                    p,
+                    ProviderValidation(message = result.message, isValid = result.isValid),
+                )
+            }
+        }
+
+        fun clearProviderKey(p: PriceDropProvider) {
+            viewModelScope.launch {
+                providerStore.clearKey(p)
+                setValidation(p, ProviderValidation())
+            }
+        }
+
+        private fun setValidation(
+            p: PriceDropProvider,
+            v: ProviderValidation,
+        ) {
+            validationStates.value = validationStates.value.toMutableMap().apply { put(p, v) }
         }
 
         fun startProPurchase(

@@ -9,10 +9,10 @@ An Android app that helps users document, value, and export a donation inventory
 | Story | Description |
 |---|---|
 | **Photo Capture** | Capture one or more photos per item using CameraX. Thumbnails appear in a scrollable strip; individual photos can be removed before analysis. |
-| **Draft Item Extraction** | Photos are sent to the OpenAI Vision API (GPT-4o). The API returns `category`, `description`, `condition`, `estimatedValue`, and a `confidencePercent` as structured JSON, which is saved as a draft record. |
+| **Draft Item Extraction** | Photos are sent to the OpenAI Vision API (GPT-5 by default; configurable in Settings). The API returns `category`, `description`, `condition`, `estimatedValue`, and a `confidencePercent` as structured JSON, which is saved as a draft record. |
 | **Inventory Review & Editing** | Tabbed item detail (Details / Market / List). The **Details** tab edits every AI-proposed field plus extended attributes (brand, model, size, color, quantity, original price, tags). Inventory supports search (category, brand, or description), filter chips (All / Listed / Unlisted / Drafts), inline delete, and a paginated photo viewer. |
 | **Valuation Suggestion** | Estimated values are always labeled as *estimates* in the UI and CSV export — never presented as authoritative. Confidence scores from the model are surfaced as a badge. |
-| **Market Research & Pricing** | The **Market** tab researches resale value via OpenAI inference (`gpt-4o-mini`) plus an optional web search (Brave or DuckDuckGo). It surfaces average sold price, a price range, per-platform suggested prices, comparable listings, and **cited sources** — estimates always show where they came from. |
+| **Market Research & Pricing** | The **Market** tab researches resale value via OpenAI inference plus an optional web search (Jina AI or Brave Search). It surfaces average sold price, a price range, per-platform suggested prices, comparable listings, and **cited sources** — estimates always show where they came from. |
 | **Cross-Listing** | The **List** tab lets users select selling platforms (eBay, Mercari, OfferUp, FB Marketplace, Craigslist) and record listings at platform-adjusted prices. Listed/Sold status and platform badges appear back on the inventory cards. |
 | **Donation Summary & Export** | Summary screen shows a per-item subtotal list and the total estimated donation value. A one-tap CSV export creates a file in the device's external storage, shareable via the system chooser. |
 
@@ -52,11 +52,13 @@ com.shelfsnap.app
 
 1. Clone the repository and open in Android Studio Hedgehog or later.
 2. Build → Run on a device or emulator with API 26+.
-3. Open **Settings** (gear icon) and paste your [OpenAI API key](https://platform.openai.com/api-keys).
-4. *(Optional)* In **Settings → Price research search**, choose a web-search provider for market pricing:
-   - **DuckDuckGo** — keyless; works out of the box.
+3. Open **Settings → AI Configuration** and choose a provider mode for OpenAI (required for both photo analysis and price research):
+   - **BYOK** — paste your own [OpenAI API key](https://platform.openai.com/api-keys). You pay OpenAI directly. Vision analysis uses your selected model (default: GPT-5); price research uses a fast model.
+   - **Shelf Snap Pro** — subscribe for managed API access. No key required.
+4. *(Optional)* In **Settings → AI Configuration → Web search**, choose a search provider to improve price research accuracy:
+   - **Jina AI** — paste a [Jina AI API key](https://jina.ai/). Free tier available; grounding real-time web results.
    - **Brave Search** — paste a [Brave Search API](https://api-dashboard.search.brave.com/) subscription token.
-   - **None (AI only)** — pricing relies on the model's own knowledge, no web calls.
+   - **None (AI only)** — pricing relies on the model's training data alone, no web calls made.
 5. Tap **+** to start capturing donation items, then open an item and use the **Market** tab to research a price and the **List** tab to cross-list it.
 
 > **Privacy:** Your API keys are stored only in the device's local DataStore. Photos are sent to OpenAI for analysis; item attributes and any web-search snippets are sent to OpenAI (and your chosen search provider) only when you tap **Research price**. Nothing else leaves the device.

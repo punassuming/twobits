@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -33,6 +35,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,6 +57,7 @@ import java.util.Locale
 fun FileManagerScreen(onNavigateBack: () -> Unit) {
     val viewModel: FileManagerViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
+    val pendingImport by viewModel.pendingImport.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val importLauncher =
         rememberLauncherForActivityResult(
@@ -107,6 +111,14 @@ fun FileManagerScreen(onNavigateBack: () -> Unit) {
                     onExportBundle = viewModel::exportBundle,
                 )
         }
+    }
+
+    pendingImport?.let {
+        ImportTimestampDialog(
+            pendingImport = it,
+            onConfirm = viewModel::confirmImport,
+            onDismiss = viewModel::dismissImport,
+        )
     }
 }
 
@@ -296,3 +308,32 @@ private fun formatSize(bytes: Long): String =
     }
 
 private fun formatDate(ms: Long): String = SimpleDateFormat("MMM d, yyyy", Locale.US).format(Date(ms))
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ImportTimestampDialog(
+    pendingImport: PendingImport,
+    onConfirm: (Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val datePickerState =
+        rememberDatePickerState(
+            initialSelectedDateMillis = pendingImport.defaultTimestampMs,
+        )
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(datePickerState.selectedDateMillis ?: pendingImport.defaultTimestampMs)
+            }) { Text("Import") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    ) {
+        DatePicker(
+            state = datePickerState,
+            headline = { Text("Recording date", modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)) },
+            title = null,
+            showModeToggle = true,
+        )
+    }
+}

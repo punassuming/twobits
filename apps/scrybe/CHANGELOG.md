@@ -6,7 +6,28 @@
 
 ### Improvements
 
+* shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop and Shelf Snap; no change to Scrybe behaviour
+* README: added a "Custom recording types" guide (system prompt authoring, `{{transcript}}` placeholder, persistence); expanded Quick Start provider table with BYOK/Pro/local key-setup steps
+
+**AI Profile Draft dialog** — tightened layout and removed redundant seed fields:
+* "Seed name" and "Seed description" fields removed — the AI generates a name and description from the request; users refine via the refinement section after the first draft
+* dialog title scaled down from `headlineSmall` to `titleLarge` for better proportion
+
+**Live transcript panel** — the recording screen now shows a contextual panel during capture:
+* pulsing microphone indicator while recording ("Transcript will appear when recording stops")
+* spinner + "Saving and transcribing…" during the stop/save phase
+* static message when auto-transcription is disabled in Settings
+
+**Playback marker legend** — color-coded dot strips are now self-describing:
+* a compact legend row appears below the dot strips when there is data to show (topics and/or sentiment)
+* orange dot = Topics, green = Positive, grey = Neutral, red = Negative
+
 ### Fixes
+
+* custom recording type name now displays correctly in the history badge — previously all custom-typed sessions showed "Journal" because `customTypeId` was not mapped into `RecordingSession` and the badge only read `RecordingMode`
+* audio import now shows an actionable error ("Could not read file — format may not be supported") instead of a raw hex code when `setDataSource` fails
+* imported recordings now prompt for a date before import, defaulting to the file's last-modified timestamp; the chosen date is used as the session's `createdAt` so history sort order is correct
+* fix build: add `@OptIn(ExperimentalMaterial3Api::class)` to `ImportTimestampDialog` (DatePicker/DatePickerDialog APIs still experimental in the Compose BOM in use)
 
 ## 1.19.0 (2026-06-22)
 

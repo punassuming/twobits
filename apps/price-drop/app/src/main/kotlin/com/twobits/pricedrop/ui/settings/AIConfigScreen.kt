@@ -9,9 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,11 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -33,13 +26,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AI_BYOK_COLOR
+import com.twobits.design.components.AI_PRO_COLOR
+import com.twobits.design.components.CredentialModeOption
+import com.twobits.design.components.ProviderCredentialCard
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode
 
@@ -87,11 +81,10 @@ fun AIConfigScreen(
                     ) {
                         PriceDropProvider.entries.forEach { provider ->
                             val state = providerStates[provider] ?: ProviderState(ProviderMode.PRO, "")
-                            ProviderCard(
+                            ProviderCredentialItem(
                                 provider = provider,
                                 state = state,
-                                onModeChange = { viewModel.setProviderMode(provider, it) },
-                                onKeySave = { viewModel.setProviderKey(provider, it) },
+                                viewModel = viewModel,
                             )
                         }
                     }
@@ -101,87 +94,49 @@ fun AIConfigScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProviderCard(
+private fun ProviderCredentialItem(
     provider: PriceDropProvider,
     state: ProviderState,
-    onModeChange: (ProviderMode) -> Unit,
-    onKeySave: (String) -> Unit,
+    viewModel: SettingsViewModel,
 ) {
-    var keyDraft by remember(provider) { mutableStateOf(state.key) }
-    LaunchedEffect(state.key) { if (keyDraft != state.key) keyDraft = state.key }
-    var showKey by remember { mutableStateOf(false) }
+    // Local draft so typing doesn't persist on every keystroke; Save commits it.
+    var draft by remember(provider) { mutableStateOf(state.key) }
+    LaunchedEffect(state.key) { if (draft != state.key) draft = state.key }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                provider.displayName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-
-            val modes = ProviderMode.entries
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                modes.forEachIndexed { index, mode ->
-                    SegmentedButton(
-                        selected = state.mode == mode,
-                        onClick = { onModeChange(mode) },
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
-                    ) {
-                        Text(
-                            when (mode) {
-                                ProviderMode.OFF -> "Off"
-                                ProviderMode.BYOK -> "BYOK"
-                                ProviderMode.PRO -> "Pro"
-                            },
-                        )
-                    }
-                }
-            }
-
-            when (state.mode) {
-                ProviderMode.BYOK -> {
-                    OutlinedTextField(
-                        value = keyDraft,
-                        onValueChange = { keyDraft = it },
-                        label = { Text("API key") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation =
-                            if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { showKey = !showKey }) {
-                                Icon(
-                                    if (showKey) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                    contentDescription = if (showKey) "Hide key" else "Show key",
-                                )
-                            }
-                        },
-                    )
-                    Button(
-                        onClick = { onKeySave(keyDraft) },
-                        modifier = Modifier.align(Alignment.End),
-                    ) {
-                        Text("Save")
-                    }
-                }
-
-                ProviderMode.PRO ->
-                    Text(
-                        "Using TwoBits managed provider — no key needed",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-
-                ProviderMode.OFF -> Unit
-            }
-        }
-    }
+    ProviderCredentialCard(
+        title = provider.displayName,
+        modes = PRICEDROP_MODES,
+        selectedMode = state.mode.value,
+        keyMode = ProviderMode.BYOK.value,
+        apiKey = draft,
+        isValidating = state.isValidating,
+        validationMessage = state.validationMessage,
+        isKeyValid = state.isKeyValid,
+        onModeChange = { viewModel.setProviderMode(provider, ProviderMode.fromValue(it)) },
+        onApiKeyChange = { draft = it },
+        onSave = { viewModel.setProviderKey(provider, draft) },
+        onTest = { viewModel.testProviderKey(provider, draft) },
+        onClear = {
+            draft = ""
+            viewModel.clearProviderKey(provider)
+        },
+        modeInfo = PRICEDROP_MODE_INFO,
+    )
 }
+
+private val PRICEDROP_MODES =
+    listOf(
+        CredentialModeOption(ProviderMode.OFF.value, "Off", Color.Gray),
+        CredentialModeOption(ProviderMode.BYOK.value, "BYOK", AI_BYOK_COLOR),
+        CredentialModeOption(ProviderMode.PRO.value, "Pro", AI_PRO_COLOR),
+    )
+
+private val PRICEDROP_MODE_INFO =
+    mapOf(
+        ProviderMode.PRO.value to "Using TwoBits managed provider — no key needed (requires PriceDrop Pro).",
+        ProviderMode.OFF.value to "This provider is disabled.",
+    )
 
 @Composable
 private fun SectionCard2(

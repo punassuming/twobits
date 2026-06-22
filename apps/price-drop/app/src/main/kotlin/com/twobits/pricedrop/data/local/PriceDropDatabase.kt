@@ -3,6 +3,7 @@ package com.twobits.pricedrop.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.twobits.pricedrop.data.model.Activity
+import com.twobits.pricedrop.data.model.ChatMessageEntity
 import com.twobits.pricedrop.data.model.Coupon
 import com.twobits.pricedrop.data.model.Drop
 import com.twobits.pricedrop.data.model.Offer
@@ -17,8 +18,9 @@ import com.twobits.pricedrop.data.model.WatchedProduct
         Offer::class,
         Coupon::class,
         Activity::class,
+        ChatMessageEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class PriceDropDatabase : RoomDatabase() {
@@ -33,4 +35,6 @@ abstract class PriceDropDatabase : RoomDatabase() {
     abstract fun couponDao(): CouponDao
 
     abstract fun activityDao(): ActivityDao
+
+    abstract fun chatMessageDao(): ChatMessageDao
 }

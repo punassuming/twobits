@@ -4,9 +4,30 @@
 
 ### Features
 
+**Ask AI — persistent multi-turn chat:**
+* conversation history now persists across app restarts (stored in Room `chat_messages` table)
+* all previous turns are included in each API request so the assistant maintains context across multiple messages
+* a "Clear chat" button in the top bar lets users start a fresh conversation
+
 ### Improvements
 
+**Documentation** — provider setup and BYOK status:
+* README: added "Getting your OpenAI key (BYOK)" step-by-step section; clarified that only OpenAI BYOK is functional today (other providers route to Pro until per-provider adapters land); updated data model table with `ChatMessageEntity`; updated architecture with `ChatMessageDao`
+
+**AI Configuration** — credential save validation and consistent provider cards:
+* each provider (OpenAI, Web search, Shopping, Keepa, Coupons) now shows Save, Test, and Clear actions with inline success/error feedback
+* keys are format-validated on save and test — invalid keys are flagged instead of being silently accepted
+* provider cards now use the shared design-system credential component for a consistent look across the suite
+
+**Pro plans** — now uses the shared `ProTierCard` design-system component:
+* Free / Pro / BYOK tier cards extracted to shared design module; visual output unchanged
+
+**About** — version and privacy parity:
+* About section now shows the app version plus a Privacy policy link, matching Shelf Snap and Scrybe
+
 ### Fixes
+
+* restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
 
 ## 0.2.0 (2026-06-22)
 

@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,8 +18,6 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,14 +27,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,9 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.R
@@ -73,6 +64,7 @@ import com.twobits.design.components.AiSourceSegment
 import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
+import com.twobits.design.components.ProviderCredentialCard
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
     when (this) {
@@ -265,9 +257,7 @@ fun AIConfigScreen(
                 }
             }
 
-            AiSectionCard(icon = Icons.Default.Search, title = "Web search for pricing") {
-                WebSearchSection(uiState = uiState, viewModel = viewModel, hasPro = hasPro)
-            }
+            WebSearchSection(uiState = uiState, viewModel = viewModel, hasPro = hasPro)
 
             AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
                 AiToggleRow(
@@ -301,6 +291,7 @@ private fun WebSearchSection(
     viewModel: SettingsViewModel,
     hasPro: Boolean,
 ) {
+    AiSectionHeader(icon = Icons.Default.Search, title = "Web search for pricing")
     if (hasPro) {
         AiProManagedCard(
             description = "Web search managed via api.twobits.app — Jina AI (primary) with Brave Search as supplement. No keys required.",
@@ -317,95 +308,35 @@ private fun WebSearchSection(
         onSelected = viewModel::onSearchProviderChange,
     )
     // Always show both key fields so both keys can be saved independently.
-    SearchApiKeyPanel(
-        label = stringResource(R.string.jina_api_key_label),
-        hint = stringResource(R.string.jina_api_key_hint),
-        value = uiState.editJinaApiKey,
-        onValueChange = viewModel::onJinaApiKeyChange,
-        isTesting = uiState.isJinaTesting,
-        testResult = uiState.jinaTestResult,
-        testMessage = uiState.jinaTestMessage,
+    if (uiState.savedJinaApiKey.isBlank()) JinaKeyWalkthrough()
+    ProviderCredentialCard(
+        title = stringResource(R.string.jina_api_key_label),
+        selectedMode = "key",
+        keyMode = "key",
+        apiKey = uiState.editJinaApiKey,
+        isValidating = uiState.isJinaTesting,
+        validationMessage = uiState.jinaTestMessage,
+        isKeyValid = uiState.jinaTestResult,
+        onApiKeyChange = viewModel::onJinaApiKeyChange,
         onSave = viewModel::saveJinaKey,
         onClear = viewModel::clearJinaKey,
         onTest = viewModel::testJinaKey,
-        showWalkthrough = uiState.savedJinaApiKey.isBlank(),
+        keyHint = stringResource(R.string.jina_api_key_hint),
     )
-    HorizontalDivider()
-    SearchApiKeyPanel(
-        label = stringResource(R.string.brave_api_key_label),
-        hint = stringResource(R.string.brave_api_key_hint),
-        value = uiState.editBraveApiKey,
-        onValueChange = viewModel::onBraveApiKeyChange,
-        isTesting = uiState.isBraveTesting,
-        testResult = uiState.braveTestResult,
-        testMessage = uiState.braveTestMessage,
+    ProviderCredentialCard(
+        title = stringResource(R.string.brave_api_key_label),
+        selectedMode = "key",
+        keyMode = "key",
+        apiKey = uiState.editBraveApiKey,
+        isValidating = uiState.isBraveTesting,
+        validationMessage = uiState.braveTestMessage,
+        isKeyValid = uiState.braveTestResult,
+        onApiKeyChange = viewModel::onBraveApiKeyChange,
         onSave = viewModel::saveBraveKey,
         onClear = viewModel::clearBraveKey,
         onTest = viewModel::testBraveKey,
-        showWalkthrough = false,
+        keyHint = stringResource(R.string.brave_api_key_hint),
     )
-}
-
-@Composable
-private fun SearchApiKeyPanel(
-    label: String,
-    hint: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    isTesting: Boolean,
-    testResult: Boolean?,
-    testMessage: String?,
-    onSave: () -> Unit,
-    onClear: () -> Unit,
-    onTest: () -> Unit,
-    showWalkthrough: Boolean,
-) {
-    var showKey by remember { mutableStateOf(false) }
-    if (showWalkthrough) JinaKeyWalkthrough()
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        supportingText = { Text(hint) },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        trailingIcon = {
-            TextButton(onClick = { showKey = !showKey }) {
-                Text(stringResource(if (showKey) R.string.hide else R.string.show))
-            }
-        },
-    )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedButton(onClick = onClear, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.clear))
-        }
-        Button(onClick = onSave, modifier = Modifier.weight(1f)) {
-            Text(stringResource(R.string.save))
-        }
-        Button(
-            onClick = onTest,
-            modifier = Modifier.weight(1f),
-            enabled = value.isNotBlank() && !isTesting,
-        ) {
-            if (isTesting) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            } else {
-                Text(stringResource(R.string.test))
-            }
-        }
-    }
-    testMessage?.let { message ->
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodySmall,
-            color = if (testResult == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-        )
-    }
 }
 
 @Composable

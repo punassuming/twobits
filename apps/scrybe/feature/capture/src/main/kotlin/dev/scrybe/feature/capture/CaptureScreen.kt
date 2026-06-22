@@ -623,24 +623,7 @@ private fun RecordingActiveView(
                 RecordingTimerRow(elapsedMs = state.elapsedMs, isStopping = isStopping, isPaused = isPaused)
             }
         }
-        // Recent recordings section
-        Column(modifier = Modifier.weight(1f)) {
-            if (state.recentSessions.isNotEmpty()) {
-                Text(
-                    text = "Recent recordings",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
-                )
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(state.recentSessions.take(4)) { session ->
-                        RecentSessionMiniRow(session = session)
-                    }
-                }
-            } else {
-                Spacer(Modifier.fillMaxSize())
-            }
-        }
+        LiveTranscriptPanel(state = state, modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp))
         RecordingStopButtons(
             modeName = state.activeMode.label,
             enabled = !isStopping,
@@ -651,6 +634,80 @@ private fun RecordingActiveView(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LiveTranscriptPanel(
+    state: CaptureUiState,
+    modifier: Modifier = Modifier,
+) {
+    val isStopping = state.phase == CapturePhase.STOPPING
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Live transcript",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            when {
+                isStopping -> {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text(
+                            text = "Saving and transcribing…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                !state.autoTranscribeEnabled -> {
+                    Text(
+                        text = "Auto-transcription is off — enable it in Settings to get a transcript after recording.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+                else -> {
+                    val transition = rememberInfiniteTransition(label = "pulse")
+                    val alpha by transition.animateFloat(
+                        initialValue = 0.4f,
+                        targetValue = 1f,
+                        animationSpec =
+                            infiniteRepeatable(
+                                tween(900, easing = EaseInOut),
+                                RepeatMode.Reverse,
+                            ),
+                        label = "alpha",
+                    )
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Filled.Mic,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
+                        )
+                        Text(
+                            text = "Transcript will appear here when recording stops.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun RecordingActiveHeader(
     state: CaptureUiState,

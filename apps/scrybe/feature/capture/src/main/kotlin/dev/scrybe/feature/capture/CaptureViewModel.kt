@@ -143,6 +143,11 @@ class CaptureViewModel
                 }
             }
             viewModelScope.launch {
+                preferencesDataStore.autoTranscribe.collectLatest { enabled ->
+                    _uiState.value = _uiState.value.copy(autoTranscribeEnabled = enabled)
+                }
+            }
+            viewModelScope.launch {
                 recordingSessionEvents.recordingErrors.collectLatest { message ->
                     _uiState.value =
                         _uiState.value.copy(
