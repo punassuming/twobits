@@ -8,6 +8,9 @@
 
 ### Fixes
 
+* Pro screen: the plan toggle "Monthly – $5.99/mo" chip no longer wraps to two lines — the Annual/Monthly chips now share the row evenly and keep their labels on one line
+* AI configuration: provider status badges no longer wrap to two lines when a provider title is long (shared credential row fix)
+
 ## 0.3.0 (2026-06-22)
 
 ### Features

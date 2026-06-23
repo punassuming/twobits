@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* AI configuration: the Pro row "Not subscribed" status badge no longer wraps to two lines — the shared credential row now keeps the badge on a single line and ellipsizes the title when space is tight
+
 ## 1.14.0 (2026-06-22)
 
 ### Features
