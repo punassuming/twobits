@@ -8,7 +8,9 @@
 
 ### Fixes
 
-## 0.0.1 (2026-06-23)
+* Release automation: corrected version number from 0.0.1 to 0.5.0 — a concurrent-release race condition caused the tag action to start from 0.0.0 instead of 0.4.0
+
+## 0.5.0 (2026-06-23)
 
 ### Features
 
