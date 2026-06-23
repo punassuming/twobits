@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,17 +24,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -55,25 +61,31 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -193,7 +205,13 @@ fun ProfilesScreen(
     val profileSuggestionModel by viewModel.profileSuggestionModel.collectAsState()
     val editorDraft by viewModel.editorDraft.collectAsState()
     val aiCreatorOpen by viewModel.aiCreatorOpen.collectAsState()
+    val draftingNewProfile by viewModel.draftingNewProfile.collectAsState()
     var detailProfile by remember { mutableStateOf<TransformProfile?>(null) }
+    var showNewProfileSheet by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(draftingNewProfile) {
+        if (draftingNewProfile) showNewProfileSheet = false
+    }
 
     val detail = detailProfile
     if (detail != null) {
@@ -252,13 +270,9 @@ fun ProfilesScreen(
                     ) {
                         item {
                             ProfileCreationCard(
-                                onCreateManual = {
+                                onCreateNew = {
                                     viewModel.clearSuggestionState()
-                                    viewModel.openNewEditor()
-                                },
-                                onCreateWithAi = {
-                                    viewModel.clearSuggestionState()
-                                    viewModel.openAiCreator()
+                                    showNewProfileSheet = true
                                 },
                             )
                         }
@@ -336,40 +350,90 @@ fun ProfilesScreen(
             },
         )
     }
+
+    // New unified profile creation sheet
+    if (showNewProfileSheet) {
+        NewProfileSheet(
+            selectedModelName = profileSuggestionModel,
+            onDismiss = { showNewProfileSheet = false },
+            onModelChange = viewModel::setProfileSuggestionModel,
+            onSaveManual = { name, prompt ->
+                viewModel.saveProfile(
+                    ProfileEditorDraft(
+                        name = name.trim(),
+                        steps = listOf(prompt.trim()).filter { it.isNotBlank() }.ifEmpty { listOf("Process {{transcript}}") },
+                    ),
+                )
+                showNewProfileSheet = false
+            },
+            onDraftWithAi = { name, prompt ->
+                viewModel.startNewProfileDraft(name, prompt)
+            },
+        )
+    }
+
+    // Animated progress sheet shown while AI drafts a new profile
+    if (draftingNewProfile && suggestionState is ProfileSuggestionUiState.Drafting) {
+        DraftingProfileSheet(
+            modelName = profileSuggestionModel,
+            draftingStep = (suggestionState as ProfileSuggestionUiState.Drafting).step,
+        )
+    }
+
+    // Review draft sheet shown after AI finishes (or during refinement)
+    val latestSuggestion =
+        remember(suggestionState) {
+            (suggestionState as? ProfileSuggestionUiState.Success)?.suggestion
+        }
+    val previousSuggestion = remember { mutableStateOf<dev.scrybe.core.transforms.ProfileSuggestion?>(null) }
+    LaunchedEffect(latestSuggestion) {
+        if (latestSuggestion != null) previousSuggestion.value = latestSuggestion
+    }
+    val reviewSuggestion = latestSuggestion ?: previousSuggestion.value
+
+    if (draftingNewProfile && (suggestionState is ProfileSuggestionUiState.Success || suggestionState is ProfileSuggestionUiState.Loading) && reviewSuggestion != null) {
+        ReviewDraftSheet(
+            suggestion = reviewSuggestion,
+            isRefining = suggestionState is ProfileSuggestionUiState.Loading,
+            onDismiss = { viewModel.clearDraftingNewProfile() },
+            onRefine = { refinement ->
+                viewModel.suggestProfile(
+                    userRequest = "$refinement\n\nCurrent draft:\n${reviewSuggestion.steps.joinToString("\n")}",
+                    currentName = reviewSuggestion.name,
+                    currentDescription = reviewSuggestion.description,
+                    currentSteps = reviewSuggestion.steps,
+                    isRefinement = true,
+                )
+            },
+            onSave = { name, editedPrompt ->
+                viewModel.saveProfile(
+                    ProfileEditorDraft(
+                        name = name.ifBlank { reviewSuggestion.name }.trim(),
+                        description = reviewSuggestion.description,
+                        steps = listOf(editedPrompt.trim()),
+                    ),
+                )
+                viewModel.clearDraftingNewProfile()
+            },
+        )
+    }
 }
 
 @Composable
-private fun ProfileCreationCard(
-    onCreateManual: () -> Unit,
-    onCreateWithAi: () -> Unit,
-) {
+private fun ProfileCreationCard(onCreateNew: () -> Unit) {
     AppSectionCard {
         AppSectionHeader(
             title = "Create a profile",
-            subtitle = "Build one manually or let AI draft a starting point, then refine it before saving.",
+            subtitle = "Name it and write a prompt, or let AI draft a starting point based on your description.",
         )
-        Row(
+        Button(
+            onClick = onCreateNew,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         ) {
-            Button(
-                onClick = onCreateManual,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("New Profile", maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            OutlinedButton(
-                onClick = onCreateWithAi,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("AI Draft", maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("New Profile")
         }
     }
 }
@@ -1599,6 +1663,447 @@ private fun OpenAiModelPickerDialog(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
+}
+
+// ─── New-profile unified bottom sheet ──────────────────────────────────────
+
+private const val LOCAL_MODEL_KEY = "local"
+
+private val NEW_PROFILE_MODEL_TABS =
+    listOf(
+        OpenAiProfileSuggestionModel.GPT_5_MINI.apiName,
+        OpenAiProfileSuggestionModel.GPT_5.apiName,
+        OpenAiProfileSuggestionModel.GPT_5_4.apiName,
+        LOCAL_MODEL_KEY,
+    )
+
+private fun newProfileModelLabel(key: String): String =
+    when (key) {
+        LOCAL_MODEL_KEY -> "Local"
+        else -> OpenAiProfileSuggestionModel.fromApiName(key).title.removePrefix("GPT-")
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NewProfileSheet(
+    selectedModelName: String,
+    onDismiss: () -> Unit,
+    onModelChange: (String) -> Unit,
+    onSaveManual: (name: String, prompt: String) -> Unit,
+    onDraftWithAi: (name: String, prompt: String) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var name by remember { mutableStateOf("") }
+    var prompt by remember { mutableStateOf("") }
+    val isLocal = selectedModelName == LOCAL_MODEL_KEY
+    val selectedModel = if (!isLocal) OpenAiProfileSuggestionModel.fromApiName(selectedModelName) else OpenAiProfileSuggestionModel.GPT_5_MINI
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 8.dp)
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("New profile", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Name", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("e.g. Podcast prep") },
+                    singleLine = true,
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Prompt (optional — or draft with AI below)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = prompt,
+                    onValueChange = { prompt = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Describe how the AI should process your recording…") },
+                    minLines = 3,
+                )
+            }
+
+            // AI draft model section
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("AI draft model", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
+                            .padding(2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    NEW_PROFILE_MODEL_TABS.forEach { key ->
+                        val isSelected = key == selectedModelName
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            onClick = { onModelChange(key) },
+                            shape = MaterialTheme.shapes.small,
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        ) {
+                            Text(
+                                text = newProfileModelLabel(key),
+                                modifier = Modifier.padding(vertical = 7.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+
+                // "3 nested calls · $0.0008/req" info row
+                if (!isLocal) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        repeat(3) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(6.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                            shape = CircleShape,
+                                        ),
+                            )
+                            Spacer(Modifier.width(3.dp))
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "3 nested calls · \$0.0008/req",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // Draft with AI button (primary)
+            Button(
+                onClick = { onDraftWithAi(name, prompt) },
+                enabled = !isLocal && (name.isNotBlank() || prompt.isNotBlank()),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (isLocal) "Draft with AI (unavailable for Local)" else "Draft with AI (${selectedModel.title})",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            // Save profile button (manual save)
+            FilledTonalButton(
+                onClick = { onSaveManual(name, prompt) },
+                enabled = name.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Save profile")
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+// ─── Drafting progress sheet ────────────────────────────────────────────────
+
+private val DRAFT_STEPS =
+    listOf(
+        "Context extraction" to "Analyzing session patterns and modes",
+        "Profile drafting" to "Writing prompt structure and rules",
+        "Self-critique" to "Refining and tightening the output",
+    )
+
+private enum class DraftStepState { PENDING, ACTIVE, DONE }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DraftingProfileSheet(
+    modelName: String,
+    draftingStep: Int,
+) {
+    val model = OpenAiProfileSuggestionModel.fromApiName(modelName)
+    ModalBottomSheet(
+        onDismissRequest = {},
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+                    .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text("Drafting profile…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = "${model.title} · 3 nested calls",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(16.dp))
+
+            DRAFT_STEPS.forEachIndexed { index, (title, subtitle) ->
+                val stepState =
+                    when {
+                        index < draftingStep -> DraftStepState.DONE
+                        index == draftingStep -> DraftStepState.ACTIVE
+                        else -> DraftStepState.PENDING
+                    }
+                DraftStepRow(
+                    number = index + 1,
+                    title = title,
+                    subtitle = subtitle,
+                    state = stepState,
+                )
+                if (index < DRAFT_STEPS.lastIndex) Spacer(Modifier.height(12.dp))
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            LinearProgressIndicator(
+                progress = { (draftingStep + 1) / 3f },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Call ${draftingStep + 1} of 3",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DraftStepRow(
+    number: Int,
+    title: String,
+    subtitle: String,
+    state: DraftStepState,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Step indicator circle
+        Box(
+            modifier = Modifier.size(28.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            when (state) {
+                DraftStepState.PENDING -> {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(28.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "$number",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                DraftStepState.ACTIVE -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        strokeWidth = 2.5.dp,
+                    )
+                }
+                DraftStepState.DONE -> {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(28.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color =
+                    when (state) {
+                        DraftStepState.DONE, DraftStepState.ACTIVE -> MaterialTheme.colorScheme.primary
+                        DraftStepState.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+// ─── Review draft sheet ─────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReviewDraftSheet(
+    suggestion: dev.scrybe.core.transforms.ProfileSuggestion,
+    isRefining: Boolean,
+    onDismiss: () -> Unit,
+    onRefine: (String) -> Unit,
+    onSave: (name: String, editedPrompt: String) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var editedPrompt by remember(suggestion) { mutableStateOf(suggestion.steps.joinToString("\n\n")) }
+    var refineText by remember { mutableStateOf("") }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 8.dp)
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = "Review draft",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (suggestion.tokensUsed > 0) {
+                    SuggestionChip(
+                        onClick = {},
+                        label = {
+                            Text(
+                                "3 calls · ${suggestion.tokensUsed} tokens",
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        },
+                        colors =
+                            SuggestionChipDefaults.suggestionChipColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                    )
+                }
+            }
+
+            // Editable prompt
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Prompt (editable)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = editedPrompt,
+                    onValueChange = { editedPrompt = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 5,
+                    shape = RoundedCornerShape(10.dp),
+                )
+            }
+
+            // Refine with AI section
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Refine with AI", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = refineText,
+                            onValueChange = { refineText = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("e.g. Make it more concise, add a template for goals…") },
+                            minLines = 2,
+                            maxLines = 3,
+                            enabled = !isRefining,
+                        )
+                        if (isRefining) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    if (refineText.isNotBlank()) {
+                                        onRefine(refineText)
+                                        refineText = ""
+                                    }
+                                },
+                                enabled = refineText.isNotBlank(),
+                            ) {
+                                Icon(Icons.Filled.AutoFixHigh, contentDescription = "Refine")
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Save button
+            Button(
+                onClick = { onSave(suggestion.name, editedPrompt) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = editedPrompt.isNotBlank(),
+            ) {
+                Text("Save profile")
+            }
+
+            Spacer(Modifier.height(8.dp))
+        }
+    }
 }
 
 @Composable
