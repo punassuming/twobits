@@ -70,6 +70,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
@@ -1667,22 +1668,6 @@ private fun OpenAiModelPickerDialog(
 
 // ─── New-profile unified bottom sheet ──────────────────────────────────────
 
-private const val LOCAL_MODEL_KEY = "local"
-
-private val NEW_PROFILE_MODEL_TABS =
-    listOf(
-        OpenAiProfileSuggestionModel.GPT_5_MINI.apiName,
-        OpenAiProfileSuggestionModel.GPT_5.apiName,
-        OpenAiProfileSuggestionModel.GPT_5_4.apiName,
-        LOCAL_MODEL_KEY,
-    )
-
-private fun newProfileModelLabel(key: String): String =
-    when (key) {
-        LOCAL_MODEL_KEY -> "Local"
-        else -> OpenAiProfileSuggestionModel.fromApiName(key).title.removePrefix("GPT-")
-    }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NewProfileSheet(
@@ -1695,8 +1680,8 @@ private fun NewProfileSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var name by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
-    val isLocal = selectedModelName == LOCAL_MODEL_KEY
-    val selectedModel = if (!isLocal) OpenAiProfileSuggestionModel.fromApiName(selectedModelName) else OpenAiProfileSuggestionModel.GPT_5_MINI
+    var showModelPicker by remember { mutableStateOf(false) }
+    val selectedModel = OpenAiProfileSuggestionModel.fromApiName(selectedModelName)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1744,55 +1729,51 @@ private fun NewProfileSheet(
             // AI draft model section
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("AI draft model", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
-                            .padding(2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { showModelPicker = true },
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                 ) {
-                    NEW_PROFILE_MODEL_TABS.forEach { key ->
-                        val isSelected = key == selectedModelName
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            onClick = { onModelChange(key) },
-                            shape = MaterialTheme.shapes.small,
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                        ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(selectedModel.title, style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                text = newProfileModelLabel(key),
-                                modifier = Modifier.padding(vertical = 7.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
+                                selectedModel.supportingText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        Icon(
+                            Icons.Filled.ExpandMore,
+                            contentDescription = "Select model",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
 
-                // "3 nested calls · $0.0008/req" info row
-                if (!isLocal) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        repeat(3) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(6.dp)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                            shape = CircleShape,
-                                        ),
-                            )
-                            Spacer(Modifier.width(3.dp))
-                        }
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "3 nested calls · \$0.0008/req",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    repeat(3) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(6.dp)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                        shape = CircleShape,
+                                    ),
                         )
+                        Spacer(Modifier.width(3.dp))
                     }
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "1 API call per draft",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -1801,13 +1782,13 @@ private fun NewProfileSheet(
             // Draft with AI button (primary)
             Button(
                 onClick = { onDraftWithAi(name, prompt) },
-                enabled = !isLocal && (name.isNotBlank() || prompt.isNotBlank()),
+                enabled = name.isNotBlank() || prompt.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = if (isLocal) "Draft with AI (unavailable for Local)" else "Draft with AI (${selectedModel.title})",
+                    text = "Draft with AI (${selectedModel.title})",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1824,6 +1805,41 @@ private fun NewProfileSheet(
 
             Spacer(Modifier.height(8.dp))
         }
+    }
+
+    if (showModelPicker) {
+        AlertDialog(
+            onDismissRequest = { showModelPicker = false },
+            title = { Text("AI draft model") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    OpenAiProfileSuggestionModel.entries.forEach { model ->
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onModelChange(model.apiName)
+                                        showModelPicker = false
+                                    }.padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = model == selectedModel, onClick = null)
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(model.title, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    model.supportingText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showModelPicker = false }) { Text("Cancel") } },
+        )
     }
 }
 

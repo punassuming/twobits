@@ -66,7 +66,6 @@ import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
-import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 
@@ -100,9 +99,7 @@ fun AIConfigScreen(
     val activity = LocalContext.current as? android.app.Activity
     val hasPro = uiState.subscriptionTier is SubscriptionTier.Pro
     val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
-    val selectedProfileModel = OpenAiProfileSuggestionModel.fromApiName(uiState.profileSuggestionModel)
     val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
-    var showProfileModelPicker by remember { mutableStateOf(false) }
     var showTransformModelPicker by remember { mutableStateOf(false) }
 
     var transcriptionSegment by rememberSaveable {
@@ -249,11 +246,6 @@ fun AIConfigScreen(
                                 value = selectedTransformModel?.title ?: "Select",
                                 onClick = { showTransformModelPicker = true },
                             )
-                            SettingOptionRow(
-                                title = "Profile draft model",
-                                value = selectedProfileModel.title,
-                                onClick = { showProfileModelPicker = true },
-                            )
                         }
                         else ->
                             LocalModelPanel(
@@ -315,19 +307,6 @@ fun AIConfigScreen(
             costLabel = { it.costSummary },
             onDismiss = { showTransformModelPicker = false },
             onSelect = { viewModel.setTransformModel(it.apiName) },
-        )
-    }
-
-    if (showProfileModelPicker) {
-        ModelPickerDialog(
-            title = "Profile Draft Model",
-            models = OpenAiProfileSuggestionModel.entries.toList(),
-            selected = selectedProfileModel,
-            name = { it.title },
-            subtitle = { it.supportingText },
-            costLabel = { "" },
-            onDismiss = { showProfileModelPicker = false },
-            onSelect = { viewModel.setProfileSuggestionModel(it.apiName) },
         )
     }
 }
