@@ -4,7 +4,18 @@
 
 ### Features
 
+**AI configuration — feature-oriented redesign:**
+* the AI Configuration screen is now organized by feature (Product search, Price checking, Coupon discovery, Drop detection, Ask assistant) instead of a flat provider list
+* each feature has its own source selector (Off / BYOK / Pro), provider toggles, and — where applicable — model choice, all persisted independently of the provider credentials that drive request routing
+* a call-budget gauge shows the relative API-call weight of each feature plus an estimated total per event
+* the per-provider credentials dock (OpenAI, Web search, Shopping, Keepa, Coupons) is preserved as a "Credentials" section with a Pro upgrade affordance
+
 ### Improvements
+
+**Settings — redesigned layout:**
+* a richer PriceDrop Pro banner at the top with an upgrade button (or an "Active" chip when subscribed) and a details link
+* a dedicated AI configuration entry card (providers · models · API keys · call budget)
+* Tracking, Privacy, and About sections now use the shared gray uppercase section label (icon + ALL-CAPS text above the card) consistent with the design system spec
 
 ### Fixes
 

@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Settings sections now use the shared gray uppercase section label (`AppSectionLabel`) rendered above the card — consistent with the design system spec and the other apps
+
 ### Fixes
 
 * Profiles: profile card name and description text is now smaller (`titleSmall` / `labelSmall`) so all content fits on narrow screens without overflow

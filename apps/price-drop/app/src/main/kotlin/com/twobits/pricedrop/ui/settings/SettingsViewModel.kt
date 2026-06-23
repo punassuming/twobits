@@ -10,6 +10,7 @@ import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.CredentialCheck
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode
@@ -39,6 +40,13 @@ private data class ProviderValidation(
     val isValid: Boolean? = null,
 )
 
+/** Feature-level config presented in the AI Configuration screen. */
+data class FeatureState(
+    val source: ProviderMode,
+    val modelId: String,
+    val enabledProviders: Set<String>,
+)
+
 data class SettingsUiState(
     val subscriptionTier: SubscriptionTier = SubscriptionTier.Free,
     val checkFrequencyHours: Int = 6,
@@ -48,7 +56,9 @@ data class SettingsUiState(
     val apiBaseUrl: String = "https://api.twobits.app",
     val isPurchasing: Boolean = false,
     val purchaseError: String? = null,
-)
+) {
+    val hasPro: Boolean get() = subscriptionTier == SubscriptionTier.Pro
+}
 
 @HiltViewModel
 class SettingsViewModel
@@ -121,6 +131,53 @@ class SettingsViewModel
                     )
                 }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+        val featureStates: StateFlow<Map<AiFeature, FeatureState>> =
+            combine(
+                AiFeature.entries.map { f ->
+                    combine(
+                        providerStore.observeFeatureSource(f),
+                        providerStore.observeFeatureModel(f),
+                        providerStore.observeFeatureProviders(f),
+                    ) { source, model, providers ->
+                        f to FeatureState(source, model, providers)
+                    }
+                },
+            ) { pairs ->
+                pairs.toMap()
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+        fun setFeatureSource(
+            f: AiFeature,
+            mode: ProviderMode,
+        ) {
+            viewModelScope.launch { providerStore.setFeatureSource(f, mode) }
+        }
+
+        fun setFeatureModel(
+            f: AiFeature,
+            modelId: String,
+        ) {
+            viewModelScope.launch { providerStore.setFeatureModel(f, modelId) }
+        }
+
+        fun toggleFeatureProvider(
+            f: AiFeature,
+            providerKey: String,
+        ) {
+            viewModelScope.launch {
+                val current =
+                    featureStates.value[f]?.enabledProviders
+                        ?: f.providers.map { p -> p.key }.toSet()
+                val next =
+                    if (providerKey in current) {
+                        current - providerKey
+                    } else {
+                        current + providerKey
+                    }
+                providerStore.setFeatureProviders(f, next)
+            }
+        }
 
         fun setProviderMode(
             p: PriceDropProvider,

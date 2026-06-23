@@ -115,17 +115,21 @@ class ItemRepository
                     )
                 }
                 "local" -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
-                else ->
+                else -> {
+                    val jinaKey = if (getJinaSearchEnabled()) getJinaApiKey() else ""
                     priceResearchService.research(
                         item = item,
                         openAiKey = getApiKey(),
                         searchProviders =
                             buildList {
-                                if (getJinaSearchEnabled()) add(SearchProvider.JINA to getJinaApiKey())
+                                if (jinaKey.isNotBlank()) add(SearchProvider.JINA to jinaKey)
                                 if (getBraveSearchEnabled()) add(SearchProvider.BRAVE to getBraveApiKey())
                             },
+                        // Page reading is Jina-only — Brave has no reader endpoint.
+                        readerKey = jinaKey.ifBlank { null },
                         model = getReasoningModel().apiName,
                     )
+                }
             }
 
         /** Verifies that the saved OpenAI API key is accepted by the API. */

@@ -58,4 +58,57 @@ class ProviderSettingsStore
         suspend fun clearKey(p: PriceDropProvider) {
             context.providerStore.edit { it.remove(apiKeyKey(p)) }
         }
+
+        // ── Feature-level config (presentation layer; routing still uses per-provider mode/key) ──
+
+        private fun featureSourceKey(f: AiFeature) = stringPreferencesKey("feature_source_${f.key}")
+
+        private fun featureModelKey(f: AiFeature) = stringPreferencesKey("feature_model_${f.key}")
+
+        private fun featureProvidersKey(f: AiFeature) = stringPreferencesKey("feature_providers_${f.key}")
+
+        fun observeFeatureSource(f: AiFeature): Flow<ProviderMode> =
+            context.providerStore.data.map { prefs ->
+                prefs[featureSourceKey(f)]?.let { ProviderMode.fromValue(it) } ?: ProviderMode.BYOK
+            }
+
+        suspend fun getFeatureSource(f: AiFeature): ProviderMode =
+            context.providerStore.data
+                .first()[featureSourceKey(f)]
+                ?.let { ProviderMode.fromValue(it) } ?: ProviderMode.BYOK
+
+        suspend fun setFeatureSource(
+            f: AiFeature,
+            mode: ProviderMode,
+        ) {
+            context.providerStore.edit { it[featureSourceKey(f)] = mode.value }
+        }
+
+        fun observeFeatureModel(f: AiFeature): Flow<String> = context.providerStore.data.map { it[featureModelKey(f)].orEmpty() }
+
+        suspend fun setFeatureModel(
+            f: AiFeature,
+            modelId: String,
+        ) {
+            context.providerStore.edit { it[featureModelKey(f)] = modelId }
+        }
+
+        private fun defaultFeatureProviders(f: AiFeature): Set<String> = f.providers.map { it.key }.toSet()
+
+        fun observeFeatureProviders(f: AiFeature): Flow<Set<String>> =
+            context.providerStore.data.map { prefs ->
+                val stored = prefs[featureProvidersKey(f)]
+                if (stored == null) {
+                    defaultFeatureProviders(f)
+                } else {
+                    stored.split(',').filter { it.isNotBlank() }.toSet()
+                }
+            }
+
+        suspend fun setFeatureProviders(
+            f: AiFeature,
+            providerKeys: Set<String>,
+        ) {
+            context.providerStore.edit { it[featureProvidersKey(f)] = providerKeys.joinToString(",") }
+        }
     }

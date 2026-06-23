@@ -293,7 +293,10 @@ private fun WebSearchSection(
         return
     }
     Text(
-        text = "Enable one or both providers — Jina AI is primary; Brave Search adds broader coverage when both are active.",
+        text =
+            "Enable one or both. Jina AI both searches and opens listing pages to read real prices; " +
+                "Brave Search adds a second independent index for broader coverage. With both on, " +
+                "results are merged and the top pages are read via Jina.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
