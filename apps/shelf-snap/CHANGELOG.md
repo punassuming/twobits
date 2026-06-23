@@ -18,6 +18,8 @@
 
 ### Fixes
 
+* Market research — generic-item search queries now build their descriptor from the item's description and category (the `Item` model has no `name` field), restoring the broken Debug/Release Kotlin compilation
+
 ## 1.15.0 (2026-06-23)
 
 ### Features

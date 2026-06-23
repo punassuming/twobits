@@ -328,11 +328,12 @@ class PriceResearchService
             val queries = mutableListOf<String>()
 
             // Build the best descriptor available for platform-targeted queries.
+            val genericDescriptor =
+                listOf(item.description, item.category).filter { it.isNotBlank() }.joinToString(" ")
             val descriptor =
                 when {
                     hasBrandModel -> "$quoted $conditionLabel ${item.category}"
-                    item.model.isNotBlank() -> "${item.model} $conditionLabel ${item.category}"
-                    else -> "${item.name} $conditionLabel ${item.category}"
+                    else -> "$genericDescriptor $conditionLabel"
                 }.trim()
 
             // Always add platform-targeted queries so generic items (no brand/model) still get
@@ -349,7 +350,7 @@ class PriceResearchService
             }
             // General fallback.
             queries.add(
-                listOf(item.brand, item.model, item.name, item.category, "resale price used")
+                listOf(item.brand, item.model, item.description, item.category, "resale price used")
                     .filter { it.isNotBlank() }
                     .distinct()
                     .joinToString(" "),
