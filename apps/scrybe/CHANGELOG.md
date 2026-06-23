@@ -6,7 +6,12 @@
 
 ### Improvements
 
+* **Format picker** — audio format in Settings now uses a dialog selector with a description of each codec (AAC, MP3, MP4, OGG, WAV, WEBM) instead of a cramped segmented-button row; the selected format's description is shown inline on the settings row
+
 ### Fixes
+
+* **Profile draft error** — if the AI draft call fails, a "Draft failed" bottom sheet now appears with the error message and a Dismiss button; previously the error state was silent and the user was left looking at the profile list with no feedback
+* **Profile review sheet** — added "Edit in full editor" button that opens the `ProfileEditorDialog` pre-populated with the AI draft so users can set the icon, color, mode, and other fields before saving
 
 ## 1.22.0 (2026-06-23)
 
