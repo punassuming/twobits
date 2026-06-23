@@ -86,6 +86,7 @@ class OpenAiProfileSuggestionService
                         name = suggestion.name.trim(),
                         description = suggestion.description.trim(),
                         steps = normalizedSteps,
+                        tokensUsed = parsed.usage?.totalTokens ?: 0,
                     )
                 }
             }
@@ -200,7 +201,8 @@ class OpenAiProfileSuggestionService
                 )
 
             val request =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url("https://api.openai.com/v1/responses")
                     .header("Authorization", "Bearer $apiKey")
                     .header("Content-Type", "application/json")
@@ -209,7 +211,12 @@ class OpenAiProfileSuggestionService
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                    val errorBody =
+                        response.body
+                            ?.string()
+                            .orEmpty()
+                            .replace("\n", " ")
+                            .take(500)
                     throw IOException(
                         "OpenAI API error: ${response.code} ${response.message}" +
                             if (errorBody.isNotBlank()) " - $errorBody" else "",
@@ -246,6 +253,12 @@ class OpenAiProfileSuggestionService
             val model: String? = null,
             @SerialName("output_text") val outputText: String? = null,
             val output: List<OutputItem>? = null,
+            val usage: ResponseUsage? = null,
+        )
+
+        @Serializable
+        private data class ResponseUsage(
+            @SerialName("total_tokens") val totalTokens: Int = 0,
         )
 
         @Serializable

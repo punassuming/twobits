@@ -37,4 +37,19 @@ interface PersonDao {
 
     @Query("SELECT COUNT(DISTINCT sessionId) FROM speaker_segments WHERE personId = :id")
     suspend fun sessionCountForPerson(id: String): Int
+
+    @Query("SELECT COUNT(*) FROM speaker_segments WHERE personId = :id")
+    suspend fun segmentCountForPerson(id: String): Int
+
+    @Query(
+        """
+        SELECT CAST(SUM(ss.endMs - ss.startMs) AS FLOAT) /
+            NULLIF(CAST((
+                SELECT SUM(rs.durationMs) FROM recording_sessions rs
+                WHERE rs.id IN (SELECT DISTINCT sessionId FROM speaker_segments WHERE personId = :id)
+            ) AS FLOAT), 0.0)
+        FROM speaker_segments ss WHERE ss.personId = :id
+        """,
+    )
+    suspend fun talkRatioForPerson(id: String): Float?
 }

@@ -128,6 +128,7 @@ class PriceResearchService
 
                 // Step 2 — synthesize via the model.
                 val synthesisStart = System.currentTimeMillis()
+                val synthesisPromptSnippet = buildSystemPrompt(item).take(800)
                 val result =
                     runCatching {
                         val requestBody = buildRequest(item, evidence, model)
@@ -165,6 +166,7 @@ class PriceResearchService
                             readMs = evidence.readMs,
                             synthesisMs = now - synthesisStart,
                             totalMs = now - totalStart,
+                            synthesisPrompt = synthesisPromptSnippet,
                         )
                     result.copy(research = result.research.copy(debug = debug))
                 } else {
@@ -325,21 +327,32 @@ class PriceResearchService
             val conditionLabel = item.condition.searchLabel()
             val queries = mutableListOf<String>()
 
-            if (hasBrandModel) {
-                // Exact-phrase platform-targeted queries for highest-signal sold listings.
-                queries.add("$quoted $conditionLabel ${item.category} site:ebay.com/itm".trim())
-                queries.add("$quoted sold ${item.category} site:ebay.com".trim())
-                queries.add("$quoted ${item.category} mercari.com sold".trim())
-            }
-            // Tag-augmented fallback for broader evidence.
+            // Build the best descriptor available for platform-targeted queries.
+            val genericDescriptor =
+                listOf(item.description, item.category).filter { it.isNotBlank() }.joinToString(" ")
+            val descriptor =
+                when {
+                    hasBrandModel -> "$quoted $conditionLabel ${item.category}"
+                    else -> "$genericDescriptor $conditionLabel"
+                }.trim()
+
+            // Always add platform-targeted queries so generic items (no brand/model) still get
+            // real sold-listing evidence rather than bare text searches.
+            queries.add("$descriptor site:ebay.com/itm sold".trim())
+            queries.add("$descriptor site:ebay.com sold".trim())
+            queries.add("$descriptor mercari.com sold".trim())
+            queries.add("$descriptor offerup.com sold".trim())
+
+            // Tag-augmented for broader evidence.
             if (item.tags.isNotEmpty()) {
                 val tagHint = item.tags.take(3).joinToString(" ")
                 queries.add("$quoted $tagHint ${item.category} sold price".trim())
             }
             // General fallback.
             queries.add(
-                listOf(item.brand, item.model, item.category, "resale price sold")
+                listOf(item.brand, item.model, item.description, item.category, "resale price used")
                     .filter { it.isNotBlank() }
+                    .distinct()
                     .joinToString(" "),
             )
             return queries
@@ -353,14 +366,9 @@ class PriceResearchService
                 com.shelfsnap.app.data.model.Condition.POOR -> "parts or repair"
             }
 
-        private fun buildRequest(
-            item: Item,
-            evidence: SearchEvidence,
-            model: String = MODEL,
-        ): JsonObject {
+        private fun buildSystemPrompt(item: Item): String {
             val platformKeys = Platform.entries.joinToString(", ") { it.key }
-            val systemPrompt =
-                """
+            return """
                 You are a reselling price-research assistant. Using the item details and any
                 web-search evidence provided, estimate fair resale prices for second-hand
                 marketplaces and cite your sources. Respond ONLY with valid JSON in this schema:
@@ -374,18 +382,29 @@ class PriceResearchService
                   "comps": [
                     { "platform": "<platformKey>", "title": "<listing title>",
                       "price": <number>, "sold": <true|false>, "date": "<recency>",
-                      "url": "<source url or empty>" }
+                      "url": "<copy the exact url from one of the search results above that is this listing — leave blank only if no exact match exists>" }
                   ],
                   "citations": [ { "label": "<source>", "url": "<url>" } ]
                 }
                 Valid platformKey values: $platformKeys.
                 Prefer sold listings over active ones. If evidence is thin, lower the
-                confidence and say so via fewer comps. Never invent exact URLs you were not given.
+                confidence and say so via fewer comps.
+                URL RULE: Only include a comp if its url matches exactly one of the provided
+                search result urls above. Do not synthesize or guess URLs. Leave url blank
+                if no exact match from the evidence.
                 IMPORTANT: Only use snippets that contain an actual price (e.g. '${'$'}XX.XX') and
                 indicate a completed/sold transaction. Ignore blog posts, buying guides, and
                 general articles. If fewer than 3 snippets contain real prices from actual
                 marketplace listings, set confidencePercent ≤ 30.
                 """.trimIndent()
+        }
+
+        private fun buildRequest(
+            item: Item,
+            evidence: SearchEvidence,
+            model: String = MODEL,
+        ): JsonObject {
+            val systemPrompt = buildSystemPrompt(item)
 
             val userPayload =
                 JsonObject().apply {

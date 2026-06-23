@@ -4,7 +4,18 @@
 
 ### Features
 
+* **New profile unified sheet** — "New Profile" now opens a single bottom sheet combining manual and AI-draft creation: Name field, Prompt field, a tappable model selector showing the selected model name and description (opens a full picker dialog with all available models), "Draft with AI" primary button, and "Save profile" direct-save button
+* **Animated drafting progress sheet** — while AI generates a profile, a 3-step progress sheet (Context extraction → Profile drafting → Self-critique) shows animated step indicators and a call counter; replaces the former inline spinner
+* **Review draft sheet** — after AI finishes, an editable text area shows the generated prompt; a "3 calls · N tokens" chip shows token usage; a "Refine with AI" input lets the user iterate; "Save profile" commits the edited text directly
+* **People screen — rich speaker cards** — each person now shows in a card with a color-coded avatar circle (initial letter), inline rename icon, session count / talk-time % / segment count stats, an animated progress bar, and direct Merge and Delete icon buttons (replacing the 3-dot menu)
+* **People screen — Re-identify** — "Re-identify" button in the top-right opens a confirmation dialog for re-running speaker diarization across all sessions
+
 ### Improvements
+
+* **AI draft model selection consolidated to creation screen** — the "Profile draft model" setting has been removed from Settings → AI Config; model selection now lives exclusively in the New Profile sheet where it's used, persisting the last selection across drafts
+* Shared design: `CollapsibleProviderRow` added to `ProviderCredentialCard.kt` — a new composable for credential rows that collapse to a Connected or Not Configured badge (no changes to existing `ProviderCredentialCard` callers)
+* `ProfileSuggestion` now carries `tokensUsed` populated from OpenAI response usage; the Review draft sheet displays the total token count
+* `PersonDao` gains `segmentCountForPerson` and `talkRatioForPerson` queries for the People screen stat row
 
 ### Fixes
 

@@ -4,9 +4,21 @@
 
 ### Features
 
+* **Listing summary screen** — after cross-listing, a new per-platform summary screen shows expandable cards with AI-generated or template-generated Title, Description, Condition, Price, and Shipping fields; each field has a copy button and the title shows a character count against the platform limit; "Copy all fields" copies everything to the clipboard in one tap; "Refine" calls the OpenAI listing copywriter for a single platform; "Refine all" refines all draft listings in parallel
+* **Inline platform tips** — when a platform is checked in the List tab, tips appear immediately below that platform row (no expand/collapse needed); unchecking hides the tips
+* **Unlist action** — active listings now show an "Unlist" button that moves the listing to Unlisted status and removes it from the active section
+* **Cross-listing now creates Draft listings** — checking platforms and tapping "List on X platforms" generates listing copy and navigates to the summary screen, where "Mark listed" confirms the listing went live
+
 ### Improvements
 
+* Market research — platform-targeted search queries (site:ebay.com/itm, mercari.com, offerup.com) are now always generated, even for items without a distinct brand/model; generic category items previously received bare text queries that returned 0 sold listings
+* Market research debug panel — a new expandable "Synthesis prompt" section shows the first 800 characters of the AI system prompt used to synthesize price estimates
+* Market research — synthesis URL instruction strengthened: the AI is now instructed to copy exact source URLs from search results rather than synthesize them, reducing hallucinated comp URLs
+* Comparable listings — a source attribution row below the comps list shows which platforms were searched and which provider was used
+
 ### Fixes
+
+* Market research — generic-item search queries now build their descriptor from the item's description and category (the `Item` model has no `name` field), restoring the broken Debug/Release Kotlin compilation
 
 ## 1.15.0 (2026-06-23)
 

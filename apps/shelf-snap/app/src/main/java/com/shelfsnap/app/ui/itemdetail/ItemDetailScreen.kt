@@ -216,7 +216,7 @@ fun ItemDetailScreen(
                                     onAddPhoto = onAddPhoto,
                                 )
                             DetailTab.MARKET -> MarketTab(uiState = uiState, viewModel = viewModel)
-                            DetailTab.LIST -> ListTab(uiState = uiState, viewModel = viewModel)
+                            DetailTab.LIST -> ListTab(uiState = uiState, viewModel = viewModel, onNavigateToSummary = onNavigateToListingSummary)
                         }
                     }
 

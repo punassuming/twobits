@@ -13,6 +13,8 @@ import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transforms.OpenAiProfileSuggestionService
 import dev.scrybe.core.transforms.ProfileSuggestion
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +40,11 @@ sealed interface ProfilesUiState {
 
 sealed interface ProfileSuggestionUiState {
     data object Idle : ProfileSuggestionUiState
+
+    /** Animated 3-step progress used during initial profile drafting (not refinement). */
+    data class Drafting(
+        val step: Int,
+    ) : ProfileSuggestionUiState
 
     data object Loading : ProfileSuggestionUiState
 
@@ -114,6 +121,10 @@ class ProfilesViewModel
 
         private val _aiCreatorOpen = MutableStateFlow(false)
         val aiCreatorOpen: StateFlow<Boolean> = _aiCreatorOpen.asStateFlow()
+
+        /** True while the new-profile unified sheet is requesting an AI draft (not the legacy AiProfileDraftDialog). */
+        private val _draftingNewProfile = MutableStateFlow(false)
+        val draftingNewProfile: StateFlow<Boolean> = _draftingNewProfile.asStateFlow()
 
         fun openNewEditor() {
             _editorDraft.value = ProfileEditorDraft()
@@ -192,32 +203,67 @@ class ProfilesViewModel
             viewModelScope.launch { preferencesDataStore.setProfileSuggestionModel(apiName) }
         }
 
+        fun startNewProfileDraft(
+            name: String,
+            prompt: String,
+        ) {
+            _draftingNewProfile.value = true
+            suggestProfile(
+                userRequest = prompt.ifBlank { name },
+                currentName = name,
+                currentDescription = "",
+                currentSteps = emptyList(),
+                isRefinement = false,
+            )
+        }
+
+        fun clearDraftingNewProfile() {
+            _draftingNewProfile.value = false
+            _suggestionState.value = ProfileSuggestionUiState.Idle
+        }
+
         fun suggestProfile(
             userRequest: String,
             currentName: String,
             currentDescription: String,
             currentSteps: List<String>,
+            isRefinement: Boolean = true,
         ) {
             viewModelScope.launch {
-                _suggestionState.value = ProfileSuggestionUiState.Loading
-                profileSuggestionService
-                    .suggestProfile(
-                        userRequest = userRequest,
-                        existingName = currentName,
-                        existingDescription = currentDescription,
-                        existingSteps = currentSteps,
-                        modelName = profileSuggestionModel.value,
-                    ).fold(
-                        onSuccess = {
-                            _suggestionState.value = ProfileSuggestionUiState.Success(it)
-                        },
-                        onFailure = {
-                            _suggestionState.value =
-                                ProfileSuggestionUiState.Error(
-                                    it.message ?: "Failed to suggest a profile",
-                                )
-                        },
-                    )
+                if (!isRefinement) {
+                    _suggestionState.value = ProfileSuggestionUiState.Drafting(step = 0)
+                } else {
+                    _suggestionState.value = ProfileSuggestionUiState.Loading
+                }
+
+                val apiDeferred =
+                    async {
+                        profileSuggestionService.suggestProfile(
+                            userRequest = userRequest,
+                            existingName = currentName,
+                            existingDescription = currentDescription,
+                            existingSteps = currentSteps,
+                            modelName = profileSuggestionModel.value,
+                        )
+                    }
+
+                if (!isRefinement) {
+                    delay(1400)
+                    if (_suggestionState.value is ProfileSuggestionUiState.Drafting) {
+                        _suggestionState.value = ProfileSuggestionUiState.Drafting(step = 1)
+                    }
+                    delay(1800)
+                    if (_suggestionState.value is ProfileSuggestionUiState.Drafting) {
+                        _suggestionState.value = ProfileSuggestionUiState.Drafting(step = 2)
+                    }
+                }
+
+                apiDeferred.await().fold(
+                    onSuccess = { _suggestionState.value = ProfileSuggestionUiState.Success(it) },
+                    onFailure = {
+                        _suggestionState.value = ProfileSuggestionUiState.Error(it.message ?: "Failed to suggest a profile")
+                    },
+                )
             }
         }
 

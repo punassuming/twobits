@@ -2,6 +2,7 @@ package com.shelfsnap.app.ui.itemdetail
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,10 +20,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Sell
@@ -42,6 +42,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,9 +74,10 @@ import java.io.File
 fun ListTab(
     uiState: ItemDetailUiState,
     viewModel: ItemDetailViewModel,
+    onNavigateToSummary: () -> Unit = {},
 ) {
     val item = uiState.item ?: return
-    val existing = item.listings
+    val existing = item.listings.filter { it.status != ListingStatus.UNLISTED }
     val existingKeys = existing.map { it.platformKey }.toSet()
     val available = Platform.entries.filter { it.key !in existingKeys }
     var selected by remember(item.id, existingKeys) { mutableStateOf(emptySet<Platform>()) }
@@ -85,6 +87,13 @@ fun ListTab(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(uiState.navigateToListingSummary) {
+        if (uiState.navigateToListingSummary) {
+            viewModel.clearNavigateToListingSummary()
+            onNavigateToSummary()
+        }
+    }
 
     fun launchPlatform(
         platform: Platform,
@@ -141,19 +150,35 @@ fun ListTab(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Active listings
+            // Active / draft listings
             if (existing.isNotEmpty()) {
-                Text(
-                    text = stringResource(R.string.active_listings),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.active_listings),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    if (existing.any { it.title != null }) {
+                        TextButton(
+                            onClick = onNavigateToSummary,
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                        ) {
+                            Text("View listing copy →", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
                 existing.forEach { listing ->
                     val platform = Platform.fromKey(listing.platformKey) ?: return@forEach
                     ActiveListingRow(
                         listing = listing,
                         onLaunch = { launchPlatform(platform, platform.formatListingText(item)) },
                         onMarkSold = { viewModel.markSold(listing.platformKey) },
+                        onMarkActive = { viewModel.markListingActive(listing.platformKey) },
+                        onUnlist = { viewModel.unlistPlatform(listing.platformKey) },
                         onSetUrl = { url -> viewModel.setListingUrl(listing.platformKey, url) },
                     )
                 }
@@ -172,7 +197,6 @@ fun ListTab(
             )
             available.forEach { platform ->
                 val price = item.marketResearch.suggestedPrices[platform.key]
-                var tipsExpanded by remember(platform.key) { mutableStateOf(false) }
                 PlatformToggleRow(
                     platform = platform,
                     suggestedPrice = price,
@@ -181,14 +205,6 @@ fun ListTab(
                         selected = if (platform in selected) selected - platform else selected + platform
                     },
                 )
-                if (platform.listingTips.isNotBlank()) {
-                    PlatformTipsRow(
-                        platformName = platform.displayName,
-                        tips = platform.listingTips,
-                        expanded = tipsExpanded,
-                        onToggle = { tipsExpanded = !tipsExpanded },
-                    )
-                }
             }
 
             // AI-generated listing preview (shown once at least one platform is selected)
@@ -265,6 +281,8 @@ private fun ActiveListingRow(
     listing: PlatformListing,
     onLaunch: () -> Unit,
     onMarkSold: () -> Unit,
+    onMarkActive: () -> Unit,
+    onUnlist: () -> Unit,
     onSetUrl: (String) -> Unit,
 ) {
     val platform = Platform.fromKey(listing.platformKey) ?: return
@@ -309,18 +327,36 @@ private fun ActiveListingRow(
                     )
                 }
             }
-            if (listing.status == ListingStatus.ACTIVE) {
-                TextButton(
-                    onClick = onMarkSold,
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                ) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("Mark sold", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (listing.status == ListingStatus.DRAFT) {
+                    TextButton(
+                        onClick = onMarkActive,
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Mark listed", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                if (listing.status == ListingStatus.ACTIVE) {
+                    TextButton(
+                        onClick = onMarkSold,
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Mark sold", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                if (listing.status in listOf(ListingStatus.ACTIVE, ListingStatus.DRAFT)) {
+                    TextButton(
+                        onClick = onUnlist,
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                    ) {
+                        Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Unlist", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
             if (listing.listingUrl != null) {
@@ -375,82 +411,53 @@ private fun PlatformToggleRow(
         color = if (selected) color.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         onClick = onToggle,
     ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Icon(
-                platform.icon(),
-                contentDescription = null,
-                tint = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Column(Modifier.weight(1f)) {
-                Text(
-                    platform.displayName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = if (selected) color else MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text =
-                        stringResource(
-                            R.string.suggested,
-                        ).replaceFirstChar { it.uppercase() } + ": " +
-                            (suggestedPrice?.let { "$" + "%.2f".format(it) } ?: "—"),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Checkbox(checked = selected, onCheckedChange = { onToggle() })
-        }
-    }
-}
-
-@Composable
-private fun PlatformTipsRow(
-    platformName: String,
-    tips: String,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-    ) {
-        TextButton(
-            onClick = onToggle,
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-        ) {
-            Icon(
-                if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                "$platformName listing tips",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (expanded) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(
-                    text = tips.split(" · ").joinToString("\n") { "• $it" },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                Icon(
+                    platform.icon(),
+                    contentDescription = null,
+                    tint = if (selected) color else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        platform.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = if (selected) color else MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text =
+                            stringResource(R.string.suggested).replaceFirstChar { it.uppercase() } + ": " +
+                                (suggestedPrice?.let { "$" + "%.2f".format(it) } ?: "—"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Checkbox(checked = selected, onCheckedChange = { onToggle() })
+            }
+            AnimatedVisibility(visible = selected && platform.listingTips.isNotBlank()) {
+                Row(
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        Icons.Default.TipsAndUpdates,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp).padding(top = 1.dp),
+                    )
+                    Text(
+                        text = platform.listingTips.replace(" · ", " · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }

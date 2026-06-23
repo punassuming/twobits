@@ -217,6 +217,9 @@ fun MarketTab(
             research.comps
                 .filter { compFilter == null || it.platformKey == compFilter }
                 .forEach { comp -> CompListingRow(comp = comp) }
+
+            // Source attribution footer
+            SourceAttributionRow(research)
         }
 
         // Tappable citations
@@ -290,6 +293,45 @@ fun MarketTab(
         }
 
         research.debug?.let { DebugInfoSection(research = research, debug = it) }
+    }
+}
+
+@Composable
+private fun SourceAttributionRow(research: MarketResearch) {
+    val platformNames = research.comps.mapNotNull { Platform.fromKey(it.platformKey)?.displayName }.distinct()
+    val queryPlatforms =
+        research.debug
+            ?.queries
+            ?.mapNotNull { q ->
+                when {
+                    "ebay.com" in q.query -> "eBay"
+                    "mercari.com" in q.query -> "Mercari"
+                    "offerup.com" in q.query -> "OfferUp"
+                    "facebook.com" in q.query -> "FB Marketplace"
+                    else -> null
+                }
+            }?.distinct() ?: emptyList()
+    val sources = (platformNames + queryPlatforms).distinct().joinToString(", ")
+    val provider = SearchProvider.fromKey(research.searchProviderKey)
+    if (sources.isBlank() && provider == SearchProvider.NONE) return
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text =
+                buildString {
+                    if (sources.isNotBlank()) append("Sources: $sources")
+                    if (provider != SearchProvider.NONE) {
+                        if (isNotEmpty()) append(" · ")
+                        append("Retrieved via ${provider.displayName}")
+                    }
+                },
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -452,8 +494,44 @@ private fun DebugInfoSection(
                             debug.queries.forEach { QueryRow(it) }
                         }
                     }
+                    if (!debug.synthesisPrompt.isNullOrBlank()) {
+                        SynthesisPromptExpander(debug.synthesisPrompt)
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SynthesisPromptExpander(prompt: String) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "SYNTHESIS PROMPT",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp).rotate(if (expanded) 180f else 0f),
+            )
+        }
+        if (expanded) {
+            Text(
+                text = prompt,
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -743,6 +743,14 @@ class SettingsViewModel
 
         suspend fun sessionCountForPerson(id: String): Int = personDao.sessionCountForPerson(id)
 
+        suspend fun segmentCountForPerson(id: String): Int = personDao.segmentCountForPerson(id)
+
+        suspend fun talkRatioForPerson(id: String): Float = personDao.talkRatioForPerson(id) ?: 0f
+
+        fun reIdentifyAll() {
+            // UI-only stub — bulk re-identification across all sessions is not yet implemented.
+        }
+
         fun deleteSavedFile(path: String) {
             viewModelScope.launch {
                 runCatching {
