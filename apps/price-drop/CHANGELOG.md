@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.4.0 (2026-06-23)
+
+### Features
+
 **AI configuration — feature-oriented redesign:**
 * the AI Configuration screen is now organized by feature (Product search, Price checking, Coupon discovery, Drop detection, Ask assistant) instead of a flat provider list
 * each feature has its own source selector (Off / BYOK / Pro), provider toggles, and — where applicable — model choice, all persisted independently of the provider credentials that drive request routing
@@ -21,6 +29,7 @@
 
 * Pro screen: the plan toggle "Monthly – $5.99/mo" chip no longer wraps to two lines — the Annual/Monthly chips now share the row evenly and keep their labels on one line
 * AI configuration: provider status badges no longer wrap to two lines when a provider title is long (shared credential row fix)
+
 
 ## 0.3.0 (2026-06-22)
 
@@ -50,6 +59,7 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 
 
 ## 0.2.0 (2026-06-22)
@@ -89,6 +99,7 @@
 
 
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -98,6 +109,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 
