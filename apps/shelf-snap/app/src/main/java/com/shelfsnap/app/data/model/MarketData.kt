@@ -74,22 +74,33 @@ data class MarketResearchDebug(
     val synthesisMs: Long = 0L,
     /** Total research duration in millis. */
     val totalMs: Long = 0L,
+    /** First 800 chars of the synthesis system prompt for transparency. */
+    val synthesisPrompt: String? = null,
 )
 
 /**
  * A listing of an item on a selling platform. [status] tracks the lifecycle so the
  * inventory can show Listed/Sold badges.
+ *
+ * [title], [description], [condition], and [shipping] hold platform-specific listing copy
+ * generated at cross-list time (DRAFT status) and optionally AI-refined before publishing.
+ * All nullable with defaults for backward-compat with saved JSON that predates these fields.
  */
 data class PlatformListing(
     val platformKey: String,
     val status: ListingStatus,
     val price: Double,
     val listingUrl: String? = null,
+    val title: String? = null,
+    val description: String? = null,
+    val condition: String? = null,
+    val shipping: String? = null,
 )
 
 enum class ListingStatus {
+    DRAFT,
     ACTIVE,
     SOLD,
-    DRAFT,
     EXPIRED,
+    UNLISTED,
 }

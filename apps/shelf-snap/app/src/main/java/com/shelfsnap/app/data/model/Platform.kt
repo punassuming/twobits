@@ -16,6 +16,7 @@ enum class Platform(
     val queryHint: String,
     val sellUrl: String,
     val listingTips: String,
+    val titleCharLimit: Int,
 ) {
     EBAY(
         "ebay",
@@ -23,6 +24,7 @@ enum class Platform(
         "ebay sold listing",
         "https://www.ebay.com/sl/sell",
         "Title capped at 80 characters · Fill Item Specifics for better search placement · 12 photos max — use all slots · Accept offers to move inventory faster",
+        80,
     ),
     MERCARI(
         "mercari",
@@ -30,6 +32,7 @@ enum class Platform(
         "mercari",
         "https://www.mercari.com/sell/",
         "Casual, friendly tone converts better · Keep photos bright and square · Bundle discount attracts buyers · Free shipping increases views",
+        40,
     ),
     OFFERUP(
         "offerup",
@@ -37,6 +40,7 @@ enum class Platform(
         "offerup",
         "https://offerup.com/sell/",
         "Short punchy title works best · Local pickup preferred — note your city · Price to sell: buyers expect to negotiate down 10–20%",
+        50,
     ),
     FB_MARKETPLACE(
         "fbmarket",
@@ -44,6 +48,7 @@ enum class Platform(
         "facebook marketplace",
         "https://www.facebook.com/marketplace/create/item/",
         "Put price at top of description — browsers skim · Conversational tone, no hashtags · Reply quickly: first 30 min drive most sales",
+        200,
     ),
     CRAIGSLIST(
         "craigslist",
@@ -51,6 +56,7 @@ enum class Platform(
         "craigslist",
         "https://post.craigslist.org/",
         "Include dimensions for furniture · Cash or Venmo only · Repost every 48 hours to stay at the top of search results",
+        200,
     ),
     ;
 

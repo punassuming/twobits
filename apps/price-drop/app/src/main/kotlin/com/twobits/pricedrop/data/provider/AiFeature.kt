@@ -63,7 +63,7 @@ enum class AiFeature(
         callEstimate = "1–2 calls per check",
         callNote = "Shopping or web for current price · Keepa for history update (1 token) · No LLM needed",
         callWeight = 2,
-        providers = listOf(PriceDropProvider.SHOPPING, PriceDropProvider.KEEPA, PriceDropProvider.WEB_SEARCH),
+        providers = listOf(PriceDropProvider.SHOPPING, PriceDropProvider.KEEPA, PriceDropProvider.WEB_SEARCH, PriceDropProvider.RAINFOREST),
         models = emptyList(),
     ),
     COUPON(

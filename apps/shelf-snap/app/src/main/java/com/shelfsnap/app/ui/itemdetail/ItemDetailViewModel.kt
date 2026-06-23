@@ -2,12 +2,14 @@ package com.shelfsnap.app.ui.itemdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shelfsnap.app.data.listing.ListingCopyGenerator
 import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.ListingStatus
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
 import com.shelfsnap.app.data.model.VisionModel
+import com.shelfsnap.app.data.remote.ListingGenerationService
 import com.shelfsnap.app.data.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +33,9 @@ data class ItemDetailUiState(
     val isDeleted: Boolean = false,
     val error: String? = null,
     val message: String? = null,
+    val navigateToListingSummary: Boolean = false,
+    val refiningPlatforms: Set<String> = emptySet(),
+    val isRefiningAll: Boolean = false,
     // Editable field mirrors
     val editCategory: String = "",
     val editBrand: String = "",
@@ -56,6 +61,7 @@ class ItemDetailViewModel
     @Inject
     constructor(
         private val repository: ItemRepository,
+        private val listingGenerationService: ListingGenerationService,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ItemDetailUiState())
         val uiState: StateFlow<ItemDetailUiState> = _uiState.asStateFlow()
@@ -222,7 +228,7 @@ class ItemDetailViewModel
             }
         }
 
-        /** Cross-lists the item on the given platforms at their suggested (or asking) prices. */
+        /** Cross-lists the item on the given platforms, generating DRAFT listings with copy. */
         fun crossList(platforms: Set<Platform>) {
             val item = _uiState.value.item ?: return
             if (platforms.isEmpty()) return
@@ -231,21 +237,107 @@ class ItemDetailViewModel
                 val asking = _uiState.value.editEstimatedValue.toDoubleOrNull() ?: item.estimatedValue
                 val newListings =
                     platforms
-                        .filter { p -> item.listings.none { it.platformKey == p.key } }
+                        .filter { p -> item.listings.none { it.platformKey == p.key && it.status != ListingStatus.UNLISTED } }
                         .map { p ->
+                            val copy = ListingCopyGenerator.generate(item, p)
                             PlatformListing(
                                 platformKey = p.key,
-                                status = ListingStatus.ACTIVE,
+                                status = ListingStatus.DRAFT,
                                 price = item.marketResearch.suggestedPrices[p.key] ?: asking,
+                                title = copy.title,
+                                description = copy.description,
+                                condition = copy.condition,
+                                shipping = copy.shipping,
                             )
                         }
                 val updated =
                     item.copy(
-                        listings = item.listings + newListings,
+                        listings = item.listings.filter { it.status != ListingStatus.UNLISTED } + newListings,
                         updatedAt = System.currentTimeMillis(),
                     )
                 repository.update(updated)
-                _uiState.update { it.copy(item = updated, isCrossListing = false, message = "listed") }
+                _uiState.update { it.copy(item = updated, isCrossListing = false, navigateToListingSummary = true) }
+            }
+        }
+
+        fun clearNavigateToListingSummary() = _uiState.update { it.copy(navigateToListingSummary = false) }
+
+        /** Flips a DRAFT or ACTIVE listing to UNLISTED. */
+        fun unlistPlatform(platformKey: String) {
+            val item = _uiState.value.item ?: return
+            viewModelScope.launch {
+                val updated =
+                    item.copy(
+                        listings =
+                            item.listings.map { l ->
+                                if (l.platformKey == platformKey) l.copy(status = ListingStatus.UNLISTED) else l
+                            },
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                repository.update(updated)
+                _uiState.update { it.copy(item = updated) }
+            }
+        }
+
+        /** Promotes a DRAFT listing to ACTIVE (user has published it on the platform). */
+        fun markListingActive(platformKey: String) {
+            val item = _uiState.value.item ?: return
+            viewModelScope.launch {
+                val updated =
+                    item.copy(
+                        listings =
+                            item.listings.map { l ->
+                                if (l.platformKey == platformKey) l.copy(status = ListingStatus.ACTIVE) else l
+                            },
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                repository.update(updated)
+                _uiState.update { it.copy(item = updated) }
+            }
+        }
+
+        /** AI-refines the listing copy for one platform using the current item fields. */
+        fun refineListing(platformKey: String) {
+            val item = _uiState.value.item ?: return
+            val platform = Platform.fromKey(platformKey) ?: return
+            val listing = item.listings.firstOrNull { it.platformKey == platformKey } ?: return
+            viewModelScope.launch {
+                _uiState.update { it.copy(refiningPlatforms = it.refiningPlatforms + platformKey) }
+                val current =
+                    com.shelfsnap.app.data.listing.ListingCopy(
+                        title = listing.title ?: "",
+                        description = listing.description ?: "",
+                        condition = listing.condition ?: "",
+                        shipping = listing.shipping ?: "",
+                    )
+                val openAiKey = repository.getApiKey()
+                val refined = listingGenerationService.refine(item, platform, current, openAiKey)
+                val updatedItem =
+                    item.copy(
+                        listings =
+                            item.listings.map { l ->
+                                if (l.platformKey == platformKey) {
+                                    l.copy(title = refined.title, description = refined.description, condition = refined.condition, shipping = refined.shipping)
+                                } else {
+                                    l
+                                }
+                            },
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                repository.update(updatedItem)
+                _uiState.update { it.copy(item = updatedItem, refiningPlatforms = it.refiningPlatforms - platformKey) }
+            }
+        }
+
+        /** AI-refines listing copy for all DRAFT listings sequentially. */
+        fun refineAllListings() {
+            val item = _uiState.value.item ?: return
+            val draftKeys = item.listings.filter { it.status == ListingStatus.DRAFT }.map { it.platformKey }
+            if (draftKeys.isEmpty()) return
+            viewModelScope.launch {
+                _uiState.update { it.copy(isRefiningAll = true) }
+                draftKeys.forEach { key -> refineListing(key) }
+                _uiState.update { it.copy(isRefiningAll = false) }
             }
         }
 

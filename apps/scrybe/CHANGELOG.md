@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Shared design: `CollapsibleProviderRow` added to `ProviderCredentialCard.kt` — a new composable for credential rows that collapse to a Connected or Not Configured badge (no changes to existing `ProviderCredentialCard` callers)
+
 ### Fixes
 
 ## 1.21.0 (2026-06-23)

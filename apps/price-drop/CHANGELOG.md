@@ -4,7 +4,15 @@
 
 ### Features
 
+* **AI credentials — collapsible rows** — provider credential rows in the AI Config screen now collapse by default; connected rows show a masked key ("sk-••••••••1234") and a coral "Connected ✓" badge; unconfigured rows show the provider description and a gray "Not configured" badge; tapping expands to reveal the key field, Save, Test, and Clear
+* **Rainforest API provider** — added as a new optional BYOK provider for Amazon product data (ASIN lookup + real-time price); included in Price check feature
+* **Provider metadata** — each provider row now shows a description line below the name explaining what it does
+* **Provider icon avatars in feature detail** — the PROVIDERS card in each feature's detail sheet now shows a 28dp icon avatar per provider (filled when key is set, muted when not) alongside the provider name, description, and key-status badge
+
 ### Improvements
+
+* Renamed "Web search" → "Jina AI" and "Shopping search" → "SerpAPI" to match provider brand names
+* A "BYOK · YOUR KEYS" sub-header now separates the Pro row from the BYOK provider rows in the Credentials card
 
 ### Fixes
 

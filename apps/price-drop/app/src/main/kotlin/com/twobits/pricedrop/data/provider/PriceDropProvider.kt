@@ -10,12 +10,14 @@ enum class PriceDropProvider(
     val displayName: String,
     /** Direct base URL used in BYOK mode. Pro mode always routes through api.twobits.app. */
     val byokBaseUrl: String,
+    val description: String,
 ) {
-    OPENAI("openai", "OpenAI", "https://api.openai.com/"),
-    WEB_SEARCH("web_search", "Web search", "https://s.jina.ai/"),
-    SHOPPING("shopping", "Shopping search", "https://serpapi.com/"),
-    KEEPA("keepa", "Amazon / Keepa", "https://api.keepa.com/"),
-    COUPON("coupon", "Coupon provider", "https://api.couponlayer.com/"),
+    OPENAI("openai", "OpenAI", "https://api.openai.com/", "AI query understanding + answer generation"),
+    WEB_SEARCH("web_search", "Jina AI", "https://s.jina.ai/", "Web search + page reading via r.jina.ai"),
+    SHOPPING("shopping", "SerpAPI", "https://serpapi.com/", "Google/Bing results · supplements Jina for broader coverage"),
+    KEEPA("keepa", "Keepa", "https://api.keepa.com/", "Amazon price history · optional for long-term trend charts"),
+    COUPON("coupon", "Coupon provider", "https://api.couponlayer.com/", "Coupon code discovery by retailer domain · used by Coupon section"),
+    RAINFOREST("rainforest", "Rainforest API", "https://api.rainforestapi.com/", "Amazon product data · ASIN lookup + real-time price"),
     ;
 
     companion object {

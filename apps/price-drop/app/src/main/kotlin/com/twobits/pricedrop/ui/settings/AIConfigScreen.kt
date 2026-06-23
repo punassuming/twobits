@@ -25,12 +25,18 @@ import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageSearch
+import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.PriceCheck
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +64,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AppSectionLabel
-import com.twobits.design.components.CredentialModeOption
+import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.ModelRadioList
-import com.twobits.design.components.ProviderCredentialCard
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.AiModelOption
 import com.twobits.pricedrop.data.provider.PriceDropProvider
@@ -85,6 +91,16 @@ private fun AiFeature.budgetColor(scheme: androidx.compose.material3.ColorScheme
         AiFeature.COUPON -> scheme.tertiary
         AiFeature.DROPS -> PD_PRO_COLOR
         AiFeature.ASK -> Color(0xFFC6A0F6)
+    }
+
+private fun PriceDropProvider.icon(): ImageVector =
+    when (this) {
+        PriceDropProvider.OPENAI -> Icons.Filled.AutoAwesome
+        PriceDropProvider.WEB_SEARCH -> Icons.Filled.Search
+        PriceDropProvider.SHOPPING -> Icons.Filled.ShoppingCart
+        PriceDropProvider.KEEPA -> Icons.Filled.TrendingUp
+        PriceDropProvider.COUPON -> Icons.Filled.ConfirmationNumber
+        PriceDropProvider.RAINFOREST -> Icons.Filled.Park
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,6 +154,7 @@ fun AIConfigScreen(
                 feature = feature,
                 hasPro = hasPro,
                 featureState = featureStates[feature],
+                providerStates = providerStates,
                 viewModel = viewModel,
             )
         }
@@ -183,6 +200,23 @@ private fun FeatureListContent(
                             )
                             Button(onClick = onUpgrade) { Text("Upgrade") }
                         }
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.VpnKey,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(11.dp),
+                        )
+                        Text(
+                            text = "BYOK · YOUR KEYS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                     PriceDropProvider.entries.forEach { provider ->
                         val state = providerStates[provider] ?: ProviderState(ProviderMode.PRO, "")
@@ -431,6 +465,7 @@ private fun FeatureDetailContent(
     feature: AiFeature,
     hasPro: Boolean,
     featureState: FeatureState?,
+    providerStates: Map<PriceDropProvider, ProviderState>,
     viewModel: SettingsViewModel,
 ) {
     val source = featureState?.source ?: ProviderMode.BYOK
@@ -501,9 +536,11 @@ private fun FeatureDetailContent(
                     ) {
                         Column {
                             feature.providers.forEach { provider ->
+                                val hasKey = providerStates[provider]?.isKeyValid == true
                                 ProviderToggleRow(
                                     provider = provider,
                                     enabled = provider.key in enabledProviders,
+                                    hasKey = hasKey,
                                     onToggle = { viewModel.toggleFeatureProvider(feature, provider.key) },
                                 )
                             }
@@ -604,21 +641,58 @@ private fun SourceSegment(
 private fun ProviderToggleRow(
     provider: PriceDropProvider,
     enabled: Boolean,
+    hasKey: Boolean,
     onToggle: () -> Unit,
 ) {
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            text = provider.displayName,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
+        Box(
+            modifier =
+                Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (hasKey) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                provider.icon(),
+                contentDescription = null,
+                tint = if (hasKey) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(provider.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                if (hasKey) {
+                    Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                        Text(
+                            text = "Key set",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                        )
+                    }
+                } else {
+                    Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                        Text(
+                            text = "No key",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                        )
+                    }
+                }
+            }
+            Text(
+                text = provider.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Switch(checked = enabled, onCheckedChange = { onToggle() })
     }
 }
@@ -669,20 +743,47 @@ private fun ProviderCredentialItem(
     state: ProviderState,
     viewModel: SettingsViewModel,
 ) {
-    // Local draft so typing doesn't persist on every keystroke; Save commits it.
-    var draft by remember(provider) { mutableStateOf(state.key) }
+    var draft by rememberSaveable(provider) { mutableStateOf(state.key) }
     LaunchedEffect(state.key) { if (draft != state.key) draft = state.key }
 
-    ProviderCredentialCard(
+    val maskedKey =
+        when {
+            state.key.length > 8 -> "${state.key.take(4)}${"•".repeat(7)}${state.key.takeLast(4)}"
+            state.key.isNotBlank() -> "••••"
+            else -> null
+        }
+
+    CollapsibleProviderRow(
+        icon = {
+            Box(
+                modifier =
+                    Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (state.isKeyValid == true) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            },
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    provider.icon(),
+                    contentDescription = null,
+                    tint = if (state.isKeyValid == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        },
         title = provider.displayName,
-        modes = PRICEDROP_MODES,
-        selectedMode = state.mode.value,
-        keyMode = ProviderMode.BYOK.value,
-        apiKey = draft,
+        description = provider.description,
+        maskedKey = maskedKey,
+        isKeyValid = state.isKeyValid,
         isValidating = state.isValidating,
         validationMessage = state.validationMessage,
-        isKeyValid = state.isKeyValid,
-        onModeChange = { viewModel.setProviderMode(provider, ProviderMode.fromValue(it)) },
+        apiKey = draft,
         onApiKeyChange = { draft = it },
         onSave = { viewModel.setProviderKey(provider, draft) },
         onTest = { viewModel.testProviderKey(provider, draft) },
@@ -690,22 +791,8 @@ private fun ProviderCredentialItem(
             draft = ""
             viewModel.clearProviderKey(provider)
         },
-        modeInfo = PRICEDROP_MODE_INFO,
     )
 }
-
-private val PRICEDROP_MODES =
-    listOf(
-        CredentialModeOption(ProviderMode.OFF.value, "Off", Color.Gray),
-        CredentialModeOption(ProviderMode.BYOK.value, "BYOK", PD_BYOK_COLOR),
-        CredentialModeOption(ProviderMode.PRO.value, "Pro", PD_PRO_COLOR),
-    )
-
-private val PRICEDROP_MODE_INFO =
-    mapOf(
-        ProviderMode.PRO.value to "Using TwoBits managed provider — no key needed (requires PriceDrop Pro).",
-        ProviderMode.OFF.value to "This provider is disabled.",
-    )
 
 @Composable
 private fun SectionCard2(
