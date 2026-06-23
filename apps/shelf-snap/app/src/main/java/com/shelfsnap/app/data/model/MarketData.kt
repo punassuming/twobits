@@ -39,12 +39,41 @@ data class MarketResearch(
     val searchResultCount: Int = 0,
     /** Non-null when the web search itself failed (auth, network, HTTP error). */
     val searchError: String? = null,
+    /** Transparency detail (queries, timings, pages read); null for older saved research. */
+    val debug: MarketResearchDebug? = null,
 )
 
 /** A cited source backing a price estimate. */
 data class Citation(
     val label: String,
     val url: String = "",
+)
+
+/** One web-search query that was run during research, with how many results it returned. */
+data class MarketQuery(
+    /** Short provenance label, e.g. "Jina AI" or "Brave Search". */
+    val label: String,
+    val query: String,
+    val resultCount: Int = 0,
+)
+
+/**
+ * Behind-the-scenes detail for a research run, surfaced in the Market tab's "Debug info"
+ * panel for transparency: which queries ran, how the providers performed, and timings.
+ * Nullable on [MarketResearch] so research saved before this existed stays loadable.
+ */
+data class MarketResearchDebug(
+    val queries: List<MarketQuery> = emptyList(),
+    /** Number of distinct listing pages opened/read via the Jina Reader. */
+    val pagesRead: Int = 0,
+    /** Web-search phase duration in millis. */
+    val searchMs: Long = 0L,
+    /** Page-reading (Jina Reader) phase duration in millis. */
+    val readMs: Long = 0L,
+    /** LLM synthesis phase duration in millis. */
+    val synthesisMs: Long = 0L,
+    /** Total research duration in millis. */
+    val totalMs: Long = 0L,
 )
 
 /**

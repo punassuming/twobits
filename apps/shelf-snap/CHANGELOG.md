@@ -4,9 +4,17 @@
 
 ### Features
 
+* Market research — **page reading**: when Jina AI is enabled, the top comparable-listing results are now opened and read in full via the Jina Reader (r.jina.ai) so price estimates are based on the actual listing pages (price, condition, sold status), not just search snippets
+* Market research — **transparency**: an inline "search queries" expander shows exactly what was searched, and a new collapsible "Debug info" panel surfaces timings (search / page reading / AI synthesis / total), confidence factors (sold listings, platforms covered, pages read, price variance), and the full per-query log
+
 ### Improvements
 
+* Settings sections now use the shared gray uppercase section label (`AppSectionLabel`) rendered above the card — consistent with the design system spec and aligned with the other apps
+* AI configuration — web search providers are now independently toggleable: Jina AI and Brave Search each have their own enable/disable switch, so both can be active simultaneously. The two now play distinct roles — Jina both searches and reads listing pages, while Brave adds a second independent search index for broader coverage; with both on, results are merged and the top pages are read via Jina
+
 ### Fixes
+
+* AI configuration: the Pro row "Not subscribed" status badge no longer wraps to two lines — the shared credential row now keeps the badge on a single line and ellipsizes the title when space is tight
 
 ## 1.14.0 (2026-06-22)
 

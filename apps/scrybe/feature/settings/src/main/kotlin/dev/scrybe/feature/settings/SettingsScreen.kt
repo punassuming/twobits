@@ -84,6 +84,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
 import com.twobits.design.components.AppSectionCard
+import com.twobits.design.components.AppSectionLabel
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.PostStopDestination
@@ -977,17 +978,12 @@ private fun SettingsSectionCard(
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    AppSectionCard(
-        containerColor = containerColor,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(icon, contentDescription = null)
-            Text(title, style = MaterialTheme.typography.titleMedium)
-        }
-        content()
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        AppSectionLabel(title, icon, Modifier.padding(start = 4.dp))
+        AppSectionCard(
+            containerColor = containerColor,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
     }
 }

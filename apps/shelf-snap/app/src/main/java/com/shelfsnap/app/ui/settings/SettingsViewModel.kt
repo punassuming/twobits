@@ -14,7 +14,6 @@ import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.BraveSearchService
 import com.shelfsnap.app.data.remote.search.JinaAiSearchService
-import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.data.repository.ItemRepository
 import com.shelfsnap.app.util.ApiKeyValidator
 import com.twobits.billing.BillingManager
@@ -50,7 +49,8 @@ data class SettingsUiState(
     /** null = not yet tested; true = verified OK; false = test failed */
     val isKeyVerified: Boolean? = null,
     val keyVerifyError: String? = null,
-    val searchProvider: SearchProvider = SearchProvider.NONE,
+    val jinaSearchEnabled: Boolean = true,
+    val braveSearchEnabled: Boolean = false,
     val savedJinaApiKey: String = "",
     val editJinaApiKey: String = "",
     val savedBraveApiKey: String = "",
@@ -148,12 +148,15 @@ class SettingsViewModel
 
         private val searchFlow =
             combine(
-                repository.observeSearchProvider(),
+                combine(
+                    repository.observeJinaSearchEnabled(),
+                    repository.observeBraveSearchEnabled(),
+                ) { jinaEnabled, braveEnabled -> jinaEnabled to braveEnabled },
                 combine(repository.observeJinaApiKey(), _editJinaKey) { saved, edit -> saved to edit },
                 combine(repository.observeBraveApiKey(), _editBraveKey) { saved, edit -> saved to edit },
                 combine(_isSearchSaved, jinaTestFlow, braveTestFlow) { saved, jina, brave -> Triple(saved, jina, brave) },
-            ) { provider, (savedJina, editJina), (savedBrave, editBrave), (saved, jinaTest, braveTest) ->
-                SearchState(provider, savedJina, editJina, savedBrave, editBrave, saved, jinaTest, braveTest)
+            ) { (jinaEnabled, braveEnabled), (savedJina, editJina), (savedBrave, editBrave), (saved, jinaTest, braveTest) ->
+                SearchState(jinaEnabled, braveEnabled, savedJina, editJina, savedBrave, editBrave, saved, jinaTest, braveTest)
             }
 
         private val localModelsFlow =
@@ -210,7 +213,8 @@ class SettingsViewModel
                     isVerifyingKey = keyVerify.isVerifying,
                     isKeyVerified = keyVerify.isVerified,
                     keyVerifyError = keyVerify.error,
-                    searchProvider = search.provider,
+                    jinaSearchEnabled = search.jinaEnabled,
+                    braveSearchEnabled = search.braveEnabled,
                     savedJinaApiKey = search.savedJinaKey,
                     editJinaApiKey = search.editJinaKey.ifBlank { search.savedJinaKey },
                     savedBraveApiKey = search.savedBraveKey,
@@ -291,8 +295,12 @@ class SettingsViewModel
             viewModelScope.launch { repository.saveReasoningModel(model) }
         }
 
-        fun onSearchProviderChange(provider: SearchProvider) {
-            viewModelScope.launch { repository.saveSearchProvider(provider) }
+        fun onJinaSearchEnabledChange(enabled: Boolean) {
+            viewModelScope.launch { repository.saveJinaSearchEnabled(enabled) }
+        }
+
+        fun onBraveSearchEnabledChange(enabled: Boolean) {
+            viewModelScope.launch { repository.saveBraveSearchEnabled(enabled) }
         }
 
         fun onJinaApiKeyChange(value: String) {
@@ -520,7 +528,8 @@ class SettingsViewModel
         )
 
         private data class SearchState(
-            val provider: SearchProvider,
+            val jinaEnabled: Boolean,
+            val braveEnabled: Boolean,
             val savedJinaKey: String,
             val editJinaKey: String,
             val savedBraveKey: String,

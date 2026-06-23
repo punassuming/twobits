@@ -8,8 +8,11 @@ import com.google.gson.JsonParser
 import com.shelfsnap.app.data.model.Citation
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.MarketComp
+import com.shelfsnap.app.data.model.MarketQuery
 import com.shelfsnap.app.data.model.MarketResearch
+import com.shelfsnap.app.data.model.MarketResearchDebug
 import com.shelfsnap.app.data.model.Platform
+import com.shelfsnap.app.data.remote.search.JinaReaderService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.data.remote.search.WebSearchResolver
 import com.shelfsnap.app.data.remote.search.WebSearchResult
@@ -43,6 +46,14 @@ data class SearchEvidence(
     val providerKey: String = "",
     /** Non-null when the search call itself failed. */
     val error: String? = null,
+    /** Per-query provenance log for the Market tab's Debug panel. */
+    val queries: List<MarketQuery> = emptyList(),
+    /** How many result pages were opened via the Jina Reader for richer evidence. */
+    val pagesRead: Int = 0,
+    /** Web-search phase duration (millis). */
+    val searchMs: Long = 0L,
+    /** Page-reading phase duration (millis). */
+    val readMs: Long = 0L,
 )
 
 /**
@@ -63,6 +74,7 @@ class PriceResearchService
     @Inject
     constructor(
         private val searchResolver: WebSearchResolver,
+        private val jinaReader: JinaReaderService,
     ) {
         private val client =
             OkHttpClient
@@ -78,8 +90,9 @@ class PriceResearchService
          * Researches [item]'s resale value.
          *
          * @param openAiKey OpenAI API key (required for BYOK; pass the RevenueCat user ID for Pro).
-         * @param searchProvider which web-search backend to use for BYOK evidence (may be NONE).
-         * @param searchKey API key for the BYOK search provider (blank for keyless/NONE).
+         * @param searchProviders list of (provider, key) pairs used to gather evidence; empty disables web search.
+         * @param readerKey Jina key used to *open* the top result pages (r.jina.ai) for richer
+         *   evidence; null/blank skips page reading. Jina-only — Brave has no reader.
          * @param model OpenAI model to use for price synthesis; defaults to [MODEL].
          * @param openAiBaseUrl Override to route LLM calls through the TwoBits Worker proxy.
          * @param openAiAuthHeader Override auth header (defaults to "Bearer $openAiKey").
@@ -90,8 +103,8 @@ class PriceResearchService
         suspend fun research(
             item: Item,
             openAiKey: String,
-            searchProvider: SearchProvider,
-            searchKey: String,
+            searchProviders: List<Pair<SearchProvider, String>> = emptyList(),
+            readerKey: String? = null,
             model: String = MODEL,
             openAiBaseUrl: String = "https://api.openai.com",
             openAiAuthHeader: String = "Bearer $openAiKey",
@@ -99,79 +112,144 @@ class PriceResearchService
             workerAuthHeader: String? = null,
         ): PriceResearchResult =
             withContext(Dispatchers.IO) {
+                val totalStart = System.currentTimeMillis()
                 // Skip key validation when routing through the Worker proxy.
                 if (openAiBaseUrl == "https://api.openai.com" && !ApiKeyValidator.isValid(openAiKey)) {
                     return@withContext PriceResearchResult(error = ERROR_INVALID_KEY)
                 }
 
-                // Step 1 — best-effort web evidence.
+                // Step 1 — best-effort web evidence (search, then optionally read pages).
                 val evidence =
                     if (workerSearchUrl != null && workerAuthHeader != null) {
                         gatherWorkerEvidence(item, workerSearchUrl, workerAuthHeader)
                     } else {
-                        gatherEvidence(item, searchProvider, searchKey)
+                        gatherEvidence(item, searchProviders, readerKey)
                     }
 
                 // Step 2 — synthesize via the model.
-                runCatching {
-                    val requestBody = buildRequest(item, evidence, model)
-                    val endpoint = if (isResponsesModel(model)) "v1/responses" else "v1/chat/completions"
-                    val request =
-                        Request
-                            .Builder()
-                            .url("$openAiBaseUrl/$endpoint")
-                            .addHeader("Authorization", openAiAuthHeader)
-                            .addHeader("Content-Type", "application/json")
-                            .post(gson.toJson(requestBody).toRequestBody(json))
-                            .build()
+                val synthesisStart = System.currentTimeMillis()
+                val result =
+                    runCatching {
+                        val requestBody = buildRequest(item, evidence, model)
+                        val endpoint = if (isResponsesModel(model)) "v1/responses" else "v1/chat/completions"
+                        val request =
+                            Request
+                                .Builder()
+                                .url("$openAiBaseUrl/$endpoint")
+                                .addHeader("Authorization", openAiAuthHeader)
+                                .addHeader("Content-Type", "application/json")
+                                .post(gson.toJson(requestBody).toRequestBody(json))
+                                .build()
 
-                    client.newCall(request).execute().use { response ->
-                        val body = response.body?.string().orEmpty()
-                        if (!response.isSuccessful) {
-                            Log.w(TAG, "Pricing request failed: HTTP ${response.code}")
-                            return@use PriceResearchResult(error = friendlyHttpError(response.code))
+                        client.newCall(request).execute().use { response ->
+                            val body = response.body?.string().orEmpty()
+                            if (!response.isSuccessful) {
+                                Log.w(TAG, "Pricing request failed: HTTP ${response.code}")
+                                return@use PriceResearchResult(error = friendlyHttpError(response.code))
+                            }
+                            parseResponse(body, evidence, isResponsesModel(model))
                         }
-                        parseResponse(body, evidence, isResponsesModel(model))
+                    }.getOrElse { e ->
+                        Log.w(TAG, "Pricing request threw ${e.javaClass.simpleName}")
+                        PriceResearchResult(error = friendlyNetworkError(e))
                     }
-                }.getOrElse { e ->
-                    Log.w(TAG, "Pricing request threw ${e.javaClass.simpleName}")
-                    PriceResearchResult(error = friendlyNetworkError(e))
+                val now = System.currentTimeMillis()
+
+                // Attach transparency detail to a successful run.
+                if (result.error == null) {
+                    val debug =
+                        MarketResearchDebug(
+                            queries = evidence.queries,
+                            pagesRead = evidence.pagesRead,
+                            searchMs = evidence.searchMs,
+                            readMs = evidence.readMs,
+                            synthesisMs = now - synthesisStart,
+                            totalMs = now - totalStart,
+                        )
+                    result.copy(research = result.research.copy(debug = debug))
+                } else {
+                    result
                 }
             }
 
         private suspend fun gatherEvidence(
             item: Item,
-            provider: SearchProvider,
-            searchKey: String,
+            providers: List<Pair<SearchProvider, String>>,
+            readerKey: String?,
         ): SearchEvidence {
-            val service = searchResolver.resolve(provider) ?: return SearchEvidence()
+            val services =
+                providers.mapNotNull { (provider, key) ->
+                    searchResolver.resolve(provider)?.let { it to key }
+                }
+            if (services.isEmpty()) return SearchEvidence()
+
             val queries = buildSearchQueries(item)
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
+            val queryLog = mutableListOf<MarketQuery>()
             var lastError: String? = null
+            val primaryProviderKey =
+                services
+                    .first()
+                    .first.provider.key
 
+            // Phase 1 — search across every enabled provider (Jina, Brave) and merge.
+            val searchStart = System.currentTimeMillis()
             for (query in queries) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
-                runCatching { service.search(query, searchKey) }
-                    .fold(
-                        onSuccess = { results ->
-                            results.forEach { r ->
-                                if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
-                            }
-                        },
-                        onFailure = {
-                            Log.w(TAG, "Web search failed for query '$query': ${it.javaClass.simpleName}: ${it.message}")
-                            lastError = it.message ?: it.javaClass.simpleName
-                        },
-                    )
+                for ((service, key) in services) {
+                    runCatching { service.search(query, key) }
+                        .fold(
+                            onSuccess = { results ->
+                                queryLog.add(
+                                    MarketQuery(
+                                        label = service.provider.displayName,
+                                        query = query,
+                                        resultCount = results.size,
+                                    ),
+                                )
+                                results.forEach { r ->
+                                    if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
+                                }
+                            },
+                            onFailure = {
+                                Log.w(TAG, "Web search failed for query '$query': ${it.javaClass.simpleName}: ${it.message}")
+                                lastError = it.message ?: it.javaClass.simpleName
+                                queryLog.add(
+                                    MarketQuery(label = service.provider.displayName, query = query, resultCount = 0),
+                                )
+                            },
+                        )
+                }
                 if (merged.size >= MIN_RESULTS_EARLY_STOP) break
             }
+            val searchMs = System.currentTimeMillis() - searchStart
 
-            return if (merged.isNotEmpty()) {
-                SearchEvidence(results = merged, providerKey = provider.key)
-            } else {
-                SearchEvidence(providerKey = provider.key, error = lastError)
+            // Phase 2 — open the top result pages via Jina Reader so the model reads the actual
+            // listing (price, condition, sold status), not just a search snippet. Jina-only.
+            var pagesRead = 0
+            var readMs = 0L
+            if (!readerKey.isNullOrBlank() && merged.isNotEmpty()) {
+                val readStart = System.currentTimeMillis()
+                for (i in merged.indices) {
+                    if (pagesRead >= MAX_PAGES_READ) break
+                    val r = merged[i]
+                    val pageText = jinaReader.read(r.url, readerKey) ?: continue
+                    merged[i] = r.copy(snippet = (r.snippet + "\n" + pageText).take(MAX_SNIPPET_CHARS))
+                    pagesRead++
+                }
+                readMs = System.currentTimeMillis() - readStart
             }
+
+            return SearchEvidence(
+                results = merged,
+                providerKey = primaryProviderKey,
+                error = if (merged.isEmpty()) lastError else null,
+                queries = queryLog,
+                pagesRead = pagesRead,
+                searchMs = searchMs,
+                readMs = readMs,
+            )
         }
 
         /**
@@ -186,8 +264,10 @@ class PriceResearchService
             val queries = buildSearchQueries(item)
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
+            val queryLog = mutableListOf<MarketQuery>()
             var lastError: String? = null
 
+            val searchStart = System.currentTimeMillis()
             for (query in queries) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
                 runCatching {
@@ -214,6 +294,7 @@ class PriceResearchService
                     }
                 }.fold(
                     onSuccess = { results ->
+                        queryLog.add(MarketQuery(label = "Managed search", query = query, resultCount = results.size))
                         results.forEach { r ->
                             if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
                         }
@@ -221,16 +302,20 @@ class PriceResearchService
                     onFailure = {
                         Log.w(TAG, "Worker search failed for query '$query': ${it.message}")
                         lastError = it.message ?: it.javaClass.simpleName
+                        queryLog.add(MarketQuery(label = "Managed search", query = query, resultCount = 0))
                     },
                 )
                 if (merged.size >= MIN_RESULTS_EARLY_STOP) break
             }
+            val searchMs = System.currentTimeMillis() - searchStart
 
-            return if (merged.isNotEmpty()) {
-                SearchEvidence(results = merged, providerKey = "jina")
-            } else {
-                SearchEvidence(providerKey = "jina", error = lastError)
-            }
+            return SearchEvidence(
+                results = merged,
+                providerKey = "jina",
+                error = if (merged.isEmpty()) lastError else null,
+                queries = queryLog,
+                searchMs = searchMs,
+            )
         }
 
         private fun buildSearchQueries(item: Item): List<String> {
@@ -480,6 +565,12 @@ class PriceResearchService
             private const val MAX_CITATIONS = 8
             private const val MAX_SEARCH_RESULTS = 12
             private const val MIN_RESULTS_EARLY_STOP = 5
+
+            /** Cap on how many result pages the Jina Reader opens per research run. */
+            private const val MAX_PAGES_READ = 4
+
+            /** Cap on each evidence snippet after appending read page text (keeps prompt small). */
+            private const val MAX_SNIPPET_CHARS = 2_200
 
             internal const val ERROR_INVALID_KEY =
                 "Invalid or missing OpenAI API key. Check Settings."

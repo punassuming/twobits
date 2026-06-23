@@ -6,7 +6,13 @@
 
 ### Improvements
 
+* Settings sections now use the shared gray uppercase section label (`AppSectionLabel`) rendered above the card — consistent with the design system spec and the other apps
+
 ### Fixes
+
+* Profiles: profile card name and description text is now smaller (`titleSmall` / `labelSmall`) so all content fits on narrow screens without overflow
+* Profiles: "New Profile" and "AI Draft" buttons no longer truncate their labels (e.g. "New Pro…") on narrow screens — reduced button content padding so the icon + full label fit
+* AI credential rows (shared): status badge no longer wraps to two lines when the provider title is long — the badge stays on one line and the title ellipsizes instead
 
 ## 1.20.0 (2026-06-22)
 

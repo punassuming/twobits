@@ -21,9 +21,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -41,14 +45,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shelfsnap.app.R
 import com.shelfsnap.app.data.model.MarketComp
+import com.shelfsnap.app.data.model.MarketQuery
 import com.shelfsnap.app.data.model.MarketResearch
+import com.shelfsnap.app.data.model.MarketResearchDebug
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.ui.components.PlatformBadge
@@ -96,6 +104,10 @@ fun MarketTab(
 
         if (hasData) {
             SearchStatusBanner(research)
+            research.debug
+                ?.queries
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { QueriesExpander(it) }
         }
 
         if (!hasData) {
@@ -276,6 +288,241 @@ fun MarketTab(
                 }
             }
         }
+
+        research.debug?.let { DebugInfoSection(research = research, debug = it) }
+    }
+}
+
+/**
+ * Collapsed-by-default summary of the search queries that produced this research,
+ * surfaced inline under the status banner so users can see what was actually searched.
+ */
+@Composable
+private fun QueriesExpander(queries: List<MarketQuery>) {
+    var expanded by remember { mutableStateOf(false) }
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = !expanded }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                    tint = MaterialTheme.colorScheme.secondary,
+                )
+                Text(
+                    text = "${queries.size} search " + if (queries.size == 1) "query" else "queries",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp).rotate(if (expanded) 180f else 0f),
+                )
+            }
+            if (expanded) {
+                Column(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 12.dp)
+                            .padding(bottom = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    queries.forEach { QueryRow(it) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QueryRow(query: MarketQuery) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                Text(
+                    text = query.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                )
+            }
+            Text(
+                text = "${query.resultCount} results",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = query.query,
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Collapsed "Debug info" panel: timings, confidence factors, and the full query log —
+ * the transparency surface from the Market research mockup.
+ */
+@Composable
+private fun DebugInfoSection(
+    research: MarketResearch,
+    debug: MarketResearchDebug,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val soldCount = research.comps.count { it.sold }
+    val platformCount =
+        research.comps
+            .map { it.platformKey }
+            .distinct()
+            .size
+    val variancePct =
+        if (research.averageSoldPrice > 0 && research.highPrice > research.lowPrice) {
+            ((research.highPrice - research.lowPrice) / research.averageSoldPrice * 100).toInt()
+        } else {
+            null
+        }
+    Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = !expanded }
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    Icons.Default.BugReport,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "Debug info",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp).rotate(if (expanded) 180f else 0f),
+                )
+            }
+            if (expanded) {
+                Column(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 14.dp)
+                            .padding(bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        DebugSubheader("Timings")
+                        TimingRow("Web search", debug.searchMs)
+                        if (debug.pagesRead > 0) TimingRow("Read ${debug.pagesRead} pages (Jina)", debug.readMs)
+                        TimingRow("AI synthesis", debug.synthesisMs)
+                        TimingRow("Total", debug.totalMs, bold = true)
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        DebugSubheader("Confidence factors")
+                        FactorRow("Sold listings found", soldCount.toString(), good = soldCount >= 3)
+                        FactorRow("Platforms covered", platformCount.toString(), good = platformCount >= 2)
+                        FactorRow("Pages read", debug.pagesRead.toString(), good = debug.pagesRead > 0)
+                        if (variancePct != null) {
+                            FactorRow("Price variance", "$variancePct%", good = variancePct <= 30)
+                        }
+                    }
+                    if (debug.queries.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            DebugSubheader("Search queries")
+                            debug.queries.forEach { QueryRow(it) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DebugSubheader(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun TimingRow(
+    label: String,
+    ms: Long,
+    bold: Boolean = false,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (bold) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "${ms}ms",
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
+            color =
+                when {
+                    ms < 800 -> MaterialTheme.colorScheme.secondary
+                    ms > 1500 -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+        )
+    }
+}
+
+@Composable
+private fun FactorRow(
+    label: String,
+    value: String,
+    good: Boolean,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(
+            if (good) Icons.Default.CheckCircle else Icons.Default.Warning,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = if (good) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 

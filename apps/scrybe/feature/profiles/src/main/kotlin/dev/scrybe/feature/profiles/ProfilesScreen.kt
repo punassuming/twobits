@@ -8,6 +8,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -354,17 +355,19 @@ private fun ProfileCreationCard(
             Button(
                 onClick = onCreateManual,
                 modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
                 Text("New Profile", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             OutlinedButton(
                 onClick = onCreateWithAi,
                 modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                Icon(Icons.Filled.AutoAwesome, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
                 Text("AI Draft", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
@@ -427,14 +430,14 @@ private fun ProfileRowHeader(
         ) {
             Text(
                 text = profile.name,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (profile.description.isNotBlank()) {
                 Text(
                     text = profile.description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
