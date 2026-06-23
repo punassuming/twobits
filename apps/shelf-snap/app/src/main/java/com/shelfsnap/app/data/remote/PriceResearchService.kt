@@ -78,8 +78,7 @@ class PriceResearchService
          * Researches [item]'s resale value.
          *
          * @param openAiKey OpenAI API key (required for BYOK; pass the RevenueCat user ID for Pro).
-         * @param searchProvider which web-search backend to use for BYOK evidence (may be NONE).
-         * @param searchKey API key for the BYOK search provider (blank for keyless/NONE).
+         * @param searchProviders list of (provider, key) pairs used to gather evidence; empty disables web search.
          * @param model OpenAI model to use for price synthesis; defaults to [MODEL].
          * @param openAiBaseUrl Override to route LLM calls through the TwoBits Worker proxy.
          * @param openAiAuthHeader Override auth header (defaults to "Bearer $openAiKey").
@@ -90,8 +89,7 @@ class PriceResearchService
         suspend fun research(
             item: Item,
             openAiKey: String,
-            searchProvider: SearchProvider,
-            searchKey: String,
+            searchProviders: List<Pair<SearchProvider, String>> = emptyList(),
             model: String = MODEL,
             openAiBaseUrl: String = "https://api.openai.com",
             openAiAuthHeader: String = "Bearer $openAiKey",
@@ -109,7 +107,7 @@ class PriceResearchService
                     if (workerSearchUrl != null && workerAuthHeader != null) {
                         gatherWorkerEvidence(item, workerSearchUrl, workerAuthHeader)
                     } else {
-                        gatherEvidence(item, searchProvider, searchKey)
+                        gatherEvidence(item, searchProviders)
                     }
 
                 // Step 2 — synthesize via the model.
@@ -141,36 +139,46 @@ class PriceResearchService
 
         private suspend fun gatherEvidence(
             item: Item,
-            provider: SearchProvider,
-            searchKey: String,
+            providers: List<Pair<SearchProvider, String>>,
         ): SearchEvidence {
-            val service = searchResolver.resolve(provider) ?: return SearchEvidence()
+            val services =
+                providers.mapNotNull { (provider, key) ->
+                    searchResolver.resolve(provider)?.let { it to key }
+                }
+            if (services.isEmpty()) return SearchEvidence()
+
             val queries = buildSearchQueries(item)
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
             var lastError: String? = null
+            val primaryProviderKey =
+                services
+                    .first()
+                    .first.provider.key
 
             for (query in queries) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
-                runCatching { service.search(query, searchKey) }
-                    .fold(
-                        onSuccess = { results ->
-                            results.forEach { r ->
-                                if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
-                            }
-                        },
-                        onFailure = {
-                            Log.w(TAG, "Web search failed for query '$query': ${it.javaClass.simpleName}: ${it.message}")
-                            lastError = it.message ?: it.javaClass.simpleName
-                        },
-                    )
+                for ((service, key) in services) {
+                    runCatching { service.search(query, key) }
+                        .fold(
+                            onSuccess = { results ->
+                                results.forEach { r ->
+                                    if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
+                                }
+                            },
+                            onFailure = {
+                                Log.w(TAG, "Web search failed for query '$query': ${it.javaClass.simpleName}: ${it.message}")
+                                lastError = it.message ?: it.javaClass.simpleName
+                            },
+                        )
+                }
                 if (merged.size >= MIN_RESULTS_EARLY_STOP) break
             }
 
             return if (merged.isNotEmpty()) {
-                SearchEvidence(results = merged, providerKey = provider.key)
+                SearchEvidence(results = merged, providerKey = primaryProviderKey)
             } else {
-                SearchEvidence(providerKey = provider.key, error = lastError)
+                SearchEvidence(providerKey = primaryProviderKey, error = lastError)
             }
         }
 

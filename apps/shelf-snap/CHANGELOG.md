@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* AI configuration — web search providers are now independently toggleable: Jina AI and Brave Search each have their own enable/disable switch, so both can be active simultaneously; Jina is used as primary and Brave adds broader coverage as a supplement
+
 ### Fixes
 
 * AI configuration: the Pro row "Not subscribed" status badge no longer wraps to two lines — the shared credential row now keeps the badge on a single line and ellipsizes the title when space is tight

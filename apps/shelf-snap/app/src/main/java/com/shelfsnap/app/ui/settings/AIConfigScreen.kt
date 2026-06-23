@@ -18,16 +18,12 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -40,7 +36,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -54,7 +49,6 @@ import com.shelfsnap.app.data.model.LocalGemmaModel
 import com.shelfsnap.app.data.model.LocalMoondreamModel
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
-import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionTier
 import com.twobits.design.components.AiCredentialsDock
 import com.twobits.design.components.AiNoKeyWarning
@@ -299,20 +293,14 @@ private fun WebSearchSection(
         return
     }
     Text(
-        text = stringResource(R.string.search_section_subtitle),
+        text = "Enable one or both providers — Jina AI is primary; Brave Search adds broader coverage when both are active.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    SearchProviderDropdown(
-        selected = uiState.searchProvider,
-        onSelected = viewModel::onSearchProviderChange,
-    )
-    // Always show both key fields so both keys can be saved independently.
-    if (uiState.savedJinaApiKey.isBlank()) JinaKeyWalkthrough()
-    ProviderCredentialCard(
+    WebSearchProviderBlock(
         title = stringResource(R.string.jina_api_key_label),
-        selectedMode = "key",
-        keyMode = "key",
+        enabled = uiState.jinaSearchEnabled,
+        onEnabledChange = viewModel::onJinaSearchEnabledChange,
         apiKey = uiState.editJinaApiKey,
         isValidating = uiState.isJinaTesting,
         validationMessage = uiState.jinaTestMessage,
@@ -322,11 +310,36 @@ private fun WebSearchSection(
         onClear = viewModel::clearJinaKey,
         onTest = viewModel::testJinaKey,
         keyHint = stringResource(R.string.jina_api_key_hint),
+        setupContent =
+            if (uiState.savedJinaApiKey.isBlank()) {
+                {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = stringResource(R.string.jina_setup_title),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        listOf(
+                            stringResource(R.string.jina_setup_step_1),
+                            stringResource(R.string.jina_setup_step_2),
+                            stringResource(R.string.jina_setup_step_3),
+                        ).forEachIndexed { i, step ->
+                            Text(
+                                text = "${i + 1}. $step",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            } else {
+                null
+            },
     )
-    ProviderCredentialCard(
+    WebSearchProviderBlock(
         title = stringResource(R.string.brave_api_key_label),
-        selectedMode = "key",
-        keyMode = "key",
+        enabled = uiState.braveSearchEnabled,
+        onEnabledChange = viewModel::onBraveSearchEnabledChange,
         apiKey = uiState.editBraveApiKey,
         isValidating = uiState.isBraveTesting,
         validationMessage = uiState.braveTestMessage,
@@ -340,59 +353,46 @@ private fun WebSearchSection(
 }
 
 @Composable
-private fun JinaKeyWalkthrough() {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = stringResource(R.string.jina_setup_title),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        listOf(
-            stringResource(R.string.jina_setup_step_1),
-            stringResource(R.string.jina_setup_step_2),
-            stringResource(R.string.jina_setup_step_3),
-        ).forEachIndexed { i, step ->
-            Text(
-                text = "${i + 1}. $step",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SearchProviderDropdown(
-    selected: SearchProvider,
-    onSelected: (SearchProvider) -> Unit,
+private fun WebSearchProviderBlock(
+    title: String,
+    enabled: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    apiKey: String,
+    isValidating: Boolean,
+    validationMessage: String?,
+    isKeyValid: Boolean?,
+    onApiKeyChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onClear: () -> Unit,
+    onTest: () -> Unit,
+    keyHint: String,
+    setupContent: (@Composable () -> Unit)? = null,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-    ) {
-        OutlinedTextField(
-            value = selected.displayName,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.search_provider_label)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier =
-                Modifier
-                    .menuAnchor()
-                    .fillMaxWidth(),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            SearchProvider.entries.forEach { provider ->
-                DropdownMenuItem(
-                    text = { Text(provider.displayName) },
-                    onClick = {
-                        onSelected(provider)
-                        expanded = false
-                    },
-                )
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
+        if (enabled) {
+            setupContent?.invoke()
+            ProviderCredentialCard(
+                title = title,
+                selectedMode = "key",
+                keyMode = "key",
+                apiKey = apiKey,
+                isValidating = isValidating,
+                validationMessage = validationMessage,
+                isKeyValid = isKeyValid,
+                onApiKeyChange = onApiKeyChange,
+                onSave = onSave,
+                onClear = onClear,
+                onTest = onTest,
+                keyHint = keyHint,
+            )
         }
     }
 }
