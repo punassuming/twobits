@@ -27,8 +27,9 @@ import javax.inject.Singleton
 /**
  * Calls the TwoBits Worker PriceDrop endpoints. In Pro mode all requests route through
  * [PRO_BASE_URL] using the RevenueCat app-user ID as a bearer token. In BYOK mode the
- * OPENAI provider routes directly to api.openai.com; other providers fall back to Pro
- * until per-provider request/response adapters are added.
+ * OPENAI provider routes directly to api.openai.com; other providers route through the Worker
+ * with the user's provider API key as the Bearer token and an X-BYOK-Provider header so the
+ * Worker knows which upstream to forward it to.
  */
 @Singleton
 class PriceDropApiClient
@@ -41,22 +42,30 @@ class PriceDropApiClient
     ) {
         private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
+        private data class RequestConfig(
+            val baseUrl: String,
+            val authHeader: String,
+            /** Non-null when the Worker should forward the Bearer token to an upstream provider. */
+            val byokProvider: String? = null,
+        )
+
         /**
-         * Returns (baseUrl, Authorization header value) for the given provider.
+         * Returns routing config for the given provider.
          *
-         * OpenAI BYOK calls api.openai.com directly. All other providers — even in BYOK mode —
-         * route through the Worker at [PRO_BASE_URL]; the user's API key becomes the Bearer token
-         * so the Worker can forward it to the upstream provider on the user's behalf.
+         * OpenAI BYOK calls api.openai.com directly (no Worker involvement).
+         * All other BYOK providers route through the Worker at [PRO_BASE_URL] with the user's
+         * provider API key as the Bearer token; [byokProvider] signals the Worker via
+         * X-BYOK-Provider which upstream to forward it to.
          */
-        private suspend fun resolveConfig(provider: PriceDropProvider): Pair<String, String> {
+        private suspend fun resolveConfig(provider: PriceDropProvider): RequestConfig {
             val mode = providerSettings.getMode(provider)
             return when {
                 mode == ProviderMode.BYOK && provider == PriceDropProvider.OPENAI ->
-                    provider.byokBaseUrl.trimEnd('/') to "Bearer ${providerSettings.getKey(provider)}"
+                    RequestConfig(provider.byokBaseUrl.trimEnd('/'), "Bearer ${providerSettings.getKey(provider)}")
                 mode == ProviderMode.BYOK ->
-                    PRO_BASE_URL to "Bearer ${providerSettings.getKey(provider)}"
+                    RequestConfig(PRO_BASE_URL, "Bearer ${providerSettings.getKey(provider)}", provider.key)
                 else ->
-                    PRO_BASE_URL to "Bearer ${subscriptionRepository.getAppUserId()}"
+                    RequestConfig(PRO_BASE_URL, "Bearer ${subscriptionRepository.getAppUserId()}")
             }
         }
 
@@ -64,13 +73,13 @@ class PriceDropApiClient
             query: String,
             maxResults: Int = 10,
         ): SearchResponseDto {
-            val (base, auth) = resolveConfig(PriceDropProvider.SHOPPING)
+            val config = resolveConfig(PriceDropProvider.SHOPPING)
             val body =
                 JsonObject().apply {
                     addProperty("query", query)
                     addProperty("maxResults", maxResults)
                 }
-            return post("/v1/pricedrop/search", body, SearchResponseDto::class.java, base, auth)
+            return post("/v1/pricedrop/search", body, SearchResponseDto::class.java, config)
         }
 
         suspend fun price(
@@ -84,38 +93,38 @@ class PriceDropApiClient
                 } else {
                     PriceDropProvider.SHOPPING
                 }
-            val (base, auth) = resolveConfig(provider)
+            val config = resolveConfig(provider)
             val body =
                 JsonObject().apply {
                     asin?.takeIf { it.isNotBlank() }?.let { addProperty("asin", it) }
                     upc?.takeIf { it.isNotBlank() }?.let { addProperty("upc", it) }
                 }
-            return post("/v1/pricedrop/price", body, PriceResponseDto::class.java, base, auth)
+            return post("/v1/pricedrop/price", body, PriceResponseDto::class.java, config)
         }
 
         suspend fun history(asin: String): HistoryResponseDto {
-            val (base, auth) = resolveConfig(PriceDropProvider.KEEPA)
+            val config = resolveConfig(PriceDropProvider.KEEPA)
             val body = JsonObject().apply { addProperty("asin", asin) }
-            return post("/v1/pricedrop/history", body, HistoryResponseDto::class.java, base, auth)
+            return post("/v1/pricedrop/history", body, HistoryResponseDto::class.java, config)
         }
 
         suspend fun coupons(
             query: String,
             domain: String? = null,
         ): CouponsResponseDto {
-            val (base, auth) = resolveConfig(PriceDropProvider.COUPON)
+            val config = resolveConfig(PriceDropProvider.COUPON)
             val body =
                 JsonObject().apply {
                     addProperty("query", query)
                     domain?.takeIf { it.isNotBlank() }?.let { addProperty("domain", it) }
                 }
-            return post("/v1/pricedrop/coupons", body, CouponsResponseDto::class.java, base, auth)
+            return post("/v1/pricedrop/coupons", body, CouponsResponseDto::class.java, config)
         }
 
         suspend fun barcode(upc: String): BarcodeResponseDto {
-            val (base, auth) = resolveConfig(PriceDropProvider.SHOPPING)
+            val config = resolveConfig(PriceDropProvider.SHOPPING)
             val body = JsonObject().apply { addProperty("upc", upc) }
-            return post("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java, base, auth)
+            return post("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java, config)
         }
 
         /**
@@ -128,8 +137,8 @@ class PriceDropApiClient
             systemPrompt: String,
             history: List<com.twobits.pricedrop.ui.ask.ChatMessage>,
         ): String {
-            val (base, auth) = resolveConfig(PriceDropProvider.OPENAI)
-            val isProMode = base == PRO_BASE_URL
+            val config = resolveConfig(PriceDropProvider.OPENAI)
+            val isProMode = config.baseUrl == PRO_BASE_URL
             val selectedModel = providerSettings.getFeatureModel(AiFeature.ASK)
             val model = selectedModel.ifBlank { if (isProMode) PRO_CHAT_MODEL else BYOK_CHAT_MODEL }
             val messages =
@@ -154,7 +163,7 @@ class PriceDropApiClient
                     addProperty("model", model)
                     add("messages", messages)
                 }
-            val dto = post("/v1/chat/completions", body, ChatResponseDto::class.java, base, auth)
+            val dto = post("/v1/chat/completions", body, ChatResponseDto::class.java, config)
             return dto.choices
                 .firstOrNull()
                 ?.message
@@ -166,16 +175,16 @@ class PriceDropApiClient
             path: String,
             body: JsonObject,
             type: Class<T>,
-            baseUrl: String,
-            authHeader: String,
+            config: RequestConfig,
         ): T =
             withContext(Dispatchers.IO) {
                 val request =
                     Request
                         .Builder()
-                        .url("$baseUrl$path")
-                        .addHeader("Authorization", authHeader)
+                        .url("${config.baseUrl}$path")
+                        .addHeader("Authorization", config.authHeader)
                         .addHeader("Content-Type", "application/json")
+                        .apply { config.byokProvider?.let { addHeader("X-BYOK-Provider", it) } }
                         .post(gson.toJson(body).toRequestBody(jsonMedia))
                         .build()
                 client.newCall(request).execute().use { response ->
