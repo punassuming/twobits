@@ -4,14 +4,6 @@
 
 ### Features
 
-### Improvements
-
-### Fixes
-
-## 0.5.0 (2026-06-23)
-
-### Features
-
 * **AI credentials — collapsible rows** — provider credential rows in the AI Config screen now collapse by default; connected rows show a masked key ("sk-••••••••1234") and a coral "Connected ✓" badge; unconfigured rows show the provider description and a gray "Not configured" badge; tapping expands to reveal the key field, Save, Test, and Clear
 * **Rainforest API provider** — added as a new optional BYOK provider for Amazon product data (ASIN lookup + real-time price); included in Price check feature
 * **Provider metadata** — each provider row now shows a description line below the name explaining what it does
@@ -25,7 +17,10 @@
 ### Fixes
 
 * Release automation corrected from 0.0.1 → 0.5.0 (concurrent-release race caused tag action to start from 0.0.0)
-
+* BYOK providers now call upstream APIs directly from the app (SerpAPI, Rainforest, Keepa, CouponLayer), matching the existing OpenAI BYOK pattern — the Worker is never in the BYOK path; price/barcode BYOK only activates when Rainforest is configured (SerpAPI is search-only)
+* Price lookups for ASIN products now prefer Rainforest BYOK when configured, rather than always falling back to SerpAPI/Shopping
+* Chat model selection now reads the user's AI Config model choice for the Ask feature; falls back to default Pro/BYOK model constants only when the user has not selected a model
+* `ProviderSettingsStore` gains `getFeatureModel()` suspend getter (was missing — only the flow + setter existed); `isByok()` in `PriceDropApiClient` is now a suspend function to correctly call the suspend `getMode()` — fixes compile errors in CI
 
 ## 0.4.0 (2026-06-23)
 

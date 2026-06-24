@@ -32,13 +32,15 @@ enum class ProviderType {
     LOCAL,
 }
 
-enum class AudioFormat {
-    AAC,
-    MP3,
-    MP4,
-    OGG,
-    WAV,
-    WEBM,
+enum class AudioFormat(
+    val description: String,
+) {
+    AAC("Best overall · small files, good quality, universal support"),
+    MP3("Universal compatibility · widely supported, slightly larger than AAC"),
+    MP4("Container with AAC audio · good for video-audio workflows"),
+    OGG("Open format · excellent quality/size ratio on Android"),
+    WAV("Lossless · maximum quality, largest file size"),
+    WEBM("Web-optimized · good for streaming or web sharing"),
 }
 
 enum class ThemeMode {

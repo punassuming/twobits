@@ -69,6 +69,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -416,6 +417,24 @@ fun ProfilesScreen(
                 )
                 viewModel.clearDraftingNewProfile()
             },
+            onOpenEditor = { editedPrompt ->
+                viewModel.updateEditorDraft(
+                    ProfileEditorDraft(
+                        existingId = null,
+                        name = reviewSuggestion.name,
+                        description = reviewSuggestion.description,
+                        steps = listOf(editedPrompt.trim()),
+                    ),
+                )
+                viewModel.clearDraftingNewProfile()
+            },
+        )
+    }
+
+    if (draftingNewProfile && suggestionState is ProfileSuggestionUiState.Error) {
+        DraftErrorSheet(
+            message = (suggestionState as ProfileSuggestionUiState.Error).message,
+            onDismiss = { viewModel.clearDraftingNewProfile() },
         )
     }
 }
@@ -2003,6 +2022,7 @@ private fun ReviewDraftSheet(
     onDismiss: () -> Unit,
     onRefine: (String) -> Unit,
     onSave: (name: String, editedPrompt: String) -> Unit,
+    onOpenEditor: (editedPrompt: String) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var editedPrompt by remember(suggestion) { mutableStateOf(suggestion.steps.joinToString("\n\n")) }
@@ -2108,7 +2128,7 @@ private fun ReviewDraftSheet(
                 }
             }
 
-            // Save button
+            // Action buttons
             Button(
                 onClick = { onSave(suggestion.name, editedPrompt) },
                 modifier = Modifier.fillMaxWidth(),
@@ -2116,8 +2136,52 @@ private fun ReviewDraftSheet(
             ) {
                 Text("Save profile")
             }
+            OutlinedButton(
+                onClick = { onOpenEditor(editedPrompt) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Edit in full editor")
+            }
 
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DraftErrorSheet(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+                    .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Draft failed", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Dismiss")
+            }
         }
     }
 }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -55,6 +57,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -106,6 +109,7 @@ fun SettingsScreen(
     val activity = LocalContext.current as? Activity
     val uriHandler = LocalUriHandler.current
     var showPostStopPicker by remember { mutableStateOf(false) }
+    var showFormatPicker by remember { mutableStateOf(false) }
     var showSampleRatePicker by remember { mutableStateOf(false) }
     var showBitRatePicker by remember { mutableStateOf(false) }
     var showChannelPicker by remember { mutableStateOf(false) }
@@ -293,30 +297,12 @@ fun SettingsScreen(
                         )
                     }
                     HorizontalDivider()
-                    Text(
-                        text = "Format",
-                        style = MaterialTheme.typography.titleSmall,
+                    SettingOptionRow(
+                        title = "Format",
+                        value = uiState.audioFormat.name,
+                        supportingText = uiState.audioFormat.description,
+                        onClick = { showFormatPicker = true },
                     )
-                    Text(
-                        text = "Choose the default container/codec for new recordings.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        AudioFormat.entries.forEachIndexed { index, format ->
-                            SegmentedButton(
-                                selected = uiState.audioFormat == format,
-                                onClick = { viewModel.setAudioFormat(format) },
-                                shape =
-                                    SegmentedButtonDefaults.itemShape(
-                                        index = index,
-                                        count = AudioFormat.entries.size,
-                                    ),
-                            ) {
-                                Text(format.name)
-                            }
-                        }
-                    }
                     SettingOptionRow(
                         title = "Sample Rate",
                         value = "${uiState.sampleRateHz / 1000} kHz",
@@ -790,6 +776,55 @@ fun SettingsScreen(
             onSelect = {
                 viewModel.setChannelCount(it)
                 showChannelPicker = false
+            },
+        )
+    }
+
+    if (showFormatPicker) {
+        AlertDialog(
+            onDismissRequest = { showFormatPicker = false },
+            title = { Text("Format") },
+            text = {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .verticalScroll(rememberScrollState()),
+                ) {
+                    AudioFormat.entries.forEach { format ->
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.setAudioFormat(format)
+                                        showFormatPicker = false
+                                    }.padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = uiState.audioFormat == format,
+                                onClick = null,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = format.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Text(
+                                    text = format.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFormatPicker = false }) { Text("Cancel") }
             },
         )
     }
