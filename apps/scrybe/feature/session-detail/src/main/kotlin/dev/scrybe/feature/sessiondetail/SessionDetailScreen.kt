@@ -1476,22 +1476,20 @@ private fun TagPill(
 @Composable
 private fun SessionMetaGrid(state: SessionDetailUiState.Success) {
     val session = state.session
-    val audioQuality =
-        "${formatFileSize(session.fileSizeBytes)}  ·  ${session.sampleRateHz / 1000} kHz  ·  " +
-            "${session.encodingBitRate / 1000} kbps  ·  ${if (session.channelCount == 1) "Mono" else "Stereo"}"
+    val sampleRateKhz = session.sampleRateHz / 1000.0
+    val sampleRateLabel =
+        if (sampleRateKhz % 1.0 == 0.0) "${sampleRateKhz.toInt()} kHz" else "%.1f kHz".format(sampleRateKhz)
+    val channels = if (session.channelCount == 1) "Mono" else "Stereo"
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         SessionMetaRow("Duration", formatDuration(session.durationMs))
         SessionMetaRow("Status", SessionStatusPresentation.label(session.status, session.isArchived))
-        SessionMetaRow("Format", session.audioFormat.name)
+        SessionMetaRow("Format", "${session.audioFormat.name} · $channels")
+        SessionMetaRow("Quality", "$sampleRateLabel · ${session.encodingBitRate / 1000} kbps")
+        SessionMetaRow("File size", formatFileSize(session.fileSizeBytes))
         val locationLabel = session.locationLabel
         if (locationLabel != null) {
             SessionMetaRow("Location", locationLabel)
         }
-        Text(
-            text = audioQuality,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
