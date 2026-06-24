@@ -267,7 +267,7 @@ class CaptureViewModel
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
                         action = RecordingServiceActions.ACTION_START
-                        putExtra(RecordingServiceActions.EXTRA_RECORDING_MODE, RecordingMode.JOURNAL.name)
+                        putExtra(RecordingServiceActions.EXTRA_RECORDING_MODE, RecordingMode.CUSTOM.name)
                         putExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID, typeId)
                     }
                 context.startForegroundService(intent)

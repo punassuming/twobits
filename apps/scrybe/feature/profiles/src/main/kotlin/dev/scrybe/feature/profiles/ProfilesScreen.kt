@@ -811,7 +811,7 @@ private fun OptionRow(
 @Composable
 private fun ModeOptionRows() {
     var selected by remember { mutableStateOf(RecordingMode.JOURNAL) }
-    RecordingMode.entries.forEach { mode ->
+    RecordingMode.entries.filter { it != RecordingMode.CUSTOM }.forEach { mode ->
         OptionRow(
             icon = Icons.Filled.Mic,
             label = mode.label,

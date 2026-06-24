@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PersonSearch
@@ -39,6 +40,7 @@ fun modeAccentColor(mode: RecordingMode): Color =
         RecordingMode.STORY -> Color(0xFFFF9EC4)
         RecordingMode.INTERVIEW -> Color(0xFFFFB695)
         RecordingMode.JOURNAL -> MaterialTheme.colorScheme.onSurfaceVariant
+        RecordingMode.CUSTOM -> MaterialTheme.colorScheme.secondary
     }
 
 fun modeIcon(mode: RecordingMode): ImageVector =
@@ -50,6 +52,7 @@ fun modeIcon(mode: RecordingMode): ImageVector =
         RecordingMode.STORY -> Icons.Filled.MenuBook
         RecordingMode.INTERVIEW -> Icons.Filled.PersonSearch
         RecordingMode.JOURNAL -> Icons.Filled.Book
+        RecordingMode.CUSTOM -> Icons.Filled.Label
     }
 
 // ── Shared chips ──────────────────────────────────────────────────────────────
@@ -66,7 +69,9 @@ fun ModeBadge(mode: RecordingMode) {
         color = accentColor.copy(alpha = 0.18f),
     ) {
         Row(
-            modifier = androidx.compose.ui.Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier =
+                androidx.compose.ui.Modifier
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -74,7 +79,9 @@ fun ModeBadge(mode: RecordingMode) {
                 imageVector = modeIcon(mode),
                 contentDescription = null,
                 tint = accentColor,
-                modifier = androidx.compose.ui.Modifier.size(12.dp),
+                modifier =
+                    androidx.compose.ui.Modifier
+                        .size(12.dp),
             )
             Text(
                 text = mode.label,
@@ -111,7 +118,9 @@ fun SessionStatusChip(
 
     Surface(shape = CircleShape, color = color.copy(alpha = 0.14f)) {
         Row(
-            modifier = androidx.compose.ui.Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+            modifier =
+                androidx.compose.ui.Modifier
+                    .padding(horizontal = 7.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -119,7 +128,9 @@ fun SessionStatusChip(
                 imageVector = icon,
                 contentDescription = null,
                 tint = color,
-                modifier = androidx.compose.ui.Modifier.size(11.dp),
+                modifier =
+                    androidx.compose.ui.Modifier
+                        .size(11.dp),
             )
             Text(
                 text = label,

@@ -939,7 +939,7 @@ private fun ModePickerSheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            RecordingMode.entries.chunked(2).forEach { row ->
+            RecordingMode.entries.filter { it != RecordingMode.CUSTOM }.chunked(2).forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),

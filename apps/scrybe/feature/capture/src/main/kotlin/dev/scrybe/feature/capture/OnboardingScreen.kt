@@ -547,6 +547,7 @@ private fun onboardingModeAccentColor(
         RecordingMode.STORY -> colors.tertiary
         RecordingMode.INTERVIEW -> colors.secondary
         RecordingMode.JOURNAL -> colors.onSurfaceVariant
+        RecordingMode.CUSTOM -> colors.secondary
     }
 
 private fun onboardingModeIcon(mode: RecordingMode): ImageVector =
@@ -558,4 +559,5 @@ private fun onboardingModeIcon(mode: RecordingMode): ImageVector =
         RecordingMode.STORY -> Icons.Filled.AutoAwesome
         RecordingMode.INTERVIEW -> Icons.Filled.AutoAwesome
         RecordingMode.JOURNAL -> Icons.Filled.AutoAwesome
+        RecordingMode.CUSTOM -> Icons.Filled.AutoAwesome
     }

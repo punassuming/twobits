@@ -143,6 +143,7 @@ private fun modeAccentColor(
         RecordingMode.STORY -> colors.tertiary
         RecordingMode.INTERVIEW -> colors.secondary
         RecordingMode.JOURNAL -> colors.onSurfaceVariant
+        RecordingMode.CUSTOM -> colors.secondary
     }
 
 private fun historyModeIcon(mode: RecordingMode): ImageVector =
@@ -154,6 +155,7 @@ private fun historyModeIcon(mode: RecordingMode): ImageVector =
         RecordingMode.STORY -> Icons.Filled.MenuBook
         RecordingMode.INTERVIEW -> Icons.Filled.PersonSearch
         RecordingMode.JOURNAL -> Icons.Filled.Book
+        RecordingMode.CUSTOM -> Icons.Filled.Label
     }
 
 @Composable

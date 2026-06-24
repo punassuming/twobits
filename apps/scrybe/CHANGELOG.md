@@ -9,6 +9,8 @@
 ### Fixes
 
 * **Audio import** — MP3 and other formats that failed with "audio format may not be supported" now import correctly; metadata is read via file descriptor (more reliable across Android versions and codecs) and falls back to sensible defaults rather than blocking the import if metadata cannot be read
+* **Custom recording types** — sessions recorded with a user-defined type are now stamped with mode `CUSTOM` (was `JOURNAL`); the history badge, mode filter chips, and waveform bar now use a secondary accent color and label icon to visually distinguish custom-type sessions from plain journal recordings
+* **Import waveform** — imported audio files now generate a real waveform visualisation (amplitude over time via `MediaCodec` decode) instead of an empty bar; falls back gracefully to no waveform if decoding fails
 
 ## 1.23.0 (2026-06-24)
 
