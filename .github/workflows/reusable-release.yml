@@ -149,6 +149,14 @@ jobs:
             echo "previous_tag=$latest_tag" >> "$GITHUB_OUTPUT"
           fi
 
+      # Ensure github-tag-action can find all existing tags during its internal git lookup.
+      # Without this explicit fetch, tags recently created via API may be absent from the
+      # runner's local cache, causing the action to fall back to 0.0.0 → 0.0.1.
+      - name: Fetch all tags for version computation
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
+        shell: bash
+        run: git fetch --tags --force
+
       # Computes the next semantic version from conventional commits since the last tag.
       # Version bumping rules:
       #   feat:           → minor bump
