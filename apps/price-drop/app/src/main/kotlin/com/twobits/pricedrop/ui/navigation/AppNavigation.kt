@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,6 +33,8 @@ import com.twobits.pricedrop.ui.whatsnew.WhatsNewScreen
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
+    notificationProductId: Long? = null,
+    onNotificationProductConsumed: () -> Unit = {},
 ) {
     val onboardingComplete by onboardingViewModel.completed.collectAsState()
     if (onboardingComplete == null) {
@@ -39,6 +42,18 @@ fun AppNavigation(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
+
+    // Navigate to a product when the app is launched (or resumed) from an OS notification.
+    // Wait for onboarding state so we don't navigate before the graph is ready.
+    LaunchedEffect(notificationProductId, onboardingComplete) {
+        if (notificationProductId != null && onboardingComplete == true) {
+            navController.navigate(Screen.ProductDetail.createRoute(notificationProductId)) {
+                launchSingleTop = true
+            }
+            onNotificationProductConsumed()
+        }
+    }
+
     val startDestination = if (onboardingComplete == true) Screen.Watch.route else Screen.Onboarding.route
     NavHost(navController = navController, startDestination = startDestination) {
         composable(Screen.Watch.route) {

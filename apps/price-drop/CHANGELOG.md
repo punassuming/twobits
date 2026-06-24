@@ -8,6 +8,7 @@
 
 ### Fixes
 
+* **Price drop notifications** — tapping an OS notification now opens the app directly to that product's detail screen; previously the app opened to the last-viewed screen with no navigation
 
 ## 0.5.0 (2026-06-24)
 
