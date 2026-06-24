@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.twobits.billing.SubscriptionRepository
+import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
@@ -40,13 +41,22 @@ class PriceDropApiClient
     ) {
         private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
-        /** Returns (baseUrl, Authorization header value) for the given provider. */
+        /**
+         * Returns (baseUrl, Authorization header value) for the given provider.
+         *
+         * OpenAI BYOK calls api.openai.com directly. All other providers — even in BYOK mode —
+         * route through the Worker at [PRO_BASE_URL]; the user's API key becomes the Bearer token
+         * so the Worker can forward it to the upstream provider on the user's behalf.
+         */
         private suspend fun resolveConfig(provider: PriceDropProvider): Pair<String, String> {
             val mode = providerSettings.getMode(provider)
-            return if (mode == ProviderMode.BYOK) {
-                provider.byokBaseUrl.trimEnd('/') to "Bearer ${providerSettings.getKey(provider)}"
-            } else {
-                PRO_BASE_URL to "Bearer ${subscriptionRepository.getAppUserId()}"
+            return when {
+                mode == ProviderMode.BYOK && provider == PriceDropProvider.OPENAI ->
+                    provider.byokBaseUrl.trimEnd('/') to "Bearer ${providerSettings.getKey(provider)}"
+                mode == ProviderMode.BYOK ->
+                    PRO_BASE_URL to "Bearer ${providerSettings.getKey(provider)}"
+                else ->
+                    PRO_BASE_URL to "Bearer ${subscriptionRepository.getAppUserId()}"
             }
         }
 
@@ -67,7 +77,14 @@ class PriceDropApiClient
             asin: String? = null,
             upc: String? = null,
         ): PriceResponseDto {
-            val (base, auth) = resolveConfig(PriceDropProvider.SHOPPING)
+            // Prefer Rainforest BYOK for Amazon ASIN lookups; fall back to Shopping provider.
+            val provider =
+                if (asin != null && providerSettings.getMode(PriceDropProvider.RAINFOREST) == ProviderMode.BYOK) {
+                    PriceDropProvider.RAINFOREST
+                } else {
+                    PriceDropProvider.SHOPPING
+                }
+            val (base, auth) = resolveConfig(provider)
             val body =
                 JsonObject().apply {
                     asin?.takeIf { it.isNotBlank() }?.let { addProperty("asin", it) }
@@ -105,13 +122,16 @@ class PriceDropApiClient
          * Shopping-scoped chat. Pro routes through the Worker's OpenAI proxy; BYOK calls
          * api.openai.com directly. [history] is the full conversation (all user + assistant turns)
          * including the new user message as the last entry; the system prompt is prepended here.
+         * Model is resolved from the user's AI Config selection for [AiFeature.ASK].
          */
         suspend fun chat(
             systemPrompt: String,
             history: List<com.twobits.pricedrop.ui.ask.ChatMessage>,
         ): String {
             val (base, auth) = resolveConfig(PriceDropProvider.OPENAI)
-            val model = if (base == PRO_BASE_URL) PRO_CHAT_MODEL else BYOK_CHAT_MODEL
+            val isProMode = base == PRO_BASE_URL
+            val selectedModel = providerSettings.getFeatureModel(AiFeature.ASK)
+            val model = selectedModel.ifBlank { if (isProMode) PRO_CHAT_MODEL else BYOK_CHAT_MODEL }
             val messages =
                 JsonArray().apply {
                     add(

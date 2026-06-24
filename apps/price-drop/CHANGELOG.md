@@ -17,6 +17,9 @@
 ### Fixes
 
 * Release automation corrected from 0.0.1 → 0.5.0 (concurrent-release race caused tag action to start from 0.0.0)
+* Non-OpenAI BYOK providers (SerpAPI, Keepa, Coupon, Rainforest) now correctly route through the Worker at `api.twobits.app` with the user's provider key as the Bearer token, instead of calling the provider's URL directly with an incompatible Worker path
+* Price lookups for ASIN products now prefer Rainforest BYOK when configured, rather than always falling back to SerpAPI/Shopping
+* Chat model selection now reads the user's AI Config model choice for the Ask feature; falls back to default Pro/BYOK model constants only when the user has not selected a model
 
 ## 0.4.0 (2026-06-23)
 
