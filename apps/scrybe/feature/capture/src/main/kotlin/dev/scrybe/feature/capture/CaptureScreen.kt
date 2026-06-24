@@ -963,23 +963,34 @@ private fun ModePickerSheet(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                val profileMap = profiles.associate { it.id to it.name }
                 customTypes.chunked(2).forEach { row ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         row.forEach { customType ->
+                            val profileName = customType.defaultProfileId?.let { profileMap[it] }
                             OutlinedButton(
-                                onClick = {
-                                    onStartCustomType(customType.id)
-                                },
+                                onClick = { onStartCustomType(customType.id) },
                                 modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             ) {
-                                Text(
-                                    customType.name,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        customType.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                    Text(
+                                        text = profileName ?: "Plain transcript",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                         }
                         if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -1035,6 +1046,11 @@ private fun CreateTypeDialog(
         title = { Text("New recording type") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Custom types record audio just like standard modes. Link a transform profile so Scrybe automatically processes the transcript your way after recording.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },

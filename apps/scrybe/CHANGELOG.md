@@ -9,6 +9,7 @@
 * **Playback area** — removed the redundant seek slider below the waveform; tap or drag anywhere on the waveform to seek (playhead indicator visible); the marker legend (topics / sentiment) and time labels remain unchanged
 * **Session metadata** — audio quality details now show as separate labelled rows (Format, Quality, File size) instead of a single cramped line; sample rate is displayed with one decimal place where needed (e.g. "44.1 kHz" instead of "44 kHz")
 * **Profiles typography** — dialog and bottom sheet headings (AI Profile Draft, Review draft, Draft failed, New profile, Drafting profile) now use `titleMedium` instead of oversized `titleLarge`; removed unused internal `AiDraftModelInfoCard` composable
+* **Custom type in-app help** — the "New recording type" dialog now shows a one-sentence explanation of what custom types do; each custom type button in the mode picker now shows the linked transform profile name (or "Plain transcript" if none), matching how standard modes show their output description
 
 ### Fixes
 
