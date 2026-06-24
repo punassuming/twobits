@@ -123,6 +123,32 @@ jobs:
             echo "Skipping release — no new unreleased bullets in ${{ inputs.app_root }}/CHANGELOG.md since the last tag."
           fi
 
+      # When no prior tag exists for this app (first-ever release), seed github-tag-action
+      # with the latest versioned section from the CHANGELOG so it bumps from there instead
+      # of starting at 0.0.0 → 0.0.1, which is wrong for apps that already have history.
+      - name: Seed version from CHANGELOG when no prior tag exists
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
+        id: seed_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest_tag="$(git tag -l '${{ inputs.tag_prefix }}*' --sort=-v:refname | head -1)"
+          if [ -z "$latest_tag" ]; then
+            # No prior tag — read the latest versioned section from the CHANGELOG to avoid
+            # github-tag-action starting from 0.0.0 on a first-ever release.
+            latest_ver="$(grep -m1 '^## [0-9]' '${{ inputs.app_root }}/CHANGELOG.md' \
+              | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+            if [ -n "$latest_ver" ]; then
+              echo "previous_tag=${{ inputs.tag_prefix }}${latest_ver}" >> "$GITHUB_OUTPUT"
+              echo "No prior tag found — seeding version from CHANGELOG: ${{ inputs.tag_prefix }}${latest_ver}"
+            else
+              echo "previous_tag=" >> "$GITHUB_OUTPUT"
+              echo "No prior tag or CHANGELOG version found — github-tag-action will start from 0.0.0"
+            fi
+          else
+            echo "previous_tag=$latest_tag" >> "$GITHUB_OUTPUT"
+          fi
+
       # Computes the next semantic version from conventional commits since the last tag.
       # Version bumping rules:
       #   feat:           → minor bump
@@ -137,6 +163,7 @@ jobs:
           default_bump: ${{ inputs.default_bump }}
           tag_prefix: ${{ inputs.tag_prefix }}
           dry_run: true
+          previous_tag: ${{ steps.seed_version.outputs.previous_tag }}
 
       # Validate the keystore secret BEFORE any irreversible state is created
       # (changelog promotion, version commit, tag push). A bad base64 value here
@@ -223,8 +250,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git tag "${{ steps.version.outputs.new_tag }}"
-          git push origin "${{ steps.version.outputs.new_tag }}"
+          new_tag="${{ steps.version.outputs.new_tag }}"
+          # Re-fetch tags to catch any tag pushed by a concurrent release run since checkout.
+          git fetch --tags
+          if git rev-parse "$new_tag" >/dev/null 2>&1; then
+            echo "Tag $new_tag already exists — concurrent release already pushed it. Skipping."
+            exit 0
+          fi
+          git tag "$new_tag"
+          git push origin "$new_tag"
 
       - name: Set up release signing
         if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''

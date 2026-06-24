@@ -8,7 +8,9 @@
 
 ### Fixes
 
-## 0.0.1 (2026-06-24)
+* Corrected release version from `0.0.1` → `0.5.0` (the first-ever PriceDrop release workflow had no prior `pricedrop-v*` tag to anchor from, so `github-tag-action` started at `0.0.0` and bumped to `0.0.1`; fixed the CHANGELOG section heading, `versionCode`, and `versionName` in `build.gradle.kts`); `reusable-release.yml` now seeds `previous_tag` from the latest CHANGELOG version when no prior tag exists
+
+## 0.5.0 (2026-06-24)
 
 ### Features
 
