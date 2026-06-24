@@ -86,6 +86,11 @@ class ProviderSettingsStore
 
         fun observeFeatureModel(f: AiFeature): Flow<String> = context.providerStore.data.map { it[featureModelKey(f)].orEmpty() }
 
+        suspend fun getFeatureModel(f: AiFeature): String =
+            context.providerStore.data
+                .first()[featureModelKey(f)]
+                .orEmpty()
+
         suspend fun setFeatureModel(
             f: AiFeature,
             modelId: String,

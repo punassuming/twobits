@@ -20,6 +20,7 @@
 * BYOK providers now call upstream APIs directly from the app (SerpAPI, Rainforest, Keepa, CouponLayer), matching the existing OpenAI BYOK pattern — the Worker is never in the BYOK path; price/barcode BYOK only activates when Rainforest is configured (SerpAPI is search-only)
 * Price lookups for ASIN products now prefer Rainforest BYOK when configured, rather than always falling back to SerpAPI/Shopping
 * Chat model selection now reads the user's AI Config model choice for the Ask feature; falls back to default Pro/BYOK model constants only when the user has not selected a model
+* `ProviderSettingsStore` gains `getFeatureModel()` suspend getter (was missing — only the flow + setter existed); `isByok()` in `PriceDropApiClient` is now a suspend function to correctly call the suspend `getMode()` — fixes compile errors in CI
 
 ## 0.4.0 (2026-06-23)
 

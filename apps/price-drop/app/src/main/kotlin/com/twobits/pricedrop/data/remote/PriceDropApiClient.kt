@@ -446,7 +446,7 @@ class PriceDropApiClient
         // Helpers
         // ---------------------------------------------------------------------------
 
-        private fun isByok(provider: PriceDropProvider): Boolean = providerSettings.getMode(provider) == ProviderMode.BYOK
+        private suspend fun isByok(provider: PriceDropProvider): Boolean = providerSettings.getMode(provider) == ProviderMode.BYOK
 
         /** Pro-mode Worker call. Auth is always the RevenueCat App User ID. */
         private suspend fun <T> workerPost(
