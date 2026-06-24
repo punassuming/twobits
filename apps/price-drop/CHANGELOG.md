@@ -8,16 +8,6 @@
 
 ### Fixes
 
-## 0.0.1 (2026-06-24)
-
-### Features
-
-### Improvements
-
-### Fixes
-
-* Corrected release version from `0.0.1` → `0.5.0` (the first-ever PriceDrop release workflow had no prior `pricedrop-v*` tag to anchor from, so `github-tag-action` started at `0.0.0` and bumped to `0.0.1`; fixed the CHANGELOG section heading, `versionCode`, and `versionName` in `build.gradle.kts`); `reusable-release.yml` now seeds `previous_tag` from the latest CHANGELOG version when no prior tag exists
-
 
 ## 0.5.0 (2026-06-24)
 
@@ -42,7 +32,6 @@
 * `ProviderSettingsStore` gains `getFeatureModel()` suspend getter (was missing — only the flow + setter existed); `isByok()` in `PriceDropApiClient` is now a suspend function to correctly call the suspend `getMode()` — fixes compile errors in CI
 
 
-
 ## 0.4.0 (2026-06-23)
 
 ### Features
@@ -64,7 +53,6 @@
 
 * Pro screen: the plan toggle "Monthly – $5.99/mo" chip no longer wraps to two lines — the Annual/Monthly chips now share the row evenly and keep their labels on one line
 * AI configuration: provider status badges no longer wrap to two lines when a provider title is long (shared credential row fix)
-
 
 
 
@@ -97,7 +85,6 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
-
 
 
 
@@ -143,7 +130,6 @@
 
 
 
-
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -153,7 +139,6 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
-
 
 
 
@@ -198,7 +183,7 @@
 * price-history chart now plots observed price, effective price (incl. shipping/fees), and the target line, with 7D/30D/90D/All range selectors and a current/low/avg/high metrics row
 * added a coupons section with verification-state badges (Valid/Untested/Restricted/Expired), discount labels, and copy-to-clipboard
 * added an activity timeline (added / checked / dropped / coupon found / alert sent) with relative timestamps
-* the price overview now shows the effective price when shipping or fees apply
+* the price overview shows the effective price when shipping or fees apply
 * toolbar refresh action pulls the latest price and coupons from the Worker on demand
 
 **Data model** — expanded local schema for the full tracking experience:
