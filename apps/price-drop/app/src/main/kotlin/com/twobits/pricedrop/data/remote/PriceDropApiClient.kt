@@ -70,11 +70,10 @@ class PriceDropApiClient
             asin: String? = null,
             upc: String? = null,
         ): PriceResponseDto {
-            // Prefer Rainforest BYOK for Amazon ASIN lookups; fall back to Shopping provider.
-            val useRainforest = asin != null && isByok(PriceDropProvider.RAINFOREST)
-            if (useRainforest || isByok(PriceDropProvider.SHOPPING)) {
-                val provider = if (useRainforest) PriceDropProvider.RAINFOREST else PriceDropProvider.SHOPPING
-                return priceDirect(asin, upc, providerSettings.getKey(provider))
+            // Price and barcode lookups always use Rainforest API (Amazon product data).
+            // SerpAPI (SHOPPING) is for search only; it has no equivalent price endpoint.
+            if (isByok(PriceDropProvider.RAINFOREST)) {
+                return priceDirect(asin, upc, providerSettings.getKey(PriceDropProvider.RAINFOREST))
             }
             val body =
                 JsonObject().apply {

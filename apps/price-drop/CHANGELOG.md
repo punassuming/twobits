@@ -17,7 +17,7 @@
 ### Fixes
 
 * Release automation corrected from 0.0.1 → 0.5.0 (concurrent-release race caused tag action to start from 0.0.0)
-* BYOK providers now call upstream APIs directly from the app (SerpAPI, Rainforest, Keepa, CouponLayer), matching the existing OpenAI BYOK pattern — the Worker is never in the BYOK path
+* BYOK providers now call upstream APIs directly from the app (SerpAPI, Rainforest, Keepa, CouponLayer), matching the existing OpenAI BYOK pattern — the Worker is never in the BYOK path; price/barcode BYOK only activates when Rainforest is configured (SerpAPI is search-only)
 * Price lookups for ASIN products now prefer Rainforest BYOK when configured, rather than always falling back to SerpAPI/Shopping
 * Chat model selection now reads the user's AI Config model choice for the Ask feature; falls back to default Pro/BYOK model constants only when the user has not selected a model
 
