@@ -285,6 +285,7 @@ fun CaptureScreen(
                     onCancel = viewModel::cancelRecording,
                     onPause = viewModel::pauseRecording,
                     onResume = viewModel::resumeRecording,
+                    onDismissResult = viewModel::dismissTranscriptResult,
                 )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -596,6 +597,7 @@ private fun RecordingActiveView(
     onCancel: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
+    onDismissResult: () -> Unit,
 ) {
     val isStopping = state.phase == CapturePhase.STOPPING
     val isPaused = state.phase == CapturePhase.PAUSED
@@ -623,20 +625,26 @@ private fun RecordingActiveView(
                 RecordingTimerRow(elapsedMs = state.elapsedMs, isStopping = isStopping, isPaused = isPaused)
             }
         }
-        LiveTranscriptPanel(state = state, modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp))
-        RecordingStopButtons(
-            modeName = state.activeMode.label,
-            enabled = !isStopping,
-            onStop = onStop,
-            onCancel = onCancel,
+        LiveTranscriptPanel(
+            state = state,
+            onDismissResult = onDismissResult,
+            modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp),
         )
+        if (!isStopping || state.liveTranscript == null) {
+            RecordingStopButtons(
+                modeName = state.activeMode.label,
+                enabled = !isStopping,
+                onStop = onStop,
+                onCancel = onCancel,
+            )
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LiveTranscriptPanel(
     state: CaptureUiState,
+    onDismissResult: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isStopping = state.phase == CapturePhase.STOPPING
@@ -647,10 +655,30 @@ private fun LiveTranscriptPanel(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             when {
+                isStopping && state.liveTranscript != null -> {
+                    Column(
+                        modifier = Modifier.padding(16.dp).fillMaxSize(),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = state.liveTranscript,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = onDismissResult,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Done")
+                        }
+                    }
+                }
                 isStopping -> {
                     Row(
                         modifier = Modifier.padding(16.dp),

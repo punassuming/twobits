@@ -4,6 +4,8 @@
 
 ### Features
 
+* **Transcript result panel** — after a recording stops and auto-transcription completes, the capture screen keeps the active view open and shows the finished transcript inline; a "Done" button dismisses and returns to the session list
+
 ### Improvements
 
 * **Playback area** — removed the redundant seek slider below the waveform; tap or drag anywhere on the waveform to seek (playhead indicator visible); the marker legend (topics / sentiment) and time labels remain unchanged
