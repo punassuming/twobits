@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
@@ -194,57 +195,57 @@ class FileManagerViewModel
         ) {
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date(createdAtMs))
             val retriever = MediaMetadataRetriever()
-            val durationMs: Long
-            val sampleRateHz: Int
-            val encodingBitRate: Int
-            val channelCount: Int
+            var durationMs: Long = 0L
+            var sampleRateHz: Int = DEFAULT_SAMPLE_RATE
+            var encodingBitRate: Int = DEFAULT_BIT_RATE
+            var channelCount: Int = 1
             try {
-                try {
-                    retriever.setDataSource(file.absolutePath)
-                } catch (e: Exception) {
-                    throw RuntimeException(
-                        "Could not read \"${file.name}\" — the audio format may not be supported",
-                        e,
-                    )
-                }
-                durationMs =
-                    retriever
-                        .extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_DURATION,
-                        )?.toLongOrNull() ?: 0L
-                sampleRateHz =
-                    retriever
-                        .extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_SAMPLERATE,
-                        )?.toIntOrNull() ?: DEFAULT_SAMPLE_RATE
-                encodingBitRate =
-                    retriever
-                        .extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_BITRATE,
-                        )?.toIntOrNull() ?: DEFAULT_BIT_RATE
-                channelCount =
+                // Use FileDescriptor instead of path string — more reliable across Android
+                // versions and audio codecs (MP3 in particular can fail with the path overload).
+                val metadataOk =
                     runCatching {
-                        val extractor = MediaExtractor()
-                        try {
-                            extractor.setDataSource(file.absolutePath)
-                            val audioTrackIndex =
-                                (0 until extractor.trackCount).firstOrNull { trackIndex ->
+                        FileInputStream(file).use { fis -> retriever.setDataSource(fis.fd) }
+                    }.isSuccess
+                if (metadataOk) {
+                    durationMs =
+                        retriever
+                            .extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_DURATION,
+                            )?.toLongOrNull() ?: 0L
+                    sampleRateHz =
+                        retriever
+                            .extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_SAMPLERATE,
+                            )?.toIntOrNull() ?: DEFAULT_SAMPLE_RATE
+                    encodingBitRate =
+                        retriever
+                            .extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_BITRATE,
+                            )?.toIntOrNull() ?: DEFAULT_BIT_RATE
+                    channelCount =
+                        runCatching {
+                            val extractor = MediaExtractor()
+                            try {
+                                FileInputStream(file).use { fis -> extractor.setDataSource(fis.fd) }
+                                val audioTrackIndex =
+                                    (0 until extractor.trackCount).firstOrNull { trackIndex ->
+                                        extractor
+                                            .getTrackFormat(trackIndex)
+                                            .getString(MediaFormat.KEY_MIME)
+                                            ?.startsWith("audio/") == true
+                                    }
+                                if (audioTrackIndex != null) {
                                     extractor
-                                        .getTrackFormat(trackIndex)
-                                        .getString(MediaFormat.KEY_MIME)
-                                        ?.startsWith("audio/") == true
+                                        .getTrackFormat(audioTrackIndex)
+                                        .getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                                } else {
+                                    1
                                 }
-                            if (audioTrackIndex != null) {
-                                extractor
-                                    .getTrackFormat(audioTrackIndex)
-                                    .getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                            } else {
-                                1
+                            } finally {
+                                extractor.release()
                             }
-                        } finally {
-                            extractor.release()
-                        }
-                    }.getOrDefault(1)
+                        }.getOrDefault(1)
+                }
             } finally {
                 retriever.release()
             }

@@ -18,6 +18,8 @@ import com.shelfsnap.app.data.remote.search.WebSearchResolver
 import com.shelfsnap.app.data.remote.search.WebSearchResult
 import com.shelfsnap.app.util.ApiKeyValidator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -195,50 +197,60 @@ class PriceResearchService
                     .first()
                     .first.provider.key
 
-            // Phase 1 — search across every enabled provider (Jina, Brave) and merge.
+            // Phase 1 — fire all (query × provider) pairs concurrently and merge.
+            // Parallel execution cuts wall-clock time from (N×P×latency) to max(latency).
+            // Each quadruple: (providerLabel, query, results, errorMessage-or-null)
             val searchStart = System.currentTimeMillis()
-            for (query in queries) {
-                if (merged.size >= MAX_SEARCH_RESULTS) break
-                for ((service, key) in services) {
-                    runCatching { service.search(query, key) }
-                        .fold(
-                            onSuccess = { results ->
-                                queryLog.add(
-                                    MarketQuery(
-                                        label = service.provider.displayName,
-                                        query = query,
-                                        resultCount = results.size,
-                                    ),
-                                )
-                                results.forEach { r ->
-                                    if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
+            val allAttempts: List<Triple<String, String, List<WebSearchResult>>> =
+                coroutineScope {
+                    queries
+                        .flatMap { query ->
+                            services.map { (service, key) ->
+                                async {
+                                    runCatching { service.search(query, key) }
+                                        .fold(
+                                            onSuccess = { results ->
+                                                Triple(service.provider.displayName, query, results)
+                                            },
+                                            onFailure = { e ->
+                                                Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
+                                                Triple(service.provider.displayName, query, emptyList<WebSearchResult>())
+                                            },
+                                        )
                                 }
-                            },
-                            onFailure = {
-                                Log.w(TAG, "Web search failed for query '$query': ${it.javaClass.simpleName}: ${it.message}")
-                                lastError = it.message ?: it.javaClass.simpleName
-                                queryLog.add(
-                                    MarketQuery(label = service.provider.displayName, query = query, resultCount = 0),
-                                )
-                            },
-                        )
+                            }
+                        }.map { it.await() }
                 }
-                if (merged.size >= MIN_RESULTS_EARLY_STOP) break
+            for ((label, query, results) in allAttempts) {
+                queryLog.add(MarketQuery(label = label, query = query, resultCount = results.size))
+                results.forEach { r ->
+                    if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
+                }
+            }
+            if (merged.isEmpty()) {
+                lastError = queryLog.firstOrNull { it.resultCount == 0 }?.let { "No results from ${it.label}" }
             }
             val searchMs = System.currentTimeMillis() - searchStart
 
-            // Phase 2 — open the top result pages via Jina Reader so the model reads the actual
-            // listing (price, condition, sold status), not just a search snippet. Jina-only.
+            // Phase 2 — open the top result pages via Jina Reader concurrently so the model
+            // reads the actual listing (price, condition, sold status), not just a search snippet.
             var pagesRead = 0
             var readMs = 0L
             if (!readerKey.isNullOrBlank() && merged.isNotEmpty()) {
                 val readStart = System.currentTimeMillis()
-                for (i in merged.indices) {
-                    if (pagesRead >= MAX_PAGES_READ) break
-                    val r = merged[i]
-                    val pageText = jinaReader.read(r.url, readerKey) ?: continue
-                    merged[i] = r.copy(snippet = (r.snippet + "\n" + pageText).take(MAX_SNIPPET_CHARS))
-                    pagesRead++
+                val pageResults: List<Pair<Int, String>> =
+                    coroutineScope {
+                        merged
+                            .take(MAX_PAGES_READ)
+                            .mapIndexed { i, r ->
+                                async { i to (jinaReader.read(r.url, readerKey) ?: "") }
+                            }.map { it.await() }
+                    }
+                for ((i, text) in pageResults) {
+                    if (text.isNotBlank()) {
+                        merged[i] = merged[i].copy(snippet = (merged[i].snippet + "\n" + text).take(MAX_SNIPPET_CHARS))
+                        pagesRead++
+                    }
                 }
                 readMs = System.currentTimeMillis() - readStart
             }
@@ -328,8 +340,12 @@ class PriceResearchService
             val queries = mutableListOf<String>()
 
             // Build the best descriptor available for platform-targeted queries.
+            // Use a truncated description so site: queries stay focused; the full AI-prose
+            // description produces overly long queries that return 0 results on eBay/Mercari.
             val genericDescriptor =
-                listOf(item.description, item.category).filter { it.isNotBlank() }.joinToString(" ")
+                listOf(item.description.take(40).trim(), item.category)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ")
             val descriptor =
                 when {
                     hasBrandModel -> "$quoted $conditionLabel ${item.category}"

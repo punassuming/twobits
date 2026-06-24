@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* **Audio import** — MP3 and other formats that failed with "audio format may not be supported" now import correctly; metadata is read via file descriptor (more reliable across Android versions and codecs) and falls back to sensible defaults rather than blocking the import if metadata cannot be read
+
 ## 1.23.0 (2026-06-24)
 
 ### Features

@@ -6,6 +6,11 @@
 
 ### Improvements
 
+**Market research** — price research results load significantly faster and return more relevant sold listings:
+* All search queries now run in parallel instead of sequentially, cutting total wait time from ~44s to ~10–15s
+* Page reading (Jina Reader) also runs in parallel across the top results
+* Search queries for items without a brand or model are now shorter and more targeted, producing real sold-listing results from eBay and Mercari instead of generic article pages
+
 ### Fixes
 
 ## 1.16.0 (2026-06-23)
