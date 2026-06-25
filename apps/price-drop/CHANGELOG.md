@@ -10,6 +10,8 @@
 
 ### Improvements
 
+* **Credential bridge** — future shared credential types are silently skipped if this app doesn't support them; adding a new shared key type only requires updating the apps that actively use it
+
 ### Fixes
 
 * **Price drop notifications** — tapping an OS notification now opens the app directly to that product's detail screen; previously the app opened to the last-viewed screen with no navigation

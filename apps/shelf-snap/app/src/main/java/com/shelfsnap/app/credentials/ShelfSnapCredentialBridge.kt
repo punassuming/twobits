@@ -14,6 +14,7 @@ class ShelfSnapCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> repository.getApiKey().takeIf { it.isNotBlank() }
                 SharedCredentialId.JINA -> repository.getJinaApiKey().takeIf { it.isNotBlank() }
+                else -> null
             }
 
         override suspend fun set(
@@ -23,6 +24,7 @@ class ShelfSnapCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> repository.saveApiKey(value)
                 SharedCredentialId.JINA -> repository.saveJinaApiKey(value)
+                else -> Unit
             }
         }
 
@@ -30,6 +32,7 @@ class ShelfSnapCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> repository.saveApiKey("")
                 SharedCredentialId.JINA -> repository.saveJinaApiKey("")
+                else -> Unit
             }
         }
     }

@@ -9,6 +9,8 @@
 
 ### Improvements
 
+* **Credential bridge** — future shared credential types are silently skipped if this app doesn't support them; adding a new shared key type only requires updating the apps that actively use it
+
 **Market research** — price research results load significantly faster and return more relevant sold listings:
 * All search queries now run in parallel instead of sequentially, cutting total wait time from ~44s to ~10–15s
 * Page reading (Jina Reader) also runs in parallel across the top results

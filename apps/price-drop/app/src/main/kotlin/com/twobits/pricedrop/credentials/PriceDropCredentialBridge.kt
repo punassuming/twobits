@@ -15,6 +15,7 @@ class PriceDropCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> providerStore.getKey(PriceDropProvider.OPENAI).takeIf { it.isNotBlank() }
                 SharedCredentialId.JINA -> providerStore.getKey(PriceDropProvider.WEB_SEARCH).takeIf { it.isNotBlank() }
+                else -> null
             }
 
         override suspend fun set(
@@ -24,6 +25,7 @@ class PriceDropCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> providerStore.setKey(PriceDropProvider.OPENAI, value)
                 SharedCredentialId.JINA -> providerStore.setKey(PriceDropProvider.WEB_SEARCH, value)
+                else -> Unit
             }
         }
 
@@ -31,6 +33,7 @@ class PriceDropCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> providerStore.clearKey(PriceDropProvider.OPENAI)
                 SharedCredentialId.JINA -> providerStore.clearKey(PriceDropProvider.WEB_SEARCH)
+                else -> Unit
             }
         }
     }
