@@ -128,6 +128,11 @@ class SettingsViewModel
                         repository.saveJinaApiKey(sibling)
                     }
                 }
+                if (repository.getBraveApiKey().isBlank()) {
+                    credentialClient.readThrough(SharedCredentialId.BRAVE)?.let { sibling ->
+                        repository.saveBraveApiKey(sibling)
+                    }
+                }
             }
         }
 
@@ -344,6 +349,7 @@ class SettingsViewModel
             val key = _editBraveKey.value.ifBlank { uiState.value.savedBraveApiKey }.trim()
             viewModelScope.launch {
                 repository.saveBraveApiKey(key)
+                credentialClient.mirror(SharedCredentialId.BRAVE, key)
                 _isSearchSaved.update { true }
             }
         }

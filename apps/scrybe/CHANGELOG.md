@@ -10,6 +10,8 @@
 
 ### Improvements
 
+* **Credential bridge** — the shared credential registry now covers all keys across the TwoBits suite (Brave, SerpAPI, Keepa, Couponlayer, Rainforest) in addition to OpenAI and Jina; Scrybe silently skips keys it doesn't use
+
 * **Playback area** — removed the redundant seek slider below the waveform; tap or drag anywhere on the waveform to seek (playhead indicator visible); the marker legend (topics / sentiment) and time labels remain unchanged
 * **Session metadata** — audio quality details now show as separate labelled rows (Format, Quality, File size) instead of a single cramped line; sample rate is displayed with one decimal place where needed (e.g. "44.1 kHz" instead of "44 kHz")
 * **Profiles typography** — dialog and bottom sheet headings (AI Profile Draft, Review draft, Draft failed, New profile, Drafting profile) now use `titleMedium` instead of oversized `titleLarge`; removed unused internal `AiDraftModelInfoCard` composable

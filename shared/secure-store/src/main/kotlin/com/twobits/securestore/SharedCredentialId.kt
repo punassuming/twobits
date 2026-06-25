@@ -4,6 +4,11 @@ package com.twobits.securestore
 enum class SharedCredentialId(val wireId: String) {
     OPENAI("openai"),
     JINA("jina"),
+    BRAVE("brave"),
+    SERPAPI("serpapi"),
+    KEEPA("keepa"),
+    COUPON("coupon"),
+    RAINFOREST("rainforest"),
     ;
 
     companion object {

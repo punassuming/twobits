@@ -76,14 +76,20 @@ class SettingsViewModel
 
         init {
             viewModelScope.launch {
-                if (providerStore.getKey(PriceDropProvider.OPENAI).isBlank()) {
-                    credentialClient.readThrough(SharedCredentialId.OPENAI)?.let { sibling ->
-                        providerStore.setKey(PriceDropProvider.OPENAI, sibling)
-                    }
-                }
-                if (providerStore.getKey(PriceDropProvider.WEB_SEARCH).isBlank()) {
-                    credentialClient.readThrough(SharedCredentialId.JINA)?.let { sibling ->
-                        providerStore.setKey(PriceDropProvider.WEB_SEARCH, sibling)
+                val readThroughPairs =
+                    listOf(
+                        PriceDropProvider.OPENAI to SharedCredentialId.OPENAI,
+                        PriceDropProvider.WEB_SEARCH to SharedCredentialId.JINA,
+                        PriceDropProvider.SHOPPING to SharedCredentialId.SERPAPI,
+                        PriceDropProvider.KEEPA to SharedCredentialId.KEEPA,
+                        PriceDropProvider.COUPON to SharedCredentialId.COUPON,
+                        PriceDropProvider.RAINFOREST to SharedCredentialId.RAINFOREST,
+                    )
+                readThroughPairs.forEach { (provider, credId) ->
+                    if (providerStore.getKey(provider).isBlank()) {
+                        credentialClient.readThrough(credId)?.let { sibling ->
+                            providerStore.setKey(provider, sibling)
+                        }
                     }
                 }
             }
@@ -213,7 +219,10 @@ class SettingsViewModel
                 when (p) {
                     PriceDropProvider.OPENAI -> credentialClient.mirror(SharedCredentialId.OPENAI, key)
                     PriceDropProvider.WEB_SEARCH -> credentialClient.mirror(SharedCredentialId.JINA, key)
-                    else -> Unit
+                    PriceDropProvider.SHOPPING -> credentialClient.mirror(SharedCredentialId.SERPAPI, key)
+                    PriceDropProvider.KEEPA -> credentialClient.mirror(SharedCredentialId.KEEPA, key)
+                    PriceDropProvider.COUPON -> credentialClient.mirror(SharedCredentialId.COUPON, key)
+                    PriceDropProvider.RAINFOREST -> credentialClient.mirror(SharedCredentialId.RAINFOREST, key)
                 }
                 val result = CredentialCheck.check(p, key)
                 setValidation(

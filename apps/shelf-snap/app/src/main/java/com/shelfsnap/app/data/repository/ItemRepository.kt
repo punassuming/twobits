@@ -166,7 +166,7 @@ class ItemRepository
                 crypto.tryDecryptOrPassthrough(raw)
             }
 
-        fun observeBraveApiKey(): Flow<String> = dataStore.data.map { it[KEY_BRAVE_API_KEY] ?: "" }
+        fun observeBraveApiKey(): Flow<String> = dataStore.data.map { crypto.tryDecryptOrPassthrough(it[KEY_BRAVE_API_KEY] ?: "") }
 
         suspend fun getJinaApiKey(): String {
             val prefs = dataStore.data.firstOrNull()
@@ -174,14 +174,17 @@ class ItemRepository
             return crypto.tryDecryptOrPassthrough(raw)
         }
 
-        suspend fun getBraveApiKey(): String = dataStore.data.firstOrNull()?.get(KEY_BRAVE_API_KEY) ?: ""
+        suspend fun getBraveApiKey(): String {
+            val raw = dataStore.data.firstOrNull()?.get(KEY_BRAVE_API_KEY) ?: ""
+            return crypto.tryDecryptOrPassthrough(raw)
+        }
 
         suspend fun saveJinaApiKey(key: String) {
             dataStore.edit { it[KEY_JINA_API_KEY] = crypto.encrypt(key) }
         }
 
         suspend fun saveBraveApiKey(key: String) {
-            dataStore.edit { it[KEY_BRAVE_API_KEY] = key }
+            dataStore.edit { it[KEY_BRAVE_API_KEY] = crypto.encrypt(key) }
         }
 
         fun observeJinaSearchEnabled(): Flow<Boolean> = dataStore.data.map { it[KEY_JINA_SEARCH_ENABLED] ?: true }

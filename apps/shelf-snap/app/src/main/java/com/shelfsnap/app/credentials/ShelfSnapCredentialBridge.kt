@@ -14,6 +14,7 @@ class ShelfSnapCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> repository.getApiKey().takeIf { it.isNotBlank() }
                 SharedCredentialId.JINA -> repository.getJinaApiKey().takeIf { it.isNotBlank() }
+                SharedCredentialId.BRAVE -> repository.getBraveApiKey().takeIf { it.isNotBlank() }
                 else -> null
             }
 
@@ -24,6 +25,7 @@ class ShelfSnapCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> repository.saveApiKey(value)
                 SharedCredentialId.JINA -> repository.saveJinaApiKey(value)
+                SharedCredentialId.BRAVE -> repository.saveBraveApiKey(value)
                 else -> Unit
             }
         }
@@ -32,6 +34,7 @@ class ShelfSnapCredentialBridge
             when (id) {
                 SharedCredentialId.OPENAI -> repository.saveApiKey("")
                 SharedCredentialId.JINA -> repository.saveJinaApiKey("")
+                SharedCredentialId.BRAVE -> repository.saveBraveApiKey("")
                 else -> Unit
             }
         }

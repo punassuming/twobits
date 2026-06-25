@@ -6,11 +6,11 @@
 
 * **Pro screen** — redesigned to match Scrybe and Shelf Snap: compact three-column tier comparison (Try it / Pro / BYOK), separate billing section with annual vs monthly plan cards, active plan card with Manage + Restore buttons, monthly usage card, Why Pro benefit list, and BYOK note with Configure keys link
 * **Provider setup guides** — each provider credential row in AI Config now shows step-by-step setup instructions and a "Sign up" link when not yet configured (OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, Rainforest API)
-* **Credential security + cross-app sharing** — all BYOK API keys (OpenAI, Jina/Web search, SerpAPI, Keepa, Couponlayer, Rainforest) are now encrypted at rest using AndroidKeyStore AES-256/GCM; OpenAI and Jina keys auto-mirror to installed sibling TwoBits apps (Scrybe, Shelf Snap) when saved, and fall through to siblings on a local miss; credential DataStore excluded from Google Auto Backup
+* **Credential security + cross-app sharing** — all BYOK API keys (OpenAI, Jina/Web search, SerpAPI, Keepa, Couponlayer, Rainforest) are now encrypted at rest using AndroidKeyStore AES-256/GCM; all six keys auto-mirror to installed sibling TwoBits apps when saved and are read through from siblings on a local miss; credential DataStore excluded from Google Auto Backup
 
 ### Improvements
 
-* **Credential bridge** — future shared credential types are silently skipped if this app doesn't support them; adding a new shared key type only requires updating the apps that actively use it
+* **Credential bridge** — all keys managed by this app (OpenAI, Jina, SerpAPI, Keepa, Couponlayer, Rainforest) are covered by the bridge; future shared credential types are silently skipped if this app doesn't support them
 
 ### Fixes
 
