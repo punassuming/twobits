@@ -124,57 +124,81 @@ jobs:
             echo "Skipping release — no new unreleased bullets in ${{ inputs.app_root }}/CHANGELOG.md since the last tag."
           fi
 
-      # Ensure github-tag-action and the seed-version step below both see every tag.
+      # Ensure the version-computation and guard steps below see every tag.
       # Must run before any step that calls `git tag -l` — without this, tags created
       # by a concurrent release run may be absent from the runner's local cache, causing
-      # seed_version to fall back to the CHANGELOG version and github-tag-action to
-      # compute 0.0.0 → 0.0.1 when it cannot resolve the synthetic previous_tag ref.
+      # version computation to resolve a stale base.
       - name: Fetch all tags for version computation
         if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
         shell: bash
         run: git fetch --tags --force
 
-      # When no prior tag exists for this app (first-ever release), seed github-tag-action
-      # with the latest versioned section from the CHANGELOG so it bumps from there instead
-      # of starting at 0.0.0 → 0.0.1, which is wrong for apps that already have history.
-      - name: Seed version from CHANGELOG when no prior tag exists
-        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
-        id: seed_version
-        shell: bash
-        run: |
-          set -euo pipefail
-          latest_tag="$(git tag -l '${{ inputs.tag_prefix }}*' --sort=-v:refname | head -1)"
-          if [ -z "$latest_tag" ]; then
-            # No prior tag — read the latest versioned section from the CHANGELOG to avoid
-            # github-tag-action starting from 0.0.0 on a first-ever release.
-            latest_ver="$(grep -m1 '^## [0-9]' '${{ inputs.app_root }}/CHANGELOG.md' \
-              | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
-            if [ -n "$latest_ver" ]; then
-              echo "previous_tag=${{ inputs.tag_prefix }}${latest_ver}" >> "$GITHUB_OUTPUT"
-              echo "No prior tag found — seeding version from CHANGELOG: ${{ inputs.tag_prefix }}${latest_ver}"
-            else
-              echo "previous_tag=" >> "$GITHUB_OUTPUT"
-              echo "No prior tag or CHANGELOG version found — github-tag-action will start from 0.0.0"
-            fi
-          else
-            echo "previous_tag=$latest_tag" >> "$GITHUB_OUTPUT"
-          fi
-
-      # Computes the next semantic version from conventional commits since the last tag.
-      # Version bumping rules:
-      #   feat:           → minor bump
-      #   fix:, chore:, etc. → patch bump (default_bump)
-      #   BREAKING CHANGE → major bump
+      # Computes the next semantic version deterministically from the highest existing
+      # tag for THIS app, then bumps based on conventional-commit prefixes.
+      #
+      # Why not mathieudutour/github-tag-action? In this monorepo (multiple tag prefixes:
+      # scrybe-v / shelf-snap-v / pricedrop-v, plus merge commits) its tag discovery
+      # repeatedly failed to find the app's latest tag and silently fell back to
+      # 0.0.0 → 0.0.1 — the recurring "0.0.1" incident. Its `previous_tag` input that we
+      # tried to seed with is not even a valid action input (it logs "Unexpected input(s)
+      # 'previous_tag'" and ignores it). `git tag -l '<prefix>*' --sort=-v:refname` lists
+      # every prefixed tag reliably regardless of commit ancestry, so we compute here.
+      #
+      # Version bumping rules (matching the previous action's semantics):
+      #   BREAKING CHANGE / `type!:` → major bump
+      #   feat:                      → minor bump
+      #   everything else            → default_bump (patch for PriceDrop/Scrybe)
       - name: Compute next version
         if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
         id: version
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: ${{ inputs.default_bump }}
-          tag_prefix: ${{ inputs.tag_prefix }}
-          dry_run: true
-          previous_tag: ${{ steps.seed_version.outputs.previous_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="${{ inputs.tag_prefix }}"
+          default_bump="${{ inputs.default_bump }}"
+
+          # Re-fetch tags in case a concurrent release pushed one since checkout.
+          git fetch --tags --force >/dev/null 2>&1 || true
+
+          latest_tag="$(git tag -l "${prefix}*" --sort=-v:refname | head -1)"
+          if [ -n "$latest_tag" ]; then
+            base_ver="${latest_tag#"$prefix"}"
+            commit_range="${latest_tag}..HEAD"
+          else
+            # First-ever release: seed from the newest versioned CHANGELOG section so we
+            # don't restart at 0.0.0 for an app that already has release history.
+            base_ver="$(grep -m1 '^## [0-9]' "${{ inputs.app_root }}/CHANGELOG.md" \
+              | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+            base_ver="${base_ver:-0.0.0}"
+            commit_range="HEAD"
+          fi
+
+          if ! printf '%s' "$base_ver" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Could not resolve a valid base version (got '$base_ver')."
+            exit 1
+          fi
+          IFS='.' read -r major minor patch <<< "$base_ver"
+
+          commits="$(git log --no-merges --format='%s%n%b' "$commit_range" 2>/dev/null || true)"
+          bump="$default_bump"
+          if printf '%s\n' "$commits" | grep -q 'BREAKING CHANGE' \
+             || printf '%s\n' "$commits" | grep -qE '^[a-z]+(\([^)]*\))?!:'; then
+            bump="major"
+          elif printf '%s\n' "$commits" | grep -qE '^feat(\([^)]*\))?:'; then
+            bump="minor"
+          fi
+
+          case "$bump" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            *)     patch=$((patch + 1)) ;;
+          esac
+
+          new_version="${major}.${minor}.${patch}"
+          new_tag="${prefix}${new_version}"
+          echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
+          echo "new_tag=$new_tag" >> "$GITHUB_OUTPUT"
+          echo "Base ${base_ver} (from ${latest_tag:-CHANGELOG seed}); bump=${bump} → ${new_tag}"
 
       # Safety net: never let a release regress below the highest existing tag.
       # The 0.0.1 incident happened because github-tag-action silently fell back to
