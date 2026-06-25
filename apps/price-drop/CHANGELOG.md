@@ -4,6 +4,8 @@
 
 ### Features
 
+* **Jina AI BYOK** — web search and page reading now call Jina AI directly when WEB_SEARCH is in BYOK mode: text product search uses Jina as fallback when SerpAPI is not configured; the Ask assistant fetches live web context before generating answers; adding a product by URL reads the page via Jina reader and extracts the title and price automatically
+
 ### Improvements
 
 ### Fixes
@@ -14,7 +16,6 @@
 
 * **Pro screen** — redesigned to match Scrybe and Shelf Snap: compact three-column tier comparison (Try it / Pro / BYOK), separate billing section with annual vs monthly plan cards, active plan card with Manage + Restore buttons, monthly usage card, Why Pro benefit list, and BYOK note with Configure keys link
 * **Provider setup guides** — each provider credential row in AI Config now shows step-by-step setup instructions and a "Sign up" link when not yet configured (OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, Rainforest API)
-* **Jina AI BYOK** — web search and page reading now call Jina AI directly when WEB_SEARCH is in BYOK mode: text product search uses Jina as fallback when SerpAPI is not configured; the Ask assistant fetches live web context before generating answers; adding a product by URL reads the page via Jina reader and extracts the title and price automatically
 * **Credential security + cross-app sharing** — all BYOK API keys (OpenAI, Jina/Web search, SerpAPI, Keepa, Couponlayer, Rainforest) are now encrypted at rest using AndroidKeyStore AES-256/GCM; all six keys auto-mirror to installed sibling TwoBits apps when saved and are read through from siblings on a local miss; credential DataStore excluded from Google Auto Backup
 
 ### Improvements
