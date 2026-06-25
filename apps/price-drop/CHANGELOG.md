@@ -11,8 +11,9 @@
 ### Fixes
 
 * **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
+* **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
 
-## 0.0.1 (2026-06-25)
+## 0.6.0 (2026-06-25)
 
 ### Features
 
