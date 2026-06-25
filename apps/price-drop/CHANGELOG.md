@@ -10,6 +10,8 @@
 
 ### Fixes
 
+* **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
+
 ## 0.0.1 (2026-06-25)
 
 ### Features

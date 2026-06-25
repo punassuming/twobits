@@ -67,6 +67,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
           ref: ${{ inputs.head_sha || github.sha }}
 
       - name: Verify release target
@@ -123,6 +124,16 @@ jobs:
             echo "Skipping release — no new unreleased bullets in ${{ inputs.app_root }}/CHANGELOG.md since the last tag."
           fi
 
+      # Ensure github-tag-action and the seed-version step below both see every tag.
+      # Must run before any step that calls `git tag -l` — without this, tags created
+      # by a concurrent release run may be absent from the runner's local cache, causing
+      # seed_version to fall back to the CHANGELOG version and github-tag-action to
+      # compute 0.0.0 → 0.0.1 when it cannot resolve the synthetic previous_tag ref.
+      - name: Fetch all tags for version computation
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
+        shell: bash
+        run: git fetch --tags --force
+
       # When no prior tag exists for this app (first-ever release), seed github-tag-action
       # with the latest versioned section from the CHANGELOG so it bumps from there instead
       # of starting at 0.0.0 → 0.0.1, which is wrong for apps that already have history.
@@ -148,14 +159,6 @@ jobs:
           else
             echo "previous_tag=$latest_tag" >> "$GITHUB_OUTPUT"
           fi
-
-      # Ensure github-tag-action can find all existing tags during its internal git lookup.
-      # Without this explicit fetch, tags recently created via API may be absent from the
-      # runner's local cache, causing the action to fall back to 0.0.0 → 0.0.1.
-      - name: Fetch all tags for version computation
-        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
-        shell: bash
-        run: git fetch --tags --force
 
       # Computes the next semantic version from conventional commits since the last tag.
       # Version bumping rules:
