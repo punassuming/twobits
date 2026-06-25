@@ -73,6 +73,7 @@ includeBuild("../../shared") {
         substitute(module("com.twobits.core:api-keys")).using(project(":api-keys"))
         substitute(module("com.twobits.core:network")).using(project(":network"))
         substitute(module("com.twobits.core:design")).using(project(":design"))
+        substitute(module("com.twobits.core:secure-store")).using(project(":secure-store"))
     }
 }
 

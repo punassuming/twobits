@@ -168,6 +168,7 @@ dependencies {
     implementation("com.twobits.core:billing")
     implementation("com.twobits.core:common")
     implementation("com.twobits.core:design")
+    implementation("com.twobits.core:secure-store")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

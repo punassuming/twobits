@@ -791,6 +791,8 @@ private fun ProviderCredentialItem(
             draft = ""
             viewModel.clearProviderKey(provider)
         },
+        setupHint = provider.setupHint,
+        signupUrl = provider.signupUrl,
     )
 }
 

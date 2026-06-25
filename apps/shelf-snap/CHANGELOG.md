@@ -4,7 +4,17 @@
 
 ### Features
 
+* **Shared: CollapsibleProviderRow setup guide** — the shared credential row component now accepts optional setup hint and signup URL parameters; shown when a provider row is expanded and no key is configured (no visual change in Shelf Snap)
+* **Credential security + cross-app sharing** — OpenAI, Jina, and Brave API keys are now encrypted at rest using AndroidKeyStore AES-256/GCM; saving a key in Settings automatically mirrors it to installed sibling TwoBits apps (Scrybe, PriceDrop); a missing local key is transparently read through from siblings on launch; credential DataStore excluded from Google Auto Backup (encrypted bytes are useless after cloud restore — keys re-populate from siblings)
+
 ### Improvements
+
+* **Credential bridge** — all keys managed by this app (OpenAI, Jina, Brave) are covered by the bridge; future shared credential types are silently skipped if this app doesn't support them
+
+**Market research** — price research results load significantly faster and return more relevant sold listings:
+* All search queries now run in parallel instead of sequentially, cutting total wait time from ~44s to ~10–15s
+* Page reading (Jina Reader) also runs in parallel across the top results
+* Search queries for items without a brand or model are now shorter and more targeted, producing real sold-listing results from eBay and Mercari instead of generic article pages
 
 ### Fixes
 

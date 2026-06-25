@@ -12,6 +12,8 @@ import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import com.twobits.common.ReleaseNotes
 import com.twobits.common.ReleaseNotesParser
+import com.twobits.securestore.SharedCredentialId
+import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.database.PersonDao
@@ -149,6 +151,7 @@ class SettingsViewModel
         private val localModelManager: LocalModelManager,
         private val subscriptionRepository: SubscriptionRepository,
         private val billingManager: BillingManager,
+        private val credentialClient: SharedCredentialClient,
     ) : ViewModel() {
         val persons: StateFlow<List<PersonEntity>> =
             personDao
@@ -468,7 +471,15 @@ class SettingsViewModel
 
         init {
             viewModelScope.launch {
-                apiKey.value = apiKeyProvider.getApiKey(ProviderType.OPENAI).orEmpty()
+                var loaded = apiKeyProvider.getApiKey(ProviderType.OPENAI).orEmpty()
+                if (loaded.isBlank()) {
+                    val sibling = credentialClient.readThrough(SharedCredentialId.OPENAI)
+                    if (!sibling.isNullOrBlank()) {
+                        apiKeyProvider.setApiKey(ProviderType.OPENAI, sibling)
+                        loaded = sibling
+                    }
+                }
+                apiKey.value = loaded
                 appMetadata.value = loadAppMetadata()
                 refreshSavedFiles()
                 apiKeyValidationStatus.value =
@@ -591,6 +602,7 @@ class SettingsViewModel
                         .validate(trimmed)
                         .onSuccess {
                             apiKeyProvider.setApiKey(ProviderType.OPENAI, trimmed)
+                            credentialClient.mirror(SharedCredentialId.OPENAI, trimmed)
                             apiKeyValidationStatus.value = ApiKeyValidationStatus.Valid
                             apiKeyValidationMessage.value = "Connected to OpenAI"
                         }.onFailure {

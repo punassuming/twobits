@@ -62,6 +62,7 @@ enum class RecordingMode {
     STORY,
     INTERVIEW,
     JOURNAL,
+    CUSTOM,
     ;
 
     val label: String
@@ -77,5 +78,6 @@ enum class RecordingMode {
                 STORY -> "Narrative write-up"
                 INTERVIEW -> "Q&A + highlights"
                 JOURNAL -> "Plain transcript"
+                CUSTOM -> "Custom recording type"
             }
 }

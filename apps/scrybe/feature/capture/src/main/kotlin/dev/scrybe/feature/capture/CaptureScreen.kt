@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -285,6 +286,7 @@ fun CaptureScreen(
                     onCancel = viewModel::cancelRecording,
                     onPause = viewModel::pauseRecording,
                     onResume = viewModel::resumeRecording,
+                    onDismissResult = viewModel::dismissTranscriptResult,
                 )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -596,6 +598,7 @@ private fun RecordingActiveView(
     onCancel: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
+    onDismissResult: () -> Unit,
 ) {
     val isStopping = state.phase == CapturePhase.STOPPING
     val isPaused = state.phase == CapturePhase.PAUSED
@@ -623,20 +626,26 @@ private fun RecordingActiveView(
                 RecordingTimerRow(elapsedMs = state.elapsedMs, isStopping = isStopping, isPaused = isPaused)
             }
         }
-        LiveTranscriptPanel(state = state, modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp))
-        RecordingStopButtons(
-            modeName = state.activeMode.label,
-            enabled = !isStopping,
-            onStop = onStop,
-            onCancel = onCancel,
+        LiveTranscriptPanel(
+            state = state,
+            onDismissResult = onDismissResult,
+            modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp),
         )
+        if (!isStopping || state.liveTranscript == null) {
+            RecordingStopButtons(
+                modeName = state.activeMode.label,
+                enabled = !isStopping,
+                onStop = onStop,
+                onCancel = onCancel,
+            )
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LiveTranscriptPanel(
     state: CaptureUiState,
+    onDismissResult: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isStopping = state.phase == CapturePhase.STOPPING
@@ -647,10 +656,30 @@ private fun LiveTranscriptPanel(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             when {
+                isStopping && state.liveTranscript != null -> {
+                    Column(
+                        modifier = Modifier.padding(16.dp).fillMaxSize(),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = state.liveTranscript,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = onDismissResult,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Done")
+                        }
+                    }
+                }
                 isStopping -> {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -939,7 +968,7 @@ private fun ModePickerSheet(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            RecordingMode.entries.chunked(2).forEach { row ->
+            RecordingMode.entries.filter { it != RecordingMode.CUSTOM }.chunked(2).forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -963,23 +992,34 @@ private fun ModePickerSheet(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                val profileMap = profiles.associate { it.id to it.name }
                 customTypes.chunked(2).forEach { row ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         row.forEach { customType ->
+                            val profileName = customType.defaultProfileId?.let { profileMap[it] }
                             OutlinedButton(
-                                onClick = {
-                                    onStartCustomType(customType.id)
-                                },
+                                onClick = { onStartCustomType(customType.id) },
                                 modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             ) {
-                                Text(
-                                    customType.name,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        customType.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                    Text(
+                                        text = profileName ?: "Plain transcript",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                         }
                         if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -1035,6 +1075,11 @@ private fun CreateTypeDialog(
         title = { Text("New recording type") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Custom types record audio just like standard modes. Link a transform profile so Scrybe automatically processes the transcript your way after recording.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },

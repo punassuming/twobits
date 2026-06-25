@@ -4,9 +4,25 @@
 
 ### Features
 
+* **Transcript result panel** — after a recording stops and auto-transcription completes, the capture screen keeps the active view open and shows the finished transcript inline; a "Done" button dismisses and returns to the session list
+* **Shared: CollapsibleProviderRow setup guide** — the shared credential row component now accepts optional `setupHint` and `signupUrl` parameters; when present and no key is configured, the expanded row shows step-by-step setup instructions and a Sign up link (used by PriceDrop AI config; no visual change in Scrybe)
+* **Credential security + cross-app sharing** — OpenAI key is now encrypted at rest using AndroidKeyStore AES-256/GCM; entering or changing the key in Settings automatically mirrors it to installed sibling TwoBits apps (Shelf Snap, PriceDrop); a missing local key is transparently read through from siblings on launch — no UI, no opt-in
+
 ### Improvements
 
+* **Credential bridge** — the shared credential registry now covers all keys across the TwoBits suite (Brave, SerpAPI, Keepa, Couponlayer, Rainforest) in addition to OpenAI and Jina; Scrybe silently skips keys it doesn't use
+
+* **Playback area** — removed the redundant seek slider below the waveform; tap or drag anywhere on the waveform to seek (playhead indicator visible); the marker legend (topics / sentiment) and time labels remain unchanged
+* **Session metadata** — audio quality details now show as separate labelled rows (Format, Quality, File size) instead of a single cramped line; sample rate is displayed with one decimal place where needed (e.g. "44.1 kHz" instead of "44 kHz")
+* **Profiles typography** — dialog and bottom sheet headings (AI Profile Draft, Review draft, Draft failed, New profile, Drafting profile) now use `titleMedium` instead of oversized `titleLarge`; removed unused internal `AiDraftModelInfoCard` composable
+* **Custom type in-app help** — the "New recording type" dialog now shows a one-sentence explanation of what custom types do; each custom type button in the mode picker now shows the linked transform profile name (or "Plain transcript" if none), matching how standard modes show their output description
+
 ### Fixes
+
+* **CaptureScreen build** — added missing `verticalScroll` import that caused a compile failure in release builds
+* **Audio import** — MP3 and other formats that failed with "audio format may not be supported" now import correctly; metadata is read via file descriptor (more reliable across Android versions and codecs) and falls back to sensible defaults rather than blocking the import if metadata cannot be read
+* **Custom recording types** — sessions recorded with a user-defined type are now stamped with mode `CUSTOM` (was `JOURNAL`); the history badge, mode filter chips, and waveform bar now use a secondary accent color and label icon to visually distinguish custom-type sessions from plain journal recordings
+* **Import waveform** — imported audio files now generate a real waveform visualisation (amplitude over time via `MediaCodec` decode) instead of an empty bar; falls back gracefully to no waveform if decoding fails
 
 ## 1.23.0 (2026-06-24)
 

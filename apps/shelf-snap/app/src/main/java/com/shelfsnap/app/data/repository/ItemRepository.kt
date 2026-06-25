@@ -17,6 +17,7 @@ import com.shelfsnap.app.data.remote.PriceResearchService
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionRepository
+import com.twobits.securestore.CredentialCrypto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -32,6 +33,7 @@ class ItemRepository
         private val priceResearchService: PriceResearchService,
         private val dataStore: DataStore<Preferences>,
         private val subscriptionRepository: SubscriptionRepository,
+        private val crypto: CredentialCrypto,
     ) {
         companion object {
             private const val WORKER_BASE = "https://api.twobits.app"
@@ -140,12 +142,12 @@ class ItemRepository
 
         // ── Settings ──────────────────────────────────────────────────────────────
 
-        fun observeApiKey(): Flow<String> = dataStore.data.map { it[KEY_API_KEY] ?: "" }
+        fun observeApiKey(): Flow<String> = dataStore.data.map { crypto.tryDecryptOrPassthrough(it[KEY_API_KEY] ?: "") }
 
-        suspend fun getApiKey(): String = dataStore.data.firstOrNull()?.get(KEY_API_KEY) ?: ""
+        suspend fun getApiKey(): String = crypto.tryDecryptOrPassthrough(dataStore.data.firstOrNull()?.get(KEY_API_KEY) ?: "")
 
         suspend fun saveApiKey(key: String) {
-            dataStore.edit { it[KEY_API_KEY] = key }
+            dataStore.edit { it[KEY_API_KEY] = crypto.encrypt(key) }
         }
 
         // ── Settings: web search for price research ─────────────────────────────────
@@ -159,25 +161,30 @@ class ItemRepository
         }
 
         fun observeJinaApiKey(): Flow<String> =
-            dataStore.data.map {
-                it[KEY_JINA_API_KEY] ?: it[KEY_SEARCH_API_KEY] ?: ""
+            dataStore.data.map { prefs ->
+                val raw = prefs[KEY_JINA_API_KEY] ?: prefs[KEY_SEARCH_API_KEY] ?: ""
+                crypto.tryDecryptOrPassthrough(raw)
             }
 
-        fun observeBraveApiKey(): Flow<String> = dataStore.data.map { it[KEY_BRAVE_API_KEY] ?: "" }
+        fun observeBraveApiKey(): Flow<String> = dataStore.data.map { crypto.tryDecryptOrPassthrough(it[KEY_BRAVE_API_KEY] ?: "") }
 
         suspend fun getJinaApiKey(): String {
             val prefs = dataStore.data.firstOrNull()
-            return prefs?.get(KEY_JINA_API_KEY) ?: prefs?.get(KEY_SEARCH_API_KEY) ?: ""
+            val raw = prefs?.get(KEY_JINA_API_KEY) ?: prefs?.get(KEY_SEARCH_API_KEY) ?: ""
+            return crypto.tryDecryptOrPassthrough(raw)
         }
 
-        suspend fun getBraveApiKey(): String = dataStore.data.firstOrNull()?.get(KEY_BRAVE_API_KEY) ?: ""
+        suspend fun getBraveApiKey(): String {
+            val raw = dataStore.data.firstOrNull()?.get(KEY_BRAVE_API_KEY) ?: ""
+            return crypto.tryDecryptOrPassthrough(raw)
+        }
 
         suspend fun saveJinaApiKey(key: String) {
-            dataStore.edit { it[KEY_JINA_API_KEY] = key }
+            dataStore.edit { it[KEY_JINA_API_KEY] = crypto.encrypt(key) }
         }
 
         suspend fun saveBraveApiKey(key: String) {
-            dataStore.edit { it[KEY_BRAVE_API_KEY] = key }
+            dataStore.edit { it[KEY_BRAVE_API_KEY] = crypto.encrypt(key) }
         }
 
         fun observeJinaSearchEnabled(): Flow<Boolean> = dataStore.data.map { it[KEY_JINA_SEARCH_ENABLED] ?: true }

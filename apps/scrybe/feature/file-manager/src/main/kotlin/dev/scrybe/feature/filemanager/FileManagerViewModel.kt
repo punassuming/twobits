@@ -1,6 +1,7 @@
 package dev.scrybe.feature.filemanager
 
 import android.content.Context
+import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
@@ -24,6 +25,7 @@ import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,13 +34,18 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileInputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
+import kotlin.math.sqrt
 
 @HiltViewModel
 class FileManagerViewModel
@@ -194,57 +201,57 @@ class FileManagerViewModel
         ) {
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(Date(createdAtMs))
             val retriever = MediaMetadataRetriever()
-            val durationMs: Long
-            val sampleRateHz: Int
-            val encodingBitRate: Int
-            val channelCount: Int
+            var durationMs: Long = 0L
+            var sampleRateHz: Int = DEFAULT_SAMPLE_RATE
+            var encodingBitRate: Int = DEFAULT_BIT_RATE
+            var channelCount: Int = 1
             try {
-                try {
-                    retriever.setDataSource(file.absolutePath)
-                } catch (e: Exception) {
-                    throw RuntimeException(
-                        "Could not read \"${file.name}\" — the audio format may not be supported",
-                        e,
-                    )
-                }
-                durationMs =
-                    retriever
-                        .extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_DURATION,
-                        )?.toLongOrNull() ?: 0L
-                sampleRateHz =
-                    retriever
-                        .extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_SAMPLERATE,
-                        )?.toIntOrNull() ?: DEFAULT_SAMPLE_RATE
-                encodingBitRate =
-                    retriever
-                        .extractMetadata(
-                            MediaMetadataRetriever.METADATA_KEY_BITRATE,
-                        )?.toIntOrNull() ?: DEFAULT_BIT_RATE
-                channelCount =
+                // Use FileDescriptor instead of path string — more reliable across Android
+                // versions and audio codecs (MP3 in particular can fail with the path overload).
+                val metadataOk =
                     runCatching {
-                        val extractor = MediaExtractor()
-                        try {
-                            extractor.setDataSource(file.absolutePath)
-                            val audioTrackIndex =
-                                (0 until extractor.trackCount).firstOrNull { trackIndex ->
+                        FileInputStream(file).use { fis -> retriever.setDataSource(fis.fd) }
+                    }.isSuccess
+                if (metadataOk) {
+                    durationMs =
+                        retriever
+                            .extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_DURATION,
+                            )?.toLongOrNull() ?: 0L
+                    sampleRateHz =
+                        retriever
+                            .extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_SAMPLERATE,
+                            )?.toIntOrNull() ?: DEFAULT_SAMPLE_RATE
+                    encodingBitRate =
+                        retriever
+                            .extractMetadata(
+                                MediaMetadataRetriever.METADATA_KEY_BITRATE,
+                            )?.toIntOrNull() ?: DEFAULT_BIT_RATE
+                    channelCount =
+                        runCatching {
+                            val extractor = MediaExtractor()
+                            try {
+                                FileInputStream(file).use { fis -> extractor.setDataSource(fis.fd) }
+                                val audioTrackIndex =
+                                    (0 until extractor.trackCount).firstOrNull { trackIndex ->
+                                        extractor
+                                            .getTrackFormat(trackIndex)
+                                            .getString(MediaFormat.KEY_MIME)
+                                            ?.startsWith("audio/") == true
+                                    }
+                                if (audioTrackIndex != null) {
                                     extractor
-                                        .getTrackFormat(trackIndex)
-                                        .getString(MediaFormat.KEY_MIME)
-                                        ?.startsWith("audio/") == true
+                                        .getTrackFormat(audioTrackIndex)
+                                        .getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                                } else {
+                                    1
                                 }
-                            if (audioTrackIndex != null) {
-                                extractor
-                                    .getTrackFormat(audioTrackIndex)
-                                    .getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                            } else {
-                                1
+                            } finally {
+                                extractor.release()
                             }
-                        } finally {
-                            extractor.release()
-                        }
-                    }.getOrDefault(1)
+                        }.getOrDefault(1)
+                }
             } finally {
                 retriever.release()
             }
@@ -260,7 +267,7 @@ class FileManagerViewModel
                     sampleRateHz = sampleRateHz,
                     encodingBitRate = encodingBitRate,
                     channelCount = channelCount,
-                    waveformSamples = "",
+                    waveformSamples = withContext(Dispatchers.IO) { generateWaveformSamples(file) },
                     status = "RECORDED",
                     isArchived = false,
                     estimatedTranscriptionCostUsd = null,
@@ -282,9 +289,86 @@ class FileManagerViewModel
                 else -> "AAC"
             }
 
+        private fun generateWaveformSamples(file: File): String =
+            runCatching {
+                val extractor = MediaExtractor()
+                FileInputStream(file).use { fis -> extractor.setDataSource(fis.fd) }
+                val trackIndex =
+                    (0 until extractor.trackCount).firstOrNull { i ->
+                        extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
+                    }
+                if (trackIndex == null) {
+                    extractor.release()
+                    return@runCatching ""
+                }
+                extractor.selectTrack(trackIndex)
+                val format = extractor.getTrackFormat(trackIndex)
+                val mime = format.getString(MediaFormat.KEY_MIME)
+                if (mime == null) {
+                    extractor.release()
+                    return@runCatching ""
+                }
+                val codec = MediaCodec.createDecoderByType(mime)
+                val chunkRms = mutableListOf<Float>()
+                try {
+                    codec.configure(format, null, null, 0)
+                    codec.start()
+                    val bufferInfo = MediaCodec.BufferInfo()
+                    var inputDone = false
+                    var outputDone = false
+                    while (!outputDone) {
+                        if (!inputDone) {
+                            val idx = codec.dequeueInputBuffer(10_000L)
+                            if (idx >= 0) {
+                                val buf = codec.getInputBuffer(idx)!!
+                                val sz = extractor.readSampleData(buf, 0)
+                                if (sz < 0) {
+                                    codec.queueInputBuffer(idx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                                    inputDone = true
+                                } else {
+                                    codec.queueInputBuffer(idx, 0, sz, extractor.sampleTime, 0)
+                                    extractor.advance()
+                                }
+                            }
+                        }
+                        val outIdx = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
+                        if (outIdx >= 0) {
+                            val buf = codec.getOutputBuffer(outIdx)
+                            if (buf != null && bufferInfo.size >= 2) {
+                                val bytes = ByteArray(bufferInfo.size)
+                                buf.get(bytes)
+                                val shorts = ShortArray(bytes.size / 2)
+                                ByteBuffer
+                                    .wrap(bytes)
+                                    .order(ByteOrder.LITTLE_ENDIAN)
+                                    .asShortBuffer()
+                                    .get(shorts)
+                                var sumSq = 0.0
+                                for (s in shorts) sumSq += (s / 32768.0).let { it * it }
+                                chunkRms.add(sqrt(sumSq / shorts.size).toFloat().coerceIn(0f, 1f))
+                            }
+                            codec.releaseOutputBuffer(outIdx, false)
+                            if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
+                        }
+                    }
+                    codec.stop()
+                } finally {
+                    codec.release()
+                    extractor.release()
+                }
+                if (chunkRms.isEmpty()) return@runCatching ""
+                val step = chunkRms.size.toFloat() / WAVEFORM_SAMPLE_COUNT
+                WaveformCodec.encode(
+                    List(WAVEFORM_SAMPLE_COUNT) { i ->
+                        chunkRms[(i * step).toInt().coerceAtMost(chunkRms.size - 1)]
+                    },
+                )
+            }.getOrDefault("")
+
         companion object {
             private const val DEFAULT_SAMPLE_RATE = 48_000
             private const val DEFAULT_BIT_RATE = 128_000
+            private const val WAVEFORM_SAMPLE_COUNT = 100
         }
 
         fun deleteFile(absolutePath: String) {

@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -103,7 +104,8 @@ class CaptureViewModel
                     val nextPhase =
                         when {
                             telemetry.elapsedMs > 0L || telemetry.amplitudeRatio > 0f -> CapturePhase.RECORDING
-                            currentState.phase == CapturePhase.STOPPING -> CapturePhase.IDLE
+                            currentState.phase == CapturePhase.STOPPING &&
+                                !currentState.autoTranscribeEnabled -> CapturePhase.IDLE
                             else -> currentState.phase
                         }
                     val nextHistory =
@@ -155,8 +157,28 @@ class CaptureViewModel
                             elapsedMs = 0L,
                             currentAmplitudeRatio = 0f,
                             amplitudeHistory = emptyList(),
+                            liveTranscript = null,
+                            activeSessionId = null,
                             errorMessage = message,
                         )
+                }
+            }
+            viewModelScope.launch {
+                recordingSessionEvents.completedSessions.collectLatest { sessionId ->
+                    _uiState.value = _uiState.value.copy(activeSessionId = sessionId)
+                    if (!_uiState.value.autoTranscribeEnabled) return@collectLatest
+                    transcriptDao
+                        .getTranscriptsForSession(sessionId)
+                        .map { transcripts ->
+                            transcripts
+                                .sortedByDescending { it.createdAt }
+                                .firstOrNull { it.type == "EDITED" }
+                                ?.content
+                                ?: transcripts.maxByOrNull { it.createdAt }?.content
+                        }.filterNotNull()
+                        .collectLatest { text ->
+                            _uiState.value = _uiState.value.copy(liveTranscript = text)
+                        }
                 }
             }
             viewModelScope.launch {
@@ -267,7 +289,7 @@ class CaptureViewModel
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
                         action = RecordingServiceActions.ACTION_START
-                        putExtra(RecordingServiceActions.EXTRA_RECORDING_MODE, RecordingMode.JOURNAL.name)
+                        putExtra(RecordingServiceActions.EXTRA_RECORDING_MODE, RecordingMode.CUSTOM.name)
                         putExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID, typeId)
                     }
                 context.startForegroundService(intent)
@@ -321,6 +343,19 @@ class CaptureViewModel
                     action = RecordingServiceActions.ACTION_RESUME
                 }
             context.startService(intent)
+        }
+
+        fun dismissTranscriptResult() {
+            _uiState.value =
+                _uiState.value.copy(
+                    phase = CapturePhase.IDLE,
+                    elapsedMs = 0L,
+                    currentAmplitudeRatio = 0f,
+                    amplitudeHistory = emptyList(),
+                    liveTranscript = null,
+                    activeSessionId = null,
+                    minimized = false,
+                )
         }
 
         fun stopRecording() {

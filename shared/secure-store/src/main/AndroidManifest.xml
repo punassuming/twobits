@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Declared once here; merges into all three apps.
+        Same permission name + same signing key = no INSTALL_FAILED_DUPLICATE_PERMISSION.
+    -->
+    <permission
+        android:name="com.twobits.permission.ACCESS_SHARED_CREDENTIALS"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="com.twobits.permission.ACCESS_SHARED_CREDENTIALS" />
+
+    <application>
+        <!--
+            authority = "${applicationId}.credentials" resolves to a unique value per app during
+            manifest merge (dev.scrybe.android.credentials, com.shelfsnap.app.credentials,
+            com.twobits.pricedrop.credentials), matching the pattern used by FileProvider.
+        -->
+        <provider
+            android:name="com.twobits.securestore.ipc.SharedCredentialProvider"
+            android:authorities="${applicationId}.credentials"
+            android:exported="true"
+            android:readPermission="com.twobits.permission.ACCESS_SHARED_CREDENTIALS"
+            android:writePermission="com.twobits.permission.ACCESS_SHARED_CREDENTIALS" />
+    </application>
+
+</manifest>

@@ -811,7 +811,7 @@ private fun OptionRow(
 @Composable
 private fun ModeOptionRows() {
     var selected by remember { mutableStateOf(RecordingMode.JOURNAL) }
-    RecordingMode.entries.forEach { mode ->
+    RecordingMode.entries.filter { it != RecordingMode.CUSTOM }.forEach { mode ->
         OptionRow(
             icon = Icons.Filled.Mic,
             label = mode.label,
@@ -1308,7 +1308,7 @@ private fun AiProfileDraftDialog(
             ) {
                 Text(
                     text = "AI Profile Draft",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 AiDraftModelPicker(
                     selectedModel = selectedModel,
@@ -1463,46 +1463,6 @@ private fun AiRefinementSection(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AiDraftModelInfoCard(selectedModel: OpenAiProfileSuggestionModel) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Column(
-            modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Filled.Psychology, contentDescription = null)
-                Text(
-                    text = "Drafted with OpenAI ${selectedModel.apiName}",
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-            Text(
-                text = "The AI creates a 1-3 step starting profile. Saved steps still run through Scrybe's normal transform pipeline using {{transcript}} or {{combined_transcripts}} first, then {{current_text}} or {{prior_output}}.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Uses ${selectedModel.title}. Change or test this model from Settings.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = selectedModel.supportingText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
@@ -1717,7 +1677,7 @@ private fun NewProfileSheet(
                     .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("New profile", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("New profile", style = MaterialTheme.typography.titleMedium)
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Name", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
@@ -1893,7 +1853,7 @@ private fun DraftingProfileSheet(
                     .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("Drafting profile…", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Drafting profile…", style = MaterialTheme.typography.titleMedium)
             Text(
                 text = "${model.title} · 3 nested calls",
                 style = MaterialTheme.typography.bodySmall,
@@ -2050,8 +2010,7 @@ private fun ReviewDraftSheet(
             ) {
                 Text(
                     text = "Review draft",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
                 if (suggestion.tokensUsed > 0) {
@@ -2169,7 +2128,7 @@ private fun DraftErrorSheet(
                     .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Draft failed", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Draft failed", style = MaterialTheme.typography.titleMedium)
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodySmall,

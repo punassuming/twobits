@@ -16,6 +16,8 @@ import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.settings.SettingsPrefs
+import com.twobits.securestore.SharedCredentialId
+import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,8 +70,30 @@ class SettingsViewModel
         private val subscriptionRepo: SubscriptionRepository,
         private val providerStore: ProviderSettingsStore,
         billingManager: BillingManager,
+        private val credentialClient: SharedCredentialClient,
     ) : ViewModel() {
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
+
+        init {
+            viewModelScope.launch {
+                val readThroughPairs =
+                    listOf(
+                        PriceDropProvider.OPENAI to SharedCredentialId.OPENAI,
+                        PriceDropProvider.WEB_SEARCH to SharedCredentialId.JINA,
+                        PriceDropProvider.SHOPPING to SharedCredentialId.SERPAPI,
+                        PriceDropProvider.KEEPA to SharedCredentialId.KEEPA,
+                        PriceDropProvider.COUPON to SharedCredentialId.COUPON,
+                        PriceDropProvider.RAINFOREST to SharedCredentialId.RAINFOREST,
+                    )
+                readThroughPairs.forEach { (provider, credId) ->
+                    if (providerStore.getKey(provider).isBlank()) {
+                        credentialClient.readThrough(credId)?.let { sibling ->
+                            providerStore.setKey(provider, sibling)
+                        }
+                    }
+                }
+            }
+        }
 
         val uiState: StateFlow<SettingsUiState> =
             combine(
@@ -192,6 +216,14 @@ class SettingsViewModel
         ) {
             viewModelScope.launch {
                 providerStore.setKey(p, key)
+                when (p) {
+                    PriceDropProvider.OPENAI -> credentialClient.mirror(SharedCredentialId.OPENAI, key)
+                    PriceDropProvider.WEB_SEARCH -> credentialClient.mirror(SharedCredentialId.JINA, key)
+                    PriceDropProvider.SHOPPING -> credentialClient.mirror(SharedCredentialId.SERPAPI, key)
+                    PriceDropProvider.KEEPA -> credentialClient.mirror(SharedCredentialId.KEEPA, key)
+                    PriceDropProvider.COUPON -> credentialClient.mirror(SharedCredentialId.COUPON, key)
+                    PriceDropProvider.RAINFOREST -> credentialClient.mirror(SharedCredentialId.RAINFOREST, key)
+                }
                 val result = CredentialCheck.check(p, key)
                 setValidation(
                     p,
