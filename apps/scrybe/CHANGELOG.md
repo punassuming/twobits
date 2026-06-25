@@ -4,6 +4,8 @@
 
 ### Features
 
+* **Bulk speaker re-identification** — the People screen's "Re-identify all" button now iterates every session with an audio file and re-runs speaker diarization sequentially
+
 ### Improvements
 
 ### Fixes
