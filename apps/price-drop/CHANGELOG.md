@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.0.1 (2026-06-25)
+
+### Features
+
 * **Pro screen** — redesigned to match Scrybe and Shelf Snap: compact three-column tier comparison (Try it / Pro / BYOK), separate billing section with annual vs monthly plan cards, active plan card with Manage + Restore buttons, monthly usage card, Why Pro benefit list, and BYOK note with Configure keys link
 * **Provider setup guides** — each provider credential row in AI Config now shows step-by-step setup instructions and a "Sign up" link when not yet configured (OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, Rainforest API)
 * **Credential security + cross-app sharing** — all BYOK API keys (OpenAI, Jina/Web search, SerpAPI, Keepa, Couponlayer, Rainforest) are now encrypted at rest using AndroidKeyStore AES-256/GCM; all six keys auto-mirror to installed sibling TwoBits apps when saved and are read through from siblings on a local miss; credential DataStore excluded from Google Auto Backup
@@ -15,6 +23,7 @@
 ### Fixes
 
 * **Price drop notifications** — tapping an OS notification now opens the app directly to that product's detail screen; previously the app opened to the last-viewed screen with no navigation
+
 
 ## 0.5.0 (2026-06-24)
 
@@ -39,6 +48,7 @@
 * `ProviderSettingsStore` gains `getFeatureModel()` suspend getter (was missing — only the flow + setter existed); `isByok()` in `PriceDropApiClient` is now a suspend function to correctly call the suspend `getMode()` — fixes compile errors in CI
 
 
+
 ## 0.4.0 (2026-06-23)
 
 ### Features
@@ -60,6 +70,7 @@
 
 * Pro screen: the plan toggle "Monthly – $5.99/mo" chip no longer wraps to two lines — the Annual/Monthly chips now share the row evenly and keep their labels on one line
 * AI configuration: provider status badges no longer wrap to two lines when a provider title is long (shared credential row fix)
+
 
 
 
@@ -92,6 +103,7 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 
 
 
@@ -137,6 +149,7 @@
 
 
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -146,6 +159,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 
