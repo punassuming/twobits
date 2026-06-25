@@ -3,6 +3,7 @@ package com.twobits.pricedrop.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.twobits.pricedrop.data.model.WatchedProduct
+import com.twobits.pricedrop.data.remote.PriceDropApiClient
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,6 +42,7 @@ class SearchViewModel
     @Inject
     constructor(
         private val watchlistRepo: WatchlistRepository,
+        private val api: PriceDropApiClient,
     ) : ViewModel() {
         val query = MutableStateFlow("")
         val uiState: MutableStateFlow<SearchUiState> = MutableStateFlow(SearchUiState.Idle)
@@ -53,7 +55,18 @@ class SearchViewModel
             val q = query.value.trim()
             if (q.isBlank()) return
             if (q.startsWith("http://") || q.startsWith("https://")) {
-                uiState.value = SearchUiState.UrlConfirm(url = q, title = "Product from URL", price = null)
+                uiState.value = SearchUiState.Loading
+                viewModelScope.launch {
+                    val pageContent = runCatching { api.readPage(q) }.getOrDefault("")
+                    val (title, price) =
+                        if (pageContent.isNotBlank()) {
+                            runCatching { api.extractProductFromPage(pageContent, q) }
+                                .getOrDefault("Product from URL" to null)
+                        } else {
+                            "Product from URL" to null
+                        }
+                    uiState.value = SearchUiState.UrlConfirm(url = q, title = title, price = price)
+                }
                 return
             }
             uiState.value = SearchUiState.Loading
@@ -93,6 +106,8 @@ class SearchViewModel
 
         fun confirmUrl(
             url: String,
+            title: String,
+            price: Double?,
             targetPrice: Double?,
             alertType: String = "below_target",
             onAdded: (Long) -> Unit,
@@ -101,8 +116,8 @@ class SearchViewModel
                 val id =
                     watchlistRepo.add(
                         WatchedProduct(
-                            title = "Product from URL",
-                            currentPrice = 0.0,
+                            title = title,
+                            currentPrice = price ?: 0.0,
                             targetPrice = targetPrice,
                             alertType = alertType,
                             productUrl = url,

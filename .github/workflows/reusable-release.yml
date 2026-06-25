@@ -67,6 +67,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
           ref: ${{ inputs.head_sha || github.sha }}
 
       - name: Verify release target
@@ -123,6 +124,16 @@ jobs:
             echo "Skipping release — no new unreleased bullets in ${{ inputs.app_root }}/CHANGELOG.md since the last tag."
           fi
 
+      # Ensure github-tag-action and the seed-version step below both see every tag.
+      # Must run before any step that calls `git tag -l` — without this, tags created
+      # by a concurrent release run may be absent from the runner's local cache, causing
+      # seed_version to fall back to the CHANGELOG version and github-tag-action to
+      # compute 0.0.0 → 0.0.1 when it cannot resolve the synthetic previous_tag ref.
+      - name: Fetch all tags for version computation
+        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
+        shell: bash
+        run: git fetch --tags --force
+
       # When no prior tag exists for this app (first-ever release), seed github-tag-action
       # with the latest versioned section from the CHANGELOG so it bumps from there instead
       # of starting at 0.0.0 → 0.0.1, which is wrong for apps that already have history.
@@ -149,14 +160,6 @@ jobs:
             echo "previous_tag=$latest_tag" >> "$GITHUB_OUTPUT"
           fi
 
-      # Ensure github-tag-action can find all existing tags during its internal git lookup.
-      # Without this explicit fetch, tags recently created via API may be absent from the
-      # runner's local cache, causing the action to fall back to 0.0.0 → 0.0.1.
-      - name: Fetch all tags for version computation
-        if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
-        shell: bash
-        run: git fetch --tags --force
-
       # Computes the next semantic version from conventional commits since the last tag.
       # Version bumping rules:
       #   feat:           → minor bump
@@ -172,6 +175,33 @@ jobs:
           tag_prefix: ${{ inputs.tag_prefix }}
           dry_run: true
           previous_tag: ${{ steps.seed_version.outputs.previous_tag }}
+
+      # Safety net: never let a release regress below the highest existing tag.
+      # The 0.0.1 incident happened because github-tag-action silently fell back to
+      # 0.0.0 → 0.0.1 when it couldn't resolve a synthetic previous_tag. If the
+      # computed version is not strictly greater than every existing tag, abort the
+      # release loudly instead of shipping a downgrade or duplicate.
+      - name: Guard against version downgrade
+        if: steps.release_target.outputs.stale != 'true' && steps.version.outputs.new_tag != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          prefix="${{ inputs.tag_prefix }}"
+          new_version="${{ steps.version.outputs.new_version }}"
+          highest="$(git tag -l "${prefix}*" --sort=-v:refname | head -1 | sed "s|^${prefix}||")"
+          if [ -z "$highest" ]; then
+            echo "No existing ${prefix} tag — first release, nothing to compare. Proceeding with ${new_version}."
+            exit 0
+          fi
+          # Strictly-greater check: the highest of {new, highest} must be new, and they must differ.
+          top="$(printf '%s\n%s\n' "$new_version" "$highest" | sort -V | tail -1)"
+          if [ "$new_version" = "$highest" ] || [ "$top" != "$new_version" ]; then
+            echo "::error::Computed version ${prefix}${new_version} is not greater than the latest existing tag ${prefix}${highest}."
+            echo "::error::This usually means tag computation fell back to a stale base (the 0.0.1 failure mode)."
+            echo "::error::Refusing to tag a downgrade/duplicate. Check that all tags were fetched before version computation."
+            exit 1
+          fi
+          echo "Version check OK: ${prefix}${new_version} > ${prefix}${highest}."
 
       # Validate the keystore secret BEFORE any irreversible state is created
       # (changelog promotion, version commit, tag push). A bad base64 value here

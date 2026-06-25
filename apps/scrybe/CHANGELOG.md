@@ -4,9 +4,13 @@
 
 ### Features
 
+* **Bulk speaker re-identification** — the People screen's "Re-identify all" button now iterates every session with an audio file and re-runs speaker diarization sequentially
+
 ### Improvements
 
 ### Fixes
+
+* **Bulk re-identification — preserve person assignments** — `reIdentifyAll()` and automatic post-transcription diarization now snapshot existing `personId` links before replacing speaker rows and restore them after, so manually assigned speaker identities are not lost when diarization re-runs
 
 ## 1.24.0 (2026-06-25)
 

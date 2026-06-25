@@ -4,11 +4,17 @@
 
 ### Features
 
+* **Jina AI BYOK** — web search and page reading now call Jina AI directly when WEB_SEARCH is in BYOK mode: text product search uses Jina as fallback when SerpAPI is not configured; the Ask assistant fetches live web context before generating answers; adding a product by URL reads the page via Jina reader and extracts the title and price automatically
+
 ### Improvements
 
 ### Fixes
 
-## 0.0.1 (2026-06-25)
+* **URL product metadata** — when adding a product by URL the extracted title and current price (from Jina reader + OpenAI) are now saved to the watchlist; previously the product was always stored with the placeholder title "Product from URL" and price $0.00
+* **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
+* **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
+
+## 0.6.0 (2026-06-25)
 
 ### Features
 

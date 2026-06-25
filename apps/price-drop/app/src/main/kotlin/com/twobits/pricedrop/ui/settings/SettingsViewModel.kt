@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
 import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
@@ -15,15 +16,20 @@ import com.twobits.pricedrop.data.provider.CredentialCheck
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
+import com.twobits.pricedrop.data.repository.WatchlistRepository
 import com.twobits.pricedrop.data.settings.SettingsPrefs
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -69,10 +75,14 @@ class SettingsViewModel
         private val dataStore: DataStore<Preferences>,
         private val subscriptionRepo: SubscriptionRepository,
         private val providerStore: ProviderSettingsStore,
+        private val watchlistRepo: WatchlistRepository,
         billingManager: BillingManager,
         private val credentialClient: SharedCredentialClient,
     ) : ViewModel() {
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
+
+        private val _exportEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+        val exportEvent: SharedFlow<String> = _exportEvent.asSharedFlow()
 
         init {
             viewModelScope.launch {
@@ -281,6 +291,10 @@ class SettingsViewModel
         }
 
         fun exportData() {
-            // Export triggered via share sheet — placeholder for Intent dispatch in the UI layer.
+            viewModelScope.launch {
+                val products = watchlistRepo.observeAll().first()
+                val payload = mapOf("watchlist" to products)
+                _exportEvent.emit(Gson().toJson(payload))
+            }
         }
     }

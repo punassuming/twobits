@@ -36,6 +36,7 @@ import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.ThemeMode
 import dev.scrybe.core.transcription.ApiKeyProvider
 import dev.scrybe.core.transcription.OpenAiApiKeyValidator
+import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transforms.OpenAiProfileSuggestionService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -141,7 +142,7 @@ class SettingsViewModel
         @ApplicationContext private val context: Context,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val personDao: PersonDao,
-        recordingSessionDao: RecordingSessionDao,
+        private val recordingSessionDao: RecordingSessionDao,
         transcriptDao: TranscriptDao,
         transformRunDao: TransformRunDao,
         transformProfileDao: TransformProfileDao,
@@ -152,6 +153,7 @@ class SettingsViewModel
         private val subscriptionRepository: SubscriptionRepository,
         private val billingManager: BillingManager,
         private val credentialClient: SharedCredentialClient,
+        private val coordinator: SessionTranscriptionCoordinator,
     ) : ViewModel() {
         val persons: StateFlow<List<PersonEntity>> =
             personDao
@@ -760,7 +762,14 @@ class SettingsViewModel
         suspend fun talkRatioForPerson(id: String): Float = personDao.talkRatioForPerson(id) ?: 0f
 
         fun reIdentifyAll() {
-            // UI-only stub — bulk re-identification across all sessions is not yet implemented.
+            viewModelScope.launch {
+                val sessions = recordingSessionDao.getAllSessionsOnce()
+                sessions
+                    .filter { File(it.audioFilePath).exists() }
+                    .forEach { session ->
+                        runCatching { coordinator.fetchSpeakerInfo(session.id) }
+                    }
+            }
         }
 
         fun deleteSavedFile(path: String) {

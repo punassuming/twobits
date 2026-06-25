@@ -58,6 +58,9 @@ class PriceDropApiClient
             if (isByok(PriceDropProvider.SHOPPING)) {
                 return searchDirect(query, maxResults, providerSettings.getKey(PriceDropProvider.SHOPPING))
             }
+            if (isByok(PriceDropProvider.WEB_SEARCH)) {
+                return searchDirectJina(query, maxResults, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
+            }
             val body =
                 JsonObject().apply {
                     addProperty("query", query)
@@ -139,12 +142,38 @@ class PriceDropApiClient
                 }
             val selectedModel = providerSettings.getFeatureModel(AiFeature.ASK)
             val model = selectedModel.ifBlank { if (isProMode) PRO_CHAT_MODEL else BYOK_CHAT_MODEL }
+            val groundingContext =
+                if (isByok(PriceDropProvider.WEB_SEARCH)) {
+                    val userQuery = history.lastOrNull { it.role == "user" }?.content.orEmpty()
+                    if (userQuery.isNotBlank()) {
+                        runCatching {
+                            val results =
+                                searchDirectJina(
+                                    userQuery.take(200),
+                                    3,
+                                    providerSettings.getKey(PriceDropProvider.WEB_SEARCH),
+                                )
+                            if (results.results.isEmpty()) {
+                                ""
+                            } else {
+                                "\n\nLive web context:\n" +
+                                    results.results
+                                        .mapIndexed { i, r -> "${i + 1}. ${r.title} — ${r.url}" }
+                                        .joinToString("\n")
+                            }
+                        }.getOrDefault("")
+                    } else {
+                        ""
+                    }
+                } else {
+                    ""
+                }
             val messages =
                 JsonArray().apply {
                     add(
                         JsonObject().apply {
                             addProperty("role", "system")
-                            addProperty("content", systemPrompt)
+                            addProperty("content", systemPrompt + groundingContext)
                         },
                     )
                     history.forEach { msg ->
@@ -441,6 +470,144 @@ class PriceDropApiClient
                     )
                 }
             }
+
+        // ---------------------------------------------------------------------------
+        // Jina AI — web search + page reading (WEB_SEARCH BYOK)
+        // ---------------------------------------------------------------------------
+
+        private suspend fun searchDirectJina(
+            query: String,
+            maxResults: Int,
+            apiKey: String,
+        ): SearchResponseDto =
+            withContext(Dispatchers.IO) {
+                val url =
+                    "https://s.jina.ai/"
+                        .toHttpUrl()
+                        .newBuilder()
+                        .addQueryParameter("q", query)
+                        .build()
+                val request =
+                    Request
+                        .Builder()
+                        .url(url)
+                        .addHeader("Authorization", "Bearer $apiKey")
+                        .addHeader("Accept", "application/json")
+                        .addHeader("X-Return-Format", "json")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val text = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
+                    val data = gson.fromJson(text, JsonObject::class.java)
+                    val results =
+                        (data.getAsJsonArray("data") ?: JsonArray())
+                            .take(maxResults)
+                            .map { item ->
+                                val r = item.asJsonObject
+                                val itemUrl = r["url"]?.asString
+                                SearchResultDto(
+                                    title = r["title"]?.asString,
+                                    price = null,
+                                    source = runCatching { itemUrl?.toHttpUrl()?.host }.getOrNull(),
+                                    url = itemUrl,
+                                )
+                            }
+                    SearchResponseDto(results)
+                }
+            }
+
+        /**
+         * Reads a product page via Jina Reader when [PriceDropProvider.WEB_SEARCH] is in BYOK mode.
+         * Returns empty string in Pro mode (the Worker handles page reading server-side) or on error.
+         */
+        suspend fun readPage(url: String): String {
+            if (!isByok(PriceDropProvider.WEB_SEARCH)) return ""
+            return readPageDirect(url, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
+        }
+
+        private suspend fun readPageDirect(
+            url: String,
+            apiKey: String,
+        ): String =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val encodedUrl = java.net.URLEncoder.encode(url, "UTF-8")
+                    val request =
+                        Request
+                            .Builder()
+                            .url("https://r.jina.ai/$encodedUrl")
+                            .addHeader("Authorization", "Bearer $apiKey")
+                            .get()
+                            .build()
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) return@use ""
+                        response.body?.string().orEmpty()
+                    }
+                }.getOrDefault("")
+            }
+
+        /**
+         * Uses OpenAI to extract product title and price from Jina-read page content.
+         * Falls back to ("Product from URL", null) on any parsing or network error.
+         */
+        suspend fun extractProductFromPage(
+            pageContent: String,
+            @Suppress("UNUSED_PARAMETER") url: String,
+        ): Pair<String, Double?> {
+            if (pageContent.isBlank()) return "Product from URL" to null
+            val isProMode = !isByok(PriceDropProvider.OPENAI)
+            val baseUrl =
+                if (isProMode) PRO_BASE_URL else PriceDropProvider.OPENAI.byokBaseUrl.trimEnd('/')
+            val authHeader =
+                if (isProMode) {
+                    "Bearer ${subscriptionRepository.getAppUserId()}"
+                } else {
+                    "Bearer ${providerSettings.getKey(PriceDropProvider.OPENAI)}"
+                }
+            return runCatching {
+                val body =
+                    JsonObject().apply {
+                        addProperty("model", if (isProMode) PRO_CHAT_MODEL else BYOK_CHAT_MODEL)
+                        add(
+                            "messages",
+                            JsonArray().apply {
+                                add(
+                                    JsonObject().apply {
+                                        addProperty("role", "system")
+                                        addProperty(
+                                            "content",
+                                            "Extract the product name and current price from this page content. " +
+                                                "Respond with ONLY valid JSON: " +
+                                                "{\"title\":\"...\",\"price\":number_or_null}",
+                                        )
+                                    },
+                                )
+                                add(
+                                    JsonObject().apply {
+                                        addProperty("role", "user")
+                                        addProperty("content", pageContent.take(3_000))
+                                    },
+                                )
+                            },
+                        )
+                    }
+                val dto =
+                    post("$baseUrl/v1/chat/completions", body, ChatResponseDto::class.java, authHeader)
+                val json =
+                    gson.fromJson(
+                        dto.choices
+                            .firstOrNull()
+                            ?.message
+                            ?.content
+                            .orEmpty(),
+                        JsonObject::class.java,
+                    )
+                val title = json["title"]?.asString?.takeIf { it.isNotBlank() } ?: "Product from URL"
+                val price = json["price"]?.let { runCatching { it.asDouble }.getOrNull() }
+                title to price
+            }.getOrDefault("Product from URL" to null)
+        }
 
         // ---------------------------------------------------------------------------
         // Helpers
