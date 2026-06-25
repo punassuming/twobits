@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.twobits.securestore.CredentialCrypto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -25,6 +26,7 @@ class ProviderSettingsStore
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val crypto: CredentialCrypto,
     ) {
         private fun modeKey(p: PriceDropProvider) = stringPreferencesKey("mode_${p.key}")
 
@@ -41,18 +43,22 @@ class ProviderSettingsStore
             context.providerStore.edit { it[modeKey(p)] = mode.value }
         }
 
-        suspend fun getKey(p: PriceDropProvider): String =
-            context.providerStore.data
-                .first()[apiKeyKey(p)]
-                .orEmpty()
+        suspend fun getKey(p: PriceDropProvider): String {
+            val raw = context.providerStore.data.first()[apiKeyKey(p)] ?: return ""
+            return crypto.tryDecryptOrPassthrough(raw)
+        }
 
-        fun observeKey(p: PriceDropProvider): Flow<String> = context.providerStore.data.map { it[apiKeyKey(p)].orEmpty() }
+        fun observeKey(p: PriceDropProvider): Flow<String> =
+            context.providerStore.data.map { prefs ->
+                val raw = prefs[apiKeyKey(p)] ?: ""
+                crypto.tryDecryptOrPassthrough(raw)
+            }
 
         suspend fun setKey(
             p: PriceDropProvider,
             key: String,
         ) {
-            context.providerStore.edit { it[apiKeyKey(p)] = key }
+            context.providerStore.edit { it[apiKeyKey(p)] = crypto.encrypt(key) }
         }
 
         suspend fun clearKey(p: PriceDropProvider) {

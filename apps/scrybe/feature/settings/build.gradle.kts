@@ -23,6 +23,7 @@ dependencies {
     implementation("com.twobits.core:billing")
     implementation("com.twobits.core:common")
     implementation("com.twobits.core:design")
+    implementation("com.twobits.core:secure-store")
     implementation(project(":core:base"))
     implementation(project(":core:model"))
     implementation(project(":core:database"))

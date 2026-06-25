@@ -23,11 +23,13 @@ android {
 
 dependencies {
     implementation("com.twobits.core:design")
+    implementation("com.twobits.core:secure-store")
     implementation(project(":core:model"))
     implementation(project(":core:base"))
     implementation(project(":core:audio"))
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
+    implementation(project(":core:transcription"))
     implementation(project(":core:transforms"))
     implementation(project(":service:recording"))
     implementation(libs.androidx.core.ktx)

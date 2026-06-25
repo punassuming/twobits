@@ -166,6 +166,7 @@ dependencies {
     implementation("com.twobits.core:api-keys")
     implementation("com.twobits.core:network")
     implementation("com.twobits.core:design")
+    implementation("com.twobits.core:secure-store")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

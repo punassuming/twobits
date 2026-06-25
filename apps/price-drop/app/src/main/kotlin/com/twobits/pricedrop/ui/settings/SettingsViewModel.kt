@@ -16,6 +16,8 @@ import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.settings.SettingsPrefs
+import com.twobits.securestore.SharedCredentialId
+import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -68,8 +70,24 @@ class SettingsViewModel
         private val subscriptionRepo: SubscriptionRepository,
         private val providerStore: ProviderSettingsStore,
         billingManager: BillingManager,
+        private val credentialClient: SharedCredentialClient,
     ) : ViewModel() {
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
+
+        init {
+            viewModelScope.launch {
+                if (providerStore.getKey(PriceDropProvider.OPENAI).isBlank()) {
+                    credentialClient.readThrough(SharedCredentialId.OPENAI)?.let { sibling ->
+                        providerStore.setKey(PriceDropProvider.OPENAI, sibling)
+                    }
+                }
+                if (providerStore.getKey(PriceDropProvider.WEB_SEARCH).isBlank()) {
+                    credentialClient.readThrough(SharedCredentialId.JINA)?.let { sibling ->
+                        providerStore.setKey(PriceDropProvider.WEB_SEARCH, sibling)
+                    }
+                }
+            }
+        }
 
         val uiState: StateFlow<SettingsUiState> =
             combine(
@@ -192,6 +210,11 @@ class SettingsViewModel
         ) {
             viewModelScope.launch {
                 providerStore.setKey(p, key)
+                when (p) {
+                    PriceDropProvider.OPENAI -> credentialClient.mirror(SharedCredentialId.OPENAI, key)
+                    PriceDropProvider.WEB_SEARCH -> credentialClient.mirror(SharedCredentialId.JINA, key)
+                    else -> Unit
+                }
                 val result = CredentialCheck.check(p, key)
                 setValidation(
                     p,

@@ -20,6 +20,8 @@ import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import com.twobits.securestore.SharedCredentialId
+import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -92,6 +94,7 @@ class SettingsViewModel
         private val jinaSearchService: JinaAiSearchService,
         private val braveSearchService: BraveSearchService,
         @ApplicationContext private val context: Context,
+        private val credentialClient: SharedCredentialClient,
     ) : ViewModel() {
         private val _editKey = MutableStateFlow("")
         private val _isSaved = MutableStateFlow(false)
@@ -115,6 +118,16 @@ class SettingsViewModel
             viewModelScope.launch {
                 _storage.value = computeStorage()
                 subscriptionRepository.refresh()
+                if (repository.getApiKey().isBlank()) {
+                    credentialClient.readThrough(SharedCredentialId.OPENAI)?.let { sibling ->
+                        repository.saveApiKey(sibling)
+                    }
+                }
+                if (repository.getJinaApiKey().isBlank()) {
+                    credentialClient.readThrough(SharedCredentialId.JINA)?.let { sibling ->
+                        repository.saveJinaApiKey(sibling)
+                    }
+                }
             }
         }
 
@@ -270,6 +283,7 @@ class SettingsViewModel
             }
             viewModelScope.launch {
                 repository.saveApiKey(key)
+                credentialClient.mirror(SharedCredentialId.OPENAI, key)
                 _isKeyInvalid.update { false }
                 _isSaved.update { true }
                 // Test the key immediately after saving
@@ -321,6 +335,7 @@ class SettingsViewModel
             val key = _editJinaKey.value.ifBlank { uiState.value.savedJinaApiKey }.trim()
             viewModelScope.launch {
                 repository.saveJinaApiKey(key)
+                credentialClient.mirror(SharedCredentialId.JINA, key)
                 _isSearchSaved.update { true }
             }
         }
