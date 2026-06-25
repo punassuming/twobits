@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 1.17.0 (2026-06-25)
+
+### Features
+
 * **Shared: CollapsibleProviderRow setup guide** — the shared credential row component now accepts optional setup hint and signup URL parameters; shown when a provider row is expanded and no key is configured (no visual change in Shelf Snap)
 * **Credential security + cross-app sharing** — OpenAI, Jina, and Brave API keys are now encrypted at rest using AndroidKeyStore AES-256/GCM; saving a key in Settings automatically mirrors it to installed sibling TwoBits apps (Scrybe, PriceDrop); a missing local key is transparently read through from siblings on launch; credential DataStore excluded from Google Auto Backup (encrypted bytes are useless after cloud restore — keys re-populate from siblings)
 
@@ -17,6 +25,7 @@
 * Search queries for items without a brand or model are now shorter and more targeted, producing real sold-listing results from eBay and Mercari instead of generic article pages
 
 ### Fixes
+
 
 ## 1.16.0 (2026-06-23)
 
@@ -39,6 +48,7 @@
 * Market research — generic-item search queries now build their descriptor from the item's description and category (the `Item` model has no `name` field), restoring the broken Debug/Release Kotlin compilation
 
 
+
 ## 1.15.0 (2026-06-23)
 
 ### Features
@@ -57,6 +67,7 @@
 
 
 
+
 ## 1.14.0 (2026-06-22)
 
 ### Features
@@ -70,6 +81,7 @@
 ### Fixes
 
 * replace hardcoded "GPT-4o analysis" label with the actual model name used during analysis (tracked as `lastAnalysisModel` in UI state; defaults to `VisionModel.default.displayName` for items analysed before this version)
+
 
 
 
@@ -98,6 +110,7 @@
 
 
 
+
 ## 1.12.0 (2026-06-21)
 
 ### Features
@@ -115,6 +128,7 @@
 
 
 
+
 ## 1.11.0 (2026-06-19)
 
 ### Features
@@ -124,6 +138,7 @@
 * migrated to shared `gradle/libs.versions.toml` version catalog across all three apps; upgraded Compose BOM to 2024.12.01, coreKtx to 1.15.0, lifecycleRuntimeKtx to 2.8.7, and navigationCompose to 2.8.5
 
 ### Fixes
+
 
 
 
@@ -171,6 +186,7 @@
 
 
 
+
 ## 1.9.0 (2026-06-17)
 
 ### Features
@@ -190,6 +206,7 @@
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
 * `ProScreen` top bar extracted into private composable — satisfies ktlint function-body-expression rules without changing visible behaviour
+
 
 
 
@@ -247,6 +264,7 @@
 
 
 
+
 ## 1.7.0 (2026-06-11)
 
 ### Features
@@ -271,6 +289,7 @@
 
 
 
+
 ## 1.6.0 (2026-06-11)
 
 ### Features
@@ -284,6 +303,7 @@
 * test result (connected or error message) shown inline below the buttons
 
 ### Fixes
+
 
 
 
@@ -328,6 +348,7 @@
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
 * missing FilterChip import in MarketTab restored after wildcard-import replacement
+
 
 
 
@@ -387,6 +408,7 @@
 
 
 
+
 ## 1.3.1 (2026-06-06)
 
 ### Improvements
@@ -405,11 +427,13 @@
 
 
 
+
 ## 1.3.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -464,6 +488,7 @@
 
 
 
+
 ## 1.1.3 (2026-06-05)
 
 ### Improvements
@@ -482,11 +507,13 @@
 
 
 
+
 ## 1.1.2 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
+
 
 
 
@@ -519,12 +546,14 @@
 
 
 
+
 ## 1.1.0 (2026-06-04)
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
+
 
 
 
@@ -556,6 +585,7 @@
 
 
 
+
 ## 1.0.1 (2026-06-03)
 
 ### Features
@@ -574,9 +604,11 @@
 
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 
