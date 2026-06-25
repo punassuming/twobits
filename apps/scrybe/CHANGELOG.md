@@ -10,6 +10,8 @@
 
 ### Fixes
 
+* **Bulk re-identification — preserve person assignments** — `reIdentifyAll()` and automatic post-transcription diarization now snapshot existing `personId` links before replacing speaker rows and restore them after, so manually assigned speaker identities are not lost when diarization re-runs
+
 ## 1.24.0 (2026-06-25)
 
 ### Features

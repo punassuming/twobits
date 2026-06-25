@@ -106,6 +106,8 @@ class SearchViewModel
 
         fun confirmUrl(
             url: String,
+            title: String,
+            price: Double?,
             targetPrice: Double?,
             alertType: String = "below_target",
             onAdded: (Long) -> Unit,
@@ -114,8 +116,8 @@ class SearchViewModel
                 val id =
                     watchlistRepo.add(
                         WatchedProduct(
-                            title = "Product from URL",
-                            currentPrice = 0.0,
+                            title = title,
+                            currentPrice = price ?: 0.0,
                             targetPrice = targetPrice,
                             alertType = alertType,
                             productUrl = url,

@@ -160,6 +160,14 @@ class SessionTranscriptionCoordinator
                     diarizationService
                         .diarize(sessionId, audioFile, transcriptText, providerType)
                         .getOrThrow()
+
+                // Preserve manual person assignments before wiping speaker rows.
+                val existingPersonIds =
+                    speakerSegmentDao
+                        .getSegmentsOnce(sessionId)
+                        .groupBy { it.speakerId }
+                        .mapValues { (_, segs) -> segs.firstOrNull { it.personId != null }?.personId }
+
                 speakerSegmentDao.deleteForSession(sessionId)
                 speakerSegmentDao.insertSegments(
                     segments.map { segment ->
@@ -174,6 +182,14 @@ class SessionTranscriptionCoordinator
                         )
                     },
                 )
+
+                // Restore personId links that the user assigned manually.
+                for ((speakerId, personId) in existingPersonIds) {
+                    if (personId != null) {
+                        speakerSegmentDao.updatePersonId(sessionId, speakerId, personId)
+                    }
+                }
+
                 segments
                     .map { it.speakerId }
                     .distinct()
@@ -192,6 +208,13 @@ class SessionTranscriptionCoordinator
                         .diarize(sessionId, audioFile, transcriptText, providerType)
                         .getOrNull()
                         ?: return@launch
+
+                val existingPersonIds =
+                    speakerSegmentDao
+                        .getSegmentsOnce(sessionId)
+                        .groupBy { it.speakerId }
+                        .mapValues { (_, segs) -> segs.firstOrNull { it.personId != null }?.personId }
+
                 speakerSegmentDao.deleteForSession(sessionId)
                 speakerSegmentDao.insertSegments(
                     segments.map { s ->
@@ -206,6 +229,12 @@ class SessionTranscriptionCoordinator
                         )
                     },
                 )
+
+                for ((speakerId, personId) in existingPersonIds) {
+                    if (personId != null) {
+                        speakerSegmentDao.updatePersonId(sessionId, speakerId, personId)
+                    }
+                }
             }
         }
 

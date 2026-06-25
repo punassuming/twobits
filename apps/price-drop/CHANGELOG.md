@@ -10,6 +10,7 @@
 
 ### Fixes
 
+* **URL product metadata** — when adding a product by URL the extracted title and current price (from Jina reader + OpenAI) are now saved to the watchlist; previously the product was always stored with the placeholder title "Product from URL" and price $0.00
 * **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
 * **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
 

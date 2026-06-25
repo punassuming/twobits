@@ -154,7 +154,9 @@ fun SearchScreen(
                             currentPrice = state.price,
                             onDismiss = { showConfirm = false },
                             onConfirm = { target, alertType ->
-                                viewModel.confirmUrl(state.url, target, alertType) { id -> onNavigateToProduct(id) }
+                                viewModel.confirmUrl(state.url, state.title, state.price, target, alertType) { id ->
+                                    onNavigateToProduct(id)
+                                }
                             },
                         )
                     }
