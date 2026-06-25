@@ -4,6 +4,8 @@
 
 ### Features
 
+* **Shared: CollapsibleProviderRow setup guide** — the shared credential row component now accepts optional setup hint and signup URL parameters; shown when a provider row is expanded and no key is configured (no visual change in Shelf Snap)
+
 ### Improvements
 
 **Market research** — price research results load significantly faster and return more relevant sold listings:

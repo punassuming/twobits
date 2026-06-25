@@ -1,5 +1,7 @@
 package com.twobits.design.components
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +16,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -206,6 +210,8 @@ fun CollapsibleProviderRow(
     onTest: () -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    setupHint: String = "",
+    signupUrl: String = "",
 ) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     val connected = isKeyValid == true && !maskedKey.isNullOrBlank()
@@ -250,6 +256,7 @@ fun CollapsibleProviderRow(
             }
         }
         AnimatedVisibility(visible = expanded) {
+            val context = LocalContext.current
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 HorizontalDivider()
                 Text(
@@ -257,6 +264,42 @@ fun CollapsibleProviderRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (setupHint.isNotBlank() && isKeyValid != true) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "How to get a key",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = setupHint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (signupUrl.isNotBlank()) {
+                            TextButton(
+                                onClick = {
+                                    runCatching {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse(signupUrl)),
+                                        )
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Default.OpenInNew,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                Text(
+                                    text = " Sign up",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
+                    }
+                }
                 var showKey by rememberSaveable(title) { mutableStateOf(false) }
                 OutlinedTextField(
                     value = apiKey,

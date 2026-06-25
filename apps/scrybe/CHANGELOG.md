@@ -5,6 +5,7 @@
 ### Features
 
 * **Transcript result panel** — after a recording stops and auto-transcription completes, the capture screen keeps the active view open and shows the finished transcript inline; a "Done" button dismisses and returns to the session list
+* **Shared: CollapsibleProviderRow setup guide** — the shared credential row component now accepts optional `setupHint` and `signupUrl` parameters; when present and no key is configured, the expanded row shows step-by-step setup instructions and a Sign up link (used by PriceDrop AI config; no visual change in Scrybe)
 
 ### Improvements
 
