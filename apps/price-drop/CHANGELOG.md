@@ -4,6 +4,14 @@
 
 ### Features
 
+### Improvements
+
+### Fixes
+
+## 0.7.0 (2026-06-26)
+
+### Features
+
 * **Jina AI BYOK** — web search and page reading now call Jina AI directly when WEB_SEARCH is in BYOK mode: text product search uses Jina as fallback when SerpAPI is not configured; the Ask assistant fetches live web context before generating answers; adding a product by URL reads the page via Jina reader and extracts the title and price automatically
 
 ### Improvements
@@ -13,6 +21,7 @@
 * **URL product metadata** — when adding a product by URL the extracted title and current price (from Jina reader + OpenAI) are now saved to the watchlist; previously the product was always stored with the placeholder title "Product from URL" and price $0.00
 * **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
 * **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
+
 
 ## 0.6.0 (2026-06-25)
 
@@ -29,6 +38,7 @@
 ### Fixes
 
 * **Price drop notifications** — tapping an OS notification now opens the app directly to that product's detail screen; previously the app opened to the last-viewed screen with no navigation
+
 
 
 ## 0.5.0 (2026-06-24)
@@ -55,6 +65,7 @@
 
 
 
+
 ## 0.4.0 (2026-06-23)
 
 ### Features
@@ -76,6 +87,7 @@
 
 * Pro screen: the plan toggle "Monthly – $5.99/mo" chip no longer wraps to two lines — the Annual/Monthly chips now share the row evenly and keep their labels on one line
 * AI configuration: provider status badges no longer wrap to two lines when a provider title is long (shared credential row fix)
+
 
 
 
@@ -109,6 +121,7 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 
 
 
@@ -156,6 +169,7 @@
 
 
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -165,6 +179,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 
