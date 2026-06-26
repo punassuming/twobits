@@ -241,7 +241,7 @@ class SettingsViewModel
                     setValidation(p, ProviderValidation(message = formatCheck.message, isValid = false))
                     return@launch
                 }
-                setValidation(p, ProviderValidation(isValidating = true))
+                setValidation(p, ProviderValidation(isValidating = true, message = "Checking connection…"))
                 val result = providerKeyValidator.validate(p, key)
                 setValidation(
                     p,
@@ -262,7 +262,7 @@ class SettingsViewModel
                 setValidation(p, ProviderValidation(message = formatCheck.message, isValid = false))
                 return
             }
-            setValidation(p, ProviderValidation(isValidating = true))
+            setValidation(p, ProviderValidation(isValidating = true, message = "Checking connection…"))
             viewModelScope.launch {
                 val result = providerKeyValidator.validate(p, key)
                 setValidation(

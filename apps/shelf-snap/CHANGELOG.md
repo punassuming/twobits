@@ -6,6 +6,11 @@
 
 ### Improvements
 
+**AI Config — credential validation** — key verification is now consistent across all providers:
+* saving a Jina AI or Brave Search key immediately tests the connection, matching OpenAI's save-and-verify behaviour
+* a "Checking connection…" message is shown while any key is being verified
+* success messages use "Connected to X" format across all three providers
+
 ### Fixes
 
 ## 1.17.0 (2026-06-25)

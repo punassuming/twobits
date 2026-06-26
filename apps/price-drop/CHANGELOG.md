@@ -13,6 +13,7 @@
 
 **AI Config — credential verification** — Test and Save now make a live call to confirm the key works:
 * OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, and Rainforest keys are each verified against their provider's API (not just checked for valid format)
+* a "Checking connection…" message is shown while the verification is in progress
 * Keepa connection shows remaining token count on success
 
 ### Fixes
