@@ -6,6 +6,9 @@
 
 ### Improvements
 
+**Market research — improved search query targeting for items without brand/model:**
+* generic item searches now use up to 50 characters of item name instead of 40, preserving more context for platform-targeted queries (eBay, Mercari, OfferUp)
+
 **Vision model default** — item analysis now uses GPT-5 mini by default:
 * default changed from GPT-5 ($1.25/$10 per 1M tokens) to GPT-5 mini ($0.25/$2 per 1M tokens) — 5× cheaper with comparable accuracy for draft generation
 * existing model selection in AI Config is preserved; GPT-5 remains available

@@ -343,7 +343,7 @@ class PriceResearchService
             // Use a truncated description so site: queries stay focused; the full AI-prose
             // description produces overly long queries that return 0 results on eBay/Mercari.
             val genericDescriptor =
-                listOf(item.description.take(40).trim(), item.category)
+                listOf(item.description.take(50).trim(), item.category)
                     .filter { it.isNotBlank() }
                     .joinToString(" ")
             val descriptor =

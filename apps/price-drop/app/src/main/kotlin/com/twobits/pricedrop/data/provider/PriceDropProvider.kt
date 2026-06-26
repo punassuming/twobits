@@ -38,19 +38,19 @@ enum class PriceDropProvider(
     ),
     SHOPPING(
         key = "shopping",
-        displayName = "SerpAPI",
-        byokBaseUrl = "https://serpapi.com/",
-        description = "Google/Bing results · supplements Jina for broader coverage",
+        displayName = "SearchAPI.io",
+        byokBaseUrl = "https://www.searchapi.io/",
+        description = "Google Shopping results · supplements Jina for broader coverage",
         setupHint =
-            "Sign up at serpapi.com → open the Dashboard → copy your Private API key. " +
-                "Free plan includes 100 searches per month.",
-        signupUrl = "https://serpapi.com",
+            "Sign up at searchapi.io → open the Dashboard → copy your API key. " +
+                "Developer plan includes 100 free searches per month.",
+        signupUrl = "https://www.searchapi.io",
     ),
     KEEPA(
         key = "keepa",
         displayName = "Keepa",
         byokBaseUrl = "https://api.keepa.com/",
-        description = "Amazon price history · optional for long-term trend charts",
+        description = "Amazon price history · BYOK only — Pro uses Rainforest instead",
         setupHint =
             "Subscribe to a Keepa API plan at keepa.com → open your account settings → copy the API key. " +
                 "Paid plans only — the cheapest tier is sufficient for most use.",
