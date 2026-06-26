@@ -18,12 +18,23 @@ enum class OpenAiTranscriptionModel(
         subtitle = "Higher accuracy",
         costLabel = "$0.011/min",
     ),
+    GPT_4O_MINI_TRANSCRIBE(
+        apiName = "gpt-4o-mini-transcribe",
+        title = "GPT-4o mini Transcribe",
+        subtitle = "Best value · recommended",
+        costLabel = "$0.003/min",
+    ),
+    GPT_4O_TRANSCRIBE(
+        apiName = "gpt-4o-transcribe",
+        title = "GPT-4o Transcribe",
+        subtitle = "High accuracy",
+        costLabel = "$0.006/min",
+    ),
     ;
 
     companion object {
-        val default: OpenAiTranscriptionModel = WHISPER_1
+        val default: OpenAiTranscriptionModel = GPT_4O_MINI_TRANSCRIBE
 
-        fun fromApiName(name: String): OpenAiTranscriptionModel =
-            entries.firstOrNull { it.apiName == name } ?: default
+        fun fromApiName(name: String): OpenAiTranscriptionModel = entries.firstOrNull { it.apiName == name } ?: default
     }
 }

@@ -192,6 +192,7 @@ class OpenAiDiarizationService
                                 content = listOf(InputText(type = "input_text", text = prompt)),
                             ),
                         ),
+                    maxOutputTokens = 3000,
                 )
             val request =
                 Request
@@ -309,6 +310,7 @@ class OpenAiDiarizationService
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

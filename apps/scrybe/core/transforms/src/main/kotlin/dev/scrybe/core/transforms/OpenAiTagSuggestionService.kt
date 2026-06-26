@@ -61,7 +61,8 @@ class OpenAiTagSuggestionService
                         throw IOException("OpenAI API returned no tag suggestions")
                     }
 
-                    json.decodeFromString(TagSuggestionPayload.serializer(), unwrapJsonEnvelope(outputText))
+                    json
+                        .decodeFromString(TagSuggestionPayload.serializer(), unwrapJsonEnvelope(outputText))
                         .tags
                         .map(::normalizeTag)
                         .filter(String::isNotBlank)
@@ -127,10 +128,12 @@ class OpenAiTagSuggestionService
                                 content = listOf(InputText(type = "input_text", text = userMessage)),
                             ),
                         ),
+                    maxOutputTokens = 400,
                 )
 
             val request =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url("https://api.openai.com/v1/responses")
                     .header("Authorization", "Bearer $apiKey")
                     .header("Content-Type", "application/json")
@@ -139,7 +142,12 @@ class OpenAiTagSuggestionService
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                    val errorBody =
+                        response.body
+                            ?.string()
+                            .orEmpty()
+                            .replace("\n", " ")
+                            .take(500)
                     throw IOException(
                         "OpenAI API error: ${response.code} ${response.message}" +
                             if (errorBody.isNotBlank()) " - $errorBody" else "",
@@ -163,6 +171,7 @@ class OpenAiTagSuggestionService
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

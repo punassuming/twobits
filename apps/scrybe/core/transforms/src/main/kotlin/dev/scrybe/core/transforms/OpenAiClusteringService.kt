@@ -87,8 +87,7 @@ class OpenAiClusteringService
                                 folderName = cluster.folderName.trim(),
                                 sessionIds = cluster.sessionIds.filter { it in validSessionIds },
                             )
-                        }
-                        .filter { it.sessionIds.isNotEmpty() }
+                        }.filter { it.sessionIds.isNotEmpty() }
                 }
             }
 
@@ -165,10 +164,12 @@ class OpenAiClusteringService
                                 content = listOf(InputText(type = "input_text", text = userMessage)),
                             ),
                         ),
+                    maxOutputTokens = 1000,
                 )
 
             val request =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url("https://api.openai.com/v1/responses")
                     .header("Authorization", "Bearer $apiKey")
                     .header("Content-Type", "application/json")
@@ -177,7 +178,12 @@ class OpenAiClusteringService
 
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                    val errorBody =
+                        response.body
+                            ?.string()
+                            .orEmpty()
+                            .replace("\n", " ")
+                            .take(500)
                     throw IOException(
                         "OpenAI API error: ${response.code} ${response.message}" +
                             if (errorBody.isNotBlank()) " - $errorBody" else "",
@@ -194,6 +200,7 @@ class OpenAiClusteringService
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

@@ -20,7 +20,7 @@ import com.twobits.pricedrop.data.model.WatchedProduct
         Activity::class,
         ChatMessageEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class PriceDropDatabase : RoomDatabase() {

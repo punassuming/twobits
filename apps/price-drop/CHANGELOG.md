@@ -11,6 +11,11 @@
 
 ### Improvements
 
+**Background tracking — reduced API cost:**
+* default background check interval changed from 6 hours to 24 hours — 4× fewer price calls per product
+* coupon checks are now throttled to at most once every 72 hours per product (were checked every background run)
+* changing the check frequency in Settings takes effect immediately without requiring an app restart
+
 **AI Config — credential verification** — Test and Save now make a live call to confirm the key works:
 * OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, and Rainforest keys are each verified against their provider's API (not just checked for valid format)
 * a "Checking connection…" message is shown while the verification is in progress

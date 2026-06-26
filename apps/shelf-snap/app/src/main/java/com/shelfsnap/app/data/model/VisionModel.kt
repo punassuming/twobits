@@ -33,7 +33,7 @@ enum class VisionModel(
     ;
 
     companion object {
-        val default: VisionModel = GPT_5
+        val default: VisionModel = GPT_5_MINI
 
         fun fromApiName(value: String?): VisionModel = entries.firstOrNull { it.apiName.equals(value, ignoreCase = true) } ?: default
     }

@@ -35,4 +35,10 @@ interface WatchedProductDao {
         price: Double,
         checkedAt: Long,
     )
+
+    @Query("UPDATE watched_products SET lastCouponCheckedAt = :ts WHERE id = :id")
+    suspend fun updateCouponCheckedAt(
+        id: Long,
+        ts: Long,
+    )
 }

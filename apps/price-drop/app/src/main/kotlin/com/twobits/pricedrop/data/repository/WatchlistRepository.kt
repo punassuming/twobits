@@ -194,6 +194,12 @@ class WatchlistRepository
             return coupons
         }
 
+        /** Stamp the last coupon-check time for a product (used by the background worker to throttle). */
+        suspend fun updateCouponCheckedAt(
+            productId: Long,
+            ts: Long,
+        ) = watchedProductDao.updateCouponCheckedAt(productId, ts)
+
         /** Resolve a scanned UPC to the best matching product. */
         suspend fun resolveBarcode(upc: String): BarcodeMatch {
             val r = api.barcode(upc)

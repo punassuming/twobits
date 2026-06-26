@@ -88,6 +88,7 @@ class OpenAiTaskExtractionService
                                     ),
                             ),
                         ),
+                    maxOutputTokens = 1500,
                 )
 
             val request =
@@ -135,6 +136,7 @@ class OpenAiTaskExtractionService
             val model: String,
             val instructions: String,
             val input: List<InputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

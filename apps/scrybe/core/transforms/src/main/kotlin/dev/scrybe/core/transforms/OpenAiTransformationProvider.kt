@@ -53,10 +53,12 @@ class OpenAiTransformationProvider
                                             ),
                                     ),
                                 ),
+                            maxOutputTokens = 2000,
                         )
 
                     val request =
-                        Request.Builder()
+                        Request
+                            .Builder()
                             .url("https://api.openai.com/v1/responses")
                             .header("Authorization", "Bearer $apiKey")
                             .header("Content-Type", "application/json")
@@ -65,7 +67,12 @@ class OpenAiTransformationProvider
 
                     val response = okHttpClient.newCall(request).execute()
                     if (!response.isSuccessful) {
-                        val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                        val errorBody =
+                            response.body
+                                ?.string()
+                                .orEmpty()
+                                .replace("\n", " ")
+                                .take(500)
                         throw IOException(
                             "OpenAI API error: ${response.code} ${response.message}" +
                                 if (errorBody.isNotBlank()) " - $errorBody" else "",
@@ -96,8 +103,8 @@ class OpenAiTransformationProvider
 
         private fun renderInstructions(input: TransformInput): String = buildTemplate(input)
 
-        private fun buildUserMessage(input: TransformInput): String {
-            return if (containsTranscriptPlaceholder(input.systemPrompt)) {
+        private fun buildUserMessage(input: TransformInput): String =
+            if (containsTranscriptPlaceholder(input.systemPrompt)) {
                 "Follow the provided prompt template exactly and return only the transformed text."
             } else {
                 buildString {
@@ -108,7 +115,6 @@ class OpenAiTransformationProvider
                     append(input.currentText)
                 }
             }
-        }
 
         private fun buildTemplate(input: TransformInput): String {
             val replacements =
@@ -139,6 +145,7 @@ class OpenAiTransformationProvider
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

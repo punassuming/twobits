@@ -198,6 +198,7 @@ class OpenAiProfileSuggestionService
                                     ),
                             ),
                         ),
+                    maxOutputTokens = 800,
                 )
 
             val request =
@@ -233,6 +234,7 @@ class OpenAiProfileSuggestionService
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

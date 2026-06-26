@@ -9,6 +9,11 @@
 
 ### Improvements
 
+**Cost control — transcription model and transform caps:**
+* default cloud transcription model changed to GPT-4o mini Transcribe ($0.003/min, was Whisper 1 at $0.006/min)
+* GPT-4o mini Transcribe and GPT-4o Transcribe added as selectable models in Settings
+* all LLM transform calls (summarize, tasks, tags, rename, cluster, search, diarization, sentiment, topics) now have explicit output-token caps, preventing unbounded cost on verbose responses
+
 ### Fixes
 
 **Speaker re-identification** — manually assigned person links are now preserved when diarization re-runs:

@@ -115,6 +115,7 @@ class OpenAiAutoRenameService
                                 content = listOf(InputText(type = "input_text", text = userMessage)),
                             ),
                         ),
+                    maxOutputTokens = 200,
                 )
 
             val request =
@@ -153,6 +154,7 @@ class OpenAiAutoRenameService
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

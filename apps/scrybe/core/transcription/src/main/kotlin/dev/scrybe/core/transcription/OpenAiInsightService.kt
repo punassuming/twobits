@@ -81,6 +81,7 @@ class OpenAiInsightService
                                 content = listOf(InsightInputText(type = "input_text", text = userPrompt)),
                             ),
                         ),
+                    maxOutputTokens = 600,
                 )
             val request =
                 Request
@@ -126,6 +127,7 @@ class OpenAiInsightService
         private data class InsightRequest(
             val model: String,
             val input: List<InsightInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable
