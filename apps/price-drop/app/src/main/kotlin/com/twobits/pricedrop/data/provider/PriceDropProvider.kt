@@ -54,7 +54,7 @@ enum class PriceDropProvider(
         setupHint =
             "Subscribe to a Keepa API plan at keepa.com → open your account settings → copy the API key. " +
                 "Paid plans only — the cheapest tier is sufficient for most use.",
-        signupUrl = "https://keepa.com/keepa-api-subscribe",
+        signupUrl = "https://keepa.com/#!api",
     ),
     COUPON(
         key = "coupon",

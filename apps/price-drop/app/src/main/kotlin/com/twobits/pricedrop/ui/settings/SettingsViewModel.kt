@@ -14,6 +14,7 @@ import com.twobits.billing.SubscriptionTier
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.CredentialCheck
 import com.twobits.pricedrop.data.provider.PriceDropProvider
+import com.twobits.pricedrop.data.provider.ProviderKeyValidator
 import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.repository.WatchlistRepository
@@ -78,6 +79,7 @@ class SettingsViewModel
         private val watchlistRepo: WatchlistRepository,
         billingManager: BillingManager,
         private val credentialClient: SharedCredentialClient,
+        private val providerKeyValidator: ProviderKeyValidator,
     ) : ViewModel() {
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
 
@@ -234,12 +236,18 @@ class SettingsViewModel
                     PriceDropProvider.COUPON -> credentialClient.mirror(SharedCredentialId.COUPON, key)
                     PriceDropProvider.RAINFOREST -> credentialClient.mirror(SharedCredentialId.RAINFOREST, key)
                 }
-                val result = CredentialCheck.check(p, key)
+                val formatCheck = CredentialCheck.check(p, key)
+                if (!formatCheck.isValid) {
+                    setValidation(p, ProviderValidation(message = formatCheck.message, isValid = false))
+                    return@launch
+                }
+                setValidation(p, ProviderValidation(isValidating = true))
+                val result = providerKeyValidator.validate(p, key)
                 setValidation(
                     p,
-                    ProviderValidation(
-                        message = if (result.isValid) "Saved" else result.message,
-                        isValid = result.isValid,
+                    result.fold(
+                        onSuccess = { msg -> ProviderValidation(message = msg, isValid = true) },
+                        onFailure = { err -> ProviderValidation(message = err.message ?: "Validation failed", isValid = false) },
                     ),
                 )
             }
@@ -249,12 +257,20 @@ class SettingsViewModel
             p: PriceDropProvider,
             key: String,
         ) {
+            val formatCheck = CredentialCheck.check(p, key)
+            if (!formatCheck.isValid) {
+                setValidation(p, ProviderValidation(message = formatCheck.message, isValid = false))
+                return
+            }
             setValidation(p, ProviderValidation(isValidating = true))
             viewModelScope.launch {
-                val result = CredentialCheck.check(p, key)
+                val result = providerKeyValidator.validate(p, key)
                 setValidation(
                     p,
-                    ProviderValidation(message = result.message, isValid = result.isValid),
+                    result.fold(
+                        onSuccess = { msg -> ProviderValidation(message = msg, isValid = true) },
+                        onFailure = { err -> ProviderValidation(message = err.message ?: "Validation failed", isValid = false) },
+                    ),
                 )
             }
         }

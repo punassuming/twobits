@@ -11,8 +11,13 @@
 
 ### Improvements
 
+**AI Config — credential verification** — Test and Save now make a live call to confirm the key works:
+* OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, and Rainforest keys are each verified against their provider's API (not just checked for valid format)
+* Keepa connection shows remaining token count on success
+
 ### Fixes
 
+* AI Config: Keepa sign-up link now opens the correct Keepa API subscription page
 * adding a product by URL: title and price extracted by Jina + OpenAI are now saved (was always "Product from URL" / $0.00)
 * Settings → Privacy: "Export data" now shares the watchlist as JSON via the system share sheet (was a no-op)
 * release workflow: version computation now uses deterministic bash (was mathieudutour/github-tag-action which failed to find monorepo tags, always computing 0.0.1)
