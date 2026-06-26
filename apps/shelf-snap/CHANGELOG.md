@@ -12,12 +12,17 @@
 
 ### Features
 
-* **Shared: CollapsibleProviderRow setup guide** — the shared credential row component now accepts optional setup hint and signup URL parameters; shown when a provider row is expanded and no key is configured (no visual change in Shelf Snap)
-* **Credential security + cross-app sharing** — OpenAI, Jina, and Brave API keys are now encrypted at rest using AndroidKeyStore AES-256/GCM; saving a key in Settings automatically mirrors it to installed sibling TwoBits apps (Scrybe, PriceDrop); a missing local key is transparently read through from siblings on launch; credential DataStore excluded from Google Auto Backup (encrypted bytes are useless after cloud restore — keys re-populate from siblings)
+* provider credential rows: added optional setup hint and Sign up link (used in PriceDrop; no visual change in Shelf Snap)
+
+**Credential security** — your API keys are now encrypted on this device:
+* OpenAI, Jina, and Brave keys stored with AndroidKeyStore AES-256/GCM
+* saving a key in Settings silently mirrors it to Scrybe and PriceDrop
+* a missing local key reads through from sibling apps on launch — no setup needed
+* credential data excluded from Google Auto Backup; keys re-populate from siblings after restore
 
 ### Improvements
 
-* **Credential bridge** — all keys managed by this app (OpenAI, Jina, Brave) are covered by the bridge; future shared credential types are silently skipped if this app doesn't support them
+* cross-app credential bridge covers OpenAI, Jina, and Brave keys; future shared types silently skipped if unsupported
 
 **Market research** — price research results load significantly faster and return more relevant sold listings:
 * All search queries now run in parallel instead of sequentially, cutting total wait time from ~44s to ~10–15s
@@ -31,21 +36,39 @@
 
 ### Features
 
-* **Listing summary screen** — after cross-listing, a new per-platform summary screen shows expandable cards with AI-generated or template-generated Title, Description, Condition, Price, and Shipping fields; each field has a copy button and the title shows a character count against the platform limit; "Copy all fields" copies everything to the clipboard in one tap; "Refine" calls the OpenAI listing copywriter for a single platform; "Refine all" refines all draft listings in parallel
-* **Inline platform tips** — when a platform is checked in the List tab, tips appear immediately below that platform row (no expand/collapse needed); unchecking hides the tips
-* **Unlist action** — active listings now show an "Unlist" button that moves the listing to Unlisted status and removes it from the active section
-* **Cross-listing now creates Draft listings** — checking platforms and tapping "List on X platforms" generates listing copy and navigates to the summary screen, where "Mark listed" confirms the listing went live
+**Listing summary** — new screen after cross-listing shows per-platform expandable cards:
+* Title, Description, Condition, Price, and Shipping fields each have a copy button
+* title field shows character count against the platform limit
+* "Copy all fields" copies everything to the clipboard at once
+* "Refine" and "Refine all" call the AI listing copywriter to polish your draft
+
+**Inline platform tips** — tips appear directly below each checked platform row:
+* no expand/collapse needed — tips show when you check a platform, hide when you uncheck
+
+**Unlist action** — active listings now have an Unlist button:
+* tapping Unlist moves the listing to Unlisted and removes it from the active section
+
+**Cross-listing flow** — platforms are now created as Drafts before going live:
+* "List on X platforms" generates copy and navigates to the Listing summary screen
+* "Mark listed" in the summary confirms the listing went live on a platform
 
 ### Improvements
 
-* Market research — platform-targeted search queries (site:ebay.com/itm, mercari.com, offerup.com) are now always generated, even for items without a distinct brand/model; generic category items previously received bare text queries that returned 0 sold listings
-* Market research debug panel — a new expandable "Synthesis prompt" section shows the first 800 characters of the AI system prompt used to synthesize price estimates
-* Market research — synthesis URL instruction strengthened: the AI is now instructed to copy exact source URLs from search results rather than synthesize them, reducing hallucinated comp URLs
-* Comparable listings — a source attribution row below the comps list shows which platforms were searched and which provider was used
+**Market research** — platform-targeted queries always run, even for generic items:
+* site:ebay.com/itm, mercari.com, and offerup.com queries generated for all items
+* generic items previously got bare text queries that returned 0 sold listings
+
+**Market research debug** — new expandable Synthesis prompt section:
+* shows the first 800 characters of the AI system prompt used to synthesize price estimates
+
+* market research: AI now instructed to copy exact source URLs rather than synthesizing them, reducing hallucinated comp links
+
+**Comparable listings** — source attribution shown below the comps list:
+* shows which platforms were searched and which AI provider synthesized the estimates
 
 ### Fixes
 
-* Market research — generic-item search queries now build their descriptor from the item's description and category (the `Item` model has no `name` field), restoring the broken Debug/Release Kotlin compilation
+* market research: generic-item query descriptor now uses item.description + category (Item has no name field); fixes Debug/Release compile error
 
 
 
@@ -53,17 +76,27 @@
 
 ### Features
 
-* Market research — **page reading**: when Jina AI is enabled, the top comparable-listing results are now opened and read in full via the Jina Reader (r.jina.ai) so price estimates are based on the actual listing pages (price, condition, sold status), not just search snippets
-* Market research — **transparency**: an inline "search queries" expander shows exactly what was searched, and a new collapsible "Debug info" panel surfaces timings (search / page reading / AI synthesis / total), confidence factors (sold listings, platforms covered, pages read, price variance), and the full per-query log
+**Market research — page reading** — Jina AI now reads full listing pages for better price estimates:
+* top comparable results opened via Jina Reader (r.jina.ai)
+* estimates based on actual listing price, condition, and sold status — not just snippets
+
+**Market research — debug info** — new collapsible panel shows exactly what happened:
+* inline "search queries" expander shows the queries sent
+* timings for search, page reading, AI synthesis, and total duration
+* confidence factors: sold listings found, platforms covered, pages read, price variance
 
 ### Improvements
 
-* Settings sections now use the shared gray uppercase section label (`AppSectionLabel`) rendered above the card — consistent with the design system spec and aligned with the other apps
-* AI configuration — web search providers are now independently toggleable: Jina AI and Brave Search each have their own enable/disable switch, so both can be active simultaneously. The two now play distinct roles — Jina both searches and reads listing pages, while Brave adds a second independent search index for broader coverage; with both on, results are merged and the top pages are read via Jina
+* Settings sections use shared AppSectionLabel (gray uppercase label above each card) — consistent with other TwoBits apps
+
+**AI configuration** — Jina AI and Brave Search now have independent toggles:
+* both can be active simultaneously for broader search coverage
+* Jina searches and reads listing pages; Brave adds an independent search index
+* with both on, results are merged and top pages are read via Jina
 
 ### Fixes
 
-* AI configuration: the Pro row "Not subscribed" status badge no longer wraps to two lines — the shared credential row now keeps the badge on a single line and ellipsizes the title when space is tight
+* AI config: Pro row "Not subscribed" badge no longer wraps to two lines on narrow screens
 
 
 
@@ -74,14 +107,16 @@
 
 ### Improvements
 
-* shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop; Shelf Snap web-search key panels (Jina, Brave) now also use `ProviderCredentialCard` for consistent save/test/clear feedback
-* platform listing-tips toggle now shows platform name in the label ("eBay listing tips") instead of the generic "Tips"
-* README: updated Setup section to clarify which providers need keys (OpenAI + optional Jina AI or Brave) with direct links; updated feature descriptions to reflect current model names
+**AI Config key panels** — Jina and Brave key fields now use the shared credential card:
+* consistent Save, Test, and Clear buttons with inline success/error feedback
+
+* listing tips label now shows the platform name ("eBay listing tips") instead of generic "Tips"
+
+* README: updated provider setup section with current model names and Jina/Brave key requirements
 
 ### Fixes
 
-* replace hardcoded "GPT-4o analysis" label with the actual model name used during analysis (tracked as `lastAnalysisModel` in UI state; defaults to `VisionModel.default.displayName` for items analysed before this version)
-
+* Item Detail: "GPT-4o analysis" label now shows the actual model name used (tracked in UI state)
 
 
 
@@ -104,9 +139,7 @@
 
 ### Fixes
 
-* `MarketTab` comp status chip used the removed `filter_unlisted` string resource — replaced with `status_listed`
-
-
+* MarketTab: comp status chip fixed to use status_listed (filter_unlisted was removed)
 
 
 
@@ -126,9 +159,6 @@
 
 
 
-
-
-
 ## 1.11.0 (2026-06-19)
 
 ### Features
@@ -138,10 +168,6 @@
 * migrated to shared `gradle/libs.versions.toml` version catalog across all three apps; upgraded Compose BOM to 2024.12.01, coreKtx to 1.15.0, lifecycleRuntimeKtx to 2.8.7, and navigationCompose to 2.8.5
 
 ### Fixes
-
-
-
-
 
 
 
@@ -182,11 +208,6 @@
 
 
 
-
-
-
-
-
 ## 1.9.0 (2026-06-17)
 
 ### Features
@@ -206,12 +227,6 @@
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
 * `ProScreen` top bar extracted into private composable — satisfies ktlint function-body-expression rules without changing visible behaviour
-
-
-
-
-
-
 
 
 
@@ -258,13 +273,6 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.7.0 (2026-06-11)
 
 ### Features
@@ -282,14 +290,6 @@
 
 
 
-
-
-
-
-
-
-
-
 ## 1.6.0 (2026-06-11)
 
 ### Features
@@ -303,15 +303,6 @@
 * test result (connected or error message) shown inline below the buttons
 
 ### Fixes
-
-
-
-
-
-
-
-
-
 
 
 
@@ -348,16 +339,6 @@
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
 * missing FilterChip import in MarketTab restored after wildcard-import replacement
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -399,16 +380,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
 ## 1.3.1 (2026-06-06)
 
 ### Improvements
@@ -418,31 +389,11 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
 ## 1.3.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -479,16 +430,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
 ## 1.1.3 (2026-06-05)
 
 ### Improvements
@@ -498,31 +439,11 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
 ## 1.1.2 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -537,32 +458,12 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
 ## 1.1.0 (2026-06-04)
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -576,16 +477,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
 ## 1.0.1 (2026-06-03)
 
 ### Features
@@ -595,29 +486,9 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -315,6 +315,24 @@ The CI `changelog` job blocks merges when the changelog was not updated alongsid
 
 Changelog entries are parsed and displayed in the **What's New** screen inside each app. Two formats are supported; choose based on whether the change warrants detail:
 
+#### How entries appear in the What's New dialog and history screen
+
+The parser maps each Format A entry to a two-level row in the dialog:
+
+- The `**bold**` text before ` — ` becomes the **collapsed item TITLE** — visible at all times, even when the row is closed.
+- The text after ` — ` plus any `* ` sub-bullets become the **DESCRIPTION** shown when the user taps the row.
+- Sub-bullets are joined with ` · ` (middle-dot space) in the rendered dialog, so each `* ` line becomes a readable bullet point in the expanded view.
+
+**Practical consequence:** a long semicolon-joined description with no sub-bullets appears as one wall of text in the dialog. Sub-bullets make the expanded view readable. Always break details into `* ` bullets rather than packing them into the intro sentence.
+
+#### Keep it short — length rules for every field
+
+| Field | Rule |
+|---|---|
+| Bold title | 2–5 words max; use the screen or component name (e.g. "Playback area", "AI Config", "Pro screen") |
+| Intro after ` — ` | One sentence, max ~15 words — just enough context; details go in bullets |
+| Sub-bullets | Max ~12 words each; one fact per bullet; 2–4 bullets is typical |
+
 #### Format A — any user-visible change (Features and Improvements)
 
 Use Format A whenever the change is something a user would notice in the app — new screens, redesigned UI, new settings, changed behaviour, performance improvements the user feels, etc. This applies to entries in **both** `### Features` and `### Improvements`.
@@ -351,6 +369,28 @@ Use Format A whenever the change is something a user would notice in the app —
 * CI no longer fires duplicate runs — push trigger restricted to main
 ```
 
+#### What NOT to do — the wall-of-text antipattern
+
+**Wrong — everything crammed into the intro sentence, no bullets:**
+
+```markdown
+**Credential security + cross-app sharing** — all BYOK API keys (OpenAI, Jina/Web search, SerpAPI, Keepa, Couponlayer, Rainforest) are now encrypted at rest using AndroidKeyStore AES-256/GCM; all six keys auto-mirror to installed sibling TwoBits apps when saved and are read through from siblings on a local miss; credential DataStore excluded from Google Auto Backup
+```
+
+In the dialog this renders as one unbroken wall of text after the title expands. The title is also too long (5+ words with a `+`).
+
+**Correct — short title, short intro, details in bullets:**
+
+```markdown
+**Credential security** — all BYOK API keys are now encrypted on this device:
+* OpenAI, Jina, SerpAPI, Keepa, Couponlayer, and Rainforest keys use AndroidKeyStore AES-256/GCM
+* saving any key silently mirrors it to installed sibling TwoBits apps
+* a missing local key reads through from sibling apps — no manual import needed
+* credential data excluded from Google Auto Backup
+```
+
+Each bullet is one fact, under 12 words, and the expanded view is scannable.
+
 #### Format B — internal/infra change only (flat non-expandable row)
 
 Use Format B **only** when the change is invisible to the user: CI tweaks, build fixes, dependency bumps, tooling changes, ProGuard rules, release workflow adjustments. If a user would notice it, use Format A instead.
@@ -361,6 +401,12 @@ Use Format B **only** when the change is invisible to the user: CI tweaks, build
 
 - Renders as a non-interactive single-line row with no expand chevron.
 - Can appear anywhere in a section, mixed with Format A entries (separated by a blank line from any preceding bold-title block).
+
+**Always use Format B (never Format A) for:**
+- `Shared: …` prefix items — cross-app shared-module changes with no per-app visible effect
+- `(no visual change)` items — internal refactors, renames, or extraction with identical user output
+- Internal credential bridge wiring — the bridge syncs keys silently; there is no user-facing UI change
+- Any change the user cannot see, feel, or configure
 
 #### Category → icon mapping in the WhatsNew screen
 

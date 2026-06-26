@@ -4,37 +4,65 @@
 
 ### Features
 
-* **Bulk speaker re-identification** — the People screen's "Re-identify all" button now iterates every session with an audio file and re-runs speaker diarization sequentially
+**Bulk speaker re-identification** — re-run diarization across all sessions from the People screen:
+* tap "Re-identify all" on any session that has an audio file to regenerate speaker assignments
 
 ### Improvements
 
 ### Fixes
 
-* **Bulk re-identification — preserve person assignments** — `reIdentifyAll()` and automatic post-transcription diarization now snapshot existing `personId` links before replacing speaker rows and restore them after, so manually assigned speaker identities are not lost when diarization re-runs
+**Speaker re-identification** — manually assigned person links are now preserved when diarization re-runs:
+* existing personId assignments are snapshotted before speaker rows are replaced and restored after
 
 ## 1.24.0 (2026-06-25)
 
 ### Features
 
-* **Transcript result panel** — after a recording stops and auto-transcription completes, the capture screen keeps the active view open and shows the finished transcript inline; a "Done" button dismisses and returns to the session list
-* **Shared: CollapsibleProviderRow setup guide** — the shared credential row component now accepts optional `setupHint` and `signupUrl` parameters; when present and no key is configured, the expanded row shows step-by-step setup instructions and a Sign up link (used by PriceDrop AI config; no visual change in Scrybe)
-* **Credential security + cross-app sharing** — OpenAI key is now encrypted at rest using AndroidKeyStore AES-256/GCM; entering or changing the key in Settings automatically mirrors it to installed sibling TwoBits apps (Shelf Snap, PriceDrop); a missing local key is transparently read through from siblings on launch — no UI, no opt-in
+**Transcript result panel** — capture screen shows the finished transcript before you leave:
+* transcript appears inline as soon as auto-transcription completes
+* "Done" button dismisses the panel and returns to the session list
+
+* provider credential rows (PriceDrop AI Config): step-by-step setup instructions and Sign up link when no key is set
+
+**Credential security** — your OpenAI API key is now encrypted on this device:
+* stored with AndroidKeyStore AES-256/GCM — unreadable outside the app
+* saving your key in Settings silently mirrors it to Shelf Snap and PriceDrop
+* a missing local key reads through from sibling apps on launch — no setup needed
 
 ### Improvements
 
-* **Credential bridge** — the shared credential registry now covers all keys across the TwoBits suite (Brave, SerpAPI, Keepa, Couponlayer, Rainforest) in addition to OpenAI and Jina; Scrybe silently skips keys it doesn't use
+* cross-app credential sharing extended to SerpAPI, Keepa, Couponlayer, and Rainforest (Scrybe skips unused keys)
 
-* **Playback area** — removed the redundant seek slider below the waveform; tap or drag anywhere on the waveform to seek (playhead indicator visible); the marker legend (topics / sentiment) and time labels remain unchanged
-* **Session metadata** — audio quality details now show as separate labelled rows (Format, Quality, File size) instead of a single cramped line; sample rate is displayed with one decimal place where needed (e.g. "44.1 kHz" instead of "44 kHz")
-* **Profiles typography** — dialog and bottom sheet headings (AI Profile Draft, Review draft, Draft failed, New profile, Drafting profile) now use `titleMedium` instead of oversized `titleLarge`; removed unused internal `AiDraftModelInfoCard` composable
-* **Custom type in-app help** — the "New recording type" dialog now shows a one-sentence explanation of what custom types do; each custom type button in the mode picker now shows the linked transform profile name (or "Plain transcript" if none), matching how standard modes show their output description
+**Playback area** — cleaner controls under the waveform:
+* seek slider removed; tap or drag directly on the waveform to scrub
+* playhead indicator stays visible at all times
+
+**Session metadata** — audio quality shown as separate labelled rows:
+* Format, Quality, and File size each get their own row (was one cramped line)
+* sample rate shows one decimal place (e.g. "44.1 kHz" instead of "44 kHz")
+
+**Profiles typography** — dialog headings scaled down for better proportion:
+* AI Profile Draft, Review draft, Draft failed, and New profile sheets use titleMedium
+
+**Custom type in-app help** — the mode picker is now self-describing:
+* "New recording type" dialog explains what custom types do
+* each custom type button shows its linked transform profile name (or "Plain transcript")
 
 ### Fixes
 
-* **CaptureScreen build** — added missing `verticalScroll` import that caused a compile failure in release builds
-* **Audio import** — MP3 and other formats that failed with "audio format may not be supported" now import correctly; metadata is read via file descriptor (more reliable across Android versions and codecs) and falls back to sensible defaults rather than blocking the import if metadata cannot be read
-* **Custom recording types** — sessions recorded with a user-defined type are now stamped with mode `CUSTOM` (was `JOURNAL`); the history badge, mode filter chips, and waveform bar now use a secondary accent color and label icon to visually distinguish custom-type sessions from plain journal recordings
-* **Import waveform** — imported audio files now generate a real waveform visualisation (amplitude over time via `MediaCodec` decode) instead of an empty bar; falls back gracefully to no waveform if decoding fails
+* CaptureScreen: fixed compile failure caused by missing verticalScroll import
+
+**Audio import** — MP3 and other formats that showed "audio format may not be supported" now import correctly:
+* metadata read via file descriptor (more reliable across Android versions and codecs)
+* falls back to sensible defaults if metadata cannot be read, rather than blocking
+
+**Custom recording types** — now visually distinct from Journal recordings in history:
+* sessions stamped as CUSTOM mode instead of JOURNAL
+* history badge, filter chips, and waveform bar use a secondary accent color and icon
+
+**Import waveform** — imported recordings now show a real waveform instead of an empty bar:
+* amplitude waveform generated via MediaCodec decode after import
+* falls back gracefully if decoding fails
 
 
 ## 1.23.0 (2026-06-24)
@@ -43,13 +71,19 @@
 
 ### Improvements
 
-* **Format picker** — audio format in Settings now uses a dialog selector with a description of each codec (AAC, MP3, MP4, OGG, WAV, WEBM) instead of a cramped segmented-button row; the selected format's description is shown inline on the settings row
+**Format picker** — audio format now uses a dialog with codec descriptions:
+* choose from AAC, MP3, MP4, OGG, WAV, or WEBM with a description of each
+* selected format's description shown inline on the settings row
 
 ### Fixes
 
-* **Settings build fix** — restored missing `SingleChoiceSegmentedButtonRow` / `SegmentedButton` / `SegmentedButtonDefaults` imports that were accidentally dropped when converting the audio format picker to a dialog; the Appearance / theme-mode segmented row uses them and would not compile
-* **Profile draft error** — if the AI draft call fails, a "Draft failed" bottom sheet now appears with the error message and a Dismiss button; previously the error state was silent and the user was left looking at the profile list with no feedback
-* **Profile review sheet** — added "Edit in full editor" button that opens the `ProfileEditorDialog` pre-populated with the AI draft so users can set the icon, color, mode, and other fields before saving
+* Settings: restored missing SegmentedButton imports dropped when converting the audio format picker
+
+**Profile draft error** — failed AI drafts now show an error sheet instead of silently failing:
+* "Draft failed" bottom sheet appears with the error message and a Dismiss button
+
+**Profile review sheet** — "Edit in full editor" button opens the profile editor pre-filled with the AI draft:
+* set the icon, color, mode, and other fields before saving
 
 
 
@@ -57,18 +91,34 @@
 
 ### Features
 
-* **New profile unified sheet** — "New Profile" now opens a single bottom sheet combining manual and AI-draft creation: Name field, Prompt field, a tappable model selector showing the selected model name and description (opens a full picker dialog with all available models), "Draft with AI" primary button, and "Save profile" direct-save button
-* **Animated drafting progress sheet** — while AI generates a profile, a 3-step progress sheet (Context extraction → Profile drafting → Self-critique) shows animated step indicators and a call counter; replaces the former inline spinner
-* **Review draft sheet** — after AI finishes, an editable text area shows the generated prompt; a "3 calls · N tokens" chip shows token usage; a "Refine with AI" input lets the user iterate; "Save profile" commits the edited text directly
-* **People screen — rich speaker cards** — each person now shows in a card with a color-coded avatar circle (initial letter), inline rename icon, session count / talk-time % / segment count stats, an animated progress bar, and direct Merge and Delete icon buttons (replacing the 3-dot menu)
-* **People screen — Re-identify** — "Re-identify" button in the top-right opens a confirmation dialog for re-running speaker diarization across all sessions
+**New profile sheet** — "New Profile" opens a single sheet combining manual and AI-draft creation:
+* Name and Prompt fields, model selector, "Draft with AI", and "Save profile" in one place
+* model selector shows name and description; tapping opens a full model picker dialog
+
+**AI drafting progress** — animated 3-step progress sheet while the AI builds your profile:
+* steps: Context extraction → Profile drafting → Self-critique
+* call counter shown during generation; replaces the former inline spinner
+
+**Review draft sheet** — review and refine the AI-generated prompt before saving:
+* editable text area shows the generated prompt
+* "3 calls · N tokens" chip shows usage; "Refine with AI" input lets you iterate
+
+**People screen** — speaker cards redesigned with stats and direct actions:
+* color-coded avatar, inline rename, session count, talk-time %, and segment count
+* Merge and Delete icon buttons replace the 3-dot menu
+
+**People screen — Re-identify** — re-run speaker diarization across all sessions:
+* "Re-identify" button in the top-right opens a confirmation dialog before running
 
 ### Improvements
 
-* **AI draft model selection consolidated to creation screen** — the "Profile draft model" setting has been removed from Settings → AI Config; model selection now lives exclusively in the New Profile sheet where it's used, persisting the last selection across drafts
-* Shared design: `CollapsibleProviderRow` added to `ProviderCredentialCard.kt` — a new composable for credential rows that collapse to a Connected or Not Configured badge (no changes to existing `ProviderCredentialCard` callers)
-* `ProfileSuggestion` now carries `tokensUsed` populated from OpenAI response usage; the Review draft sheet displays the total token count
-* `PersonDao` gains `segmentCountForPerson` and `talkRatioForPerson` queries for the People screen stat row
+**AI draft model** — model selection moved from Settings into the New Profile sheet:
+* model picker now lives where it's used; last selection persists across drafts
+* "Profile draft model" setting removed from Settings → AI Config
+
+* CollapsibleProviderRow added to shared design for credential rows with Connected/Not Configured badges
+* ProfileSuggestion now carries tokensUsed from OpenAI response; shown in Review draft sheet
+* PersonDao gains segmentCountForPerson and talkRatioForPerson for the People screen stats
 
 ### Fixes
 
@@ -81,14 +131,13 @@
 
 ### Improvements
 
-* Settings sections now use the shared gray uppercase section label (`AppSectionLabel`) rendered above the card — consistent with the design system spec and the other apps
+* Settings sections use the shared AppSectionLabel (gray uppercase label above each card) — consistent with other TwoBits apps
 
 ### Fixes
 
-* Profiles: profile card name and description text is now smaller (`titleSmall` / `labelSmall`) so all content fits on narrow screens without overflow
-* Profiles: "New Profile" and "AI Draft" buttons no longer truncate their labels (e.g. "New Pro…") on narrow screens — reduced button content padding so the icon + full label fit
+* Profiles: card name (titleSmall) and description (labelSmall) now smaller so content fits on narrow screens
+* Profiles: "New Profile" and "AI Draft" buttons no longer truncate on narrow screens — reduced button padding
 * AI credential rows (shared): status badge no longer wraps to two lines when the provider title is long — the badge stays on one line and the title ellipsizes instead
-
 
 
 
@@ -99,12 +148,12 @@
 
 ### Improvements
 
-* shared design module gains a reusable per-provider credential card (`ProviderCredentialCard`) and `ProTierCard` — adopted by PriceDrop and Shelf Snap; no change to Scrybe behaviour
-* README: added a "Custom recording types" guide (system prompt authoring, `{{transcript}}` placeholder, persistence); expanded Quick Start provider table with BYOK/Pro/local key-setup steps
+* shared design: ProviderCredentialCard and ProTierCard components added (adopted by PriceDrop and Shelf Snap; no Scrybe change)
+* README: added Custom recording types guide and expanded BYOK/Pro/local provider setup steps
 
-**AI Profile Draft dialog** — tightened layout and removed redundant seed fields:
-* "Seed name" and "Seed description" fields removed — the AI generates a name and description from the request; users refine via the refinement section after the first draft
-* dialog title scaled down from `headlineSmall` to `titleLarge` for better proportion
+**AI Profile Draft** — layout tightened; redundant fields removed:
+* "Seed name" and "Seed description" fields removed — AI generates these from your request
+* dialog title scaled down from headlineSmall to titleLarge
 
 **Live transcript panel** — the recording screen now shows a contextual panel during capture:
 * pulsing microphone indicator while recording ("Transcript will appear when recording stops")
@@ -117,12 +166,10 @@
 
 ### Fixes
 
-* custom recording type name now displays correctly in the history badge — previously all custom-typed sessions showed "Journal" because `customTypeId` was not mapped into `RecordingSession` and the badge only read `RecordingMode`
-* audio import now shows an actionable error ("Could not read file — format may not be supported") instead of a raw hex code when `setDataSource` fails
-* imported recordings now prompt for a date before import, defaulting to the file's last-modified timestamp; the chosen date is used as the session's `createdAt` so history sort order is correct
-* fix build: add `@OptIn(ExperimentalMaterial3Api::class)` to `ImportTimestampDialog` (DatePicker/DatePickerDialog APIs still experimental in the Compose BOM in use)
-
-
+* custom recording type names now show correctly in history badges (was always "Journal" due to missing customTypeId mapping)
+* audio import: shows "Could not read file — format may not be supported" instead of raw hex on setDataSource failure
+* imported recordings prompt for a date (defaulting to file's last-modified timestamp) so history sort order is correct
+* DatePicker/DatePickerDialog: added @OptIn(ExperimentalMaterial3Api::class) to ImportTimestampDialog
 
 
 
@@ -147,9 +194,6 @@
 
 
 
-
-
-
 ## 1.18.0 (2026-06-21)
 
 ### Features
@@ -170,10 +214,6 @@
 
 
 
-
-
-
-
 ## 1.17.0 (2026-06-19)
 
 ### Features
@@ -184,11 +224,6 @@
 * release workflow now uses `git rebase --autostash` so the changelog changes written by `promote-release` are preserved across the rebase instead of aborting it
 
 ### Fixes
-
-
-
-
-
 
 
 
@@ -225,12 +260,6 @@
 
 
 
-
-
-
-
-
-
 ## 1.15.0 (2026-06-17)
 
 ### Features
@@ -261,13 +290,6 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.14.0 (2026-06-15)
 
 ### Features
@@ -287,13 +309,6 @@
 * location capture now falls back to `PRIORITY_HIGH_ACCURACY` when the balanced-power request returns no fix (e.g. cold start with no cached location)
 * tapping the recording pill while already on the sessions list (minimized recording) now correctly restores the recording controls — previously the `launchSingleTop` navigate was a no-op and the lifecycle effect did not refire
 * start FAB is hidden while a recording is minimized — previously it remained visible and tapping it could send a second ACTION_START to the foreground service while a recording was already in progress
-
-
-
-
-
-
-
 
 
 
@@ -354,13 +369,6 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.12.0 (2026-06-11)
 
 ### Features
@@ -394,13 +402,6 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.11.0 (2026-06-11)
 
 ### Features
@@ -424,13 +425,6 @@
 * transcript tab shows speaker color pills (colored 8 dp squares + labels) above the transcript when multiple speakers are detected
 
 ### Fixes
-
-
-
-
-
-
-
 
 
 
@@ -469,13 +463,6 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.9.0 (2026-06-08)
 
 ### Improvements
@@ -498,25 +485,11 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.8.3 (2026-06-06)
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
-
-
-
-
-
-
-
 
 
 
@@ -535,13 +508,6 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.8.1 (2026-06-06)
 
 ### Improvements
@@ -556,26 +522,12 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.8.0 (2026-06-06)
 
 ### Improvements
 
 **GitHub Actions** — CI trigger optimization:
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
-
-
-
-
-
-
-
 
 
 
@@ -602,13 +554,6 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.6.2 (2026-06-05)
 
 ### Improvements
@@ -619,26 +564,12 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.6.1 (2026-06-04)
 
 ### Improvements
 
 **GitHub Actions** — duplicate release prevention:
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
-
-
-
-
-
-
-
 
 
 
@@ -662,13 +593,6 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.5.0 (2026-06-04)
 
 ### Improvements
@@ -678,13 +602,6 @@
 
 **Documentation** — monorepo migration and developer guidelines:
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
-
-
-
-
-
-
-
 
 
 
@@ -707,26 +624,12 @@
 
 
 
-
-
-
-
-
-
-
 ## 1.3.0 (2026-06-03)
 
 ### Improvements
 
 **Managed API Proxy** — vision pricing documentation:
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
-
-
-
-
-
-
-
 
 
 
@@ -739,7 +642,7 @@
 * add twobits GitHub Pages marketing site — four-page static site in docs/ (index.html, scrybe.html, shelf-snap.html, privacy.html) copied pixel-faithfully from the Claude Design handoff; shared site.css with full design token system (DM Sans, dark palette, signal/ember/brand color scheme); pages workflow deploys to GitHub Pages on push to main; all inter-page links use clean URL-friendly filenames; covers landing, Scrybe product + Play Store listing, Shelf-Snap product + Play Store listing, Privacy data tables + FAQ
 
 **Billing** — interceptor sheet:
-* add ProGate composable to core:design — ModalBottomSheet paywall interceptor with two paths: “Go Pro” (purchase) and “Use your own API key” (navigate to settings); drop it anywhere an AI feature needs to be gated behind Pro or a BYOK key
+* add ProGate composable to core:design — ModalBottomSheet paywall interceptor with two paths: "Go Pro" (purchase) and "Use your own API key" (navigate to settings); drop it anywhere an AI feature needs to be gated behind Pro or a BYOK key
 
 ### Improvements
 

@@ -46,6 +46,7 @@ STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACM)
 
 STAGED_SCRYBE_CODE=$(echo "$STAGED_ALL" | grep -E \
     "^apps/scrybe/|^shared/|^Dockerfile\.dev$|^docker-compose\.yml$|^\.dockerignore$|^\.github/workflows/scrybe" \
+    | grep -v "^apps/scrybe/CHANGELOG\.md$" \
     || true)
 STAGED_SCRYBE_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/scrybe/CHANGELOG.md" || true)
 
@@ -64,6 +65,7 @@ ok "Scrybe changelog update check"
 
 STAGED_SHELF_SNAP_CODE=$(echo "$STAGED_ALL" | grep -E \
     "^apps/shelf-snap/|^shared/|^\.github/workflows/shelf-snap" \
+    | grep -v "^apps/shelf-snap/CHANGELOG\.md$" \
     || true)
 STAGED_SHELF_SNAP_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/shelf-snap/CHANGELOG.md" || true)
 
@@ -82,6 +84,7 @@ ok "Shelf Snap changelog update check"
 
 STAGED_PRICE_DROP_CODE=$(echo "$STAGED_ALL" | grep -E \
     "^apps/price-drop/|^shared/|^\.github/workflows/pricedrop" \
+    | grep -v "^apps/price-drop/CHANGELOG\.md$" \
     || true)
 STAGED_PRICE_DROP_CHANGELOG=$(echo "$STAGED_ALL" | grep -x "apps/price-drop/CHANGELOG.md" || true)
 
