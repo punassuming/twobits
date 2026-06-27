@@ -38,6 +38,7 @@
 ### Fixes
 
 * Ask AI (Pro): chat requests now identify the app to the managed proxy, fixing a "Pro subscription required" error for PriceDrop Pro subscribers (the shared OpenAI proxy was checking the wrong entitlement)
+* Ask AI and URL product extraction (Pro): the model is now chosen by the managed service, so we can tune quality/cost without an app update; BYOK still uses your selected model
 * AI Config: Keepa sign-up link now opens the correct Keepa API subscription page
 * adding a product by URL: title and price extracted by Jina + OpenAI are now saved (was always "Product from URL" / $0.00)
 * Settings → Privacy: "Export data" now shares the watchlist as JSON via the system share sheet (was a no-op)

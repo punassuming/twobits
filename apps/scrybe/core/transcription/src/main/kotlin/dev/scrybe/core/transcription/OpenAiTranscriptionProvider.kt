@@ -103,7 +103,7 @@ class OpenAiTranscriptionProvider
                     .url("${endpoint.baseUrl}/v1/audio/transcriptions")
                     .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("X-TwoBits-App", "scrybe")
-                    .header("X-Audio-Model", options.model)
+                    .header("X-TwoBits-Op", "transcribe")
                     .header("Accept", "application/json")
                     .post(requestBody)
                     .build()

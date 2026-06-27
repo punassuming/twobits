@@ -141,6 +141,7 @@ class PriceResearchService
                                 .url("$openAiBaseUrl/$endpoint")
                                 .addHeader("Authorization", openAiAuthHeader)
                                 .addHeader("X-TwoBits-App", "shelfsnap")
+                                .addHeader("X-TwoBits-Op", "price-research")
                                 .addHeader("Content-Type", "application/json")
                                 .post(gson.toJson(requestBody).toRequestBody(json))
                                 .build()

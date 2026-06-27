@@ -95,6 +95,7 @@ class OpenAiTaskExtractionService
                     .url("${endpoint.baseUrl}/v1/responses")
                     .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("X-TwoBits-App", "scrybe")
+                    .header("X-TwoBits-Op", "task-extract")
                     .header("Content-Type", "application/json")
                     .post(
                         json

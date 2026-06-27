@@ -14,6 +14,7 @@
 **Shelf Snap Pro — independent subscription:**
 * Shelf Snap Pro is now its own subscription (shelfsnap_pro entitlement), separate from Scrybe and PriceDrop Pro
 * managed requests carry an app identifier so the Worker verifies the Shelf Snap entitlement specifically
+* in Pro, the model for vision analysis, price research, and listing generation is chosen by the managed service, so we can tune quality/cost without an app update; BYOK still uses your selected model
 
 **Vision model default** — item analysis now uses GPT-5 mini by default:
 * default changed from GPT-5 ($1.25/$10 per 1M tokens) to GPT-5 mini ($0.25/$2 per 1M tokens) — 5× cheaper with comparable accuracy for draft generation

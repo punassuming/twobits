@@ -190,7 +190,7 @@ class PriceDropApiClient
                     addProperty("model", model)
                     add("messages", messages)
                 }
-            val dto = post("$baseUrl/v1/chat/completions", body, ChatResponseDto::class.java, authHeader)
+            val dto = post("$baseUrl/v1/chat/completions", body, ChatResponseDto::class.java, authHeader, op = "chat")
             return dto.choices
                 .firstOrNull()
                 ?.message
@@ -593,7 +593,7 @@ class PriceDropApiClient
                         )
                     }
                 val dto =
-                    post("$baseUrl/v1/chat/completions", body, ChatResponseDto::class.java, authHeader)
+                    post("$baseUrl/v1/chat/completions", body, ChatResponseDto::class.java, authHeader, op = "extract-product")
                 val json =
                     gson.fromJson(
                         dto.choices
@@ -627,9 +627,10 @@ class PriceDropApiClient
             body: JsonObject,
             type: Class<T>,
             authHeader: String,
+            op: String? = null,
         ): T =
             withContext(Dispatchers.IO) {
-                val request =
+                val builder =
                     Request
                         .Builder()
                         .url(url)
@@ -637,7 +638,8 @@ class PriceDropApiClient
                         .addHeader("X-TwoBits-App", "pricedrop")
                         .addHeader("Content-Type", "application/json")
                         .post(gson.toJson(body).toRequestBody(jsonMedia))
-                        .build()
+                if (op != null) builder.addHeader("X-TwoBits-Op", op)
+                val request = builder.build()
                 client.newCall(request).execute().use { response ->
                     val text = response.body?.string().orEmpty()
                     if (!response.isSuccessful) {

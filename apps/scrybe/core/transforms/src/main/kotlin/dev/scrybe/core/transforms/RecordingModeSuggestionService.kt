@@ -77,6 +77,7 @@ class RecordingModeSuggestionService
                     .url("${endpoint.baseUrl}/v1/responses")
                     .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("X-TwoBits-App", "scrybe")
+                    .header("X-TwoBits-Op", "recording-mode")
                     .header("Content-Type", "application/json")
                     .post(json.encodeToString(ApiRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA))
                     .build()

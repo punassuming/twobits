@@ -171,6 +171,7 @@ class OpenAiClusteringService
                     .url("${endpoint.baseUrl}/v1/responses")
                     .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("X-TwoBits-App", "scrybe")
+                    .header("X-TwoBits-Op", "cluster")
                     .header("Content-Type", "application/json")
                     .post(json.encodeToString(OpenAiResponseRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA_TYPE))
                     .build()

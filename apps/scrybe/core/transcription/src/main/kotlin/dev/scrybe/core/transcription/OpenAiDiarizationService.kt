@@ -124,7 +124,7 @@ class OpenAiDiarizationService
                     .url("${endpoint.baseUrl}/v1/audio/transcriptions")
                     .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("X-TwoBits-App", "scrybe")
-                    .header("X-Audio-Model", "whisper-1")
+                    .header("X-TwoBits-Op", "diarize-audio")
                     .post(requestBody)
                     .build()
 
@@ -200,6 +200,7 @@ class OpenAiDiarizationService
                     .url("${endpoint.baseUrl}/v1/responses")
                     .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("X-TwoBits-App", "scrybe")
+                    .header("X-TwoBits-Op", "diarize-assign")
                     .header("Content-Type", "application/json")
                     .post(
                         json
