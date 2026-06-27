@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":core:base"))
     implementation("com.twobits.core:network")
     implementation("com.twobits.core:secure-store")
+    implementation("com.twobits.core:billing")
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
     implementation(libs.retrofit)

@@ -20,7 +20,7 @@ class OpenAiInsightService
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
     ) : InsightService {
         override suspend fun analyzeSentiment(
             transcriptText: String,
@@ -29,9 +29,7 @@ class OpenAiInsightService
         ): Result<String> =
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
                     val prompt =
                         """
                         Analyze the sentiment of this transcript over time. Duration: ${durationMs}ms.
@@ -39,7 +37,7 @@ class OpenAiInsightService
                         Use POSITIVE, NEGATIVE, or NEUTRAL. Cover the entire duration without gaps.
                         Transcript: ${transcriptText.take(800)}
                         """.trimIndent()
-                    val raw = callOpenAi(apiKey, prompt)
+                    val raw = callOpenAi(endpoint, prompt)
                     unwrapJson(raw).ifBlank { """[{"startMs":0,"endMs":$durationMs,"sentiment":"NEUTRAL"}]""" }
                 }
             }
@@ -51,9 +49,7 @@ class OpenAiInsightService
         ): Result<String> =
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
                     val prompt =
                         """
                         Extract key topics from this transcript. Estimate when each topic is discussed within ${durationMs}ms.
@@ -61,13 +57,13 @@ class OpenAiInsightService
                         Keep labels short (2-4 words). Return 5-15 topics.
                         Transcript: ${transcriptText.take(1200)}
                         """.trimIndent()
-                    val raw = callOpenAi(apiKey, prompt)
+                    val raw = callOpenAi(endpoint, prompt)
                     unwrapJson(raw).ifBlank { "[]" }
                 }
             }
 
         private fun callOpenAi(
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             userPrompt: String,
         ): String {
             val requestBody =
@@ -86,8 +82,8 @@ class OpenAiInsightService
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/responses")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/responses")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("Content-Type", "application/json")
                     .post(
                         json

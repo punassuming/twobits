@@ -1,7 +1,7 @@
 package dev.scrybe.core.transforms
 
-import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.ApiKeyProvider
+import dev.scrybe.core.transcription.OpenAiEndpoint
+import dev.scrybe.core.transcription.OpenAiEndpointResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -31,7 +31,7 @@ class OpenAiClusteringService
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
     ) {
         suspend fun suggestClusters(
             sessions: List<SessionSummary>,
@@ -44,13 +44,11 @@ class OpenAiClusteringService
                         "At least one recording is required for clustering"
                     }
 
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
                     val response =
                         executeResponseRequest(
-                            apiKey = apiKey,
+                            endpoint = endpoint,
                             instructions = buildInstructions(),
                             userMessage =
                                 buildUserMessage(
@@ -148,7 +146,7 @@ class OpenAiClusteringService
         }
 
         private fun executeResponseRequest(
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             instructions: String,
             userMessage: String,
         ): OpenAiResponseResponse {
@@ -170,8 +168,8 @@ class OpenAiClusteringService
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/responses")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/responses")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("Content-Type", "application/json")
                     .post(json.encodeToString(OpenAiResponseRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA_TYPE))
                     .build()

@@ -14,6 +14,11 @@
 * GPT-4o mini Transcribe and GPT-4o Transcribe added as selectable models in Settings
 * all LLM transform calls (summarize, tasks, tags, rename, cluster, search, diarization, sentiment, topics) now have explicit output-token caps, preventing unbounded cost on verbose responses
 
+**Scrybe Pro — managed routing now active:**
+* Pro subscribers' transcription, transforms, diarization, and insight requests now route through the TwoBits managed proxy (api.twobits.app); your own OpenAI key is no longer required on Pro
+* the selected transcription model is sent to the proxy so managed billing reflects the actual per-minute rate (e.g. $0.003/min for GPT-4o mini Transcribe)
+* BYOK (Free) continues to call OpenAI directly with your stored key — unchanged
+
 ### Fixes
 
 **Speaker re-identification** — manually assigned person links are now preserved when diarization re-runs:

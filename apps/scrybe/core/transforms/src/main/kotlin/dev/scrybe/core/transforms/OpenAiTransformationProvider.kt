@@ -2,7 +2,7 @@ package dev.scrybe.core.transforms
 
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.ApiKeyProvider
+import dev.scrybe.core.transcription.OpenAiEndpointResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -20,16 +20,14 @@ class OpenAiTransformationProvider
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
     ) : TransformationProvider {
         override val providerType: ProviderType = ProviderType.OPENAI
 
         override suspend fun transform(input: TransformInput): Result<TransformResult> =
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
                     val modelName =
                         input.modelName?.takeIf { it.isNotBlank() }
@@ -59,8 +57,8 @@ class OpenAiTransformationProvider
                     val request =
                         Request
                             .Builder()
-                            .url("https://api.openai.com/v1/responses")
-                            .header("Authorization", "Bearer $apiKey")
+                            .url("${endpoint.baseUrl}/v1/responses")
+                            .header("Authorization", "Bearer ${endpoint.authToken}")
                             .header("Content-Type", "application/json")
                             .post(json.encodeToString(OpenAiResponseRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA_TYPE))
                             .build()

@@ -29,7 +29,7 @@ class OpenAiDiarizationService
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
         private val debugStore: DiarizationDebugStore,
         private val preferencesDataStore: AppPreferencesDataStore,
     ) : DiarizationService {
@@ -42,11 +42,9 @@ class OpenAiDiarizationService
             runCatching {
                 withContext(Dispatchers.IO) {
                     val debugEnabled = preferencesDataStore.debugDiarization.first()
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
-                    val verboseSegments = transcribeVerbose(audioFile, apiKey)
+                    val verboseSegments = transcribeVerbose(audioFile, endpoint)
                     Log.d(
                         TAG,
                         "verbose transcription: ${verboseSegments.size} segments, " +
@@ -54,7 +52,7 @@ class OpenAiDiarizationService
                     )
                     if (verboseSegments.isEmpty()) return@withContext emptyList()
 
-                    val llmRun = assignSpeakers(verboseSegments, apiKey, debugEnabled)
+                    val llmRun = assignSpeakers(verboseSegments, endpoint, debugEnabled)
 
                     val rawSegments =
                         verboseSegments.mapIndexed { index, segment ->
@@ -98,7 +96,7 @@ class OpenAiDiarizationService
 
         private fun transcribeVerbose(
             audioFile: File,
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
         ): List<VerboseSegment> {
             val mediaType =
                 when (audioFile.extension.lowercase()) {
@@ -123,8 +121,9 @@ class OpenAiDiarizationService
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/audio/transcriptions")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/audio/transcriptions")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
+                    .header("X-Audio-Model", "whisper-1")
                     .post(requestBody)
                     .build()
 
@@ -178,7 +177,7 @@ class OpenAiDiarizationService
 
         private fun callDiarizationLlm(
             prompt: String,
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
         ): String? {
             val requestPayload =
                 OpenAiResponseRequest(
@@ -197,8 +196,8 @@ class OpenAiDiarizationService
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/responses")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/responses")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("Content-Type", "application/json")
                     .post(
                         json
@@ -242,12 +241,12 @@ class OpenAiDiarizationService
 
         private fun assignSpeakers(
             segments: List<VerboseSegment>,
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             debugEnabled: Boolean,
         ): DiarizationLlmRun {
             val prompt = buildDiarizationPrompt(buildSegmentsJson(segments))
             if (debugEnabled) Log.d(TAG, "LLM prompt (${prompt.length} chars): ${prompt.take(500)}")
-            val outputText = callDiarizationLlm(prompt, apiKey)
+            val outputText = callDiarizationLlm(prompt, endpoint)
             if (debugEnabled) Log.d(TAG, "LLM response: ${outputText?.take(500) ?: "<null>"}")
             val assignments = parseAssignments(outputText, segments.size)
             Log.d(TAG, "assignments: ${assignments.groupingBy { it }.eachCount()}")

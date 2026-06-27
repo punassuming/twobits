@@ -1,8 +1,8 @@
 package dev.scrybe.core.transforms
 
-import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.SessionTask
-import dev.scrybe.core.transcription.ApiKeyProvider
+import dev.scrybe.core.transcription.OpenAiEndpoint
+import dev.scrybe.core.transcription.OpenAiEndpointResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -22,7 +22,7 @@ class OpenAiTaskExtractionService
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
     ) {
         suspend fun extractTasks(
             sessionId: String,
@@ -32,11 +32,9 @@ class OpenAiTaskExtractionService
                 withContext(Dispatchers.IO) {
                     require(transcriptText.isNotBlank()) { "Transcript is required for task extraction" }
 
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
-                    val response = executeRequest(apiKey, transcriptText)
+                    val response = executeRequest(endpoint, transcriptText)
 
                     val outputText =
                         response.outputText?.takeIf { it.isNotBlank() }
@@ -67,7 +65,7 @@ class OpenAiTaskExtractionService
             }
 
         private fun executeRequest(
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             transcriptText: String,
         ): TaskResponse {
             val requestBody =
@@ -94,8 +92,8 @@ class OpenAiTaskExtractionService
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/responses")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/responses")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
                     .header("Content-Type", "application/json")
                     .post(
                         json
