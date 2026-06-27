@@ -140,6 +140,8 @@ class PriceResearchService
                                 .Builder()
                                 .url("$openAiBaseUrl/$endpoint")
                                 .addHeader("Authorization", openAiAuthHeader)
+                                .addHeader("X-TwoBits-App", "shelfsnap")
+                                .addHeader("X-TwoBits-Op", "price-research")
                                 .addHeader("Content-Type", "application/json")
                                 .post(gson.toJson(requestBody).toRequestBody(json))
                                 .build()
@@ -285,12 +287,15 @@ class PriceResearchService
             for (query in queries) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
                 runCatching {
-                    val bodyJson = """{"query":${gson.toJson(query)},"provider":"jina","limit":8}"""
+                    // "searchapi" honors site: operators (Jina silently ignores them), so the
+                    // platform-targeted queries below actually return marketplace listings.
+                    val bodyJson = """{"query":${gson.toJson(query)},"provider":"searchapi","limit":8}"""
                     val req =
                         Request
                             .Builder()
                             .url(workerUrl)
                             .addHeader("Authorization", authHeader)
+                            .addHeader("X-TwoBits-App", "shelfsnap")
                             .addHeader("Content-Type", "application/json")
                             .post(bodyJson.toRequestBody(json))
                             .build()
@@ -325,7 +330,7 @@ class PriceResearchService
 
             return SearchEvidence(
                 results = merged,
-                providerKey = "jina",
+                providerKey = "searchapi",
                 error = if (merged.isEmpty()) lastError else null,
                 queries = queryLog,
                 searchMs = searchMs,
@@ -343,7 +348,7 @@ class PriceResearchService
             // Use a truncated description so site: queries stay focused; the full AI-prose
             // description produces overly long queries that return 0 results on eBay/Mercari.
             val genericDescriptor =
-                listOf(item.description.take(40).trim(), item.category)
+                listOf(item.description.take(50).trim(), item.category)
                     .filter { it.isNotBlank() }
                     .joinToString(" ")
             val descriptor =

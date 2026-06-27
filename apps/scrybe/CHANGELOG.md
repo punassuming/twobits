@@ -6,6 +6,19 @@
 
 ### Improvements
 
+**Cost control — transcription model and transform caps:**
+* default cloud transcription model changed to GPT-4o mini Transcribe ($0.003/min, was Whisper 1 at $0.006/min)
+* GPT-4o mini Transcribe and GPT-4o Transcribe added as selectable models in Settings
+* all LLM transform calls (summarize, tasks, tags, rename, cluster, search, diarization, sentiment, topics) now have explicit output-token caps, preventing unbounded cost on verbose responses
+
+**Scrybe Pro — managed routing now active:**
+* Pro subscribers' transcription, transforms, diarization, and insight requests now route through the TwoBits managed proxy (api.twobits.app); your own OpenAI key is no longer required on Pro
+* in Pro, the model for each AI feature (transcribe, draft, diarization, insights, etc.) is now chosen by the managed service, so we can tune quality and cost without an app update; BYOK (Free) still uses your selected model
+* Scrybe Pro is now its own independent subscription (scrybe_pro entitlement) — separate from Shelf Snap and PriceDrop Pro
+* BYOK (Free) continues to call OpenAI directly with your stored key — unchanged
+
+* shared credential-row component gained an optional cost-estimate slot (used by PriceDrop; no visual change in Scrybe)
+
 ### Fixes
 
 ## 1.25.0 (2026-06-25)

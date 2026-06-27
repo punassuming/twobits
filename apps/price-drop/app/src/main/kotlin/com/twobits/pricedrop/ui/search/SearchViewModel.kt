@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.twobits.pricedrop.data.model.WatchedProduct
 import com.twobits.pricedrop.data.remote.PriceDropApiClient
+import com.twobits.pricedrop.data.repository.AddResult
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -90,17 +91,21 @@ class SearchViewModel
             onAdded: (Long) -> Unit,
         ) {
             viewModelScope.launch {
-                val id =
-                    watchlistRepo.add(
-                        WatchedProduct(
-                            title = result.title,
-                            currentPrice = result.price ?: 0.0,
-                            targetPrice = targetPrice,
-                            alertType = alertType,
-                            productUrl = result.url,
-                        ),
-                    )
-                onAdded(id)
+                when (
+                    val result0 =
+                        watchlistRepo.add(
+                            WatchedProduct(
+                                title = result.title,
+                                currentPrice = result.price ?: 0.0,
+                                targetPrice = targetPrice,
+                                alertType = alertType,
+                                productUrl = result.url,
+                            ),
+                        )
+                ) {
+                    is AddResult.Added -> onAdded(result0.id)
+                    AddResult.LimitReached -> uiState.value = SearchUiState.Error(LIMIT_MESSAGE)
+                }
             }
         }
 
@@ -113,17 +118,27 @@ class SearchViewModel
             onAdded: (Long) -> Unit,
         ) {
             viewModelScope.launch {
-                val id =
-                    watchlistRepo.add(
-                        WatchedProduct(
-                            title = title,
-                            currentPrice = price ?: 0.0,
-                            targetPrice = targetPrice,
-                            alertType = alertType,
-                            productUrl = url,
-                        ),
-                    )
-                onAdded(id)
+                when (
+                    val result0 =
+                        watchlistRepo.add(
+                            WatchedProduct(
+                                title = title,
+                                currentPrice = price ?: 0.0,
+                                targetPrice = targetPrice,
+                                alertType = alertType,
+                                productUrl = url,
+                            ),
+                        )
+                ) {
+                    is AddResult.Added -> onAdded(result0.id)
+                    AddResult.LimitReached -> uiState.value = SearchUiState.Error(LIMIT_MESSAGE)
+                }
             }
+        }
+
+        companion object {
+            const val LIMIT_MESSAGE =
+                "Free plan tracks up to 3 active products. Remove one or upgrade to " +
+                    "PriceDrop Pro for unlimited tracking."
         }
     }

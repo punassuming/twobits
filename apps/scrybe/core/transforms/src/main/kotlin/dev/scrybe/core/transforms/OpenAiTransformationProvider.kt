@@ -2,7 +2,7 @@ package dev.scrybe.core.transforms
 
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.ApiKeyProvider
+import dev.scrybe.core.transcription.OpenAiEndpointResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -20,16 +20,14 @@ class OpenAiTransformationProvider
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
     ) : TransformationProvider {
         override val providerType: ProviderType = ProviderType.OPENAI
 
         override suspend fun transform(input: TransformInput): Result<TransformResult> =
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
                     val modelName =
                         input.modelName?.takeIf { it.isNotBlank() }
@@ -53,19 +51,28 @@ class OpenAiTransformationProvider
                                             ),
                                     ),
                                 ),
+                            maxOutputTokens = 2000,
                         )
 
                     val request =
-                        Request.Builder()
-                            .url("https://api.openai.com/v1/responses")
-                            .header("Authorization", "Bearer $apiKey")
+                        Request
+                            .Builder()
+                            .url("${endpoint.baseUrl}/v1/responses")
+                            .header("Authorization", "Bearer ${endpoint.authToken}")
+                            .header("X-TwoBits-App", "scrybe")
+                            .header("X-TwoBits-Op", "transform")
                             .header("Content-Type", "application/json")
                             .post(json.encodeToString(OpenAiResponseRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA_TYPE))
                             .build()
 
                     val response = okHttpClient.newCall(request).execute()
                     if (!response.isSuccessful) {
-                        val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(500)
+                        val errorBody =
+                            response.body
+                                ?.string()
+                                .orEmpty()
+                                .replace("\n", " ")
+                                .take(500)
                         throw IOException(
                             "OpenAI API error: ${response.code} ${response.message}" +
                                 if (errorBody.isNotBlank()) " - $errorBody" else "",
@@ -96,8 +103,8 @@ class OpenAiTransformationProvider
 
         private fun renderInstructions(input: TransformInput): String = buildTemplate(input)
 
-        private fun buildUserMessage(input: TransformInput): String {
-            return if (containsTranscriptPlaceholder(input.systemPrompt)) {
+        private fun buildUserMessage(input: TransformInput): String =
+            if (containsTranscriptPlaceholder(input.systemPrompt)) {
                 "Follow the provided prompt template exactly and return only the transformed text."
             } else {
                 buildString {
@@ -108,7 +115,6 @@ class OpenAiTransformationProvider
                     append(input.currentText)
                 }
             }
-        }
 
         private fun buildTemplate(input: TransformInput): String {
             val replacements =
@@ -139,6 +145,7 @@ class OpenAiTransformationProvider
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

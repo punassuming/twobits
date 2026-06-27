@@ -27,6 +27,7 @@ data class WatchedProduct(
     val confidence: Int = 0,
     val addedAt: Long = System.currentTimeMillis(),
     val lastCheckedAt: Long = 0L,
+    val lastCouponCheckedAt: Long = 0L,
     val trackedHigh: Double = 0.0,
     val trackedLow: Double = Double.MAX_VALUE,
     val trackedAvg: Double = 0.0,

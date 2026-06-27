@@ -1,6 +1,7 @@
 package com.twobits.pricedrop.ui.settings
 
 import android.app.Activity
+import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -14,13 +15,16 @@ import com.twobits.billing.SubscriptionTier
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.CredentialCheck
 import com.twobits.pricedrop.data.provider.PriceDropProvider
+import com.twobits.pricedrop.data.provider.ProviderKeyValidator
 import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import com.twobits.pricedrop.data.settings.SettingsPrefs
+import com.twobits.pricedrop.work.PriceCheckScheduler
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,12 +76,14 @@ data class SettingsUiState(
 class SettingsViewModel
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val dataStore: DataStore<Preferences>,
         private val subscriptionRepo: SubscriptionRepository,
         private val providerStore: ProviderSettingsStore,
         private val watchlistRepo: WatchlistRepository,
         billingManager: BillingManager,
         private val credentialClient: SharedCredentialClient,
+        private val providerKeyValidator: ProviderKeyValidator,
     ) : ViewModel() {
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
 
@@ -125,7 +131,16 @@ class SettingsViewModel
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
         fun setCheckFrequency(hours: Int) {
-            viewModelScope.launch { dataStore.edit { it[SettingsPrefs.CHECK_FREQ] = hours } }
+            viewModelScope.launch {
+                dataStore.edit { it[SettingsPrefs.CHECK_FREQ] = hours }
+                val prefs = dataStore.data.first()
+                PriceCheckScheduler.schedule(
+                    context = context,
+                    freqHours = hours,
+                    wifiOnly = prefs[SettingsPrefs.WIFI_ONLY] ?: false,
+                    chargingOnly = prefs[SettingsPrefs.CHARGING_ONLY] ?: false,
+                )
+            }
         }
 
         fun setWifiOnly(enabled: Boolean) {
@@ -234,12 +249,18 @@ class SettingsViewModel
                     PriceDropProvider.COUPON -> credentialClient.mirror(SharedCredentialId.COUPON, key)
                     PriceDropProvider.RAINFOREST -> credentialClient.mirror(SharedCredentialId.RAINFOREST, key)
                 }
-                val result = CredentialCheck.check(p, key)
+                val formatCheck = CredentialCheck.check(p, key)
+                if (!formatCheck.isValid) {
+                    setValidation(p, ProviderValidation(message = formatCheck.message, isValid = false))
+                    return@launch
+                }
+                setValidation(p, ProviderValidation(isValidating = true, message = "Checking connection…"))
+                val result = providerKeyValidator.validate(p, key)
                 setValidation(
                     p,
-                    ProviderValidation(
-                        message = if (result.isValid) "Saved" else result.message,
-                        isValid = result.isValid,
+                    result.fold(
+                        onSuccess = { msg -> ProviderValidation(message = msg, isValid = true) },
+                        onFailure = { err -> ProviderValidation(message = err.message ?: "Validation failed", isValid = false) },
                     ),
                 )
             }
@@ -249,12 +270,20 @@ class SettingsViewModel
             p: PriceDropProvider,
             key: String,
         ) {
-            setValidation(p, ProviderValidation(isValidating = true))
+            val formatCheck = CredentialCheck.check(p, key)
+            if (!formatCheck.isValid) {
+                setValidation(p, ProviderValidation(message = formatCheck.message, isValid = false))
+                return
+            }
+            setValidation(p, ProviderValidation(isValidating = true, message = "Checking connection…"))
             viewModelScope.launch {
-                val result = CredentialCheck.check(p, key)
+                val result = providerKeyValidator.validate(p, key)
                 setValidation(
                     p,
-                    ProviderValidation(message = result.message, isValid = result.isValid),
+                    result.fold(
+                        onSuccess = { msg -> ProviderValidation(message = msg, isValid = true) },
+                        onFailure = { err -> ProviderValidation(message = err.message ?: "Validation failed", isValid = false) },
+                    ),
                 )
             }
         }

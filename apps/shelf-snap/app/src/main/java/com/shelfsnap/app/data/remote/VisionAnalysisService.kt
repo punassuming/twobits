@@ -106,6 +106,8 @@ class VisionAnalysisService
                             .Builder()
                             .url("$baseUrl/$endpoint")
                             .addHeader("Authorization", authHeader)
+                            .addHeader("X-TwoBits-App", "shelfsnap")
+                            .addHeader("X-TwoBits-Op", "vision")
                             .addHeader("Content-Type", "application/json")
                             .post(gson.toJson(requestBody).toRequestBody(json))
                             .build()

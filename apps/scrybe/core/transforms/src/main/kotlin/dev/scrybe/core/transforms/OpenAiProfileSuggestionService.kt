@@ -1,7 +1,7 @@
 package dev.scrybe.core.transforms
 
-import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.ApiKeyProvider
+import dev.scrybe.core.transcription.OpenAiEndpoint
+import dev.scrybe.core.transcription.OpenAiEndpointResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -19,7 +19,7 @@ class OpenAiProfileSuggestionService
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
     ) {
         suspend fun suggestProfile(
             userRequest: String,
@@ -39,13 +39,11 @@ class OpenAiProfileSuggestionService
                         "Describe what the profile should do before asking for a suggestion"
                     }
 
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
                     val parsed =
                         executeResponseRequest(
-                            apiKey = apiKey,
+                            endpoint = endpoint,
                             modelName = modelName,
                             instructions = buildInstructions(),
                             userMessage =
@@ -96,13 +94,11 @@ class OpenAiProfileSuggestionService
         ): Result<String> =
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
                     val parsed =
                         executeResponseRequest(
-                            apiKey = apiKey,
+                            endpoint = endpoint,
                             modelName = modelName,
                             instructions = "Reply with READY.",
                             userMessage = "Test the configured profile suggestion model.",
@@ -175,7 +171,7 @@ class OpenAiProfileSuggestionService
         }
 
         private fun executeResponseRequest(
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             modelName: String,
             instructions: String,
             userMessage: String,
@@ -198,13 +194,16 @@ class OpenAiProfileSuggestionService
                                     ),
                             ),
                         ),
+                    maxOutputTokens = 800,
                 )
 
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/responses")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/responses")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
+                    .header("X-TwoBits-App", "scrybe")
+                    .header("X-TwoBits-Op", "profile-suggest")
                     .header("Content-Type", "application/json")
                     .post(json.encodeToString(OpenAiResponseRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA_TYPE))
                     .build()
@@ -233,6 +232,7 @@ class OpenAiProfileSuggestionService
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

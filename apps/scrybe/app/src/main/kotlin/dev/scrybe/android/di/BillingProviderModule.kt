@@ -19,6 +19,7 @@ object BillingProviderModule {
     fun provideBillingConfig(): BillingConfig =
         BillingConfig(
             revenueCatPublicKey = "YOUR_REVENUECAT_PUBLIC_KEY",
+            proEntitlementId = "scrybe_pro",
         )
 
     @Provides
@@ -30,6 +31,5 @@ object BillingProviderModule {
 
     @Provides
     @Singleton
-    fun provideSubscriptionRepository(billingManager: BillingManager): SubscriptionRepository =
-        SubscriptionRepository(billingManager)
+    fun provideSubscriptionRepository(billingManager: BillingManager): SubscriptionRepository = SubscriptionRepository(billingManager)
 }

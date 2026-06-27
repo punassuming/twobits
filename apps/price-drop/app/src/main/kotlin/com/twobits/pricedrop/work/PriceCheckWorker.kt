@@ -52,9 +52,15 @@ class PriceCheckWorker(
             for (product in products) {
                 val before = product.currentPrice
                 runCatching { deps.watchlistRepository().refreshPrice(product.id) }
-                runCatching {
-                    val query = product.title.ifBlank { product.brand }
-                    if (query.isNotBlank()) deps.watchlistRepository().fetchCoupons(product.id, query)
+                val couponStale = System.currentTimeMillis() - product.lastCouponCheckedAt > 72 * 3_600_000L
+                if (couponStale) {
+                    runCatching {
+                        val query = product.title.ifBlank { product.brand }
+                        if (query.isNotBlank()) {
+                            deps.watchlistRepository().fetchCoupons(product.id, query)
+                            deps.watchlistRepository().updateCouponCheckedAt(product.id, System.currentTimeMillis())
+                        }
+                    }
                 }
                 val after = deps.watchlistRepository().getById(product.id) ?: continue
                 val drop =

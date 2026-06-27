@@ -4,9 +4,37 @@
 
 ### Features
 
+**Free plan product limit:**
+* the free plan now tracks up to 3 active products at once; pausing or removing a product frees a slot
+* PriceDrop Pro removes the limit entirely — track unlimited products
+* attempting to add past the limit shows a prompt to remove a product or upgrade
+
 ### Improvements
 
+**Providers — SearchAPI.io replaces SerpAPI for Google Shopping search:**
+* BYOK Google Shopping provider updated to SearchAPI.io (~6× cheaper at low volume: ~$4/1k vs $25/1k searches)
+* existing BYOK SerpAPI keys will stop working — re-enter a SearchAPI.io key in AI Config
+* Pro managed search endpoint updated automatically (no user action needed)
+* price history (Pro) now sourced from Rainforest instead of Keepa — eliminates a separate Keepa subscription requirement; BYOK Keepa still supported for existing subscribers
+
+**AI Config — BYOK cost transparency:**
+* each provider key field now shows an estimated cost note (e.g. "~$0.004 per search", "free tier covers hundreds of searches") so you know what bring-your-own-key usage will cost before enabling it
+
+**Background tracking — reduced API cost:**
+* default background check interval changed from 6 hours to 24 hours — 4× fewer price calls per product
+* coupon checks are now throttled to at most once every 72 hours per product (were checked every background run)
+* changing the check frequency in Settings takes effect immediately without requiring an app restart
+
+**AI Config — credential verification** — Test and Save now make a live call to confirm the key works:
+* OpenAI, Jina AI, SearchAPI.io, Keepa, Couponlayer, and Rainforest keys are each verified against their provider's API (not just checked for valid format)
+* a "Checking connection…" message is shown while the verification is in progress
+* Keepa connection shows remaining token count on success
+
 ### Fixes
+
+* Ask AI (Pro): chat requests now identify the app to the managed proxy, fixing a "Pro subscription required" error for PriceDrop Pro subscribers (the shared OpenAI proxy was checking the wrong entitlement)
+* Ask AI and URL product extraction (Pro): the model is now chosen by the managed service, so we can tune quality/cost without an app update; BYOK still uses your selected model
+* AI Config: Keepa sign-up link now opens the correct Keepa API subscription page
 
 ## 0.7.0 (2026-06-26)
 

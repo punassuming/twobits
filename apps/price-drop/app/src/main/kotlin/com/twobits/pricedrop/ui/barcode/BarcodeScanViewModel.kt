@@ -3,6 +3,7 @@ package com.twobits.pricedrop.ui.barcode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.twobits.pricedrop.data.model.WatchedProduct
+import com.twobits.pricedrop.data.repository.AddResult
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,18 +90,27 @@ class BarcodeScanViewModel
             onAdded: (Long) -> Unit,
         ) {
             viewModelScope.launch {
-                val id =
-                    watchlistRepo.add(
-                        WatchedProduct(
-                            title = title,
-                            currentPrice = price ?: 0.0,
-                            upc = barcode,
-                            asin = asin,
-                            productUrl = url,
-                            imageUrl = imageUrl,
-                        ),
-                    )
-                onAdded(id)
+                when (
+                    val result =
+                        watchlistRepo.add(
+                            WatchedProduct(
+                                title = title,
+                                currentPrice = price ?: 0.0,
+                                upc = barcode,
+                                asin = asin,
+                                productUrl = url,
+                                imageUrl = imageUrl,
+                            ),
+                        )
+                ) {
+                    is AddResult.Added -> onAdded(result.id)
+                    AddResult.LimitReached ->
+                        uiState.value =
+                            BarcodeUiState.Error(
+                                "Free plan tracks up to 3 active products. Remove one or upgrade to " +
+                                    "PriceDrop Pro for unlimited tracking.",
+                            )
+                }
             }
         }
     }

@@ -16,7 +16,7 @@ object SettingsPrefs {
     val API_URL = stringPreferencesKey("api_base_url")
     val SEARCH_HISTORY = stringPreferencesKey("search_history")
 
-    const val DEFAULT_CHECK_FREQ_HOURS = 6
+    const val DEFAULT_CHECK_FREQ_HOURS = 24
     const val DEFAULT_API_URL = "https://api.twobits.app"
 
     // Quiet-hours window (local time) used when the toggle is enabled.

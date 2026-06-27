@@ -1,5 +1,7 @@
 package com.twobits.pricedrop.data.repository
 
+import com.twobits.billing.SubscriptionRepository
+import com.twobits.billing.SubscriptionTier
 import com.twobits.pricedrop.data.local.ActivityDao
 import com.twobits.pricedrop.data.local.CouponDao
 import com.twobits.pricedrop.data.local.OfferDao
@@ -22,6 +24,17 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Outcome of attempting to add a product to the watchlist. */
+sealed interface AddResult {
+    /** Product was added; [id] is its new row id. */
+    data class Added(
+        val id: Long,
+    ) : AddResult
+
+    /** Free plan's active-product limit was reached; the product was not added. */
+    data object LimitReached : AddResult
+}
+
 @Singleton
 class WatchlistRepository
     @Inject
@@ -32,15 +45,24 @@ class WatchlistRepository
         private val activityDao: ActivityDao,
         private val offerDao: OfferDao,
         private val api: PriceDropApiClient,
+        private val subscriptionRepository: SubscriptionRepository,
     ) {
         fun observeAll(): Flow<List<WatchedProduct>> = watchedProductDao.observeAll()
 
         suspend fun getById(id: Long): WatchedProduct? = watchedProductDao.getById(id)
 
-        suspend fun add(product: WatchedProduct): Long {
+        /**
+         * Adds a product to the watchlist, enforcing the free-plan active-product cap.
+         * Pro users have no limit; free users may actively track up to [FREE_ACTIVE_LIMIT].
+         */
+        suspend fun add(product: WatchedProduct): AddResult {
+            val isPro = subscriptionRepository.subscriptionTier.value is SubscriptionTier.Pro
+            if (!isPro && watchedProductDao.countActive() >= FREE_ACTIVE_LIMIT) {
+                return AddResult.LimitReached
+            }
             val id = watchedProductDao.insert(product)
             activityDao.insert(Activity(productId = id, type = ActivityType.ADDED.value))
-            return id
+            return AddResult.Added(id)
         }
 
         suspend fun update(product: WatchedProduct) = watchedProductDao.update(product)
@@ -194,6 +216,12 @@ class WatchlistRepository
             return coupons
         }
 
+        /** Stamp the last coupon-check time for a product (used by the background worker to throttle). */
+        suspend fun updateCouponCheckedAt(
+            productId: Long,
+            ts: Long,
+        ) = watchedProductDao.updateCouponCheckedAt(productId, ts)
+
         /** Resolve a scanned UPC to the best matching product. */
         suspend fun resolveBarcode(upc: String): BarcodeMatch {
             val r = api.barcode(upc)
@@ -219,4 +247,9 @@ class WatchlistRepository
                 }.orEmpty()
 
         private fun formatUsd(value: Double): String = "$" + String.format(java.util.Locale.US, "%.2f", value)
+
+        companion object {
+            /** Maximum simultaneously-tracked products on the free plan. Pro is unlimited. */
+            const val FREE_ACTIVE_LIMIT = 3
+        }
     }

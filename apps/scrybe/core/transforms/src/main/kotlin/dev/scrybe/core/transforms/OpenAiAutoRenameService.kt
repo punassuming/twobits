@@ -1,7 +1,7 @@
 package dev.scrybe.core.transforms
 
-import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.ApiKeyProvider
+import dev.scrybe.core.transcription.OpenAiEndpoint
+import dev.scrybe.core.transcription.OpenAiEndpointResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -19,7 +19,7 @@ class OpenAiAutoRenameService
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
     ) {
         suspend fun suggestTitle(
             transcriptText: String,
@@ -31,13 +31,11 @@ class OpenAiAutoRenameService
                         "A transcript is required to suggest a title"
                     }
 
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
                     val response =
                         executeResponseRequest(
-                            apiKey = apiKey,
+                            endpoint = endpoint,
                             instructions = buildInstructions(),
                             userMessage = buildUserMessage(transcriptText, currentTitle),
                         )
@@ -99,7 +97,7 @@ class OpenAiAutoRenameService
         }
 
         private fun executeResponseRequest(
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             instructions: String,
             userMessage: String,
         ): OpenAiResponseResponse {
@@ -115,13 +113,16 @@ class OpenAiAutoRenameService
                                 content = listOf(InputText(type = "input_text", text = userMessage)),
                             ),
                         ),
+                    maxOutputTokens = 200,
                 )
 
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/responses")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/responses")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
+                    .header("X-TwoBits-App", "scrybe")
+                    .header("X-TwoBits-Op", "auto-rename")
                     .header("Content-Type", "application/json")
                     .post(
                         json
@@ -153,6 +154,7 @@ class OpenAiAutoRenameService
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
         )
 
         @Serializable

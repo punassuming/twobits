@@ -21,7 +21,7 @@ class OpenAiTranscriptionProvider
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
         private val audioChunker: OpenAiAudioChunker,
     ) : TranscriptionProvider {
         override val providerType: ProviderType = ProviderType.OPENAI
@@ -32,15 +32,13 @@ class OpenAiTranscriptionProvider
         ): Result<TranscriptResult> =
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
 
                     val audioChunks = audioChunker.createChunksIfNeeded(audioFile)
                     try {
                         val parts = mutableListOf<String>()
                         for (chunk in audioChunks) {
-                            parts.add(transcribeChunk(audioFile = chunk, apiKey = apiKey, options = options))
+                            parts.add(transcribeChunk(audioFile = chunk, endpoint = endpoint, options = options))
                         }
                         val transcriptText = parts.joinToString(separator = "\n\n")
 
@@ -57,13 +55,13 @@ class OpenAiTranscriptionProvider
 
         private suspend fun transcribeChunk(
             audioFile: File,
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             options: TranscriptionOptions,
         ): String {
             var lastError: Exception = IllegalStateException("No attempts made")
             for (attempt in 0 until MAX_CHUNK_ATTEMPTS) {
                 try {
-                    return doTranscribeChunk(audioFile, apiKey, options)
+                    return doTranscribeChunk(audioFile, endpoint, options)
                 } catch (e: ChunkApiException) {
                     lastError = e
                     if (!e.isRetriable || attempt == MAX_CHUNK_ATTEMPTS - 1) throw e
@@ -80,7 +78,7 @@ class OpenAiTranscriptionProvider
 
         private fun doTranscribeChunk(
             audioFile: File,
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             options: TranscriptionOptions,
         ): String {
             val mediaType = audioFile.toMediaType()
@@ -102,8 +100,10 @@ class OpenAiTranscriptionProvider
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/audio/transcriptions")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/audio/transcriptions")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
+                    .header("X-TwoBits-App", "scrybe")
+                    .header("X-TwoBits-Op", "transcribe")
                     .header("Accept", "application/json")
                     .post(requestBody)
                     .build()

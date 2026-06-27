@@ -130,6 +130,7 @@ fun AIConfigScreen(
                 isValidating = uiState.isVerifyingKey,
                 validationMessage =
                     when {
+                        uiState.isVerifyingKey -> "Checking connection…"
                         uiState.isKeyVerified == true -> "Connected to OpenAI"
                         uiState.isKeyVerified == false -> uiState.keyVerifyError ?: "Connection failed"
                         uiState.isKeyInvalid -> "Invalid API key format"

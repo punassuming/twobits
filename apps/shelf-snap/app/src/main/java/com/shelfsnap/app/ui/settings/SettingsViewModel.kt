@@ -338,20 +338,24 @@ class SettingsViewModel
 
         fun saveJinaKey() {
             val key = _editJinaKey.value.ifBlank { uiState.value.savedJinaApiKey }.trim()
+            if (key.isBlank()) return
             viewModelScope.launch {
                 repository.saveJinaApiKey(key)
                 credentialClient.mirror(SharedCredentialId.JINA, key)
                 _isSearchSaved.update { true }
             }
+            validateJinaKey(key)
         }
 
         fun saveBraveKey() {
             val key = _editBraveKey.value.ifBlank { uiState.value.savedBraveApiKey }.trim()
+            if (key.isBlank()) return
             viewModelScope.launch {
                 repository.saveBraveApiKey(key)
                 credentialClient.mirror(SharedCredentialId.BRAVE, key)
                 _isSearchSaved.update { true }
             }
+            validateBraveKey(key)
         }
 
         fun clearJinaKey() {
@@ -377,15 +381,25 @@ class SettingsViewModel
         fun testJinaKey() {
             val key = _editJinaKey.value.ifBlank { uiState.value.savedJinaApiKey }.trim()
             if (key.isBlank()) return
+            validateJinaKey(key)
+        }
+
+        fun testBraveKey() {
+            val key = _editBraveKey.value.ifBlank { uiState.value.savedBraveApiKey }.trim()
+            if (key.isBlank()) return
+            validateBraveKey(key)
+        }
+
+        private fun validateJinaKey(key: String) {
             viewModelScope.launch {
                 _isJinaTesting.update { true }
                 _jinaTestResult.update { null }
-                _jinaTestMessage.update { null }
+                _jinaTestMessage.update { "Checking connection…" }
                 val result = runCatching { jinaSearchService.search("used electronics price", key, 1) }
                 _isJinaTesting.update { false }
                 if (result.isSuccess) {
                     _jinaTestResult.update { true }
-                    _jinaTestMessage.update { "Connected — Jina AI Search is working" }
+                    _jinaTestMessage.update { "Connected to Jina AI" }
                 } else {
                     _jinaTestResult.update { false }
                     _jinaTestMessage.update { result.exceptionOrNull()?.message ?: "Connection failed" }
@@ -393,18 +407,16 @@ class SettingsViewModel
             }
         }
 
-        fun testBraveKey() {
-            val key = _editBraveKey.value.ifBlank { uiState.value.savedBraveApiKey }.trim()
-            if (key.isBlank()) return
+        private fun validateBraveKey(key: String) {
             viewModelScope.launch {
                 _isBraveTesting.update { true }
                 _braveTestResult.update { null }
-                _braveTestMessage.update { null }
+                _braveTestMessage.update { "Checking connection…" }
                 val result = runCatching { braveSearchService.search("used electronics price", key, 1) }
                 _isBraveTesting.update { false }
                 if (result.isSuccess) {
                     _braveTestResult.update { true }
-                    _braveTestMessage.update { "Connected — Brave Search is working" }
+                    _braveTestMessage.update { "Connected to Brave Search" }
                 } else {
                     _braveTestResult.update { false }
                     _braveTestMessage.update { result.exceptionOrNull()?.message ?: "Connection failed" }

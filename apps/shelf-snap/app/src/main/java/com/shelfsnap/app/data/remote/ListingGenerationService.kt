@@ -85,6 +85,8 @@ class ListingGenerationService
                             .Builder()
                             .url("$openAiBaseUrl/v1/chat/completions")
                             .addHeader("Authorization", openAiAuthHeader)
+                            .addHeader("X-TwoBits-App", "shelfsnap")
+                            .addHeader("X-TwoBits-Op", "listing")
                             .addHeader("Content-Type", "application/json")
                             .post(gson.toJson(body).toRequestBody(json))
                             .build()

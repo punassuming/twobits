@@ -1,8 +1,8 @@
 package dev.scrybe.core.transforms
 
-import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
-import dev.scrybe.core.transcription.ApiKeyProvider
+import dev.scrybe.core.transcription.OpenAiEndpoint
+import dev.scrybe.core.transcription.OpenAiEndpointResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -22,15 +22,13 @@ class RecordingModeSuggestionService
     constructor(
         private val okHttpClient: OkHttpClient,
         private val json: Json,
-        private val apiKeyProvider: ApiKeyProvider,
+        private val endpointResolver: OpenAiEndpointResolver,
     ) {
         suspend fun suggestMode(transcriptText: String): Result<RecordingMode> =
             runCatching {
                 withContext(Dispatchers.IO) {
                     require(transcriptText.isNotBlank()) { "Transcript required to classify mode" }
-                    val apiKey =
-                        apiKeyProvider.getApiKey(ProviderType.OPENAI)
-                            ?: throw IllegalStateException("No API key configured for OpenAI")
+                    val endpoint = endpointResolver.resolve()
                     val modeDescriptions =
                         RecordingMode.entries.joinToString("\n") { "- ${it.name}: ${it.outputDescription}" }
                     val instructions =
@@ -42,7 +40,7 @@ class RecordingModeSuggestionService
                         Use exactly one of the TYPE_NAME values listed above.
                         """.trimIndent()
                     val userMessage = "Transcript:\n${transcriptText.take(800)}"
-                    val rawText = executeApiCall(apiKey, instructions, userMessage)
+                    val rawText = executeApiCall(endpoint, instructions, userMessage)
                     val cleaned =
                         rawText
                             .trim()
@@ -56,7 +54,7 @@ class RecordingModeSuggestionService
             }
 
         private fun executeApiCall(
-            apiKey: String,
+            endpoint: OpenAiEndpoint,
             instructions: String,
             userMessage: String,
         ): String {
@@ -76,8 +74,10 @@ class RecordingModeSuggestionService
             val request =
                 Request
                     .Builder()
-                    .url("https://api.openai.com/v1/responses")
-                    .header("Authorization", "Bearer $apiKey")
+                    .url("${endpoint.baseUrl}/v1/responses")
+                    .header("Authorization", "Bearer ${endpoint.authToken}")
+                    .header("X-TwoBits-App", "scrybe")
+                    .header("X-TwoBits-Op", "recording-mode")
                     .header("Content-Type", "application/json")
                     .post(json.encodeToString(ApiRequest.serializer(), requestBody).toRequestBody(JSON_MEDIA))
                     .build()
