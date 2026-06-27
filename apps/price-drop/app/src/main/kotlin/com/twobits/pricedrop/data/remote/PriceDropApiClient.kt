@@ -634,6 +634,7 @@ class PriceDropApiClient
                         .Builder()
                         .url(url)
                         .addHeader("Authorization", authHeader)
+                        .addHeader("X-TwoBits-App", "pricedrop")
                         .addHeader("Content-Type", "application/json")
                         .post(gson.toJson(body).toRequestBody(jsonMedia))
                         .build()

@@ -11,6 +11,10 @@
 * eBay-targeted queries use SearchAPI.io's dedicated eBay engine for structured sold-listing results
 * generic item searches now use up to 50 characters of item name instead of 40, preserving more context for platform-targeted queries
 
+**Shelf Snap Pro — independent subscription:**
+* Shelf Snap Pro is now its own subscription (shelfsnap_pro entitlement), separate from Scrybe and PriceDrop Pro
+* managed requests carry an app identifier so the Worker verifies the Shelf Snap entitlement specifically
+
 **Vision model default** — item analysis now uses GPT-5 mini by default:
 * default changed from GPT-5 ($1.25/$10 per 1M tokens) to GPT-5 mini ($0.25/$2 per 1M tokens) — 5× cheaper with comparable accuracy for draft generation
 * existing model selection in AI Config is preserved; GPT-5 remains available

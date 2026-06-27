@@ -17,6 +17,7 @@
 **Scrybe Pro — managed routing now active:**
 * Pro subscribers' transcription, transforms, diarization, and insight requests now route through the TwoBits managed proxy (api.twobits.app); your own OpenAI key is no longer required on Pro
 * the selected transcription model is sent to the proxy so managed billing reflects the actual per-minute rate (e.g. $0.003/min for GPT-4o mini Transcribe)
+* Scrybe Pro is now its own independent subscription (scrybe_pro entitlement) — separate from Shelf Snap and PriceDrop Pro
 * BYOK (Free) continues to call OpenAI directly with your stored key — unchanged
 
 * shared credential-row component gained an optional cost-estimate slot (used by PriceDrop; no visual change in Scrybe)

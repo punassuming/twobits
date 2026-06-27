@@ -19,6 +19,7 @@ object BillingProviderModule {
     fun provideBillingConfig(): BillingConfig =
         BillingConfig(
             revenueCatPublicKey = "YOUR_REVENUECAT_PUBLIC_KEY",
+            proEntitlementId = "shelfsnap_pro",
         )
 
     @Provides
