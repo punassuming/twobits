@@ -285,7 +285,9 @@ class PriceResearchService
             for (query in queries) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
                 runCatching {
-                    val bodyJson = """{"query":${gson.toJson(query)},"provider":"jina","limit":8}"""
+                    // "searchapi" honors site: operators (Jina silently ignores them), so the
+                    // platform-targeted queries below actually return marketplace listings.
+                    val bodyJson = """{"query":${gson.toJson(query)},"provider":"searchapi","limit":8}"""
                     val req =
                         Request
                             .Builder()
@@ -325,7 +327,7 @@ class PriceResearchService
 
             return SearchEvidence(
                 results = merged,
-                providerKey = "jina",
+                providerKey = "searchapi",
                 error = if (merged.isEmpty()) lastError else null,
                 queries = queryLog,
                 searchMs = searchMs,

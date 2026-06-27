@@ -793,6 +793,7 @@ private fun ProviderCredentialItem(
         },
         setupHint = provider.setupHint,
         signupUrl = provider.signupUrl,
+        costEstimate = provider.costEstimate,
     )
 }
 

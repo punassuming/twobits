@@ -17,6 +17,9 @@ interface WatchedProductDao {
     @Query("SELECT * FROM watched_products WHERE id = :id")
     suspend fun getById(id: Long): WatchedProduct?
 
+    @Query("SELECT COUNT(*) FROM watched_products WHERE isActive = 1")
+    suspend fun countActive(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(product: WatchedProduct): Long
 

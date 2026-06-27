@@ -4,6 +4,11 @@
 
 ### Features
 
+**Free plan product limit:**
+* the free plan now tracks up to 3 active products at once; pausing or removing a product frees a slot
+* PriceDrop Pro removes the limit entirely — track unlimited products
+* attempting to add past the limit shows a prompt to remove a product or upgrade
+
 **Jina AI BYOK** — Jina AI now handles web search and page reading directly when configured:
 * text product search uses Jina as a fallback when SerpAPI is not set up
 * Ask assistant fetches live web context via Jina before generating answers
@@ -16,6 +21,9 @@
 * existing BYOK SerpAPI keys will stop working — re-enter a SearchAPI.io key in AI Config
 * Pro managed search endpoint updated automatically (no user action needed)
 * price history (Pro) now sourced from Rainforest instead of Keepa — eliminates a separate Keepa subscription requirement; BYOK Keepa still supported for existing subscribers
+
+**AI Config — BYOK cost transparency:**
+* each provider key field now shows an estimated cost note (e.g. "~$0.004 per search", "free tier covers hundreds of searches") so you know what bring-your-own-key usage will cost before enabling it
 
 **Background tracking — reduced API cost:**
 * default background check interval changed from 6 hours to 24 hours — 4× fewer price calls per product

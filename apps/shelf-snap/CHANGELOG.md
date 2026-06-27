@@ -6,8 +6,10 @@
 
 ### Improvements
 
-**Market research — improved search query targeting for items without brand/model:**
-* generic item searches now use up to 50 characters of item name instead of 40, preserving more context for platform-targeted queries (eBay, Mercari, OfferUp)
+**Market research — marketplace search now honors site: filters:**
+* managed (Pro) web search switched to SearchAPI.io, which respects `site:` operators — the previous Jina endpoint silently ignored them, so platform-targeted queries (eBay, Mercari, OfferUp) returned no marketplace evidence
+* eBay-targeted queries use SearchAPI.io's dedicated eBay engine for structured sold-listing results
+* generic item searches now use up to 50 characters of item name instead of 40, preserving more context for platform-targeted queries
 
 **Vision model default** — item analysis now uses GPT-5 mini by default:
 * default changed from GPT-5 ($1.25/$10 per 1M tokens) to GPT-5 mini ($0.25/$2 per 1M tokens) — 5× cheaper with comparable accuracy for draft generation

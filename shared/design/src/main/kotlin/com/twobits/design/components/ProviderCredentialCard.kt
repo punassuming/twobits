@@ -212,6 +212,7 @@ fun CollapsibleProviderRow(
     modifier: Modifier = Modifier,
     setupHint: String = "",
     signupUrl: String = "",
+    costEstimate: String = "",
 ) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     val connected = isKeyValid == true && !maskedKey.isNullOrBlank()
@@ -315,6 +316,13 @@ fun CollapsibleProviderRow(
                         }
                     },
                 )
+                if (costEstimate.isNotBlank()) {
+                    Text(
+                        text = costEstimate,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onSave, modifier = Modifier.weight(1f), enabled = !isValidating) {
                         if (isValidating) {

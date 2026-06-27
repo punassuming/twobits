@@ -15,6 +15,8 @@ enum class PriceDropProvider(
     val setupHint: String,
     /** Signup / API-keys page URL opened by the "Sign up" link in the credential row. */
     val signupUrl: String,
+    /** Short BYOK cost-transparency note shown under the key field in AI Config. */
+    val costEstimate: String,
 ) {
     OPENAI(
         key = "openai",
@@ -25,6 +27,7 @@ enum class PriceDropProvider(
             "Sign in at platform.openai.com → open API Keys → click Create new secret key → " +
                 "copy and paste here. Usage is billed per token — a typical session costs a few cents.",
         signupUrl = "https://platform.openai.com/api-keys",
+        costEstimate = "Est. cost: a few cents per AI query session (pay-per-token)",
     ),
     WEB_SEARCH(
         key = "web_search",
@@ -35,6 +38,7 @@ enum class PriceDropProvider(
             "Create an account at jina.ai → open the dashboard → copy your API key. " +
                 "Free tier includes 1 million tokens — enough for hundreds of price searches.",
         signupUrl = "https://jina.ai",
+        costEstimate = "Est. cost: free tier covers hundreds of searches/month",
     ),
     SHOPPING(
         key = "shopping",
@@ -45,6 +49,7 @@ enum class PriceDropProvider(
             "Sign up at searchapi.io → open the Dashboard → copy your API key. " +
                 "Developer plan includes 100 free searches per month.",
         signupUrl = "https://www.searchapi.io",
+        costEstimate = "Est. cost: ~\$0.004 per search · 100 free/month",
     ),
     KEEPA(
         key = "keepa",
@@ -55,6 +60,7 @@ enum class PriceDropProvider(
             "Subscribe to a Keepa API plan at keepa.com → open your account settings → copy the API key. " +
                 "Paid plans only — the cheapest tier is sufficient for most use.",
         signupUrl = "https://keepa.com/#!api",
+        costEstimate = "Est. cost: paid Keepa plan required (~\$/month subscription)",
     ),
     COUPON(
         key = "coupon",
@@ -65,6 +71,7 @@ enum class PriceDropProvider(
             "Create an account at couponlayer.com → open your Dashboard → copy the API Access Key. " +
                 "A free plan is available with limited monthly lookups.",
         signupUrl = "https://couponlayer.com",
+        costEstimate = "Est. cost: free tier with limited monthly lookups",
     ),
     RAINFOREST(
         key = "rainforest",
@@ -75,6 +82,7 @@ enum class PriceDropProvider(
             "Sign up at rainforestapi.com → open the Dashboard → copy your API key. " +
                 "Optional — only needed for Amazon ASIN lookups and real-time product prices.",
         signupUrl = "https://rainforestapi.com",
+        costEstimate = "Est. cost: ~\$0.003 per product / price lookup",
     ),
     ;
 

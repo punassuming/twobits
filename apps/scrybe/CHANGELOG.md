@@ -19,6 +19,8 @@
 * the selected transcription model is sent to the proxy so managed billing reflects the actual per-minute rate (e.g. $0.003/min for GPT-4o mini Transcribe)
 * BYOK (Free) continues to call OpenAI directly with your stored key — unchanged
 
+* shared credential-row component gained an optional cost-estimate slot (used by PriceDrop; no visual change in Scrybe)
+
 ### Fixes
 
 **Speaker re-identification** — manually assigned person links are now preserved when diarization re-runs:
