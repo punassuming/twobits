@@ -9,11 +9,6 @@
 * PriceDrop Pro removes the limit entirely — track unlimited products
 * attempting to add past the limit shows a prompt to remove a product or upgrade
 
-**Jina AI BYOK** — Jina AI now handles web search and page reading directly when configured:
-* text product search uses Jina as a fallback when SerpAPI is not set up
-* Ask assistant fetches live web context via Jina before generating answers
-* adding a product by URL reads the page via Jina Reader and extracts the title and price
-
 ### Improvements
 
 **Providers — SearchAPI.io replaces SerpAPI for Google Shopping search:**
@@ -31,7 +26,7 @@
 * changing the check frequency in Settings takes effect immediately without requiring an app restart
 
 **AI Config — credential verification** — Test and Save now make a live call to confirm the key works:
-* OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, and Rainforest keys are each verified against their provider's API (not just checked for valid format)
+* OpenAI, Jina AI, SearchAPI.io, Keepa, Couponlayer, and Rainforest keys are each verified against their provider's API (not just checked for valid format)
 * a "Checking connection…" message is shown while the verification is in progress
 * Keepa connection shows remaining token count on success
 
@@ -40,70 +35,62 @@
 * Ask AI (Pro): chat requests now identify the app to the managed proxy, fixing a "Pro subscription required" error for PriceDrop Pro subscribers (the shared OpenAI proxy was checking the wrong entitlement)
 * Ask AI and URL product extraction (Pro): the model is now chosen by the managed service, so we can tune quality/cost without an app update; BYOK still uses your selected model
 * AI Config: Keepa sign-up link now opens the correct Keepa API subscription page
-* adding a product by URL: title and price extracted by Jina + OpenAI are now saved (was always "Product from URL" / $0.00)
-* Settings → Privacy: "Export data" now shares the watchlist as JSON via the system share sheet (was a no-op)
-* release workflow: version computation now uses deterministic bash (was mathieudutour/github-tag-action which failed to find monorepo tags, always computing 0.0.1)
+
+## 0.7.0 (2026-06-26)
+
+### Features
+
+* **Jina AI BYOK** — web search and page reading now call Jina AI directly when WEB_SEARCH is in BYOK mode: text product search uses Jina as fallback when SerpAPI is not configured; the Ask assistant fetches live web context before generating answers; adding a product by URL reads the page via Jina reader and extracts the title and price automatically
+
+### Improvements
+
+### Fixes
+
+* **URL product metadata** — when adding a product by URL the extracted title and current price (from Jina reader + OpenAI) are now saved to the watchlist; previously the product was always stored with the placeholder title "Product from URL" and price $0.00
+* **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
+* **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
+
 
 ## 0.6.0 (2026-06-25)
 
 ### Features
 
-**Pro screen** — redesigned with compact three-column tier comparison:
-* Try it / Pro / BYOK cards side by side with plan details
-* annual vs monthly plan cards; active plan shows Manage + Restore buttons
-* monthly usage card and Why Pro benefit list
-
-**Provider setup guides** — each AI Config credential row shows setup instructions when empty:
-* step-by-step guide and Sign up link for OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, and Rainforest
-
-**Credential security** — all BYOK API keys are now encrypted on this device:
-* OpenAI, Jina, SerpAPI, Keepa, Couponlayer, and Rainforest keys use AndroidKeyStore AES-256/GCM
-* saving any key silently mirrors it to installed sibling TwoBits apps
-* a missing local key reads through from sibling apps — no manual import needed
-* credential data excluded from Google Auto Backup
+* **Pro screen** — redesigned to match Scrybe and Shelf Snap: compact three-column tier comparison (Try it / Pro / BYOK), separate billing section with annual vs monthly plan cards, active plan card with Manage + Restore buttons, monthly usage card, Why Pro benefit list, and BYOK note with Configure keys link
+* **Provider setup guides** — each provider credential row in AI Config now shows step-by-step setup instructions and a "Sign up" link when not yet configured (OpenAI, Jina AI, SerpAPI, Keepa, Couponlayer, Rainforest API)
+* **Credential security + cross-app sharing** — all BYOK API keys (OpenAI, Jina/Web search, SerpAPI, Keepa, Couponlayer, Rainforest) are now encrypted at rest using AndroidKeyStore AES-256/GCM; all six keys auto-mirror to installed sibling TwoBits apps when saved and are read through from siblings on a local miss; credential DataStore excluded from Google Auto Backup
 
 ### Improvements
 
-* cross-app credential bridge covers all six BYOK provider keys; future shared types silently skipped if unsupported
+* **Credential bridge** — all keys managed by this app (OpenAI, Jina, SerpAPI, Keepa, Couponlayer, Rainforest) are covered by the bridge; future shared credential types are silently skipped if this app doesn't support them
 
 ### Fixes
 
-**Price drop notifications** — tapping a notification now opens the correct product:
-* app navigates directly to the product detail screen on notification tap
-* previously opened to the last-viewed screen with no navigation
+* **Price drop notifications** — tapping an OS notification now opens the app directly to that product's detail screen; previously the app opened to the last-viewed screen with no navigation
+
 
 
 ## 0.5.0 (2026-06-24)
 
 ### Features
 
-**AI Config — collapsible credential rows** — provider rows now collapse by default:
-* connected rows show a masked key and a "Connected ✓" badge
-* unconfigured rows show the provider description and a "Not configured" badge
-* tapping any row expands it to show the key field, Save, Test, and Clear
-
-**Rainforest API** — new optional BYOK provider for Amazon product data:
-* ASIN lookup and real-time price via Rainforest API
-* available in the Price check feature when configured
-
-* AI Config: each provider row now shows a description line below its name
-
-**Feature detail — provider icons** — the Providers card in each feature sheet now shows icon avatars:
-* filled icon when a key is set; muted when not configured
-* provider name, description, and key-status badge shown alongside each icon
+* **AI credentials — collapsible rows** — provider credential rows in the AI Config screen now collapse by default; connected rows show a masked key ("sk-••••••••1234") and a coral "Connected ✓" badge; unconfigured rows show the provider description and a gray "Not configured" badge; tapping expands to reveal the key field, Save, Test, and Clear
+* **Rainforest API provider** — added as a new optional BYOK provider for Amazon product data (ASIN lookup + real-time price); included in Price check feature
+* **Provider metadata** — each provider row now shows a description line below the name explaining what it does
+* **Provider icon avatars in feature detail** — the PROVIDERS card in each feature's detail sheet now shows a 28dp icon avatar per provider (filled when key is set, muted when not) alongside the provider name, description, and key-status badge
 
 ### Improvements
 
-* AI Config: providers renamed to match brand names — "Web search" → "Jina AI", "Shopping search" → "SerpAPI"
-* Credentials card: "BYOK · YOUR KEYS" sub-header separates the Pro row from provider rows
+* Renamed "Web search" → "Jina AI" and "Shopping search" → "SerpAPI" to match provider brand names
+* A "BYOK · YOUR KEYS" sub-header now separates the Pro row from the BYOK provider rows in the Credentials card
 
 ### Fixes
 
 * Release automation corrected from 0.0.1 → 0.5.0 (concurrent-release race caused tag action to start from 0.0.0)
-* BYOK providers (SerpAPI, Rainforest, Keepa, CouponLayer) now call upstream APIs directly — the Worker is never in the BYOK path
+* BYOK providers now call upstream APIs directly from the app (SerpAPI, Rainforest, Keepa, CouponLayer), matching the existing OpenAI BYOK pattern — the Worker is never in the BYOK path; price/barcode BYOK only activates when Rainforest is configured (SerpAPI is search-only)
 * Price lookups for ASIN products now prefer Rainforest BYOK when configured, rather than always falling back to SerpAPI/Shopping
-* Ask: chat model now respects the user's AI Config model selection (previously always used the default)
-* ProviderSettingsStore: added missing getFeatureModel() suspend getter; isByok() now correctly suspend to fix CI compile errors
+* Chat model selection now reads the user's AI Config model choice for the Ask feature; falls back to default Pro/BYOK model constants only when the user has not selected a model
+* `ProviderSettingsStore` gains `getFeatureModel()` suspend getter (was missing — only the flow + setter existed); `isByok()` in `PriceDropApiClient` is now a suspend function to correctly call the suspend `getMode()` — fixes compile errors in CI
+
 
 
 
@@ -111,23 +98,25 @@
 
 ### Features
 
-**AI configuration** — redesigned screen organized by feature instead of by provider:
-* each feature (Product search, Price checking, Coupon discovery, Drop detection, Ask) has its own source selector and provider toggles
-* Off / BYOK / Pro source selector and model choice persisted independently per feature
-* call-budget gauge shows relative API-call weight and estimated total per event
-* provider credentials (OpenAI, Web search, Shopping, Keepa, Coupons) preserved in a "Credentials" section
+**AI configuration — feature-oriented redesign:**
+* the AI Configuration screen is now organized by feature (Product search, Price checking, Coupon discovery, Drop detection, Ask assistant) instead of a flat provider list
+* each feature has its own source selector (Off / BYOK / Pro), provider toggles, and — where applicable — model choice, all persisted independently of the provider credentials that drive request routing
+* a call-budget gauge shows the relative API-call weight of each feature plus an estimated total per event
+* the per-provider credentials dock (OpenAI, Web search, Shopping, Keepa, Coupons) is preserved as a "Credentials" section with a Pro upgrade affordance
 
 ### Improvements
 
-**Settings** — redesigned layout with a richer Pro banner and AI config card:
-* Pro banner at top with upgrade button (or "Active" chip when subscribed) and details link
-* dedicated AI configuration entry card (providers · models · API keys · call budget)
-* section labels use the shared gray uppercase AppSectionLabel style
+**Settings — redesigned layout:**
+* a richer PriceDrop Pro banner at the top with an upgrade button (or an "Active" chip when subscribed) and a details link
+* a dedicated AI configuration entry card (providers · models · API keys · call budget)
+* Tracking, Privacy, and About sections now use the shared gray uppercase section label (icon + ALL-CAPS text above the card) consistent with the design system spec
 
 ### Fixes
 
-* Pro screen: Annual/Monthly plan chips now share the row evenly and keep their labels on one line
-* AI Config: provider status badges no longer wrap to two lines when the provider name is long
+* Pro screen: the plan toggle "Monthly – $5.99/mo" chip no longer wraps to two lines — the Annual/Monthly chips now share the row evenly and keep their labels on one line
+* AI configuration: provider status badges no longer wrap to two lines when a provider title is long (shared credential row fix)
+
+
 
 
 
@@ -160,6 +149,9 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
+
+
 
 
 
@@ -202,6 +194,10 @@
 
 
 
+
+
+
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -211,6 +207,11 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
+
+
+
+
 
 
 
