@@ -161,8 +161,14 @@ class SettingsViewModel
         private val baseStates: Flow<Map<PriceDropProvider, ProviderState>> =
             combine(
                 PriceDropProvider.entries.map { p ->
-                    combine(providerStore.observeMode(p), providerStore.observeKey(p)) { mode, key ->
-                        p to ProviderState(mode, key)
+                    combine(
+                        providerStore.observeMode(p),
+                        providerStore.observeKey(p),
+                        providerStore.observeValidated(p),
+                    ) { mode, key, validated ->
+                        // Persisted validity surfaces the "Connected" badge on launch; the
+                        // transient validationStates overlay (below) wins while testing.
+                        p to ProviderState(mode = mode, key = key, isKeyValid = if (key.isNotBlank() && validated) true else null)
                     }
                 },
             ) { pairs ->
@@ -256,6 +262,7 @@ class SettingsViewModel
                 }
                 setValidation(p, ProviderValidation(isValidating = true, message = "Checking connection…"))
                 val result = providerKeyValidator.validate(p, key)
+                providerStore.setValidated(p, result.isSuccess)
                 setValidation(
                     p,
                     result.fold(
@@ -278,6 +285,7 @@ class SettingsViewModel
             setValidation(p, ProviderValidation(isValidating = true, message = "Checking connection…"))
             viewModelScope.launch {
                 val result = providerKeyValidator.validate(p, key)
+                providerStore.setValidated(p, result.isSuccess)
                 setValidation(
                     p,
                     result.fold(

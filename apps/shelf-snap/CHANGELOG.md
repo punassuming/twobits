@@ -16,6 +16,8 @@
 
 ### Fixes
 
+* List tab: a sold listing can now be marked unsold (reverted to active) — previously a listing marked sold had no way to undo it
+
 ## 1.18.0 (2026-06-27)
 
 ### Features

@@ -12,6 +12,7 @@
 * the Google Shopping key is now stored and shared across TwoBits apps under the "searchapi" identity (was "serpapi"), completing the SearchAPI.io migration
 * Free product cap now refreshes subscription status on a cold start, so a returning PriceDrop Pro subscriber isn't temporarily limited to 3 products before opening Settings
 * BYOK Google Shopping results are now parsed from SearchAPI.io's actual response shape (shopping_results + popular_products, seller / product_link), so common queries no longer return empty or save products with a blank retailer/URL
+* AI Config: a provider key that previously passed verification now shows "Connected" on launch — the verified state is persisted, so you no longer have to expand, save, and test each key every time you open the app
 
 ## 0.8.0 (2026-06-27)
 

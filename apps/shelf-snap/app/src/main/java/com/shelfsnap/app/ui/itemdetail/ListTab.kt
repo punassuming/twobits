@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
@@ -346,6 +347,16 @@ private fun ActiveListingRow(
                         Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Mark sold", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                if (listing.status == ListingStatus.SOLD) {
+                    TextButton(
+                        onClick = onMarkActive,
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Mark unsold", style = MaterialTheme.typography.labelMedium)
                     }
                 }
                 if (listing.status in listOf(ListingStatus.ACTIVE, ListingStatus.DRAFT)) {
