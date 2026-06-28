@@ -6,7 +6,11 @@
 
 ### Improvements
 
+* the per-profile model override and the AI-draft model picker are now hidden in Pro mode (the managed service picks the model); they appear only when a BYOK OpenAI key is configured
+
 ### Fixes
+
+* Pro routing now refreshes subscription status on a cold start, so Pro users who haven't opened Settings no longer get "No API key configured" — the request correctly routes through the managed proxy
 
 ## 1.26.0 (2026-06-27)
 

@@ -11,6 +11,7 @@ import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.TransformProfile
+import dev.scrybe.core.transcription.ApiKeyProvider
 import dev.scrybe.core.transforms.OpenAiProfileSuggestionService
 import dev.scrybe.core.transforms.ProfileSuggestion
 import kotlinx.coroutines.async
@@ -91,7 +92,24 @@ class ProfilesViewModel
         private val transformProfileDao: TransformProfileDao,
         private val preferencesDataStore: AppPreferencesDataStore,
         private val profileSuggestionService: OpenAiProfileSuggestionService,
+        private val apiKeyProvider: ApiKeyProvider,
     ) : ViewModel() {
+        // True only when the user has a BYOK OpenAI key. In Pro (managed) mode there
+        // is no key and the Worker dictates the model, so model-override pickers are
+        // hidden — the user picks a model only when they bring their own key.
+        private val _hasOpenAiKey = MutableStateFlow(false)
+        val hasOpenAiKey: StateFlow<Boolean> = _hasOpenAiKey.asStateFlow()
+
+        init {
+            refreshHasOpenAiKey()
+        }
+
+        private fun refreshHasOpenAiKey() {
+            viewModelScope.launch {
+                _hasOpenAiKey.value = !apiKeyProvider.getApiKey(ProviderType.OPENAI).isNullOrBlank()
+            }
+        }
+
         val uiState: StateFlow<ProfilesUiState> =
             transformProfileDao
                 .getAllProfiles()
@@ -127,10 +145,12 @@ class ProfilesViewModel
         val draftingNewProfile: StateFlow<Boolean> = _draftingNewProfile.asStateFlow()
 
         fun openNewEditor() {
+            refreshHasOpenAiKey()
             _editorDraft.value = ProfileEditorDraft()
         }
 
         fun openEditor(profile: TransformProfile) {
+            refreshHasOpenAiKey()
             _editorDraft.value = profile.toDraft()
         }
 
@@ -143,6 +163,7 @@ class ProfilesViewModel
         }
 
         fun openAiCreator() {
+            refreshHasOpenAiKey()
             _aiCreatorOpen.value = true
         }
 

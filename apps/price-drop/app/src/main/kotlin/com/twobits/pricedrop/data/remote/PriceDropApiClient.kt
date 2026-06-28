@@ -209,7 +209,7 @@ class PriceDropApiClient
         ): SearchResponseDto =
             withContext(Dispatchers.IO) {
                 val url =
-                    "https://serpapi.com/search"
+                    "https://www.searchapi.io/api/v1/search"
                         .toHttpUrl()
                         .newBuilder()
                         .addQueryParameter("engine", "google_shopping")
