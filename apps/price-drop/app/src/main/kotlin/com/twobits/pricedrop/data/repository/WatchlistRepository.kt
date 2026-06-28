@@ -56,6 +56,8 @@ class WatchlistRepository
          * Pro users have no limit; free users may actively track up to [FREE_ACTIVE_LIMIT].
          */
         suspend fun add(product: WatchedProduct): AddResult {
+            // Refresh first so a cold-started Pro subscriber isn't capped as Free.
+            subscriptionRepository.ensureFresh()
             val isPro = subscriptionRepository.subscriptionTier.value is SubscriptionTier.Pro
             if (!isPro && watchedProductDao.countActive() >= FREE_ACTIVE_LIMIT) {
                 return AddResult.LimitReached

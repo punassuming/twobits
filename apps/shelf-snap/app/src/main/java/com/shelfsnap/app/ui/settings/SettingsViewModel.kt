@@ -14,6 +14,7 @@ import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.BraveSearchService
 import com.shelfsnap.app.data.remote.search.JinaAiSearchService
+import com.shelfsnap.app.data.remote.search.SearchApiService
 import com.shelfsnap.app.data.repository.ItemRepository
 import com.shelfsnap.app.util.ApiKeyValidator
 import com.twobits.billing.BillingManager
@@ -64,6 +65,12 @@ data class SettingsUiState(
     val isBraveTesting: Boolean = false,
     val braveTestResult: Boolean? = null,
     val braveTestMessage: String? = null,
+    val searchapiSearchEnabled: Boolean = true,
+    val savedSearchapiApiKey: String = "",
+    val editSearchapiApiKey: String = "",
+    val isSearchapiTesting: Boolean = false,
+    val searchapiTestResult: Boolean? = null,
+    val searchapiTestMessage: String? = null,
     val visionModel: VisionModel = VisionModel.default,
     val reasoningModel: ReasoningModel = ReasoningModel.default,
     val visionSource: String = "byok",
@@ -93,6 +100,7 @@ class SettingsViewModel
         private val localModelManager: LocalModelManager,
         private val jinaSearchService: JinaAiSearchService,
         private val braveSearchService: BraveSearchService,
+        private val searchapiService: SearchApiService,
         @ApplicationContext private val context: Context,
         private val credentialClient: SharedCredentialClient,
     ) : ViewModel() {
@@ -111,6 +119,10 @@ class SettingsViewModel
         private val _isBraveTesting = MutableStateFlow(false)
         private val _braveTestResult = MutableStateFlow<Boolean?>(null)
         private val _braveTestMessage = MutableStateFlow<String?>(null)
+        private val _editSearchapiKey = MutableStateFlow("")
+        private val _isSearchapiTesting = MutableStateFlow(false)
+        private val _searchapiTestResult = MutableStateFlow<Boolean?>(null)
+        private val _searchapiTestMessage = MutableStateFlow<String?>(null)
         private val _storage = MutableStateFlow(StorageInfo())
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
 
@@ -131,6 +143,11 @@ class SettingsViewModel
                 if (repository.getBraveApiKey().isBlank()) {
                     credentialClient.readThrough(SharedCredentialId.BRAVE)?.let { sibling ->
                         repository.saveBraveApiKey(sibling)
+                    }
+                }
+                if (repository.getSearchapiApiKey().isBlank()) {
+                    credentialClient.readThrough(SharedCredentialId.SEARCHAPI)?.let { sibling ->
+                        repository.saveSearchapiApiKey(sibling)
                     }
                 }
             }
@@ -164,6 +181,19 @@ class SettingsViewModel
                 SearchTestState(testing, result, message)
             }
 
+        private val searchapiTestFlow =
+            combine(_isSearchapiTesting, _searchapiTestResult, _searchapiTestMessage) { testing, result, message ->
+                SearchTestState(testing, result, message)
+            }
+
+        private val searchapiGroupFlow =
+            combine(
+                repository.observeSearchapiSearchEnabled(),
+                repository.observeSearchapiApiKey(),
+                _editSearchapiKey,
+                searchapiTestFlow,
+            ) { enabled, saved, edit, test -> SearchApiGroup(enabled, saved, edit, test) }
+
         private val searchFlow =
             combine(
                 combine(
@@ -173,8 +203,23 @@ class SettingsViewModel
                 combine(repository.observeJinaApiKey(), _editJinaKey) { saved, edit -> saved to edit },
                 combine(repository.observeBraveApiKey(), _editBraveKey) { saved, edit -> saved to edit },
                 combine(_isSearchSaved, jinaTestFlow, braveTestFlow) { saved, jina, brave -> Triple(saved, jina, brave) },
-            ) { (jinaEnabled, braveEnabled), (savedJina, editJina), (savedBrave, editBrave), (saved, jinaTest, braveTest) ->
-                SearchState(jinaEnabled, braveEnabled, savedJina, editJina, savedBrave, editBrave, saved, jinaTest, braveTest)
+                searchapiGroupFlow,
+            ) { (jinaEnabled, braveEnabled), (savedJina, editJina), (savedBrave, editBrave), (saved, jinaTest, braveTest), sapi ->
+                SearchState(
+                    jinaEnabled,
+                    braveEnabled,
+                    savedJina,
+                    editJina,
+                    savedBrave,
+                    editBrave,
+                    saved,
+                    jinaTest,
+                    braveTest,
+                    sapi.enabled,
+                    sapi.savedKey,
+                    sapi.editKey,
+                    sapi.test,
+                )
             }
 
         private val localModelsFlow =
@@ -244,6 +289,12 @@ class SettingsViewModel
                     isBraveTesting = search.braveTest.isTesting,
                     braveTestResult = search.braveTest.result,
                     braveTestMessage = search.braveTest.message,
+                    searchapiSearchEnabled = search.searchapiEnabled,
+                    savedSearchapiApiKey = search.savedSearchapiKey,
+                    editSearchapiApiKey = search.editSearchapiKey.ifBlank { search.savedSearchapiKey },
+                    isSearchapiTesting = search.searchapiTest.isTesting,
+                    searchapiTestResult = search.searchapiTest.result,
+                    searchapiTestMessage = search.searchapiTest.message,
                     visionModel = models.visionModel,
                     reasoningModel = models.reasoningModel,
                     visionSource = models.visionSource,
@@ -424,6 +475,61 @@ class SettingsViewModel
             }
         }
 
+        fun onSearchapiSearchEnabledChange(enabled: Boolean) {
+            viewModelScope.launch { repository.saveSearchapiSearchEnabled(enabled) }
+        }
+
+        fun onSearchapiApiKeyChange(value: String) {
+            _editSearchapiKey.update { value }
+            _isSearchSaved.update { false }
+            _searchapiTestResult.update { null }
+            _searchapiTestMessage.update { null }
+        }
+
+        fun saveSearchapiKey() {
+            val key = _editSearchapiKey.value.ifBlank { uiState.value.savedSearchapiApiKey }.trim()
+            if (key.isBlank()) return
+            viewModelScope.launch {
+                repository.saveSearchapiApiKey(key)
+                credentialClient.mirror(SharedCredentialId.SEARCHAPI, key)
+                _isSearchSaved.update { true }
+            }
+            validateSearchapiKey(key)
+        }
+
+        fun clearSearchapiKey() {
+            viewModelScope.launch {
+                repository.saveSearchapiApiKey("")
+                _editSearchapiKey.update { "" }
+                _isSearchSaved.update { false }
+                _searchapiTestResult.update { null }
+                _searchapiTestMessage.update { null }
+            }
+        }
+
+        fun testSearchapiKey() {
+            val key = _editSearchapiKey.value.ifBlank { uiState.value.savedSearchapiApiKey }.trim()
+            if (key.isBlank()) return
+            validateSearchapiKey(key)
+        }
+
+        private fun validateSearchapiKey(key: String) {
+            viewModelScope.launch {
+                _isSearchapiTesting.update { true }
+                _searchapiTestResult.update { null }
+                _searchapiTestMessage.update { "Checking connection…" }
+                val result = runCatching { searchapiService.search("used electronics price", key, 1) }
+                _isSearchapiTesting.update { false }
+                if (result.isSuccess) {
+                    _searchapiTestResult.update { true }
+                    _searchapiTestMessage.update { "Connected to SearchAPI.io" }
+                } else {
+                    _searchapiTestResult.update { false }
+                    _searchapiTestMessage.update { result.exceptionOrNull()?.message ?: "Connection failed" }
+                }
+            }
+        }
+
         fun onSearchSavedShown() {
             _isSearchSaved.update { false }
         }
@@ -560,6 +666,13 @@ class SettingsViewModel
             val message: String?,
         )
 
+        private data class SearchApiGroup(
+            val enabled: Boolean,
+            val savedKey: String,
+            val editKey: String,
+            val test: SearchTestState,
+        )
+
         private data class SearchState(
             val jinaEnabled: Boolean,
             val braveEnabled: Boolean,
@@ -570,6 +683,10 @@ class SettingsViewModel
             val saved: Boolean,
             val jinaTest: SearchTestState = SearchTestState(false, null, null),
             val braveTest: SearchTestState = SearchTestState(false, null, null),
+            val searchapiEnabled: Boolean = true,
+            val savedSearchapiKey: String = "",
+            val editSearchapiKey: String = "",
+            val searchapiTest: SearchTestState = SearchTestState(false, null, null),
         )
 
         private data class LocalModelsState(

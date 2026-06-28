@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +19,8 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -50,15 +53,14 @@ import com.shelfsnap.app.data.model.LocalMoondreamModel
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.twobits.billing.SubscriptionTier
-import com.twobits.design.components.AiCredentialsDock
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionHeader
 import com.twobits.design.components.AiSourceSegment
+import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
-import com.twobits.design.components.ProviderCredentialCard
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
     when (this) {
@@ -122,25 +124,10 @@ fun AIConfigScreen(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            AiCredentialsDock(
-                proLabel = "Shelf Snap Pro",
-                proPrice = "\$1.99/mo",
+            CredentialsSection(
+                uiState = uiState,
+                viewModel = viewModel,
                 hasPro = hasPro,
-                apiKey = uiState.editApiKey,
-                isValidating = uiState.isVerifyingKey,
-                validationMessage =
-                    when {
-                        uiState.isVerifyingKey -> "Checking connection…"
-                        uiState.isKeyVerified == true -> "Connected to OpenAI"
-                        uiState.isKeyVerified == false -> uiState.keyVerifyError ?: "Connection failed"
-                        uiState.isKeyInvalid -> "Invalid API key format"
-                        else -> null
-                    },
-                isKeyValid = uiState.isKeyVerified,
-                onApiKeyChange = viewModel::onApiKeyChange,
-                onSave = viewModel::save,
-                onClear = viewModel::clearApiKey,
-                onTest = viewModel::testApiKey,
                 onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
             )
 
@@ -280,6 +267,141 @@ fun AIConfigScreen(
     }
 }
 
+/** All BYOK keys for Shelf Snap, grouped at the top like PriceDrop's credentials section. */
+@Composable
+private fun CredentialsSection(
+    uiState: SettingsUiState,
+    viewModel: SettingsViewModel,
+    hasPro: Boolean,
+    onUpgrade: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        AiSectionHeader(title = "Credentials", icon = Icons.Filled.VpnKey)
+        ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (hasPro) {
+                    Text(
+                        text = "Shelf Snap Pro active — managed keys are used automatically. The keys below are optional (BYOK).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Upgrade to Shelf Snap Pro for managed keys — no setup needed.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Button(onClick = onUpgrade) { Text("Upgrade") }
+                    }
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.VpnKey,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(11.dp),
+                    )
+                    Text(
+                        text = "BYOK · YOUR KEYS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                CollapsibleProviderRow(
+                    icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    title = "OpenAI",
+                    description = "Vision + pricing & descriptions",
+                    maskedKey = maskKey(uiState.savedApiKey),
+                    isKeyValid = uiState.isKeyVerified,
+                    isValidating = uiState.isVerifyingKey,
+                    validationMessage =
+                        when {
+                            uiState.isVerifyingKey -> "Checking connection…"
+                            uiState.isKeyVerified == true -> "Connected to OpenAI"
+                            uiState.isKeyVerified == false -> uiState.keyVerifyError ?: "Connection failed"
+                            uiState.isKeyInvalid -> "Invalid API key format"
+                            else -> null
+                        },
+                    apiKey = uiState.editApiKey,
+                    onApiKeyChange = viewModel::onApiKeyChange,
+                    onSave = viewModel::save,
+                    onTest = viewModel::testApiKey,
+                    onClear = viewModel::clearApiKey,
+                    signupUrl = "https://platform.openai.com/api-keys",
+                )
+
+                CollapsibleProviderRow(
+                    icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    title = "SearchAPI.io",
+                    description = "Marketplace search — honors site: filters (recommended)",
+                    maskedKey = maskKey(uiState.savedSearchapiApiKey),
+                    isKeyValid = uiState.searchapiTestResult,
+                    isValidating = uiState.isSearchapiTesting,
+                    validationMessage = uiState.searchapiTestMessage,
+                    apiKey = uiState.editSearchapiApiKey,
+                    onApiKeyChange = viewModel::onSearchapiApiKeyChange,
+                    onSave = viewModel::saveSearchapiKey,
+                    onTest = viewModel::testSearchapiKey,
+                    onClear = viewModel::clearSearchapiKey,
+                    signupUrl = "https://www.searchapi.io",
+                )
+
+                CollapsibleProviderRow(
+                    icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    title = "Jina AI",
+                    description = "Page reading + web search fallback",
+                    maskedKey = maskKey(uiState.savedJinaApiKey),
+                    isKeyValid = uiState.jinaTestResult,
+                    isValidating = uiState.isJinaTesting,
+                    validationMessage = uiState.jinaTestMessage,
+                    apiKey = uiState.editJinaApiKey,
+                    onApiKeyChange = viewModel::onJinaApiKeyChange,
+                    onSave = viewModel::saveJinaKey,
+                    onTest = viewModel::testJinaKey,
+                    onClear = viewModel::clearJinaKey,
+                    signupUrl = "https://jina.ai",
+                )
+
+                CollapsibleProviderRow(
+                    icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    title = "Brave Search",
+                    description = "Supplemental web-search index",
+                    maskedKey = maskKey(uiState.savedBraveApiKey),
+                    isKeyValid = uiState.braveTestResult,
+                    isValidating = uiState.isBraveTesting,
+                    validationMessage = uiState.braveTestMessage,
+                    apiKey = uiState.editBraveApiKey,
+                    onApiKeyChange = viewModel::onBraveApiKeyChange,
+                    onSave = viewModel::saveBraveKey,
+                    onTest = viewModel::testBraveKey,
+                    onClear = viewModel::clearBraveKey,
+                    signupUrl = "https://brave.com/search/api/",
+                )
+            }
+        }
+    }
+}
+
+private fun maskKey(key: String): String? =
+    when {
+        key.length > 8 -> "${key.take(4)}${"•".repeat(7)}${key.takeLast(4)}"
+        key.isNotBlank() -> "••••"
+        else -> null
+    }
+
 @Composable
 private fun WebSearchSection(
     uiState: SettingsUiState,
@@ -295,109 +417,42 @@ private fun WebSearchSection(
     }
     Text(
         text =
-            "Enable one or both. Jina AI both searches and opens listing pages to read real prices; " +
-                "Brave Search adds a second independent index for broader coverage. With both on, " +
-                "results are merged and the top pages are read via Jina.",
+            "SearchAPI.io is the primary search (it returns real marketplace listings); Jina AI opens those " +
+                "pages to read prices and is a search fallback; Brave adds a second index. Enter the keys under " +
+                "Credentials above.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    WebSearchProviderBlock(
+    WebSearchToggleRow(
+        title = "SearchAPI.io",
+        enabled = uiState.searchapiSearchEnabled,
+        onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
+    )
+    WebSearchToggleRow(
         title = stringResource(R.string.jina_api_key_label),
         enabled = uiState.jinaSearchEnabled,
         onEnabledChange = viewModel::onJinaSearchEnabledChange,
-        apiKey = uiState.editJinaApiKey,
-        isValidating = uiState.isJinaTesting,
-        validationMessage = uiState.jinaTestMessage,
-        isKeyValid = uiState.jinaTestResult,
-        onApiKeyChange = viewModel::onJinaApiKeyChange,
-        onSave = viewModel::saveJinaKey,
-        onClear = viewModel::clearJinaKey,
-        onTest = viewModel::testJinaKey,
-        keyHint = stringResource(R.string.jina_api_key_hint),
-        setupContent =
-            if (uiState.savedJinaApiKey.isBlank()) {
-                {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = stringResource(R.string.jina_setup_title),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        listOf(
-                            stringResource(R.string.jina_setup_step_1),
-                            stringResource(R.string.jina_setup_step_2),
-                            stringResource(R.string.jina_setup_step_3),
-                        ).forEachIndexed { i, step ->
-                            Text(
-                                text = "${i + 1}. $step",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            } else {
-                null
-            },
     )
-    WebSearchProviderBlock(
+    WebSearchToggleRow(
         title = stringResource(R.string.brave_api_key_label),
         enabled = uiState.braveSearchEnabled,
         onEnabledChange = viewModel::onBraveSearchEnabledChange,
-        apiKey = uiState.editBraveApiKey,
-        isValidating = uiState.isBraveTesting,
-        validationMessage = uiState.braveTestMessage,
-        isKeyValid = uiState.braveTestResult,
-        onApiKeyChange = viewModel::onBraveApiKeyChange,
-        onSave = viewModel::saveBraveKey,
-        onClear = viewModel::clearBraveKey,
-        onTest = viewModel::testBraveKey,
-        keyHint = stringResource(R.string.brave_api_key_hint),
     )
 }
 
 @Composable
-private fun WebSearchProviderBlock(
+private fun WebSearchToggleRow(
     title: String,
     enabled: Boolean,
     onEnabledChange: (Boolean) -> Unit,
-    apiKey: String,
-    isValidating: Boolean,
-    validationMessage: String?,
-    isKeyValid: Boolean?,
-    onApiKeyChange: (String) -> Unit,
-    onSave: () -> Unit,
-    onClear: () -> Unit,
-    onTest: () -> Unit,
-    keyHint: String,
-    setupContent: (@Composable () -> Unit)? = null,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Switch(checked = enabled, onCheckedChange = onEnabledChange)
-        }
-        if (enabled) {
-            setupContent?.invoke()
-            ProviderCredentialCard(
-                title = title,
-                selectedMode = "key",
-                keyMode = "key",
-                apiKey = apiKey,
-                isValidating = isValidating,
-                validationMessage = validationMessage,
-                isKeyValid = isKeyValid,
-                onApiKeyChange = onApiKeyChange,
-                onSave = onSave,
-                onClear = onClear,
-                onTest = onTest,
-                keyHint = keyHint,
-            )
-        }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(title, style = MaterialTheme.typography.titleSmall)
+        Switch(checked = enabled, onCheckedChange = onEnabledChange)
     }
 }
 

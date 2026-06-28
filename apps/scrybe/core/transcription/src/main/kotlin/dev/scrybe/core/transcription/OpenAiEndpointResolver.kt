@@ -31,6 +31,9 @@ class OpenAiEndpointResolver
         private val subscriptionRepository: SubscriptionRepository,
     ) {
         suspend fun resolve(): OpenAiEndpoint {
+            // Make sure a cold-started Pro user isn't misread as Free (which would
+            // wrongly send the call down the BYOK branch and throw for no local key).
+            subscriptionRepository.ensureFresh()
             val tier = subscriptionRepository.subscriptionTier.first()
             return if (tier is SubscriptionTier.Pro) {
                 OpenAiEndpoint(baseUrl = PRO_BASE_URL, authToken = subscriptionRepository.getAppUserId())

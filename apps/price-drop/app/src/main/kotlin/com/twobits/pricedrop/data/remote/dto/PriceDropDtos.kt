@@ -11,7 +11,7 @@ data class SearchResponseDto(
 
 data class SearchResultDto(
     @SerializedName("title") val title: String? = null,
-    // SerpAPI returns price as a display string, e.g. "$49.99".
+    // SearchAPI.io returns price as a display string, e.g. "$49.99".
     @SerializedName("price") val price: String? = null,
     @SerializedName("source") val source: String? = null,
     @SerializedName("url") val url: String? = null,

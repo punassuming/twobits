@@ -28,6 +28,7 @@ dependencies {
     implementation(project(":core:datastore"))
     implementation(project(":core:database"))
     implementation(project(":core:transforms"))
+    implementation(project(":core:transcription"))
     implementation("com.twobits.core:design")
 
     implementation(libs.androidx.core.ktx)

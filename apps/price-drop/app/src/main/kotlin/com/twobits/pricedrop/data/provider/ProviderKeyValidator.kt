@@ -33,7 +33,7 @@ class ProviderKeyValidator
                     when (provider) {
                         PriceDropProvider.OPENAI -> testOpenAi(trimmed)
                         PriceDropProvider.WEB_SEARCH -> testJina(trimmed)
-                        PriceDropProvider.SHOPPING -> testSerpApi(trimmed)
+                        PriceDropProvider.SHOPPING -> testSearchApi(trimmed)
                         PriceDropProvider.KEEPA -> testKeepa(trimmed)
                         PriceDropProvider.COUPON -> testCouponlayer(trimmed)
                         PriceDropProvider.RAINFOREST -> testRainforest(trimmed)
@@ -88,11 +88,16 @@ class ProviderKeyValidator
             }
         }
 
-        private fun testSerpApi(key: String): String {
+        private fun testSearchApi(key: String): String {
+            // SearchAPI.io has no free account endpoint, so verify with a minimal
+            // 1-result search (consumes one search credit per Test).
             val url =
-                "https://serpapi.com/account"
+                "https://www.searchapi.io/api/v1/search"
                     .toHttpUrl()
                     .newBuilder()
+                    .addQueryParameter("engine", "google")
+                    .addQueryParameter("q", "ping")
+                    .addQueryParameter("num", "1")
                     .addQueryParameter("api_key", key)
                     .build()
             val request =
@@ -102,21 +107,11 @@ class ProviderKeyValidator
                     .get()
                     .build()
             okHttpClient.newCall(request).execute().use { response ->
-                val text = response.body?.string().orEmpty()
                 return when {
-                    response.isSuccessful -> {
-                        val plan =
-                            runCatching {
-                                gson
-                                    .fromJson(text, JsonObject::class.java)
-                                    ?.get("plan_name")
-                                    ?.asString
-                            }.getOrNull()
-                        if (plan != null) "Connected to SerpAPI — $plan plan" else "Connected to SerpAPI"
-                    }
+                    response.isSuccessful -> "Connected to SearchAPI.io"
                     response.code == 401 || response.code == 403 ->
-                        throw IllegalStateException("SerpAPI rejected this key")
-                    else -> throw IllegalStateException("SerpAPI returned HTTP ${response.code}")
+                        throw IllegalStateException("SearchAPI.io rejected this key")
+                    else -> throw IllegalStateException("SearchAPI.io returned HTTP ${response.code}")
                 }
             }
         }

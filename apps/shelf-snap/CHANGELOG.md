@@ -6,7 +6,22 @@
 
 ### Improvements
 
+**Market research — SearchAPI.io search:**
+* added SearchAPI.io as a BYOK web-search provider (in Credentials) and made it the primary search for market research — it honors `site:` filters and returns real marketplace listings with links, where Jina returned eBay error pages and no usable links
+* Jina AI is now used to read listing pages and as a search fallback; Brave remains a supplemental index
+* fixed an over-long fallback search query (it embedded the full AI description) that returned 0 results
+
+**AI configuration — all keys in one place:**
+* OpenAI, Jina AI, and Brave Search keys are now grouped in a single Credentials section at the top of AI configuration — collapsible rows with masked keys and connection status, matching PriceDrop
+* the Web search section now just toggles each provider on/off; the keys live in Credentials above
+
+* internal: shared billing gained a one-time subscription-refresh helper used by sibling apps to avoid cold-start Pro mis-detection (no behavior change in Shelf Snap — its Pro/BYOK source is an explicit setting)
+* internal: the shared credential registry's SerpAPI entry was renamed to SearchAPI.io (no behavior change in Shelf Snap)
+* internal: the shared billing refresh helper now retries after a failed RevenueCat fetch rather than latching to Free (no behavior change in Shelf Snap)
+
 ### Fixes
+
+* List tab: a sold listing can now be marked unsold (reverted to active) — previously a listing marked sold had no way to undo it
 
 ## 1.18.0 (2026-06-27)
 

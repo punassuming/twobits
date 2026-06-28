@@ -82,8 +82,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,6 +111,13 @@ import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.TransformProfile
+
+/**
+ * True when the user has a BYOK OpenAI key configured. Model-override pickers read
+ * this and hide themselves when false — in Pro (managed) mode the Worker dictates
+ * the model, so there is nothing for the user to choose.
+ */
+private val LocalOpenAiKeyPresent = compositionLocalOf { false }
 
 private enum class ProfileIcon(
     val vector: ImageVector,
@@ -208,6 +217,7 @@ fun ProfilesScreen(
     val editorDraft by viewModel.editorDraft.collectAsState()
     val aiCreatorOpen by viewModel.aiCreatorOpen.collectAsState()
     val draftingNewProfile by viewModel.draftingNewProfile.collectAsState()
+    val hasOpenAiKey by viewModel.hasOpenAiKey.collectAsState()
     var detailProfile by remember { mutableStateOf<TransformProfile?>(null) }
     var showNewProfileSheet by rememberSaveable { mutableStateOf(false) }
 
@@ -302,76 +312,78 @@ fun ProfilesScreen(
         }
     }
 
-    editorDraft?.let { draft ->
-        ProfileEditorDialog(
-            draft = draft,
-            onUpdate = { viewModel.updateEditorDraft(it) },
-            onDismiss = { viewModel.closeEditor() },
-            onSave = {
-                viewModel.saveProfile(it)
-                viewModel.closeEditor()
-            },
-        )
-    }
+    CompositionLocalProvider(LocalOpenAiKeyPresent provides hasOpenAiKey) {
+        editorDraft?.let { draft ->
+            ProfileEditorDialog(
+                draft = draft,
+                onUpdate = { viewModel.updateEditorDraft(it) },
+                onDismiss = { viewModel.closeEditor() },
+                onSave = {
+                    viewModel.saveProfile(it)
+                    viewModel.closeEditor()
+                },
+            )
+        }
 
-    if (aiCreatorOpen) {
-        AiProfileDraftDialog(
-            selectedModelName = profileSuggestionModel,
-            suggestionState = suggestionState,
-            onDismiss = {
-                viewModel.clearSuggestionState()
-                viewModel.closeAiCreator()
-            },
-            onModelChange = viewModel::setProfileSuggestionModel,
-            onSuggest = viewModel::suggestProfile,
-            onSuggestionConsumed = viewModel::clearSuggestionState,
-            onSaveSuggestion = { suggestion, isDefault ->
-                viewModel.saveProfile(
-                    ProfileEditorDraft(
-                        name = suggestion.name,
-                        description = suggestion.description,
-                        steps = suggestion.steps,
-                        isDefault = isDefault,
-                    ),
-                )
-                viewModel.clearSuggestionState()
-                viewModel.closeAiCreator()
-            },
-            onEditSuggestion = { suggestion, isDefault ->
-                viewModel.updateEditorDraft(
-                    ProfileEditorDraft(
-                        existingId = null,
-                        name = suggestion.name,
-                        description = suggestion.description,
-                        steps = suggestion.steps,
-                        isDefault = isDefault,
-                    ),
-                )
-                viewModel.clearSuggestionState()
-                viewModel.closeAiCreator()
-            },
-        )
-    }
+        if (aiCreatorOpen) {
+            AiProfileDraftDialog(
+                selectedModelName = profileSuggestionModel,
+                suggestionState = suggestionState,
+                onDismiss = {
+                    viewModel.clearSuggestionState()
+                    viewModel.closeAiCreator()
+                },
+                onModelChange = viewModel::setProfileSuggestionModel,
+                onSuggest = viewModel::suggestProfile,
+                onSuggestionConsumed = viewModel::clearSuggestionState,
+                onSaveSuggestion = { suggestion, isDefault ->
+                    viewModel.saveProfile(
+                        ProfileEditorDraft(
+                            name = suggestion.name,
+                            description = suggestion.description,
+                            steps = suggestion.steps,
+                            isDefault = isDefault,
+                        ),
+                    )
+                    viewModel.clearSuggestionState()
+                    viewModel.closeAiCreator()
+                },
+                onEditSuggestion = { suggestion, isDefault ->
+                    viewModel.updateEditorDraft(
+                        ProfileEditorDraft(
+                            existingId = null,
+                            name = suggestion.name,
+                            description = suggestion.description,
+                            steps = suggestion.steps,
+                            isDefault = isDefault,
+                        ),
+                    )
+                    viewModel.clearSuggestionState()
+                    viewModel.closeAiCreator()
+                },
+            )
+        }
 
-    // New unified profile creation sheet
-    if (showNewProfileSheet) {
-        NewProfileSheet(
-            selectedModelName = profileSuggestionModel,
-            onDismiss = { showNewProfileSheet = false },
-            onModelChange = viewModel::setProfileSuggestionModel,
-            onSaveManual = { name, prompt ->
-                viewModel.saveProfile(
-                    ProfileEditorDraft(
-                        name = name.trim(),
-                        steps = listOf(prompt.trim()).filter { it.isNotBlank() }.ifEmpty { listOf("Process {{transcript}}") },
-                    ),
-                )
-                showNewProfileSheet = false
-            },
-            onDraftWithAi = { name, prompt ->
-                viewModel.startNewProfileDraft(name, prompt)
-            },
-        )
+        // New unified profile creation sheet
+        if (showNewProfileSheet) {
+            NewProfileSheet(
+                selectedModelName = profileSuggestionModel,
+                onDismiss = { showNewProfileSheet = false },
+                onModelChange = viewModel::setProfileSuggestionModel,
+                onSaveManual = { name, prompt ->
+                    viewModel.saveProfile(
+                        ProfileEditorDraft(
+                            name = name.trim(),
+                            steps = listOf(prompt.trim()).filter { it.isNotBlank() }.ifEmpty { listOf("Process {{transcript}}") },
+                        ),
+                    )
+                    showNewProfileSheet = false
+                },
+                onDraftWithAi = { name, prompt ->
+                    viewModel.startNewProfileDraft(name, prompt)
+                },
+            )
+        }
     }
 
     // Animated progress sheet shown while AI drafts a new profile
@@ -1387,6 +1399,8 @@ private fun AiDraftModelPicker(
     selectedModel: OpenAiProfileSuggestionModel,
     onModelChange: (String) -> Unit,
 ) {
+    // Pro (managed) mode dictates the model server-side — only offer a choice for BYOK.
+    if (!LocalOpenAiKeyPresent.current) return
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -1559,39 +1573,42 @@ private fun ModelPickerRow(
 ) {
     var showPicker by remember { mutableStateOf(false) }
     when (draft.providerType) {
-        ProviderType.OPENAI -> {
-            val currentModel = OpenAiTransformModel.entries.firstOrNull { it.apiName == draft.modelName }
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { showPicker = true },
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                shape = MaterialTheme.shapes.medium,
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    Text("Model override", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        currentModel?.title ?: "Global default",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        "Leave blank to use the global AI features model",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // The per-profile model override only applies to BYOK; in Pro the Worker
+        // dictates the model, so hide it unless the user has their own key.
+        ProviderType.OPENAI ->
+            if (LocalOpenAiKeyPresent.current) {
+                val currentModel = OpenAiTransformModel.entries.firstOrNull { it.apiName == draft.modelName }
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { showPicker = true },
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = MaterialTheme.shapes.medium,
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        Text("Model override", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            currentModel?.title ?: "Global default",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            "Leave blank to use the global AI features model",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (showPicker) {
+                    OpenAiModelPickerDialog(
+                        currentApiName = draft.modelName,
+                        onDismiss = { showPicker = false },
+                        onSelect = { apiName ->
+                            onUpdate(draft.copy(modelName = apiName))
+                            showPicker = false
+                        },
                     )
                 }
             }
-            if (showPicker) {
-                OpenAiModelPickerDialog(
-                    currentApiName = draft.modelName,
-                    onDismiss = { showPicker = false },
-                    onSelect = { apiName ->
-                        onUpdate(draft.copy(modelName = apiName))
-                        showPicker = false
-                    },
-                )
-            }
-        }
         ProviderType.LOCAL -> {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -1705,54 +1722,56 @@ private fun NewProfileSheet(
                 )
             }
 
-            // AI draft model section
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("AI draft model", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { showModelPicker = true },
-                    shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+            // AI draft model section — hidden in Pro (managed model), shown only for BYOK
+            if (LocalOpenAiKeyPresent.current) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("AI draft model", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { showModelPicker = true },
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(selectedModel.title, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                selectedModel.supportingText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(selectedModel.title, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    selectedModel.supportingText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Icon(
+                                Icons.Filled.ExpandMore,
+                                contentDescription = "Select model",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Icon(
-                            Icons.Filled.ExpandMore,
-                            contentDescription = "Select model",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
-                }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    repeat(3) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(6.dp)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                        shape = CircleShape,
-                                    ),
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        repeat(3) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(6.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                            shape = CircleShape,
+                                        ),
+                            )
+                            Spacer(Modifier.width(3.dp))
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "1 API call per draft",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Spacer(Modifier.width(3.dp))
                     }
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "1 API call per draft",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
 

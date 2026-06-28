@@ -3,6 +3,7 @@ package com.twobits.pricedrop.data.provider
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -31,6 +32,10 @@ class ProviderSettingsStore
         private fun modeKey(p: PriceDropProvider) = stringPreferencesKey("mode_${p.key}")
 
         private fun apiKeyKey(p: PriceDropProvider) = stringPreferencesKey("key_${p.key}")
+
+        // Whether the stored key last passed live validation — persisted so the
+        // credential row shows "Connected" on launch without re-testing.
+        private fun validatedKey(p: PriceDropProvider) = booleanPreferencesKey("valid_${p.key}")
 
         fun observeMode(p: PriceDropProvider): Flow<ProviderMode> = context.providerStore.data.map { ProviderMode.fromValue(it[modeKey(p)]) }
 
@@ -62,7 +67,19 @@ class ProviderSettingsStore
         }
 
         suspend fun clearKey(p: PriceDropProvider) {
-            context.providerStore.edit { it.remove(apiKeyKey(p)) }
+            context.providerStore.edit {
+                it.remove(apiKeyKey(p))
+                it.remove(validatedKey(p))
+            }
+        }
+
+        fun observeValidated(p: PriceDropProvider): Flow<Boolean> = context.providerStore.data.map { it[validatedKey(p)] ?: false }
+
+        suspend fun setValidated(
+            p: PriceDropProvider,
+            valid: Boolean,
+        ) {
+            context.providerStore.edit { it[validatedKey(p)] = valid }
         }
 
         // ── Feature-level config (presentation layer; routing still uses per-provider mode/key) ──

@@ -96,7 +96,7 @@ class SettingsViewModel
                     listOf(
                         PriceDropProvider.OPENAI to SharedCredentialId.OPENAI,
                         PriceDropProvider.WEB_SEARCH to SharedCredentialId.JINA,
-                        PriceDropProvider.SHOPPING to SharedCredentialId.SERPAPI,
+                        PriceDropProvider.SHOPPING to SharedCredentialId.SEARCHAPI,
                         PriceDropProvider.KEEPA to SharedCredentialId.KEEPA,
                         PriceDropProvider.COUPON to SharedCredentialId.COUPON,
                         PriceDropProvider.RAINFOREST to SharedCredentialId.RAINFOREST,
@@ -161,8 +161,14 @@ class SettingsViewModel
         private val baseStates: Flow<Map<PriceDropProvider, ProviderState>> =
             combine(
                 PriceDropProvider.entries.map { p ->
-                    combine(providerStore.observeMode(p), providerStore.observeKey(p)) { mode, key ->
-                        p to ProviderState(mode, key)
+                    combine(
+                        providerStore.observeMode(p),
+                        providerStore.observeKey(p),
+                        providerStore.observeValidated(p),
+                    ) { mode, key, validated ->
+                        // Persisted validity surfaces the "Connected" badge on launch; the
+                        // transient validationStates overlay (below) wins while testing.
+                        p to ProviderState(mode = mode, key = key, isKeyValid = if (key.isNotBlank() && validated) true else null)
                     }
                 },
             ) { pairs ->
@@ -244,7 +250,7 @@ class SettingsViewModel
                 when (p) {
                     PriceDropProvider.OPENAI -> credentialClient.mirror(SharedCredentialId.OPENAI, key)
                     PriceDropProvider.WEB_SEARCH -> credentialClient.mirror(SharedCredentialId.JINA, key)
-                    PriceDropProvider.SHOPPING -> credentialClient.mirror(SharedCredentialId.SERPAPI, key)
+                    PriceDropProvider.SHOPPING -> credentialClient.mirror(SharedCredentialId.SEARCHAPI, key)
                     PriceDropProvider.KEEPA -> credentialClient.mirror(SharedCredentialId.KEEPA, key)
                     PriceDropProvider.COUPON -> credentialClient.mirror(SharedCredentialId.COUPON, key)
                     PriceDropProvider.RAINFOREST -> credentialClient.mirror(SharedCredentialId.RAINFOREST, key)
@@ -256,6 +262,7 @@ class SettingsViewModel
                 }
                 setValidation(p, ProviderValidation(isValidating = true, message = "Checking connection…"))
                 val result = providerKeyValidator.validate(p, key)
+                providerStore.setValidated(p, result.isSuccess)
                 setValidation(
                     p,
                     result.fold(
@@ -278,6 +285,7 @@ class SettingsViewModel
             setValidation(p, ProviderValidation(isValidating = true, message = "Checking connection…"))
             viewModelScope.launch {
                 val result = providerKeyValidator.validate(p, key)
+                providerStore.setValidated(p, result.isSuccess)
                 setValidation(
                     p,
                     result.fold(

@@ -74,7 +74,7 @@ class PriceDropApiClient
             upc: String? = null,
         ): PriceResponseDto {
             // Price and barcode lookups always use Rainforest API (Amazon product data).
-            // SerpAPI (SHOPPING) is for search only; it has no equivalent price endpoint.
+            // SearchAPI.io (SHOPPING) is for search only; it has no equivalent price endpoint.
             if (isByok(PriceDropProvider.RAINFOREST)) {
                 return priceDirect(asin, upc, providerSettings.getKey(PriceDropProvider.RAINFOREST))
             }
@@ -209,7 +209,7 @@ class PriceDropApiClient
         ): SearchResponseDto =
             withContext(Dispatchers.IO) {
                 val url =
-                    "https://serpapi.com/search"
+                    "https://www.searchapi.io/api/v1/search"
                         .toHttpUrl()
                         .newBuilder()
                         .addQueryParameter("engine", "google_shopping")
@@ -227,18 +227,25 @@ class PriceDropApiClient
                     val text = response.body?.string().orEmpty()
                     if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
                     val data = gson.fromJson(text, JsonObject::class.java)
+                    // SearchAPI.io Google Shopping spreads results across shopping_results
+                    // and popular_products, and uses seller / product_link (not source / link).
+                    val items =
+                        listOfNotNull(
+                            data.getAsJsonArray("shopping_results"),
+                            data.getAsJsonArray("popular_products"),
+                        ).flatten()
                     val results =
-                        (data.getAsJsonArray("shopping_results") ?: JsonArray())
-                            .take(maxResults)
-                            .map { item ->
-                                val r = item.asJsonObject
-                                SearchResultDto(
-                                    title = r["title"]?.asString,
-                                    price = r["price"]?.asString,
-                                    source = r["source"]?.asString,
-                                    url = r["link"]?.asString,
-                                )
-                            }
+                        items.take(maxResults).map { item ->
+                            val r = item.asJsonObject
+
+                            fun field(vararg keys: String): String? = keys.firstNotNullOfOrNull { k -> r[k]?.takeIf { it.isJsonPrimitive }?.asString }
+                            SearchResultDto(
+                                title = field("title"),
+                                price = field("price"),
+                                source = field("seller", "source"),
+                                url = field("product_link", "link"),
+                            )
+                        }
                     SearchResponseDto(results)
                 }
             }

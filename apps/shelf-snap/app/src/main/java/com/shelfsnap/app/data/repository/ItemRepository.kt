@@ -42,8 +42,10 @@ class ItemRepository
             private val KEY_SEARCH_API_KEY = stringPreferencesKey("search_api_key") // legacy — migration fallback for Jina
             private val KEY_JINA_API_KEY = stringPreferencesKey("jina_search_api_key")
             private val KEY_BRAVE_API_KEY = stringPreferencesKey("brave_search_api_key")
+            private val KEY_SEARCHAPI_API_KEY = stringPreferencesKey("searchapi_search_api_key")
             private val KEY_JINA_SEARCH_ENABLED = booleanPreferencesKey("jina_search_enabled")
             private val KEY_BRAVE_SEARCH_ENABLED = booleanPreferencesKey("brave_search_enabled")
+            private val KEY_SEARCHAPI_SEARCH_ENABLED = booleanPreferencesKey("searchapi_search_enabled")
             private val KEY_AUTO_ANALYZE = booleanPreferencesKey("auto_analyze")
             private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
             private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
@@ -119,15 +121,19 @@ class ItemRepository
                 "local" -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
                 else -> {
                     val jinaKey = if (getJinaSearchEnabled()) getJinaApiKey() else ""
+                    val searchapiKey = if (getSearchapiSearchEnabled()) getSearchapiApiKey() else ""
                     priceResearchService.research(
                         item = item,
                         openAiKey = getApiKey(),
                         searchProviders =
                             buildList {
+                                // SearchAPI.io first — it honors site: and returns real links
+                                // where Jina returns eBay error pages.
+                                if (searchapiKey.isNotBlank()) add(SearchProvider.SEARCHAPI to searchapiKey)
                                 if (jinaKey.isNotBlank()) add(SearchProvider.JINA to jinaKey)
                                 if (getBraveSearchEnabled()) add(SearchProvider.BRAVE to getBraveApiKey())
                             },
-                        // Page reading is Jina-only — Brave has no reader endpoint.
+                        // Page reading is Jina-only — Brave/SearchAPI have no reader endpoint.
                         readerKey = jinaKey.ifBlank { null },
                         model = getReasoningModel().apiName,
                     )
@@ -203,10 +209,30 @@ class ItemRepository
             dataStore.edit { it[KEY_BRAVE_SEARCH_ENABLED] = enabled }
         }
 
+        fun observeSearchapiApiKey(): Flow<String> = dataStore.data.map { crypto.tryDecryptOrPassthrough(it[KEY_SEARCHAPI_API_KEY] ?: "") }
+
+        suspend fun getSearchapiApiKey(): String {
+            val raw = dataStore.data.firstOrNull()?.get(KEY_SEARCHAPI_API_KEY) ?: ""
+            return crypto.tryDecryptOrPassthrough(raw)
+        }
+
+        suspend fun saveSearchapiApiKey(key: String) {
+            dataStore.edit { it[KEY_SEARCHAPI_API_KEY] = crypto.encrypt(key) }
+        }
+
+        fun observeSearchapiSearchEnabled(): Flow<Boolean> = dataStore.data.map { it[KEY_SEARCHAPI_SEARCH_ENABLED] ?: true }
+
+        suspend fun getSearchapiSearchEnabled(): Boolean = dataStore.data.firstOrNull()?.get(KEY_SEARCHAPI_SEARCH_ENABLED) ?: true
+
+        suspend fun saveSearchapiSearchEnabled(enabled: Boolean) {
+            dataStore.edit { it[KEY_SEARCHAPI_SEARCH_ENABLED] = enabled }
+        }
+
         suspend fun getSearchApiKey(): String =
             when (getSearchProvider()) {
                 SearchProvider.BRAVE -> getBraveApiKey()
                 SearchProvider.JINA -> getJinaApiKey()
+                SearchProvider.SEARCHAPI -> getSearchapiApiKey()
                 SearchProvider.NONE -> ""
             }
 
