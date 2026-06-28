@@ -8,11 +8,20 @@
 
 ### Fixes
 
+## 0.9.0 (2026-06-28)
+
+### Features
+
+### Improvements
+
+### Fixes
+
 * BYOK Google Shopping: search and key verification now actually call SearchAPI.io — the earlier provider rename left the search request and the Test/Save validator pointed at SerpAPI, so newly entered SearchAPI.io keys were rejected and searches failed
 * the Google Shopping key is now stored and shared across TwoBits apps under the "searchapi" identity (was "serpapi"), completing the SearchAPI.io migration
 * Free product cap now refreshes subscription status on a cold start, so a returning PriceDrop Pro subscriber isn't temporarily limited to 3 products before opening Settings
 * BYOK Google Shopping results are now parsed from SearchAPI.io's actual response shape (shopping_results + popular_products, seller / product_link), so common queries no longer return empty or save products with a blank retailer/URL
 * AI Config: a provider key that previously passed verification now shows "Connected" on launch — the verified state is persisted, so you no longer have to expand, save, and test each key every time you open the app
+
 
 ## 0.8.0 (2026-06-27)
 
@@ -51,6 +60,7 @@
 * AI Config: Keepa sign-up link now opens the correct Keepa API subscription page
 
 
+
 ## 0.7.0 (2026-06-26)
 
 ### Features
@@ -64,6 +74,7 @@
 * **URL product metadata** — when adding a product by URL the extracted title and current price (from Jina reader + OpenAI) are now saved to the watchlist; previously the product was always stored with the placeholder title "Product from URL" and price $0.00
 * **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
 * **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
+
 
 
 
@@ -82,6 +93,7 @@
 ### Fixes
 
 * **Price drop notifications** — tapping an OS notification now opens the app directly to that product's detail screen; previously the app opened to the last-viewed screen with no navigation
+
 
 
 
@@ -112,6 +124,7 @@
 
 
 
+
 ## 0.4.0 (2026-06-23)
 
 ### Features
@@ -133,6 +146,7 @@
 
 * Pro screen: the plan toggle "Monthly – $5.99/mo" chip no longer wraps to two lines — the Annual/Monthly chips now share the row evenly and keep their labels on one line
 * AI configuration: provider status badges no longer wrap to two lines when a provider title is long (shared credential row fix)
+
 
 
 
@@ -168,6 +182,7 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 
 
 
@@ -219,6 +234,7 @@
 
 
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -228,6 +244,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 
