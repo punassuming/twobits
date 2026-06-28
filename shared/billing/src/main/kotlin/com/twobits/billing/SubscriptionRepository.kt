@@ -30,7 +30,10 @@ class SubscriptionRepository(private val billingManager: BillingManager) {
         if (initialized) return
         initMutex.withLock {
             if (initialized) return
-            runCatching { billingManager.refreshStatus() }.onSuccess { initialized = true }
+            // Only mark initialized when the refresh actually reached RevenueCat —
+            // refreshStatus() swallows network errors, so a failed cold-start fetch
+            // must be retried on the next call rather than latching us to Free.
+            if (billingManager.refreshStatus()) initialized = true
         }
     }
 }

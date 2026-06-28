@@ -31,10 +31,11 @@ class BillingManager(
         Purchases.configure(PurchasesConfiguration.Builder(context, config.revenueCatPublicKey).build())
     }
 
-    suspend fun refreshStatus() {
+    /** Returns true if RevenueCat was reached and the tier updated; false on failure. */
+    suspend fun refreshStatus(): Boolean =
         runCatching { fetchCustomerInfo() }
             .onSuccess { _tier.value = it.toTier() }
-    }
+            .isSuccess
 
     suspend fun getMonthlyPackage(): Package? =
         runCatching {

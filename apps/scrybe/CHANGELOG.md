@@ -12,6 +12,7 @@
 ### Fixes
 
 * Pro routing now refreshes subscription status on a cold start, so Pro users who haven't opened Settings no longer get "No API key configured" — the request correctly routes through the managed proxy
+* a failed subscription refresh at cold start is now retried on the next request instead of staying on Free for the session, so a transient launch-time network error no longer forces a Pro user onto the BYOK path
 
 ## 1.26.0 (2026-06-27)
 

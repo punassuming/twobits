@@ -227,18 +227,25 @@ class PriceDropApiClient
                     val text = response.body?.string().orEmpty()
                     if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
                     val data = gson.fromJson(text, JsonObject::class.java)
+                    // SearchAPI.io Google Shopping spreads results across shopping_results
+                    // and popular_products, and uses seller / product_link (not source / link).
+                    val items =
+                        listOfNotNull(
+                            data.getAsJsonArray("shopping_results"),
+                            data.getAsJsonArray("popular_products"),
+                        ).flatten()
                     val results =
-                        (data.getAsJsonArray("shopping_results") ?: JsonArray())
-                            .take(maxResults)
-                            .map { item ->
-                                val r = item.asJsonObject
-                                SearchResultDto(
-                                    title = r["title"]?.asString,
-                                    price = r["price"]?.asString,
-                                    source = r["source"]?.asString,
-                                    url = r["link"]?.asString,
-                                )
-                            }
+                        items.take(maxResults).map { item ->
+                            val r = item.asJsonObject
+
+                            fun field(vararg keys: String): String? = keys.firstNotNullOfOrNull { k -> r[k]?.takeIf { it.isJsonPrimitive }?.asString }
+                            SearchResultDto(
+                                title = field("title"),
+                                price = field("price"),
+                                source = field("seller", "source"),
+                                url = field("product_link", "link"),
+                            )
+                        }
                     SearchResponseDto(results)
                 }
             }
