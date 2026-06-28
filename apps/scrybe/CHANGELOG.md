@@ -7,6 +7,7 @@
 ### Improvements
 
 * the per-profile model override and the AI-draft model picker are now hidden in Pro mode (the managed service picks the model); they appear only when a BYOK OpenAI key is configured
+* internal: the shared credential registry's SerpAPI entry was renamed to SearchAPI.io (no behavior change in Scrybe)
 
 ### Fixes
 

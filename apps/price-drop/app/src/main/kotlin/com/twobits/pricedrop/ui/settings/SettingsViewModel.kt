@@ -96,7 +96,7 @@ class SettingsViewModel
                     listOf(
                         PriceDropProvider.OPENAI to SharedCredentialId.OPENAI,
                         PriceDropProvider.WEB_SEARCH to SharedCredentialId.JINA,
-                        PriceDropProvider.SHOPPING to SharedCredentialId.SERPAPI,
+                        PriceDropProvider.SHOPPING to SharedCredentialId.SEARCHAPI,
                         PriceDropProvider.KEEPA to SharedCredentialId.KEEPA,
                         PriceDropProvider.COUPON to SharedCredentialId.COUPON,
                         PriceDropProvider.RAINFOREST to SharedCredentialId.RAINFOREST,
@@ -244,7 +244,7 @@ class SettingsViewModel
                 when (p) {
                     PriceDropProvider.OPENAI -> credentialClient.mirror(SharedCredentialId.OPENAI, key)
                     PriceDropProvider.WEB_SEARCH -> credentialClient.mirror(SharedCredentialId.JINA, key)
-                    PriceDropProvider.SHOPPING -> credentialClient.mirror(SharedCredentialId.SERPAPI, key)
+                    PriceDropProvider.SHOPPING -> credentialClient.mirror(SharedCredentialId.SEARCHAPI, key)
                     PriceDropProvider.KEEPA -> credentialClient.mirror(SharedCredentialId.KEEPA, key)
                     PriceDropProvider.COUPON -> credentialClient.mirror(SharedCredentialId.COUPON, key)
                     PriceDropProvider.RAINFOREST -> credentialClient.mirror(SharedCredentialId.RAINFOREST, key)

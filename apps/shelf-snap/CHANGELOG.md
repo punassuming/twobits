@@ -7,6 +7,7 @@
 ### Improvements
 
 * internal: shared billing gained a one-time subscription-refresh helper used by sibling apps to avoid cold-start Pro mis-detection (no behavior change in Shelf Snap — its Pro/BYOK source is an explicit setting)
+* internal: the shared credential registry's SerpAPI entry was renamed to SearchAPI.io (no behavior change in Shelf Snap)
 
 ### Fixes
 

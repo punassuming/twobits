@@ -9,6 +9,7 @@
 ### Fixes
 
 * BYOK Google Shopping: search and key verification now actually call SearchAPI.io — the earlier provider rename left the search request and the Test/Save validator pointed at SerpAPI, so newly entered SearchAPI.io keys were rejected and searches failed
+* the Google Shopping key is now stored and shared across TwoBits apps under the "searchapi" identity (was "serpapi"), completing the SearchAPI.io migration
 * Free product cap now refreshes subscription status on a cold start, so a returning PriceDrop Pro subscriber isn't temporarily limited to 3 products before opening Settings
 
 ## 0.8.0 (2026-06-27)

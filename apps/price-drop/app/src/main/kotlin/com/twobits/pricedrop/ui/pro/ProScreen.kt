@@ -170,7 +170,7 @@ private fun ProInfraNote() {
             Text(
                 text =
                     "Powered by the TwoBits shared API — Cloudflare Workers + managed OpenAI, " +
-                        "Jina AI, and SerpAPI. Separate licence from Scrybe Pro and Shelf Snap Pro.",
+                        "Jina AI, and SearchAPI.io. Separate licence from Scrybe Pro and Shelf Snap Pro.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -577,7 +577,7 @@ private fun ByokNote(onNavigateToByok: () -> Unit) {
                 )
                 Text(
                     text =
-                        "BYOK has the same capability as Pro. Configure OpenAI, Jina AI, SerpAPI, " +
+                        "BYOK has the same capability as Pro. Configure OpenAI, Jina AI, SearchAPI.io, " +
                             "Keepa, and Rainforest API keys in Settings → AI configuration to use " +
                             "your own accounts and pay providers directly.",
                     style = MaterialTheme.typography.bodySmall,

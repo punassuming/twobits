@@ -28,7 +28,7 @@ class CredentialCheckTest {
 
     @Test
     fun `non-openai provider accepts a reasonable key without the sk prefix`() {
-        val result = CredentialCheck.check(PriceDropProvider.SHOPPING, "serpapi-1234567890")
+        val result = CredentialCheck.check(PriceDropProvider.SHOPPING, "searchapi-1234567890")
         assertTrue(result.isValid)
     }
 

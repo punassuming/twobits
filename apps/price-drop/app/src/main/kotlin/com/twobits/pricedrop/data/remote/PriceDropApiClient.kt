@@ -74,7 +74,7 @@ class PriceDropApiClient
             upc: String? = null,
         ): PriceResponseDto {
             // Price and barcode lookups always use Rainforest API (Amazon product data).
-            // SerpAPI (SHOPPING) is for search only; it has no equivalent price endpoint.
+            // SearchAPI.io (SHOPPING) is for search only; it has no equivalent price endpoint.
             if (isByok(PriceDropProvider.RAINFOREST)) {
                 return priceDirect(asin, upc, providerSettings.getKey(PriceDropProvider.RAINFOREST))
             }
