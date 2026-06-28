@@ -14,6 +14,7 @@ class WebSearchResolver
     constructor(
         private val brave: BraveSearchService,
         private val jina: JinaAiSearchService,
+        private val searchapi: SearchApiService,
     ) {
         /** Returns the service for [provider], or null when web search is disabled. */
         fun resolve(provider: SearchProvider): WebSearchService? =
@@ -21,5 +22,6 @@ class WebSearchResolver
                 SearchProvider.NONE -> null
                 SearchProvider.BRAVE -> brave
                 SearchProvider.JINA -> jina
+                SearchProvider.SEARCHAPI -> searchapi
             }
     }

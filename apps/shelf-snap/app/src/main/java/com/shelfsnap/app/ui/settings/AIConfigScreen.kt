@@ -345,8 +345,24 @@ private fun CredentialsSection(
 
                 CollapsibleProviderRow(
                     icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    title = "SearchAPI.io",
+                    description = "Marketplace search — honors site: filters (recommended)",
+                    maskedKey = maskKey(uiState.savedSearchapiApiKey),
+                    isKeyValid = uiState.searchapiTestResult,
+                    isValidating = uiState.isSearchapiTesting,
+                    validationMessage = uiState.searchapiTestMessage,
+                    apiKey = uiState.editSearchapiApiKey,
+                    onApiKeyChange = viewModel::onSearchapiApiKeyChange,
+                    onSave = viewModel::saveSearchapiKey,
+                    onTest = viewModel::testSearchapiKey,
+                    onClear = viewModel::clearSearchapiKey,
+                    signupUrl = "https://www.searchapi.io",
+                )
+
+                CollapsibleProviderRow(
+                    icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     title = "Jina AI",
-                    description = "Web search + page reading",
+                    description = "Page reading + web search fallback",
                     maskedKey = maskKey(uiState.savedJinaApiKey),
                     isKeyValid = uiState.jinaTestResult,
                     isValidating = uiState.isJinaTesting,
@@ -401,11 +417,16 @@ private fun WebSearchSection(
     }
     Text(
         text =
-            "Enable one or both. Jina AI both searches and opens listing pages to read real prices; " +
-                "Brave Search adds a second independent index for broader coverage. Enter the keys under " +
+            "SearchAPI.io is the primary search (it returns real marketplace listings); Jina AI opens those " +
+                "pages to read prices and is a search fallback; Brave adds a second index. Enter the keys under " +
                 "Credentials above.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    WebSearchToggleRow(
+        title = "SearchAPI.io",
+        enabled = uiState.searchapiSearchEnabled,
+        onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
     )
     WebSearchToggleRow(
         title = stringResource(R.string.jina_api_key_label),

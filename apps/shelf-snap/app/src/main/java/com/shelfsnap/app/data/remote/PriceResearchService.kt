@@ -369,9 +369,10 @@ class PriceResearchService
                 val tagHint = item.tags.take(3).joinToString(" ")
                 queries.add("$quoted $tagHint ${item.category} sold price".trim())
             }
-            // General fallback.
+            // General fallback. Cap the description — the full AI-prose description
+            // produces an overly long query that returns 0 results.
             queries.add(
-                listOf(item.brand, item.model, item.description, item.category, "resale price used")
+                listOf(item.brand, item.model, item.description.take(60).trim(), item.category, "resale price used")
                     .filter { it.isNotBlank() }
                     .distinct()
                     .joinToString(" "),
