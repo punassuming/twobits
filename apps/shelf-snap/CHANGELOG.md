@@ -6,6 +6,10 @@
 
 ### Improvements
 
+**AI configuration — all keys in one place:**
+* OpenAI, Jina AI, and Brave Search keys are now grouped in a single Credentials section at the top of AI configuration — collapsible rows with masked keys and connection status, matching PriceDrop
+* the Web search section now just toggles each provider on/off; the keys live in Credentials above
+
 * internal: shared billing gained a one-time subscription-refresh helper used by sibling apps to avoid cold-start Pro mis-detection (no behavior change in Shelf Snap — its Pro/BYOK source is an explicit setting)
 * internal: the shared credential registry's SerpAPI entry was renamed to SearchAPI.io (no behavior change in Shelf Snap)
 
