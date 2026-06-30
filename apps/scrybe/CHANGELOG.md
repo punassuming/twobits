@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* internal: introduced the shared `local-models` and `pro` core modules (on-device model specs/state and managed-Pro policy contracts) that Scrybe will consume to unify local-model and Pro handling across TwoBits apps (no behavior change yet)
+
 ### Fixes
 
 ## 1.27.0 (2026-06-28)

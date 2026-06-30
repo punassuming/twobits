@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* internal: introduced the shared `pro` core module (managed-Pro policy contracts) that PriceDrop will consume to unify Pro handling across TwoBits apps (no behavior change yet)
+
 ### Fixes
 
 ## 0.9.0 (2026-06-28)
