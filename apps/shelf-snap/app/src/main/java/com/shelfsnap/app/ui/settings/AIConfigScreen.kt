@@ -47,12 +47,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.R
-import com.shelfsnap.app.data.local.LocalModelState
 import com.shelfsnap.app.data.model.LocalGemmaModel
 import com.shelfsnap.app.data.model.LocalMoondreamModel
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.twobits.billing.SubscriptionTier
+import com.twobits.core.localmodels.LocalModelState
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionHeader
@@ -64,8 +64,8 @@ import com.twobits.design.components.ModelRadioList
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
     when (this) {
-        is LocalModelState.NotAvailable -> LocalModelStatus.NotAvailable
-        is LocalModelState.Importing -> LocalModelStatus.InProgress(progressPercent)
+        is LocalModelState.Absent -> LocalModelStatus.NotAvailable
+        is LocalModelState.Acquiring -> LocalModelStatus.InProgress(progressPercent)
         is LocalModelState.Ready -> LocalModelStatus.Ready
         is LocalModelState.Error -> LocalModelStatus.Error(message)
     }
@@ -166,7 +166,7 @@ fun AIConfigScreen(
                             sectionLabel = "Moondream — vision model",
                             sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
                             models = LocalMoondreamModel.entries.toList(),
-                            status = { (uiState.moondreamStates[it] ?: LocalModelState.NotAvailable).toStatus() },
+                            status = { (uiState.moondreamStates[it] ?: LocalModelState.Absent).toStatus() },
                             selected = uiState.selectedMoondream,
                             onSelect = { viewModel.selectMoondream(it) },
                             onPrimaryAction = {
@@ -220,7 +220,7 @@ fun AIConfigScreen(
                             sectionLabel = "Gemma — on-device LLM",
                             sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
                             models = LocalGemmaModel.entries.toList(),
-                            status = { (uiState.gemmaStates[it] ?: LocalModelState.NotAvailable).toStatus() },
+                            status = { (uiState.gemmaStates[it] ?: LocalModelState.Absent).toStatus() },
                             selected = uiState.selectedGemma,
                             onSelect = { viewModel.selectGemma(it) },
                             onPrimaryAction = {

@@ -1,12 +1,17 @@
 package com.shelfsnap.app.data.model
 
+import com.twobits.core.localmodels.LocalModelAcquisition
+import com.twobits.core.localmodels.LocalModelFamily
+import com.twobits.core.localmodels.LocalModelSpec
+import com.twobits.core.localmodels.LocalModelTask
+
 enum class LocalGemmaModel(
-    val displayName: String,
-    val description: String,
+    override val displayName: String,
+    override val description: String,
     val fileName: String,
-    val sizeLabel: String,
+    override val sizeLabel: String,
     val huggingFacePageUrl: String,
-) {
+) : LocalModelSpec {
     GEMMA_3_1B(
         displayName = "Gemma 3 1B",
         description = "Fastest on-device descriptions and price estimates",
@@ -23,10 +28,15 @@ enum class LocalGemmaModel(
     ),
     ;
 
+    override val id: String get() = name
+    override val family: LocalModelFamily get() = LocalModelFamily.GEMMA
+    override val task: LocalModelTask get() = LocalModelTask.TEXT
+    override val acquisition: LocalModelAcquisition
+        get() = LocalModelAcquisition.ImportFile(fileName, huggingFacePageUrl)
+
     companion object {
         val default: LocalGemmaModel = GEMMA_3_1B
 
-        fun fromName(name: String): LocalGemmaModel =
-            entries.firstOrNull { it.name == name } ?: default
+        fun fromName(name: String): LocalGemmaModel = entries.firstOrNull { it.name == name } ?: default
     }
 }

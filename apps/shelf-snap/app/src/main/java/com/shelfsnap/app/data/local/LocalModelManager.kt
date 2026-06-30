@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.shelfsnap.app.data.model.LocalGemmaModel
 import com.shelfsnap.app.data.model.LocalMoondreamModel
+import com.twobits.core.localmodels.LocalModelState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,22 +23,6 @@ import java.io.File
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
-
-sealed interface LocalModelState {
-    data object NotAvailable : LocalModelState
-
-    data class Importing(
-        val progressPercent: Int,
-    ) : LocalModelState
-
-    data class Ready(
-        val path: String,
-    ) : LocalModelState
-
-    data class Error(
-        val message: String,
-    ) : LocalModelState
-}
 
 @Singleton
 class LocalModelManager
@@ -103,20 +88,20 @@ class LocalModelManager
             return if (f.exists() && f.length() > 0) f else null
         }
 
-        private fun resolveVisionState(model: LocalMoondreamModel): LocalModelState = visionFile(model)?.let { LocalModelState.Ready(it.absolutePath) } ?: LocalModelState.NotAvailable
+        private fun resolveVisionState(model: LocalMoondreamModel): LocalModelState = visionFile(model)?.let { LocalModelState.Ready(it.absolutePath) } ?: LocalModelState.Absent
 
-        private fun resolveLlmState(model: LocalGemmaModel): LocalModelState = llmFile(model)?.let { LocalModelState.Ready(it.absolutePath) } ?: LocalModelState.NotAvailable
+        private fun resolveLlmState(model: LocalGemmaModel): LocalModelState = llmFile(model)?.let { LocalModelState.Ready(it.absolutePath) } ?: LocalModelState.Absent
 
         suspend fun importMoondream(
             uri: Uri,
             model: LocalMoondreamModel,
         ) {
-            if (_moondreamStates.value[model] is LocalModelState.Importing) return
+            if (_moondreamStates.value[model] is LocalModelState.Acquiring) return
             withContext(Dispatchers.IO) {
                 try {
-                    updateVisionState(model, LocalModelState.Importing(0))
+                    updateVisionState(model, LocalModelState.Acquiring(0))
                     copyFromUri(uri, File(modelsDir, model.fileName)) { progress ->
-                        updateVisionState(model, LocalModelState.Importing(progress))
+                        updateVisionState(model, LocalModelState.Acquiring(progress))
                     }
                     updateVisionState(model, resolveVisionState(model))
                 } catch (e: Exception) {
@@ -129,12 +114,12 @@ class LocalModelManager
             uri: Uri,
             model: LocalGemmaModel,
         ) {
-            if (_gemmaStates.value[model] is LocalModelState.Importing) return
+            if (_gemmaStates.value[model] is LocalModelState.Acquiring) return
             withContext(Dispatchers.IO) {
                 try {
-                    updateLlmState(model, LocalModelState.Importing(0))
+                    updateLlmState(model, LocalModelState.Acquiring(0))
                     copyFromUri(uri, File(modelsDir, model.fileName)) { progress ->
-                        updateLlmState(model, LocalModelState.Importing(progress))
+                        updateLlmState(model, LocalModelState.Acquiring(progress))
                     }
                     updateLlmState(model, resolveLlmState(model))
                 } catch (e: Exception) {
@@ -148,7 +133,7 @@ class LocalModelManager
             if (_selectedMoondream.value == model) {
                 scope.launch { dataStore.edit { it.remove(Keys.SELECTED_VISION_MODEL) } }
             }
-            updateVisionState(model, LocalModelState.NotAvailable)
+            updateVisionState(model, LocalModelState.Absent)
         }
 
         fun deleteGemma(model: LocalGemmaModel) {
@@ -156,7 +141,7 @@ class LocalModelManager
             if (_selectedGemma.value == model) {
                 scope.launch { dataStore.edit { it.remove(Keys.SELECTED_LLM_MODEL) } }
             }
-            updateLlmState(model, LocalModelState.NotAvailable)
+            updateLlmState(model, LocalModelState.Absent)
         }
 
         fun selectMoondream(model: LocalMoondreamModel) {
