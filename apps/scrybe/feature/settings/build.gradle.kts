@@ -24,6 +24,7 @@ dependencies {
     implementation("com.twobits.core:common")
     implementation("com.twobits.core:design")
     implementation("com.twobits.core:secure-store")
+    implementation("com.twobits.core:local-models")
     implementation(project(":core:base"))
     implementation(project(":core:model"))
     implementation(project(":core:database"))

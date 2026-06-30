@@ -8,6 +8,7 @@
 
 * internal: introduced the shared `local-models` and `pro` core modules (on-device model specs/state and managed-Pro policy contracts) that Scrybe will consume to unify local-model and Pro handling across TwoBits apps (no behavior change yet)
 * internal: extended the shared `ProTierCard` (badge / price note / accent / compact comparison layout) and added shared Pro usage, spend-cap, and BYOK-note cards for the upcoming unified Pro screen (no behavior change yet)
+* internal: Scrybe's on-device Whisper and Gemma models now implement the shared `LocalModelSpec` contract and the local-model download/import flow uses the shared `LocalModelState` type (Absent/Acquiring/Ready/Error); no change to local transcription or transforms behavior
 
 ### Fixes
 

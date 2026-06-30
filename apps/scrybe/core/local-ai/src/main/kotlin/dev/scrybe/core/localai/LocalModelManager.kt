@@ -2,6 +2,7 @@ package dev.scrybe.core.localai
 
 import android.content.Context
 import android.net.Uri
+import com.twobits.core.localmodels.LocalModelState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.LocalGemmaModel
@@ -37,7 +38,7 @@ class LocalModelManager
 
         private val _whisperStates =
             MutableStateFlow<Map<LocalWhisperModel, LocalModelState>>(
-                LocalWhisperModel.entries.associateWith { LocalModelState.NotDownloaded },
+                LocalWhisperModel.entries.associateWith { LocalModelState.Absent },
             )
         val whisperStates: StateFlow<Map<LocalWhisperModel, LocalModelState>> = _whisperStates.asStateFlow()
 
@@ -46,7 +47,7 @@ class LocalModelManager
 
         private val _gemmaStates =
             MutableStateFlow<Map<LocalGemmaModel, LocalModelState>>(
-                LocalGemmaModel.entries.associateWith { LocalModelState.NotDownloaded },
+                LocalGemmaModel.entries.associateWith { LocalModelState.Absent },
             )
         val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = _gemmaStates.asStateFlow()
 
@@ -86,21 +87,21 @@ class LocalModelManager
 
         private fun resolveWhisperState(model: LocalWhisperModel): LocalModelState =
             whisperModelDir(model)?.let { LocalModelState.Ready(it.absolutePath) }
-                ?: LocalModelState.NotDownloaded
+                ?: LocalModelState.Absent
 
         private fun resolveGemmaState(model: LocalGemmaModel): LocalModelState =
             gemmaModelFile(model)
                 ?.let { LocalModelState.Ready(it.absolutePath) }
-                ?: LocalModelState.NotDownloaded
+                ?: LocalModelState.Absent
 
         suspend fun downloadWhisper(model: LocalWhisperModel) {
-            if (_whisperStates.value[model] is LocalModelState.Downloading) return
+            if (_whisperStates.value[model] is LocalModelState.Acquiring) return
             withContext(Dispatchers.IO) {
                 try {
-                    updateWhisperState(model, LocalModelState.Downloading(0))
+                    updateWhisperState(model, LocalModelState.Acquiring(0))
                     val archiveFile = File(modelsDir, model.archiveName)
                     downloadFile(model.downloadUrl, archiveFile) { progress ->
-                        updateWhisperState(model, LocalModelState.Downloading(progress))
+                        updateWhisperState(model, LocalModelState.Acquiring(progress))
                     }
                     extractTarBz2(archiveFile, modelsDir)
                     archiveFile.delete()
@@ -115,10 +116,10 @@ class LocalModelManager
             uri: Uri,
             model: LocalGemmaModel,
         ) {
-            if (_gemmaStates.value[model] is LocalModelState.Downloading) return
+            if (_gemmaStates.value[model] is LocalModelState.Acquiring) return
             withContext(Dispatchers.IO) {
                 try {
-                    updateGemmaState(model, LocalModelState.Downloading(0))
+                    updateGemmaState(model, LocalModelState.Acquiring(0))
                     val destFile = File(modelsDir, model.fileName)
                     val sizeBytes =
                         context.contentResolver
@@ -136,7 +137,7 @@ class LocalModelManager
                                 if (sizeBytes > 0) {
                                     updateGemmaState(
                                         model,
-                                        LocalModelState.Downloading(((bytesRead * 100) / sizeBytes).toInt()),
+                                        LocalModelState.Acquiring(((bytesRead * 100) / sizeBytes).toInt()),
                                     )
                                 }
                             }
@@ -151,12 +152,12 @@ class LocalModelManager
 
         fun deleteWhisper(model: LocalWhisperModel) {
             File(modelsDir, model.dirName).deleteRecursively()
-            updateWhisperState(model, LocalModelState.NotDownloaded)
+            updateWhisperState(model, LocalModelState.Absent)
         }
 
         fun deleteGemma(model: LocalGemmaModel) {
             File(modelsDir, model.fileName).delete()
-            updateGemmaState(model, LocalModelState.NotDownloaded)
+            updateGemmaState(model, LocalModelState.Absent)
         }
 
         fun selectWhisperModel(model: LocalWhisperModel) {

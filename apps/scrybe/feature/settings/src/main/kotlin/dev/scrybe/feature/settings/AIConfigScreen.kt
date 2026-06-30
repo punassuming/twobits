@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
+import com.twobits.core.localmodels.LocalModelState
 import com.twobits.design.components.AiCredentialsDock
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
@@ -63,7 +64,6 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.localai.LocalModelState
 import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
@@ -71,8 +71,8 @@ import dev.scrybe.core.model.OpenAiTransformModel
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
     when (this) {
-        is LocalModelState.NotDownloaded -> LocalModelStatus.NotAvailable
-        is LocalModelState.Downloading -> LocalModelStatus.InProgress(progressPercent)
+        is LocalModelState.Absent -> LocalModelStatus.NotAvailable
+        is LocalModelState.Acquiring -> LocalModelStatus.InProgress(progressPercent)
         is LocalModelState.Ready -> LocalModelStatus.Ready
         is LocalModelState.Error -> LocalModelStatus.Error(message)
     }
@@ -210,7 +210,7 @@ fun AIConfigScreen(
                             LocalModelPanel(
                                 sectionLabel = "Whisper — speech-to-text",
                                 models = LocalWhisperModel.entries.toList(),
-                                status = { (whisperStates[it] ?: LocalModelState.NotDownloaded).toStatus() },
+                                status = { (whisperStates[it] ?: LocalModelState.Absent).toStatus() },
                                 selected = selectedWhisperModel,
                                 onSelect = { viewModel.selectWhisperModel(it) },
                                 onPrimaryAction = { viewModel.downloadWhisperModel(it) },
@@ -252,7 +252,7 @@ fun AIConfigScreen(
                                 sectionLabel = "Gemma — on-device LLM",
                                 sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
                                 models = LocalGemmaModel.entries.toList(),
-                                status = { (gemmaStates[it] ?: LocalModelState.NotDownloaded).toStatus() },
+                                status = { (gemmaStates[it] ?: LocalModelState.Absent).toStatus() },
                                 selected = selectedGemmaModel,
                                 onSelect = { viewModel.selectGemmaModel(it) },
                                 onPrimaryAction = {

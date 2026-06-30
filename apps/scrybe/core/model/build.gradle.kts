@@ -17,6 +17,8 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 dependencies {
+    // Exposed (api) so the local-model enums' LocalModelSpec supertype is visible to consumers.
+    api("com.twobits.core:local-models")
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.junit)
