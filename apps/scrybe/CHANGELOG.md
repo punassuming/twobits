@@ -7,6 +7,7 @@
 ### Improvements
 
 * internal: introduced the shared `local-models` and `pro` core modules (on-device model specs/state and managed-Pro policy contracts) that Scrybe will consume to unify local-model and Pro handling across TwoBits apps (no behavior change yet)
+* internal: extended the shared `ProTierCard` (badge / price note / accent / compact comparison layout) and added shared Pro usage, spend-cap, and BYOK-note cards for the upcoming unified Pro screen (no behavior change yet)
 
 ### Fixes
 
