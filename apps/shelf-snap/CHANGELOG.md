@@ -9,6 +9,8 @@
 * internal: introduced the shared `local-models` and `pro` core modules (on-device model specs/state and managed-Pro policy contracts) that Shelf Snap will consume to unify local-model and Pro handling across TwoBits apps (no behavior change yet)
 * internal: extended the shared `ProTierCard` (badge / price note / accent / compact comparison layout) and added shared Pro usage, spend-cap, and BYOK-note cards for the upcoming unified Pro screen (no behavior change yet)
 * internal: Shelf Snap's on-device Moondream and Gemma models now implement the shared `LocalModelSpec` contract and the import flow uses the shared `LocalModelState` type (Absent/Acquiring/Ready/Error); local AI execution is still not implemented (the existing "not yet available" behavior is unchanged)
+* the Pro screen now shows the managed monthly spend cap and the real per-feature allowances (replacing the placeholder "this month's usage" numbers), and the plan tiers use the shared design component
+* the BYOK note now uses the shared wording making clear your key is used directly from the device and never routes through TwoBits managed infrastructure or your Pro allowance
 
 ### Fixes
 

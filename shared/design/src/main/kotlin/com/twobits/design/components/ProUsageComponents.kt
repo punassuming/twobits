@@ -26,26 +26,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
- * One row of managed-Pro usage. [limit] of null renders an uncapped count (no progress bar); a
- * non-null [limit] renders an "X of N" meter so the user sees the cap before the worker hard-stops.
+ * One row of managed-Pro usage or allowance.
+ *  - [used] non-null + [limit] non-null → "X of N" meter (live usage against a cap).
+ *  - [used] null + [limit] non-null → "Up to N" allowance row (no live count available yet).
+ *  - [limit] null → a plain count with no cap (uncapped feature).
  */
 data class ProUsageMetric(
     val label: String,
-    val used: Int,
+    val used: Int?,
     val limit: Int?,
     val unitLabel: String,
     val icon: ImageVector,
 )
 
 /**
- * "This month's usage" card. Pure UI: callers map their `shared/pro` policy + counters into
- * [metrics]. Carries the managed-Pro framing that Pro is metered, not unlimited.
+ * Managed-Pro usage/allowance card. Pure UI: callers map their `shared/pro` policy (and any live
+ * counters) into [metrics]. Carries the framing that Pro is metered, not unlimited.
  */
 @Composable
 fun ProUsageCard(
     metrics: List<ProUsageMetric>,
     modifier: Modifier = Modifier,
-    title: String = "This month's usage",
+    title: String = "Included each month",
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -86,14 +88,22 @@ private fun ProUsageRow(metric: ProUsageMetric) {
             )
             Text(metric.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             val suffix = if (metric.unitLabel.isBlank()) "" else " ${metric.unitLabel}"
+            val valueText =
+                when {
+                    metric.used != null && metric.limit != null -> "${metric.used} / ${metric.limit}$suffix"
+                    metric.limit != null -> "Up to ${metric.limit}$suffix"
+                    metric.used != null -> "${metric.used}$suffix"
+                    else -> ""
+                }
             Text(
-                text = if (metric.limit != null) "${metric.used} / ${metric.limit}$suffix" else "${metric.used}$suffix",
+                text = valueText,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = AI_PRO_COLOR,
             )
         }
-        if (metric.limit != null && metric.limit > 0) {
+        // Live meter only when we have an actual count against a cap.
+        if (metric.used != null && metric.limit != null && metric.limit > 0) {
             val fraction = (metric.used.toFloat() / metric.limit.toFloat()).coerceIn(0f, 1f)
             LinearProgressIndicator(
                 progress = { fraction },

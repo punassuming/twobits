@@ -20,12 +20,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Sell
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material3.Button
@@ -48,12 +46,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.ByokDirectNoteCard
+import com.twobits.design.components.ProSpendCapCard
+import com.twobits.design.components.ProTierCard
+import com.twobits.design.components.ProUsageCard
+import com.twobits.design.components.ProUsageMetric
+import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.ui.settings.SettingsViewModel
 
 private const val PLAY_SUBSCRIPTIONS_URL = "https://play.google.com/store/account/subscriptions"
@@ -82,6 +85,13 @@ fun ProScreen(
         ) {
             ProInfraNote()
             TierComparisonRow(isPro = isPro)
+            ProSpendCapCard(
+                capLabel = "Managed spend cap: \$%.2f / month".format(PriceDropPlan.plan.monthlySpendCapUsd),
+                note =
+                    "Pro runs on TwoBits managed providers with a monthly usage cap. When the cap " +
+                        "is reached, managed price checks and AI Ask pause until the next cycle — " +
+                        "Pro is metered, not unlimited.",
+            )
             if (isPro) {
                 ProActiveCard(
                     onRestore = viewModel::restorePurchases,
@@ -187,104 +197,54 @@ private fun TierComparisonRow(isPro: Boolean) {
         fontWeight = FontWeight.SemiBold,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TierCard(
+        ProTierCard(
             modifier = Modifier.weight(1f),
-            label = "Try it",
+            compact = true,
+            title = "Try it",
             price = "—",
             priceNote = "No account needed",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            bgColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            badge = null,
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             isHighlighted = !isPro,
-            items =
+            features =
                 listOf(
-                    "5 watched products",
+                    "3 watched products",
                     "Daily price checks",
                     "Basic drop alerts",
                 ),
         )
-        TierCard(
+        ProTierCard(
             modifier = Modifier.weight(1f),
-            label = "Pro",
+            compact = true,
+            title = "Pro",
             price = "\$4.99",
             priceNote = "/mo · billed annually",
-            color = MaterialTheme.colorScheme.primary,
-            bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
             badge = "Zero setup",
+            accentColor = MaterialTheme.colorScheme.primary,
             isHighlighted = isPro,
-            items =
+            features =
                 listOf(
-                    "Unlimited products",
-                    "Hourly price checks",
+                    "Track your full watchlist",
+                    "Automatic price checks (metered)",
                     "Coupons + Amazon history",
-                    "AI Ask",
+                    "AI Ask — up to ${PriceDropPlan.AI_ASK_MONTHLY_LIMIT}/mo",
                     "Priority support",
                 ),
         )
-        TierCard(
+        ProTierCard(
             modifier = Modifier.weight(1f),
-            label = "BYOK",
+            compact = true,
+            title = "BYOK",
             price = "Free forever",
             priceNote = "pay providers directly",
-            color = MaterialTheme.colorScheme.secondary,
-            bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
             badge = "Full control",
-            isHighlighted = false,
-            items =
+            accentColor = MaterialTheme.colorScheme.secondary,
+            features =
                 listOf(
                     "All Pro features",
                     "Own API keys",
                     "No spend cap",
                 ),
         )
-    }
-}
-
-@Composable
-private fun TierCard(
-    modifier: Modifier = Modifier,
-    label: String,
-    price: String,
-    priceNote: String,
-    color: Color,
-    bgColor: Color,
-    badge: String?,
-    isHighlighted: Boolean,
-    items: List<String>,
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = bgColor,
-        border = if (isHighlighted) BorderStroke(1.5.dp, color.copy(alpha = 0.5f)) else null,
-    ) {
-        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (badge != null) {
-                Surface(shape = RoundedCornerShape(4.dp), color = color.copy(alpha = 0.15f)) {
-                    Text(
-                        badge,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = color,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-            Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-            Text(price, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            Text(priceNote, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            items.forEach { item ->
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Top) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        modifier = Modifier.size(10.dp),
-                        tint = color,
-                    )
-                    Text(item, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-        }
     }
 }
 
@@ -447,55 +407,27 @@ private fun ProActiveCard(
 
 @Composable
 private fun UsageCard() {
-    data class UsageRow(
-        val label: String,
-        val used: Int,
-        val icon: ImageVector,
+    // Monthly managed allowances from PriceDropPlan (mirrors worker.js). We don't yet read live
+    // per-feature usage back from the worker, so these are shown as allowances, not fake counts.
+    ProUsageCard(
+        metrics =
+            listOf(
+                ProUsageMetric(
+                    label = "AI Ask",
+                    used = null,
+                    limit = PriceDropPlan.AI_ASK_MONTHLY_LIMIT,
+                    unitLabel = "questions",
+                    icon = Icons.Default.AutoAwesome,
+                ),
+                ProUsageMetric(
+                    label = "Barcode & product lookups",
+                    used = null,
+                    limit = PriceDropPlan.PRODUCT_LOOKUP_MONTHLY_LIMIT,
+                    unitLabel = "lookups",
+                    icon = Icons.Default.Sell,
+                ),
+            ),
     )
-    val rows =
-        listOf(
-            UsageRow("Products watched", 12, Icons.Default.Bookmark),
-            UsageRow("Price checks run", 87, Icons.Default.Speed),
-            UsageRow("Coupon lookups", 5, Icons.Default.Sell),
-            UsageRow("AI Ask queries", 9, Icons.Default.AutoAwesome),
-        )
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                "This month's usage",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            rows.forEachIndexed { i, row ->
-                if (i > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        row.icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(row.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        row.used.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -509,7 +441,7 @@ private fun WhyProSection() {
             WhyRow(Icons.Default.Key, "Works the moment you install — no accounts or API keys required."),
             WhyRow(
                 Icons.Default.NotificationsActive,
-                "Hourly checks catch price drops in time to act — daily checks miss flash sales.",
+                "Frequent automated checks catch price drops in time to act — free daily checks miss flash sales.",
             ),
             WhyRow(
                 Icons.Default.TrendingDown,
@@ -517,7 +449,8 @@ private fun WhyProSection() {
             ),
             WhyRow(
                 Icons.Default.AutoAwesome,
-                "AI Ask included — get an instant answer about any tracked product without leaving the app.",
+                "AI Ask included — up to ${PriceDropPlan.AI_ASK_MONTHLY_LIMIT} managed questions a month, " +
+                    "answered without leaving the app.",
             ),
             WhyRow(Icons.Default.SupportAgent, "Direct support channel — real responses within one business day."),
         )
@@ -557,37 +490,11 @@ private fun WhyProSection() {
 
 @Composable
 private fun ByokNote(onNavigateToByok: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Icon(
-                    Icons.Default.Key,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.secondary,
-                )
-                Text(
-                    text =
-                        "BYOK has the same capability as Pro. Configure OpenAI, Jina AI, SearchAPI.io, " +
-                            "Keepa, and Rainforest API keys in Settings → AI configuration to use " +
-                            "your own accounts and pay providers directly.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            TextButton(
-                onClick = onNavigateToByok,
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
-            ) { Text("Configure keys →") }
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        ByokDirectNoteCard()
+        TextButton(
+            onClick = onNavigateToByok,
+            contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+        ) { Text("Configure keys →") }
     }
 }

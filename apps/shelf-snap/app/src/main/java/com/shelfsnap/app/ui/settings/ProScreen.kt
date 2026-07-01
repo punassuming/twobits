@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Update
@@ -50,7 +49,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.shelfsnap.app.data.pro.ShelfSnapPlan
 import com.twobits.billing.SubscriptionTier
+import com.twobits.design.components.ByokDirectNoteCard
+import com.twobits.design.components.ProSpendCapCard
+import com.twobits.design.components.ProTierCard
+import com.twobits.design.components.ProUsageCard
+import com.twobits.design.components.ProUsageMetric
 
 private const val PLAY_SUBSCRIPTIONS_URL = "https://play.google.com/store/account/subscriptions"
 
@@ -77,6 +82,13 @@ fun ProScreen(
         ) {
             ProInfraNote()
             TierComparisonRow(isPro = isPro)
+            ProSpendCapCard(
+                capLabel = "Managed spend cap: \$%.2f / month".format(ShelfSnapPlan.plan.monthlySpendCapUsd),
+                note =
+                    "Pro runs on TwoBits managed providers with a monthly usage cap. When the cap " +
+                        "is reached, managed vision and market lookups pause until the next cycle — " +
+                        "Pro is metered, not unlimited.",
+            )
             if (isPro) {
                 ProActiveCard(
                     onRestore = viewModel::restorePurchases,
@@ -182,50 +194,48 @@ private fun TierComparisonRow(isPro: Boolean) {
         fontWeight = FontWeight.SemiBold,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TierCard(
+        ProTierCard(
             modifier = Modifier.weight(1f),
-            label = "Try it",
+            compact = true,
+            title = "Try it",
             price = "—",
             priceNote = "No account needed",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            bgColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            badge = null,
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             isHighlighted = !isPro,
-            items =
+            features =
                 listOf(
                     "Snap and identify items right away",
                     "Try AI-powered descriptions",
                     "Build your local inventory",
                 ),
         )
-        TierCard(
+        ProTierCard(
             modifier = Modifier.weight(1f),
-            label = "Pro",
+            compact = true,
+            title = "Pro",
             price = "\$4.99",
             priceNote = "/mo · billed annually",
-            color = MaterialTheme.colorScheme.primary,
-            bgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
             badge = "Zero setup",
+            accentColor = MaterialTheme.colorScheme.primary,
             isHighlighted = isPro,
-            items =
+            features =
                 listOf(
                     "Works immediately — no key config",
                     "Managed Vision + search providers",
-                    "Priority analysis queue",
+                    "Up to ${ShelfSnapPlan.VISION_MONTHLY_LIMIT} photo analyses/mo",
                     "Automatic model updates",
                     "Pro support channel",
                 ),
         )
-        TierCard(
+        ProTierCard(
             modifier = Modifier.weight(1f),
-            label = "BYOK",
+            compact = true,
+            title = "BYOK",
             price = "Free forever",
             priceNote = "pay providers directly",
-            color = MaterialTheme.colorScheme.secondary,
-            bgColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
             badge = "Full control",
-            isHighlighted = false,
-            items =
+            accentColor = MaterialTheme.colorScheme.secondary,
+            features =
                 listOf(
                     "All Shelf Snap features",
                     "Connect your own API keys",
@@ -233,49 +243,6 @@ private fun TierComparisonRow(isPro: Boolean) {
                     "Pay providers directly",
                 ),
         )
-    }
-}
-
-@Composable
-private fun TierCard(
-    modifier: Modifier = Modifier,
-    label: String,
-    price: String,
-    priceNote: String,
-    color: androidx.compose.ui.graphics.Color,
-    bgColor: androidx.compose.ui.graphics.Color,
-    badge: String?,
-    isHighlighted: Boolean,
-    items: List<String>,
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = bgColor,
-        border = if (isHighlighted) BorderStroke(1.5.dp, color.copy(alpha = 0.5f)) else null,
-    ) {
-        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (badge != null) {
-                Surface(shape = RoundedCornerShape(4.dp), color = color.copy(alpha = 0.15f)) {
-                    Text(
-                        badge,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = color,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-            Text(label, style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
-            Text(price, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            Text(priceNote, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            items.forEach { item ->
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(10.dp), tint = color)
-                    Text(item, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-        }
     }
 }
 
@@ -433,47 +400,34 @@ private fun ProActiveCard(
 
 @Composable
 private fun UsageCard() {
-    data class UsageRow(
-        val label: String,
-        val used: Int,
-        val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    // Monthly managed allowances from ShelfSnapPlan (mirrors worker.js). Live per-feature usage is
+    // not yet read back from the worker, so these are shown as allowances, not fabricated counts.
+    ProUsageCard(
+        metrics =
+            listOf(
+                ProUsageMetric(
+                    label = "Photo analyses",
+                    used = null,
+                    limit = ShelfSnapPlan.VISION_MONTHLY_LIMIT,
+                    unitLabel = "scans",
+                    icon = Icons.Default.PhotoCamera,
+                ),
+                ProUsageMetric(
+                    label = "Market lookups",
+                    used = null,
+                    limit = ShelfSnapPlan.RESEARCH_MONTHLY_LIMIT,
+                    unitLabel = "lookups",
+                    icon = Icons.Default.Speed,
+                ),
+                ProUsageMetric(
+                    label = "Listing generations",
+                    used = null,
+                    limit = ShelfSnapPlan.LISTING_MONTHLY_LIMIT,
+                    unitLabel = "listings",
+                    icon = Icons.Default.AutoAwesome,
+                ),
+            ),
     )
-    val rows =
-        listOf(
-            UsageRow("Vision analyses", 31, Icons.Default.PhotoCamera),
-            UsageRow("Price searches", 14, Icons.Default.Speed),
-            UsageRow("Coupon lookups", 9, Icons.Default.Sell),
-            UsageRow("Listing generations", 7, Icons.Default.AutoAwesome),
-        )
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                "This month's usage",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            rows.forEachIndexed { i, row ->
-                if (i > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(row.icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(row.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        row.used.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -517,28 +471,5 @@ private fun WhyProSection() {
 
 @Composable
 private fun ByokNote() {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Icon(
-                Icons.Default.Key,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-            Text(
-                text =
-                    "BYOK has the same capability as Pro. If you already have an OpenAI account, " +
-                        "configure your key in Settings → AI configuration. You'll use the same features and pay OpenAI directly.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    ByokDirectNoteCard()
 }
