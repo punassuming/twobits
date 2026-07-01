@@ -11,6 +11,7 @@
 * internal: Shelf Snap's on-device Moondream and Gemma models now implement the shared `LocalModelSpec` contract and the import flow uses the shared `LocalModelState` type (Absent/Acquiring/Ready/Error); local AI execution is still not implemented (the existing "not yet available" behavior is unchanged)
 * the Pro screen now shows the managed monthly spend cap and the real per-feature allowances (replacing the placeholder "this month's usage" numbers), and the plan tiers use the shared design component
 * the BYOK note now uses the shared wording making clear your key is used directly from the device and never routes through TwoBits managed infrastructure or your Pro allowance
+* internal: `ItemRepository.analysePhotos`/`researchPrice` now dispatch on the shared `ExecutionMode` type instead of raw "pro"/"byok"/"local" strings, so the compiler enforces all three modes are handled at the exact call sites that decide whether a request goes to the worker, direct to the provider, or on-device; no change to behavior or persisted settings
 
 ### Fixes
 

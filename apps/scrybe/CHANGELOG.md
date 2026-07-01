@@ -11,6 +11,7 @@
 * internal: Scrybe's on-device Whisper and Gemma models now implement the shared `LocalModelSpec` contract and the local-model download/import flow uses the shared `LocalModelState` type (Absent/Acquiring/Ready/Error); no change to local transcription or transforms behavior
 * the Pro screen now shows the managed monthly spend cap and the real per-feature allowances (replacing the placeholder "this month's usage" numbers), and the plan tiers use the shared design component
 * the BYOK note now uses the shared wording making clear your key is used directly from the device and never routes through TwoBits managed infrastructure or your Pro allowance
+* internal: the AI configuration screen's Local/BYOK/Pro segment controls for Transcription and Transforms now hold the shared `ExecutionMode` type instead of raw strings, so the compiler enforces all three modes are handled everywhere the segment is read; no change to persisted settings or behavior
 
 ### Fixes
 

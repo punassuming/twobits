@@ -66,6 +66,7 @@ import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AppSectionLabel
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.ModelRadioList
+import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.AiModelOption
 import com.twobits.pricedrop.data.provider.PriceDropProvider
@@ -459,6 +460,20 @@ private fun ArchitectureNoteCard() {
     }
 }
 
+/**
+ * Managed-Pro description shown for [feature]. Only [AiFeature.ASK] maps unambiguously onto a
+ * single worker op ("pricedrop.chat") — the other features multiplex several PriceDropProviders
+ * (search/price/coupon calls) that don't correspond 1:1 to a [PriceDropPlan] usage counter, so
+ * they keep the generic cap note rather than guess at a wrong number.
+ */
+private fun managedProDescription(feature: AiFeature): String {
+    val generic = "This function is routed through PriceDrop's managed proxy. No key setup required. Usage counts toward your monthly cap."
+    if (feature != AiFeature.ASK) return generic
+    val counter = PriceDropPlan.plan.feature("pricedrop.chat")?.usageCounter ?: return generic
+    return "This function is routed through PriceDrop's managed proxy. No key setup required. " +
+        "Up to ${counter.monthlyLimit} ${counter.unitLabel} included with Pro each month."
+}
+
 @Composable
 private fun FeatureDetailContent(
     modifier: Modifier,
@@ -501,9 +516,7 @@ private fun FeatureDetailContent(
         when (source) {
             ProviderMode.PRO ->
                 item {
-                    AiProManagedCard(
-                        description = "This function is routed through PriceDrop's managed proxy. No key setup required. Usage counts toward your monthly cap.",
-                    )
+                    AiProManagedCard(description = managedProDescription(feature))
                 }
             ProviderMode.OFF ->
                 item {

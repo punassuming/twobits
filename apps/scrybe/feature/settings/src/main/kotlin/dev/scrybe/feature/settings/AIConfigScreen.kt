@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.AiCredentialsDock
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
@@ -102,22 +103,26 @@ fun AIConfigScreen(
     val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
     var showTransformModelPicker by remember { mutableStateOf(false) }
 
-    var transcriptionSegment by rememberSaveable {
+    var transcriptionMode by rememberSaveable {
         mutableStateOf(
-            when {
-                uiState.transcriptionProvider == "LOCAL" -> "local"
-                hasPro -> "pro"
-                else -> "byok"
-            },
+            executionModeFromSegment(
+                when {
+                    uiState.transcriptionProvider == "LOCAL" -> "local"
+                    hasPro -> "pro"
+                    else -> "byok"
+                },
+            ),
         )
     }
-    var featuresSegment by rememberSaveable {
+    var featuresMode by rememberSaveable {
         mutableStateOf(
-            when {
-                uiState.aiFeaturesProvider == "LOCAL" -> "local"
-                hasPro -> "pro"
-                else -> "byok"
-            },
+            executionModeFromSegment(
+                when {
+                    uiState.aiFeaturesProvider == "LOCAL" -> "local"
+                    hasPro -> "pro"
+                    else -> "byok"
+                },
+            ),
         )
     }
 
@@ -175,19 +180,20 @@ fun AIConfigScreen(
 
                 AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
                     AiSourceSegment(
-                        selected = transcriptionSegment,
+                        selected = transcriptionMode.toSegment(),
                         hasPro = hasPro,
                         onChange = { seg ->
-                            transcriptionSegment = seg
-                            viewModel.setTranscriptionProvider(if (seg == "local") "LOCAL" else "OPENAI")
+                            val mode = executionModeFromSegment(seg)
+                            transcriptionMode = mode
+                            viewModel.setTranscriptionProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
                         },
                     )
-                    when (transcriptionSegment) {
-                        "pro" ->
+                    when (transcriptionMode) {
+                        ExecutionMode.PRO ->
                             AiProManagedCard(
                                 description = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
                             )
-                        "byok" -> {
+                        ExecutionMode.BYOK, ExecutionMode.OFF -> {
                             if (uiState.apiKey.isBlank()) {
                                 AiNoKeyWarning()
                             } else {
@@ -206,7 +212,7 @@ fun AIConfigScreen(
                                 )
                             }
                         }
-                        else ->
+                        ExecutionMode.LOCAL ->
                             LocalModelPanel(
                                 sectionLabel = "Whisper — speech-to-text",
                                 models = LocalWhisperModel.entries.toList(),
@@ -227,19 +233,20 @@ fun AIConfigScreen(
 
                 AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Transforms & Profiles") {
                     AiSourceSegment(
-                        selected = featuresSegment,
+                        selected = featuresMode.toSegment(),
                         hasPro = hasPro,
                         onChange = { seg ->
-                            featuresSegment = seg
-                            viewModel.setAiFeaturesProvider(if (seg == "local") "LOCAL" else "OPENAI")
+                            val mode = executionModeFromSegment(seg)
+                            featuresMode = mode
+                            viewModel.setAiFeaturesProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
                         },
                     )
-                    when (featuresSegment) {
-                        "pro" ->
+                    when (featuresMode) {
+                        ExecutionMode.PRO ->
                             AiProManagedCard(
                                 description = "AI transforms managed by Pro subscription. No personal key needed.",
                             )
-                        "byok" -> {
+                        ExecutionMode.BYOK, ExecutionMode.OFF -> {
                             if (uiState.apiKey.isBlank()) AiNoKeyWarning()
                             SettingOptionRow(
                                 title = "Transform model",
@@ -247,7 +254,7 @@ fun AIConfigScreen(
                                 onClick = { showTransformModelPicker = true },
                             )
                         }
-                        else ->
+                        ExecutionMode.LOCAL ->
                             LocalModelPanel(
                                 sectionLabel = "Gemma — on-device LLM",
                                 sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
