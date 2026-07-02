@@ -8,6 +8,7 @@ import androidx.room.Room
 import com.shelfsnap.app.data.local.AppDatabase
 import com.shelfsnap.app.data.local.ItemDao
 import com.shelfsnap.app.data.local.MIGRATION_2_3
+import com.shelfsnap.app.data.local.MIGRATION_3_4
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,7 +28,7 @@ object AppModule {
     ): AppDatabase =
         Room
             .databaseBuilder(ctx, AppDatabase::class.java, "shelf_snap.db")
-            .addMigrations(MIGRATION_2_3)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
             .fallbackToDestructiveMigrationFrom(1)
             .build()
 

@@ -9,6 +9,7 @@ import com.shelfsnap.app.data.model.ListingStatus
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
 import com.shelfsnap.app.data.model.VisionModel
+import com.shelfsnap.app.data.model.displayTitle
 import com.shelfsnap.app.data.remote.ListingGenerationService
 import com.shelfsnap.app.data.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,6 +38,7 @@ data class ItemDetailUiState(
     val refiningPlatforms: Set<String> = emptySet(),
     val isRefiningAll: Boolean = false,
     // Editable field mirrors
+    val editTitle: String = "",
     val editCategory: String = "",
     val editBrand: String = "",
     val editModel: String = "",
@@ -82,6 +84,9 @@ class ItemDetailViewModel
             copy(
                 item = item,
                 isLoading = false,
+                // Pre-migration rows have a blank persisted title; displayTitle falls back to
+                // brand+model/category so the field isn't empty on first edit.
+                editTitle = item.displayTitle,
                 editCategory = item.category,
                 editBrand = item.brand,
                 editModel = item.model,
@@ -159,6 +164,8 @@ class ItemDetailViewModel
         /** Applies a platform's suggested price to the editable asking-price field. */
         fun applySuggestedPrice(price: Double) = _uiState.update { it.copy(editEstimatedValue = "%.2f".format(price), tab = DetailTab.DETAILS) }
 
+        fun onTitleChange(value: String) = _uiState.update { it.copy(editTitle = value) }
+
         fun onCategoryChange(value: String) = _uiState.update { it.copy(editCategory = value) }
 
         fun onBrandChange(value: String) = _uiState.update { it.copy(editBrand = value) }
@@ -198,6 +205,7 @@ class ItemDetailViewModel
             val state = _uiState.value
             val item = state.item ?: return null
             return item.copy(
+                title = state.editTitle,
                 category = state.editCategory,
                 brand = state.editBrand,
                 model = state.editModel,

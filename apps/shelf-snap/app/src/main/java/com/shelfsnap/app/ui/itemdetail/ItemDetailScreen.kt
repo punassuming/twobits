@@ -399,6 +399,14 @@ private fun DetailsTab(
 
         // Core fields
         OutlinedTextField(
+            value = uiState.editTitle,
+            onValueChange = viewModel::onTitleChange,
+            label = { Text(stringResource(R.string.item_title)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+        )
+        OutlinedTextField(
             value = uiState.editCategory,
             onValueChange = viewModel::onCategoryChange,
             label = { Text(stringResource(R.string.category)) },

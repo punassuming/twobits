@@ -16,6 +16,7 @@
     <string name="delete">Delete</string>
     <string name="edit">Edit</string>
     <string name="confirm">Confirm</string>
+    <string name="item_title">Title</string>
     <string name="category">Category</string>
     <string name="description">Description</string>
     <string name="condition">Condition</string>

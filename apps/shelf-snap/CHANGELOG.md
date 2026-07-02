@@ -4,6 +4,8 @@
 
 ### Features
 
+* items now have an editable Title field (Item Detail → Title, above Category). New AI-created items get a generated title (brand + model, or category as fallback); existing items show the same fallback until edited. The title is now used for the Inventory list, the listing preview, per-platform listing copy, and market-research search queries instead of each screen recomputing its own brand/model fallback
+
 ### Improvements
 
 * the automatic "What's New" popup now renders the same polished, topic-grouped changelog formatting (bold topic rows with sub-bullets) as the full Settings → What's New screen, instead of a flatter list
