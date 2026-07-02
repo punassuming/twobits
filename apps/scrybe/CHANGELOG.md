@@ -13,6 +13,8 @@
 
 ### Fixes
 
+* the recent-sessions list, folder names, open-task count, and custom recording types no longer disappear from the capture screen while a recording is in progress or right after cancelling — starting or cancelling a recording was replacing the whole screen state with a fresh default instead of updating just the recording-specific fields
+
 ## 1.28.0 (2026-07-02)
 
 ### Features

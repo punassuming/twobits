@@ -263,9 +263,15 @@ class CaptureViewModel
         fun startRecordingWithMode(mode: RecordingMode) {
             viewModelScope.launch {
                 _uiState.value =
-                    CaptureUiState(
+                    _uiState.value.copy(
                         phase = CapturePhase.RECORDING,
-                        keepScreenOn = _uiState.value.keepScreenOn,
+                        elapsedMs = 0L,
+                        currentAmplitudeRatio = 0f,
+                        amplitudeHistory = emptyList(),
+                        liveTranscript = null,
+                        activeSessionId = null,
+                        minimized = false,
+                        errorMessage = null,
                         showModePickerSheet = false,
                         activeMode = mode,
                     )
@@ -281,9 +287,15 @@ class CaptureViewModel
         fun startRecordingWithCustomType(typeId: String) {
             viewModelScope.launch {
                 _uiState.value =
-                    CaptureUiState(
+                    _uiState.value.copy(
                         phase = CapturePhase.RECORDING,
-                        keepScreenOn = _uiState.value.keepScreenOn,
+                        elapsedMs = 0L,
+                        currentAmplitudeRatio = 0f,
+                        amplitudeHistory = emptyList(),
+                        liveTranscript = null,
+                        activeSessionId = null,
+                        minimized = false,
+                        errorMessage = null,
                         showModePickerSheet = false,
                     )
                 val intent =
@@ -376,7 +388,17 @@ class CaptureViewModel
                         action = RecordingServiceActions.ACTION_CANCEL
                     }
                 context.startService(intent)
-                _uiState.value = CaptureUiState(keepScreenOn = _uiState.value.keepScreenOn)
+                _uiState.value =
+                    _uiState.value.copy(
+                        phase = CapturePhase.IDLE,
+                        elapsedMs = 0L,
+                        currentAmplitudeRatio = 0f,
+                        amplitudeHistory = emptyList(),
+                        liveTranscript = null,
+                        activeSessionId = null,
+                        minimized = false,
+                        errorMessage = null,
+                    )
             }
         }
 
