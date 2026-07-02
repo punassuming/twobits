@@ -39,6 +39,9 @@ data class ItemDetailUiState(
     val isRefiningAll: Boolean = false,
     // Editable field mirrors
     val editTitle: String = "",
+    // True once the user has actually typed into the title field this load, as opposed to it
+    // merely being pre-filled with the displayTitle fallback for a blank persisted title.
+    val titleEdited: Boolean = false,
     val editCategory: String = "",
     val editBrand: String = "",
     val editModel: String = "",
@@ -84,8 +87,10 @@ class ItemDetailViewModel
                 item = item,
                 isLoading = false,
                 // Pre-migration rows have a blank persisted title; displayTitle falls back to
-                // brand+model/category so the field isn't empty on first edit.
+                // brand+model/category so the field isn't empty on first edit. titleEdited stays
+                // false until the user actually types, so an untouched fallback isn't persisted.
                 editTitle = item.displayTitle,
+                titleEdited = false,
                 editCategory = item.category,
                 editBrand = item.brand,
                 editModel = item.model,
@@ -163,7 +168,7 @@ class ItemDetailViewModel
         /** Applies a platform's suggested price to the editable asking-price field. */
         fun applySuggestedPrice(price: Double) = _uiState.update { it.copy(editEstimatedValue = "%.2f".format(price), tab = DetailTab.DETAILS) }
 
-        fun onTitleChange(value: String) = _uiState.update { it.copy(editTitle = value) }
+        fun onTitleChange(value: String) = _uiState.update { it.copy(editTitle = value, titleEdited = true) }
 
         fun onCategoryChange(value: String) = _uiState.update { it.copy(editCategory = value) }
 
@@ -204,7 +209,11 @@ class ItemDetailViewModel
             val state = _uiState.value
             val item = state.item ?: return null
             return item.copy(
-                title = state.editTitle,
+                // Only overwrite the persisted title once the user has actually edited it —
+                // otherwise a blank persisted title (pre-migration rows) would freeze onto
+                // whatever displayTitle fallback happened to be showing at load time, even
+                // when the user only edited an unrelated field.
+                title = if (state.titleEdited) state.editTitle else item.title,
                 category = state.editCategory,
                 brand = state.editBrand,
                 model = state.editModel,

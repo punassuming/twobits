@@ -18,6 +18,8 @@
 
 * fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the full "What's New" screen and the automatic popup were both silently rendering empty
 * API keys (OpenAI, Jina, Brave, SearchAPI.io) now correctly show as "Connected" immediately after a cold app restart — the "Connected" badge was tied to this session's live validation result, which always starts unset, instead of to whether a key is actually saved; a re-test can still reset the validation feedback, but the saved key now always shows as configured
+* internal: Market Research's Pro-tier preflight check now refreshes the subscription status before rejecting a request — otherwise a cold-started Pro user could hit the "needs an active Pro subscription" error until they'd separately opened Settings once
+* internal: editing an item's category, brand, or any other field no longer silently writes the title-field's fallback text (brand+model or category) into the persisted title — the fallback stays a display-only fallback until the title field is actually edited
 
 ## 1.20.0 (2026-07-02)
 

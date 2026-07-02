@@ -134,10 +134,13 @@ class ItemRepository
                         )
                     }
                 }
-                ExecutionMode.PRO ->
+                ExecutionMode.PRO -> {
+                    // Refresh first so a cold-started Pro subscriber isn't rejected as Free.
+                    subscriptionRepository.ensureFresh()
                     if (subscriptionRepository.subscriptionTier.value !is SubscriptionTier.Pro) {
                         return PriceResearchResult(error = "Market research needs an active Shelf Snap Pro subscription.")
                     }
+                }
                 ExecutionMode.OFF -> return PriceResearchResult(error = "Market research is turned off in AI configuration.")
                 ExecutionMode.LOCAL -> {}
             }
