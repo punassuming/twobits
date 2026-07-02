@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 0.10.0 (2026-07-02)
+
+### Features
+
+### Improvements
+
 * internal: introduced the shared `pro` core module (managed-Pro policy contracts) that PriceDrop will consume to unify Pro handling across TwoBits apps (no behavior change yet)
 * internal: extended the shared `ProTierCard` (badge / price note / accent / compact comparison layout) and added shared Pro usage, spend-cap, and BYOK-note cards for the upcoming unified Pro screen (no behavior change yet)
 * the Pro screen now states the managed monthly usage caps up front — Pro is metered, not unlimited. The plan comparison no longer says "Unlimited products / Hourly price checks"; it now shows the real monthly AI Ask allowance, a managed spend-cap card, and the actual per-feature allowances instead of placeholder usage numbers
@@ -13,6 +21,7 @@
 * AI configuration's "Ask assistant" feature now shows the real managed Pro allowance (e.g. "Up to 100 questions included with Pro each month") instead of a generic usage note, sourced from the same policy the Pro screen and worker enforcement share
 
 ### Fixes
+
 
 ## 0.9.0 (2026-06-28)
 
@@ -27,6 +36,7 @@
 * Free product cap now refreshes subscription status on a cold start, so a returning PriceDrop Pro subscriber isn't temporarily limited to 3 products before opening Settings
 * BYOK Google Shopping results are now parsed from SearchAPI.io's actual response shape (shopping_results + popular_products, seller / product_link), so common queries no longer return empty or save products with a blank retailer/URL
 * AI Config: a provider key that previously passed verification now shows "Connected" on launch — the verified state is persisted, so you no longer have to expand, save, and test each key every time you open the app
+
 
 
 ## 0.8.0 (2026-06-27)
@@ -67,6 +77,7 @@
 
 
 
+
 ## 0.7.0 (2026-06-26)
 
 ### Features
@@ -80,6 +91,7 @@
 * **URL product metadata** — when adding a product by URL the extracted title and current price (from Jina reader + OpenAI) are now saved to the watchlist; previously the product was always stored with the placeholder title "Product from URL" and price $0.00
 * **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
 * **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
+
 
 
 
@@ -99,6 +111,7 @@
 ### Fixes
 
 * **Price drop notifications** — tapping an OS notification now opens the app directly to that product's detail screen; previously the app opened to the last-viewed screen with no navigation
+
 
 
 
@@ -131,6 +144,7 @@
 
 
 
+
 ## 0.4.0 (2026-06-23)
 
 ### Features
@@ -152,6 +166,7 @@
 
 * Pro screen: the plan toggle "Monthly – $5.99/mo" chip no longer wraps to two lines — the Annual/Monthly chips now share the row evenly and keep their labels on one line
 * AI configuration: provider status badges no longer wrap to two lines when a provider title is long (shared credential row fix)
+
 
 
 
@@ -188,6 +203,7 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 
 
 
@@ -241,6 +257,7 @@
 
 
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -250,6 +267,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 
