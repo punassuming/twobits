@@ -50,6 +50,8 @@ import com.twobits.design.components.AppSectionLabel
 import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsProStatusCard
 import com.twobits.pricedrop.BuildConfig
+import com.twobits.pricedrop.data.settings.SettingsPrefs
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,8 +128,8 @@ fun SettingsScreen(
                         )
                         Slider(
                             value = uiState.checkFrequencyHours.toFloat(),
-                            onValueChange = { viewModel.setCheckFrequency(it.toInt()) },
-                            valueRange = 1f..24f,
+                            onValueChange = { viewModel.setCheckFrequency((it / 4f).roundToInt() * 4) },
+                            valueRange = SettingsPrefs.MIN_CHECK_FREQ_HOURS.toFloat()..SettingsPrefs.MAX_CHECK_FREQ_HOURS.toFloat(),
                             steps = 22,
                             modifier = Modifier.padding(horizontal = 16.dp),
                         )
