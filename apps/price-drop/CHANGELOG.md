@@ -8,6 +8,8 @@
 
 ### Improvements
 
+* the Settings screen's Pro card and About/What's New/Privacy section now use shared design-system components, matching Scrybe and Shelf Snap — "Upgrade" now purchases inline from Settings instead of only navigating to the Pro screen, and a "Restore purchases" option is now available there too
+
 ### Fixes
 
 * fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the "What's New" screen was silently rendering empty

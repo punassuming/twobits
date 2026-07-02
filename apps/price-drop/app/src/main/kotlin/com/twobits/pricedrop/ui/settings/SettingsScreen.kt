@@ -1,5 +1,6 @@
 package com.twobits.pricedrop.ui.settings
 
+import android.app.Activity
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,14 +17,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.WorkspacePremium
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,10 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,11 +43,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.components.AppSectionLabel
+import com.twobits.design.components.SettingsAppInfoSection
+import com.twobits.design.components.SettingsProStatusCard
 import com.twobits.pricedrop.BuildConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +62,7 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val activity = context as? Activity
 
     LaunchedEffect(viewModel) {
         viewModel.exportEvent.collect { json ->
@@ -104,9 +100,17 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
-                ProBanner(
-                    hasPro = uiState.hasPro,
-                    onUpgrade = onNavigateToPro,
+                SettingsProStatusCard(
+                    appName = "PriceDrop",
+                    isPro = uiState.hasPro,
+                    upgradeLabel = "Upgrade — \$2.99/mo",
+                    upgradeDescription = "Shopping search · coupons · AI — no keys needed.",
+                    activeDescription = "Managed connectors are active — no key setup needed.",
+                    isPurchasing = uiState.isPurchasing,
+                    purchaseError = uiState.purchaseError,
+                    onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
+                    onRestore = viewModel::restorePurchases,
+                    onDismissError = viewModel::dismissPurchaseError,
                     onDetails = onNavigateToPro,
                 )
             }
@@ -185,155 +189,11 @@ fun SettingsScreen(
                 }
             }
             item {
-                val uriHandler = LocalUriHandler.current
-                SectionCard(title = "About", icon = Icons.Filled.Info) {
-                    Column {
-                        ListItem(
-                            headlineContent = { Text("PriceDrop v${BuildConfig.VERSION_NAME}") },
-                            supportingContent = { Text("Local-first. Your data stays on this device.") },
-                        )
-                        HorizontalDivider()
-                        ListItem(
-                            headlineContent = { Text("What's new") },
-                            supportingContent = { Text("Recent changes & release notes") },
-                            trailingContent = {
-                                TextButton(onClick = onNavigateToWhatsNew) { Text("See notes") }
-                            },
-                        )
-                        HorizontalDivider()
-                        ListItem(
-                            headlineContent = { Text("Privacy policy") },
-                            supportingContent = { Text("punassuming.github.io/twobits/privacy") },
-                            trailingContent = {
-                                TextButton(
-                                    onClick = {
-                                        uriHandler.openUri("https://punassuming.github.io/twobits/privacy.html")
-                                    },
-                                ) { Text("Open") }
-                            },
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProBanner(
-    hasPro: Boolean,
-    onUpgrade: () -> Unit,
-    onDetails: () -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    if (hasPro) {
-                        MaterialTheme.colorScheme.tertiaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-            ),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Icon(
-                    Icons.Filled.WorkspacePremium,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(26.dp),
+                SettingsAppInfoSection(
+                    versionLabel = "PriceDrop v${BuildConfig.VERSION_NAME}",
+                    subtitle = "Local-first. Your data stays on this device.",
+                    onWhatsNew = onNavigateToWhatsNew,
                 )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (hasPro) "PriceDrop Pro — Active" else "PriceDrop Pro",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text =
-                            if (hasPro) {
-                                "Managed connectors · no key setup"
-                            } else {
-                                "Shopping search · coupons · AI — no keys needed"
-                            },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (hasPro) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(12.dp),
-                            )
-                            Text(
-                                text = "Active",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.tertiary,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-                }
-            }
-            if (!hasPro) {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Button(
-                        onClick = onUpgrade,
-                        modifier = Modifier.weight(2f),
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiary,
-                                contentColor = MaterialTheme.colorScheme.onTertiary,
-                            ),
-                    ) {
-                        Text("Upgrade — \$2.99/mo")
-                    }
-                    OutlinedButton(
-                        onClick = onDetails,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("Details")
-                    }
-                }
-            } else {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(onClick = onDetails) {
-                        Text("Details")
-                        Icon(
-                            Icons.Filled.ChevronRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                }
             }
         }
     }
