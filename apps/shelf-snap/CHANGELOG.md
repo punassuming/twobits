@@ -11,6 +11,8 @@
 * the automatic "What's New" popup now renders the same polished, topic-grouped changelog formatting (bold topic rows with sub-bullets) as the full Settings → What's New screen, instead of a flatter list
 * internal: de-duplicated the popup's version-tracking and changelog-loading logic into a shared `WhatsNewPopupCoordinator`
 * the Settings screen's Pro card and About/What's New/Privacy section now use shared design-system components, matching Scrybe and PriceDrop
+* AI configuration now has a dedicated "Listing generation" section (separate from "Market research"), each with its own Pro / BYOK / Local source control and model picker, matching PriceDrop's per-feature layout — listing refinement is routed through the same Pro/BYOK logic as Vision and Market Research instead of always using your raw OpenAI key directly
+* Market Research now fails immediately with a clear message ("Add an OpenAI key and enable at least one search provider…", "needs an active Shelf Snap Pro subscription…", or "is turned off…") instead of spinning for several seconds before a generic error when nothing is configured
 
 ### Fixes
 

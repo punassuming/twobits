@@ -2,6 +2,7 @@ package com.shelfsnap.app.ui.itemdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shelfsnap.app.data.listing.ListingCopy
 import com.shelfsnap.app.data.listing.ListingCopyGenerator
 import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.Item
@@ -10,7 +11,6 @@ import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.model.displayTitle
-import com.shelfsnap.app.data.remote.ListingGenerationService
 import com.shelfsnap.app.data.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,7 +63,6 @@ class ItemDetailViewModel
     @Inject
     constructor(
         private val repository: ItemRepository,
-        private val listingGenerationService: ListingGenerationService,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ItemDetailUiState())
         val uiState: StateFlow<ItemDetailUiState> = _uiState.asStateFlow()
@@ -312,14 +311,13 @@ class ItemDetailViewModel
             viewModelScope.launch {
                 _uiState.update { it.copy(refiningPlatforms = it.refiningPlatforms + platformKey) }
                 val current =
-                    com.shelfsnap.app.data.listing.ListingCopy(
+                    ListingCopy(
                         title = listing.title ?: "",
                         description = listing.description ?: "",
                         condition = listing.condition ?: "",
                         shipping = listing.shipping ?: "",
                     )
-                val openAiKey = repository.getApiKey()
-                val refined = listingGenerationService.refine(item, platform, current, openAiKey)
+                val refined = repository.refineListing(item, platform, current)
                 val updatedItem =
                     item.copy(
                         listings =

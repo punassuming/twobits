@@ -185,23 +185,23 @@ fun AIConfigScreen(
                 }
             }
 
-            AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Pricing & descriptions") {
+            AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Listing generation") {
                 AiSourceSegment(
-                    selected = uiState.textSource,
+                    selected = uiState.listingSource,
                     hasPro = hasPro,
-                    onChange = viewModel::onTextSourceChange,
+                    onChange = viewModel::onListingSourceChange,
                 )
-                when (uiState.textSource) {
+                when (uiState.listingSource) {
                     "pro" ->
                         AiProManagedCard(
-                            description = "Managed listing & pricing API active.",
+                            description = "Managed listing API active — refined listing copy generated automatically.",
                         )
                     "byok" -> {
                         if (uiState.editApiKey.isBlank()) {
                             AiNoKeyWarning()
                         } else {
                             Text(
-                                "Pricing & description model",
+                                "Listing model",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                             )
@@ -237,9 +237,83 @@ fun AIConfigScreen(
                             huggingFaceUrl = { it.huggingFacePageUrl },
                         )
                 }
+                if (uiState.listingSource == "local") {
+                    Text(
+                        "On-device listing generation isn't available yet — with Local selected, " +
+                            "\"Refine with AI\" leaves your listing text unchanged.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
-            WebSearchSection(uiState = uiState, viewModel = viewModel, hasPro = hasPro)
+            AiSectionCard(icon = Icons.Default.Insights, title = "Market research") {
+                AiSourceSegment(
+                    selected = uiState.textSource,
+                    hasPro = hasPro,
+                    hasLocal = false,
+                    onChange = viewModel::onTextSourceChange,
+                )
+                when (uiState.textSource) {
+                    "pro" ->
+                        AiProManagedCard(
+                            description = "Managed pricing & web search API active — no keys required.",
+                        )
+                    "local" ->
+                        Text(
+                            "Local web search isn't available — choose Pro or BYOK for market research.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    else -> {
+                        if (uiState.editApiKey.isBlank()) {
+                            AiNoKeyWarning()
+                        } else {
+                            Text(
+                                "Market research model",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            ModelRadioList(
+                                models = ReasoningModel.entries.toList(),
+                                selected = uiState.reasoningModel,
+                                onSelect = viewModel::onReasoningModelChange,
+                                name = { it.displayName },
+                                subtitle = { it.supportingText },
+                                costLabel = { it.costLabel },
+                            )
+                        }
+                        HorizontalDivider()
+                        Text(
+                            "Web search providers",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            "SearchAPI.io is the primary search (it returns real marketplace listings); Jina AI " +
+                                "opens those pages to read prices and is a search fallback; Brave adds a second " +
+                                "index. Enter the keys under Credentials above.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        WebSearchToggleRow(
+                            title = "SearchAPI.io",
+                            enabled = uiState.searchapiSearchEnabled,
+                            onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
+                        )
+                        WebSearchToggleRow(
+                            title = stringResource(R.string.jina_api_key_label),
+                            enabled = uiState.jinaSearchEnabled,
+                            onEnabledChange = viewModel::onJinaSearchEnabledChange,
+                        )
+                        WebSearchToggleRow(
+                            title = stringResource(R.string.brave_api_key_label),
+                            enabled = uiState.braveSearchEnabled,
+                            onEnabledChange = viewModel::onBraveSearchEnabledChange,
+                        )
+                    }
+                }
+            }
 
             AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
                 AiToggleRow(
@@ -323,7 +397,7 @@ private fun CredentialsSection(
                 CollapsibleProviderRow(
                     icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     title = "OpenAI",
-                    description = "Vision + pricing & descriptions",
+                    description = "Vision + listing generation + market research",
                     maskedKey = maskKey(uiState.savedApiKey),
                     isKeyValid = uiState.isKeyVerified,
                     isValidating = uiState.isVerifyingKey,
@@ -401,44 +475,6 @@ private fun maskKey(key: String): String? =
         key.isNotBlank() -> "••••"
         else -> null
     }
-
-@Composable
-private fun WebSearchSection(
-    uiState: SettingsUiState,
-    viewModel: SettingsViewModel,
-    hasPro: Boolean,
-) {
-    AiSectionHeader(icon = Icons.Default.Search, title = "Web search for pricing")
-    if (hasPro) {
-        AiProManagedCard(
-            description = "Web search managed via api.twobits.app — Jina AI (primary) with Brave Search as supplement. No keys required.",
-        )
-        return
-    }
-    Text(
-        text =
-            "SearchAPI.io is the primary search (it returns real marketplace listings); Jina AI opens those " +
-                "pages to read prices and is a search fallback; Brave adds a second index. Enter the keys under " +
-                "Credentials above.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    WebSearchToggleRow(
-        title = "SearchAPI.io",
-        enabled = uiState.searchapiSearchEnabled,
-        onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
-    )
-    WebSearchToggleRow(
-        title = stringResource(R.string.jina_api_key_label),
-        enabled = uiState.jinaSearchEnabled,
-        onEnabledChange = viewModel::onJinaSearchEnabledChange,
-    )
-    WebSearchToggleRow(
-        title = stringResource(R.string.brave_api_key_label),
-        enabled = uiState.braveSearchEnabled,
-        onEnabledChange = viewModel::onBraveSearchEnabledChange,
-    )
-}
 
 @Composable
 private fun WebSearchToggleRow(
