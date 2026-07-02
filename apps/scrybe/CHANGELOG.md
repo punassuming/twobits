@@ -6,6 +6,9 @@
 
 ### Improvements
 
+* the automatic "What's New" popup now renders the same polished, topic-grouped changelog formatting (bold topic rows with sub-bullets) as the full Settings → What's New screen, instead of a flatter list
+* internal: de-duplicated the popup's version-tracking and changelog-loading logic into a shared `WhatsNewPopupCoordinator`
+
 ### Fixes
 
 ## 1.28.0 (2026-07-02)

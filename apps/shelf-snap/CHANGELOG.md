@@ -6,7 +6,12 @@
 
 ### Improvements
 
+* the automatic "What's New" popup now renders the same polished, topic-grouped changelog formatting (bold topic rows with sub-bullets) as the full Settings → What's New screen, instead of a flatter list
+* internal: de-duplicated the popup's version-tracking and changelog-loading logic into a shared `WhatsNewPopupCoordinator`
+
 ### Fixes
+
+* fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the full "What's New" screen and the automatic popup were both silently rendering empty
 
 ## 1.20.0 (2026-07-02)
 

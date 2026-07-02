@@ -1,4 +1,4 @@
-package com.shelfsnap.app.ui.whatsnew
+package com.twobits.pricedrop.ui.whatsnew
 
 import android.content.Context
 import androidx.compose.material.icons.Icons
@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class WhatsNewViewModel
+class WhatsNewPopupViewModel
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
@@ -38,7 +38,7 @@ class WhatsNewViewModel
 
         private val coordinator =
             WhatsNewPopupCoordinator(
-                welcomeTitle = "Welcome to Shelf Snap",
+                welcomeTitle = "Welcome to PriceDrop",
                 firstRunCategory = firstRunCategory(),
                 loadChangelogText = { loadChangelogText() },
                 readLastSeenVersionCode = { dataStore.data.map { it[LAST_SEEN_KEY] ?: 0L }.first() },
@@ -79,12 +79,11 @@ class WhatsNewViewModel
                 icon = Icons.Filled.RocketLaunch,
                 items =
                     listOf(
-                        "Snap a photo of any item — AI identifies it and estimates resale value instantly.",
-                        "The Inventory screen tracks everything: draft, listed, and sold items with estimates.",
-                        "Item Detail shows a market price range and prepares eBay, Mercari, and OfferUp listings.",
-                        "AI configuration (Settings → AI) lets you choose your vision model or use Shelf Snap Pro.",
-                        "The Camera screen guides you to the best framing, then analyses in one tap.",
-                        "Pro subscription unlocks the managed AI — no personal API key needed.",
+                        "Add products from the Watch screen — paste a link, scan a barcode, or search by name.",
+                        "PriceDrop checks prices in the background and notifies you when they drop.",
+                        "Ask AI answers quick shopping questions about any tracked product.",
+                        "AI configuration (Settings → AI) lets you use your own provider keys or PriceDrop Pro.",
+                        "PriceDrop Pro unlocks managed AI and faster background checks — no personal API key needed.",
                     ).mapIndexed { index, text ->
                         WhatsNewItem(
                             id = "welcome_$index",
@@ -96,6 +95,6 @@ class WhatsNewViewModel
             )
 
         private companion object {
-            val LAST_SEEN_KEY = longPreferencesKey("ss_last_seen_version_code")
+            val LAST_SEEN_KEY = longPreferencesKey("last_seen_whats_new_version_code")
         }
     }

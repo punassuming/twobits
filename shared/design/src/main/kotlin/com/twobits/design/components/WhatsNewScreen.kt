@@ -342,8 +342,8 @@ private fun WhatsNewItemRow(
                         modifier = Modifier.padding(start = 56.dp, end = 14.dp, bottom = 14.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(
-                            text = item.description,
+                        WhatsNewDescriptionText(
+                            description = item.description,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -398,6 +398,32 @@ private fun WhatsNewItemRow(
                         modifier = Modifier.weight(1f),
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Renders a changelog item's description, splitting on the " · " join the parser uses for
+ * multiple detail bullets into separate "• " lines instead of one inline paragraph. Falls back to
+ * a single plain line when there's nothing to split. Shared by the full What's New screen and the
+ * automatic update dialog so both surfaces render sub-bullets identically.
+ */
+@Composable
+internal fun WhatsNewDescriptionText(
+    description: String,
+    style: androidx.compose.ui.text.TextStyle,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    if (description.isBlank()) return
+    val bullets = description.split(" · ")
+    if (bullets.size <= 1) {
+        Text(text = description, style = style, color = color, modifier = modifier)
+    } else {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            bullets.forEach { bullet ->
+                Text(text = "• $bullet", style = style, color = color)
             }
         }
     }

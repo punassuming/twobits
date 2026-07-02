@@ -148,7 +148,7 @@ fun AppNavigation() {
         if (whatsNewState.isVisible) {
             AppWhatsNewDialog(
                 title = whatsNewState.title,
-                entries = whatsNewState.entries,
+                categories = whatsNewState.categories,
                 confirmLabel = whatsNewState.confirmLabel,
                 onDismiss = whatsNewViewModel::dismiss,
                 onViewHistory =

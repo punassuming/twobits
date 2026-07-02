@@ -4,9 +4,13 @@
 
 ### Features
 
+* PriceDrop now shows an automatic "What's New" popup after an update, matching Scrybe and Shelf Snap (previously PriceDrop had no automatic update notice at all — only the Settings → What's New screen)
+
 ### Improvements
 
 ### Fixes
+
+* fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the "What's New" screen was silently rendering empty
 
 ## 0.10.0 (2026-07-02)
 
