@@ -193,6 +193,11 @@ fun ProviderCredentialCard(
  * "Connected" badge; unconfigured rows display the provider [description] and a "Not configured"
  * badge. Tapping the chevron expands to reveal the key field + Save/Clear/Test actions.
  *
+ * "Connected" reflects whether a key is *saved* ([maskedKey] non-blank), independent of
+ * [isKeyValid] — a session-only validation result that resets to `null` on cold start. A saved key
+ * must keep showing as configured even before it's re-tested this session; [isKeyValid] instead
+ * drives the colored feedback inside the expanded row (see [validationMessage]).
+ *
  * Add to a [Column] inside a credential card — one row per provider.
  */
 @Composable
@@ -215,7 +220,7 @@ fun CollapsibleProviderRow(
     costEstimate: String = "",
 ) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
-    val connected = isKeyValid == true && !maskedKey.isNullOrBlank()
+    val connected = !maskedKey.isNullOrBlank()
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(

@@ -9,6 +9,7 @@
 * the automatic "What's New" popup now renders the same polished, topic-grouped changelog formatting (bold topic rows with sub-bullets) as the full Settings → What's New screen, instead of a flatter list
 * internal: de-duplicated the popup's version-tracking and changelog-loading logic into a shared `WhatsNewPopupCoordinator`
 * the Settings screen's Pro card and About/What's New/Privacy section now use shared design-system components, matching Shelf Snap and PriceDrop
+* internal: fixed a shared credential-card bug where the "Connected" badge was tied to session-only validation state instead of whether a key is saved (Scrybe's own credential UI is unaffected — it already derived "Connected" from the saved key)
 
 ### Fixes
 

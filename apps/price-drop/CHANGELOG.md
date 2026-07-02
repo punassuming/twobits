@@ -13,6 +13,7 @@
 ### Fixes
 
 * fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the "What's New" screen was silently rendering empty
+* internal: fixed a shared credential-card bug where the "Connected" badge was tied to session-only validation state instead of whether a key is saved; PriceDrop's own credential flow already re-validates on every save so this was latent here, but the fix removes the risk of a saved-but-not-yet-tested key showing as "Not configured"
 
 ## 0.10.0 (2026-07-02)
 

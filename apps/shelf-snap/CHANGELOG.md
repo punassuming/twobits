@@ -13,6 +13,7 @@
 ### Fixes
 
 * fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the full "What's New" screen and the automatic popup were both silently rendering empty
+* API keys (OpenAI, Jina, Brave, SearchAPI.io) now correctly show as "Connected" immediately after a cold app restart — the "Connected" badge was tied to this session's live validation result, which always starts unset, instead of to whether a key is actually saved; a re-test can still reset the validation feedback, but the saved key now always shows as configured
 
 ## 1.20.0 (2026-07-02)
 
