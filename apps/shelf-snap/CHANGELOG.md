@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.20.0 (2026-07-02)
+
+### Features
+
+### Improvements
+
 * internal: introduced the shared `local-models` and `pro` core modules (on-device model specs/state and managed-Pro policy contracts) that Shelf Snap will consume to unify local-model and Pro handling across TwoBits apps (no behavior change yet)
 * internal: extended the shared `ProTierCard` (badge / price note / accent / compact comparison layout) and added shared Pro usage, spend-cap, and BYOK-note cards for the upcoming unified Pro screen (no behavior change yet)
 * internal: Shelf Snap's on-device Moondream and Gemma models now implement the shared `LocalModelSpec` contract and the import flow uses the shared `LocalModelState` type (Absent/Acquiring/Ready/Error); local AI execution is still not implemented (the existing "not yet available" behavior is unchanged)
@@ -14,6 +22,7 @@
 * internal: `ItemRepository.analysePhotos`/`researchPrice` now dispatch on the shared `ExecutionMode` type instead of raw "pro"/"byok"/"local" strings, so the compiler enforces all three modes are handled at the exact call sites that decide whether a request goes to the worker, direct to the provider, or on-device; no change to behavior or persisted settings
 
 ### Fixes
+
 
 ## 1.19.0 (2026-06-28)
 
@@ -37,6 +46,7 @@
 ### Fixes
 
 * List tab: a sold listing can now be marked unsold (reverted to active) — previously a listing marked sold had no way to undo it
+
 
 
 ## 1.18.0 (2026-06-27)
@@ -68,6 +78,7 @@
 
 
 
+
 ## 1.17.0 (2026-06-25)
 
 ### Features
@@ -90,6 +101,7 @@
 * Search queries for items without a brand or model are now shorter and more targeted, producing real sold-listing results from eBay and Mercari instead of generic article pages
 
 ### Fixes
+
 
 
 
@@ -136,6 +148,7 @@
 
 
 
+
 ## 1.15.0 (2026-06-23)
 
 ### Features
@@ -167,6 +180,7 @@
 
 
 
+
 ## 1.14.0 (2026-06-22)
 
 ### Features
@@ -183,6 +197,7 @@
 ### Fixes
 
 * Item Detail: "GPT-4o analysis" label now shows the actual model name used (tracked in UI state)
+
 
 
 
@@ -214,6 +229,7 @@
 
 
 
+
 ## 1.12.0 (2026-06-21)
 
 ### Features
@@ -231,6 +247,7 @@
 
 
 
+
 ## 1.11.0 (2026-06-19)
 
 ### Features
@@ -240,6 +257,7 @@
 * migrated to shared `gradle/libs.versions.toml` version catalog across all three apps; upgraded Compose BOM to 2024.12.01, coreKtx to 1.15.0, lifecycleRuntimeKtx to 2.8.7, and navigationCompose to 2.8.5
 
 ### Fixes
+
 
 
 
@@ -284,6 +302,7 @@
 
 
 
+
 ## 1.9.0 (2026-06-17)
 
 ### Features
@@ -303,6 +322,7 @@
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
 * `ProScreen` top bar extracted into private composable — satisfies ktlint function-body-expression rules without changing visible behaviour
+
 
 
 
@@ -353,6 +373,7 @@
 
 
 
+
 ## 1.7.0 (2026-06-11)
 
 ### Features
@@ -372,6 +393,7 @@
 
 
 
+
 ## 1.6.0 (2026-06-11)
 
 ### Features
@@ -385,6 +407,7 @@
 * test result (connected or error message) shown inline below the buttons
 
 ### Fixes
+
 
 
 
@@ -423,6 +446,7 @@
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
 * missing FilterChip import in MarketTab restored after wildcard-import replacement
+
 
 
 
@@ -468,6 +492,7 @@
 
 
 
+
 ## 1.3.1 (2026-06-06)
 
 ### Improvements
@@ -479,11 +504,13 @@
 
 
 
+
 ## 1.3.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -524,6 +551,7 @@
 
 
 
+
 ## 1.1.3 (2026-06-05)
 
 ### Improvements
@@ -535,11 +563,13 @@
 
 
 
+
 ## 1.1.2 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
+
 
 
 
@@ -558,12 +588,14 @@
 
 
 
+
 ## 1.1.0 (2026-06-04)
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
+
 
 
 
@@ -581,6 +613,7 @@
 
 
 
+
 ## 1.0.1 (2026-06-03)
 
 ### Features
@@ -592,9 +625,11 @@
 
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 
