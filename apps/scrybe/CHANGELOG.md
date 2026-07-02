@@ -14,6 +14,9 @@
 ### Fixes
 
 * the recent-sessions list, folder names, open-task count, and custom recording types no longer disappear from the capture screen while a recording is in progress or right after cancelling — starting or cancelling a recording was replacing the whole screen state with a fresh default instead of updating just the recording-specific fields
+* a recording started from a custom type now shows its real name (mode badge, "Stop — process as …" button, and the live-transcript status line) instead of silently displaying as "Journal"
+* "Stop, save raw transcript only" now actually skips the linked transform profile — it previously ran the exact same stop path as the primary "Stop — process as …" button and always applied the transform anyway
+* the live-transcript panel now shows how the recording will be processed while it's still active (e.g. which profile it'll auto-transform into) instead of a generic "will appear here" placeholder
 
 ## 1.28.0 (2026-07-02)
 

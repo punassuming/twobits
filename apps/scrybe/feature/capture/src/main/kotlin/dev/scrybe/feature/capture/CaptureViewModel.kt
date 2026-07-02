@@ -274,6 +274,7 @@ class CaptureViewModel
                         errorMessage = null,
                         showModePickerSheet = false,
                         activeMode = mode,
+                        activeCustomTypeName = null,
                     )
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
@@ -286,6 +287,7 @@ class CaptureViewModel
 
         fun startRecordingWithCustomType(typeId: String) {
             viewModelScope.launch {
+                val typeName = customTypes.value.find { it.id == typeId }?.name
                 _uiState.value =
                     _uiState.value.copy(
                         phase = CapturePhase.RECORDING,
@@ -297,6 +299,8 @@ class CaptureViewModel
                         minimized = false,
                         errorMessage = null,
                         showModePickerSheet = false,
+                        activeMode = RecordingMode.CUSTOM,
+                        activeCustomTypeName = typeName,
                     )
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
@@ -370,12 +374,13 @@ class CaptureViewModel
                 )
         }
 
-        fun stopRecording() {
+        fun stopRecording(skipTransform: Boolean = false) {
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(phase = CapturePhase.STOPPING, errorMessage = null)
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
                         action = RecordingServiceActions.ACTION_STOP
+                        putExtra(RecordingServiceActions.EXTRA_SKIP_TRANSFORM, skipTransform)
                     }
                 context.startService(intent)
             }

@@ -62,7 +62,10 @@ fun modeIcon(mode: RecordingMode): ImageVector =
  * Used on session cards, the recording active view, and the task inbox.
  */
 @Composable
-fun ModeBadge(mode: RecordingMode) {
+fun ModeBadge(
+    mode: RecordingMode,
+    customLabel: String? = null,
+) {
     val accentColor = modeAccentColor(mode)
     Surface(
         shape = CircleShape,
@@ -84,7 +87,7 @@ fun ModeBadge(mode: RecordingMode) {
                         .size(12.dp),
             )
             Text(
-                text = mode.label,
+                text = customLabel ?: mode.label,
                 style = MaterialTheme.typography.labelSmall,
                 color = accentColor,
             )
