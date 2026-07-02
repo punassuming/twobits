@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Speed
@@ -48,7 +47,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -56,15 +54,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
+import com.twobits.design.components.ByokDirectNoteCard
+import com.twobits.design.components.ProSpendCapCard
+import com.twobits.design.components.ProTierCard
+import com.twobits.design.components.ProUsageCard
+import com.twobits.design.components.ProUsageMetric
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 
 private const val PLAY_SUBSCRIPTIONS_URL = "https://play.google.com/store/account/subscriptions"
-
-private data class UsageItem(
-    val label: String,
-    val value: Int,
-    val icon: ImageVector,
-)
 
 private data class WhyItem(
     val icon: ImageVector,
@@ -110,9 +107,16 @@ fun ProScreen(
             ) {
                 SharedInfraNote()
                 TierComparisonRow(hasPro = hasPro)
+                ProSpendCapCard(
+                    capLabel = "Managed spend cap: \$%.2f / month".format(ScrybePlan.plan.monthlySpendCapUsd),
+                    note =
+                        "Pro runs on TwoBits managed providers with a monthly usage cap. When the " +
+                            "cap is reached, managed transcription and AI transforms pause until the " +
+                            "next cycle — Pro is metered, not unlimited.",
+                )
                 if (hasPro) {
                     ProActivePlanCard(onRestore = viewModel::restorePurchases)
-                    ProUsageCard()
+                    ScrybeUsageCard()
                 } else {
                     PlanPickerSection(
                         selectedPlan = selectedPlan,
@@ -218,116 +222,55 @@ private fun TierCardsRow(hasPro: Boolean) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        TierCard(
-            label = "Try it",
+        ProTierCard(
+            modifier = Modifier.weight(1f),
+            compact = true,
+            title = "Try it",
             price = "—",
             priceNote = "No account needed",
-            items =
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            isHighlighted = !hasPro,
+            features =
                 listOf(
                     "Record and transcribe right away",
                     "Try AI summaries and profiles",
                     "Local storage on your device",
                 ),
-            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            isHighlighted = !hasPro,
-            modifier = Modifier.weight(1f),
         )
-        TierCard(
-            label = "Pro",
+        ProTierCard(
+            modifier = Modifier.weight(1f),
+            compact = true,
+            title = "Pro",
             price = "\$1.99",
             priceNote = "/mo · billed annually",
             badge = "Zero setup",
-            items =
+            accentColor = MaterialTheme.colorScheme.primary,
+            isHighlighted = hasPro,
+            features =
                 listOf(
                     "Works immediately — no key config",
-                    "We manage transcription + AI",
-                    "Priority processing queue",
+                    "Managed transcription + AI (metered)",
+                    "Up to ${ScrybePlan.TRANSCRIBE_MONTHLY_LIMIT} transcriptions/mo",
                     "Automatic provider updates",
                     "Pro support channel",
                 ),
-            labelColor = MaterialTheme.colorScheme.primary,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            isHighlighted = hasPro,
-            modifier = Modifier.weight(1f),
         )
-        TierCard(
-            label = "BYOK",
+        ProTierCard(
+            modifier = Modifier.weight(1f),
+            compact = true,
+            title = "BYOK",
             price = "Free forever",
             priceNote = "pay providers directly",
             badge = "Full control",
-            items =
+            accentColor = MaterialTheme.colorScheme.secondary,
+            features =
                 listOf(
                     "All Scrybe features included",
                     "Connect your own API keys",
                     "Choose your preferred models",
                     "Pay providers at their own rates",
                 ),
-            labelColor = MaterialTheme.colorScheme.secondary,
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            isHighlighted = false,
-            modifier = Modifier.weight(1f),
         )
-    }
-}
-
-@Composable
-private fun TierCard(
-    label: String,
-    price: String,
-    priceNote: String,
-    items: List<String>,
-    labelColor: Color,
-    containerColor: Color,
-    isHighlighted: Boolean,
-    badge: String? = null,
-    modifier: Modifier = Modifier,
-) {
-    val borderColor =
-        if (isHighlighted) {
-            labelColor.copy(alpha = 0.4f)
-        } else {
-            MaterialTheme.colorScheme.outlineVariant
-        }
-    Card(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = BorderStroke(1.5.dp, borderColor),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp)) {
-            if (badge != null) {
-                Surface(
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = labelColor,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                ) {
-                    Text(
-                        badge,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = labelColor)
-            Text(price, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            Text(
-                priceNote,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            items.forEach { item ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(bottom = 3.dp),
-                ) {
-                    Text("•", style = MaterialTheme.typography.labelSmall, color = labelColor)
-                    Text(item, style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        }
     }
 }
 
@@ -483,50 +426,28 @@ private fun ProActivePlanCard(onRestore: () -> Unit) {
 }
 
 @Composable
-private fun ProUsageCard() {
-    val items =
-        listOf(
-            UsageItem("Transcription minutes", 142, Icons.Filled.Mic),
-            UsageItem("AI transforms", 38, Icons.Filled.AutoAwesome),
-            UsageItem("Sessions this month", 24, Icons.Filled.Folder),
-        )
-
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                "This month's usage",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            items.forEachIndexed { index, item ->
-                if (index > 0) HorizontalDivider()
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        item.icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(item.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                    Text(
-                        item.value.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                }
-            }
-        }
-    }
+private fun ScrybeUsageCard() {
+    // Monthly managed allowances from ScrybePlan (mirrors worker.js). Live per-feature usage is not
+    // yet read back from the worker, so these are shown as allowances, not fabricated counts.
+    ProUsageCard(
+        metrics =
+            listOf(
+                ProUsageMetric(
+                    label = "Cloud transcriptions",
+                    used = null,
+                    limit = ScrybePlan.TRANSCRIBE_MONTHLY_LIMIT,
+                    unitLabel = "transcriptions",
+                    icon = Icons.Filled.Mic,
+                ),
+                ProUsageMetric(
+                    label = "AI transforms",
+                    used = null,
+                    limit = ScrybePlan.TRANSFORM_MONTHLY_LIMIT,
+                    unitLabel = "runs",
+                    icon = Icons.Filled.AutoAwesome,
+                ),
+            ),
+    )
 }
 
 @Composable
@@ -587,28 +508,5 @@ private fun WhyProSection() {
 
 @Composable
 private fun ByokNoteCard() {
-    Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                Icons.Filled.Key,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(14.dp).padding(top = 1.dp),
-            )
-            Text(
-                text =
-                    "BYOK has the same capability as Pro. If you already have an OpenAI account, " +
-                        "configure your key in Settings → AI configuration. You'll use the same features and pay OpenAI directly.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    ByokDirectNoteCard()
 }

@@ -6,6 +6,14 @@
 
 ### Improvements
 
+* internal: introduced the shared `local-models` and `pro` core modules (on-device model specs/state and managed-Pro policy contracts) that Scrybe will consume to unify local-model and Pro handling across TwoBits apps (no behavior change yet)
+* internal: extended the shared `ProTierCard` (badge / price note / accent / compact comparison layout) and added shared Pro usage, spend-cap, and BYOK-note cards for the upcoming unified Pro screen (no behavior change yet)
+* internal: Scrybe's on-device Whisper and Gemma models now implement the shared `LocalModelSpec` contract and the local-model download/import flow uses the shared `LocalModelState` type (Absent/Acquiring/Ready/Error); no change to local transcription or transforms behavior
+* the Pro screen now shows the managed monthly spend cap and the real per-feature allowances (replacing the placeholder "this month's usage" numbers), and the plan tiers use the shared design component
+* the BYOK note now uses the shared wording making clear your key is used directly from the device and never routes through TwoBits managed infrastructure or your Pro allowance
+* internal: the AI configuration screen's Local/BYOK/Pro segment controls for Transcription and Transforms now hold the shared `ExecutionMode` type instead of raw strings, so the compiler enforces all three modes are handled everywhere the segment is read; no change to persisted settings or behavior
+* internal: fixed a `:core:model` build-script bug where the `local-models` dependency was declared with `api(...)`, a configuration that requires the `java-library` plugin this pure `kotlin.jvm` module doesn't apply; switched to `implementation(...)` since consumers already declare their own direct `local-models` dependency
+
 ### Fixes
 
 ## 1.27.0 (2026-06-28)

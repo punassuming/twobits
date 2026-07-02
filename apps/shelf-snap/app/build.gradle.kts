@@ -169,6 +169,8 @@ dependencies {
     implementation("com.twobits.core:common")
     implementation("com.twobits.core:design")
     implementation("com.twobits.core:secure-store")
+    implementation("com.twobits.core:local-models")
+    implementation("com.twobits.core:pro")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

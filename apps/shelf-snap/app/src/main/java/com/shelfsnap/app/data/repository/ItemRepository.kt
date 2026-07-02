@@ -11,12 +11,14 @@ import com.shelfsnap.app.data.local.toEntity
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
+import com.shelfsnap.app.data.pro.executionModeFromSourceKey
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionRepository
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.securestore.CredentialCrypto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -82,8 +84,9 @@ class ItemRepository
             modelOverride: VisionModel? = null,
         ): DraftItemResult {
             val model = (modelOverride ?: getVisionModel()).apiName
-            return when (dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok") {
-                "pro" -> {
+            val sourceKey = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok"
+            return when (executionModeFromSourceKey(sourceKey)) {
+                ExecutionMode.PRO -> {
                     val appUserId = subscriptionRepository.getAppUserId()
                     visionService.analyse(
                         photoPaths = photoPaths,
@@ -93,8 +96,8 @@ class ItemRepository
                         authHeader = "Bearer $appUserId",
                     )
                 }
-                "local" -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
-                else -> visionService.analyse(photoPaths, getApiKey(), model)
+                ExecutionMode.LOCAL -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
+                ExecutionMode.BYOK, ExecutionMode.OFF -> visionService.analyse(photoPaths, getApiKey(), model)
             }
         }
 
@@ -104,9 +107,10 @@ class ItemRepository
          * Researches a resale price for [item] using OpenAI inference plus the
          * configured web-search provider. Caller must check [PriceResearchResult.error].
          */
-        suspend fun researchPrice(item: Item): PriceResearchResult =
-            when (dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok") {
-                "pro" -> {
+        suspend fun researchPrice(item: Item): PriceResearchResult {
+            val sourceKey = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok"
+            return when (executionModeFromSourceKey(sourceKey)) {
+                ExecutionMode.PRO -> {
                     val appUserId = subscriptionRepository.getAppUserId()
                     priceResearchService.research(
                         item = item,
@@ -118,8 +122,8 @@ class ItemRepository
                         workerAuthHeader = "Bearer $appUserId",
                     )
                 }
-                "local" -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
-                else -> {
+                ExecutionMode.LOCAL -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
+                ExecutionMode.BYOK, ExecutionMode.OFF -> {
                     val jinaKey = if (getJinaSearchEnabled()) getJinaApiKey() else ""
                     val searchapiKey = if (getSearchapiSearchEnabled()) getSearchapiApiKey() else ""
                     priceResearchService.research(
@@ -139,6 +143,7 @@ class ItemRepository
                     )
                 }
             }
+        }
 
         /** Verifies that the saved OpenAI API key is accepted by the API. */
         suspend fun testApiKey(): Result<Unit> = visionService.testKey(getApiKey())

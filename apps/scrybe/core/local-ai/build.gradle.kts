@@ -20,6 +20,7 @@ android {
 }
 
 dependencies {
+    implementation("com.twobits.core:local-models")
     implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:transcription"))

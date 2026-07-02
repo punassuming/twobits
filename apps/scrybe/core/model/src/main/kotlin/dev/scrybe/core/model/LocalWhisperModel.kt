@@ -1,16 +1,21 @@
 package dev.scrybe.core.model
 
+import com.twobits.core.localmodels.LocalModelAcquisition
+import com.twobits.core.localmodels.LocalModelFamily
+import com.twobits.core.localmodels.LocalModelSpec
+import com.twobits.core.localmodels.LocalModelTask
+
 private const val SHERPA_ASR_BASE_URL =
     "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
 
 enum class LocalWhisperModel(
-    val displayName: String,
-    val description: String,
+    override val displayName: String,
+    override val description: String,
     val archiveName: String,
     val dirName: String,
     val filePrefix: String,
-    val sizeLabel: String,
-) {
+    override val sizeLabel: String,
+) : LocalModelSpec {
     TINY(
         displayName = "Whisper Tiny",
         description = "Fastest; good for most use cases",
@@ -46,6 +51,12 @@ enum class LocalWhisperModel(
     ;
 
     val downloadUrl: String get() = "$SHERPA_ASR_BASE_URL$archiveName"
+
+    override val id: String get() = name
+    override val family: LocalModelFamily get() = LocalModelFamily.WHISPER
+    override val task: LocalModelTask get() = LocalModelTask.TRANSCRIBE
+    override val acquisition: LocalModelAcquisition
+        get() = LocalModelAcquisition.DownloadArchive(archiveName, dirName, filePrefix, downloadUrl)
 
     companion object {
         val default: LocalWhisperModel = TINY
