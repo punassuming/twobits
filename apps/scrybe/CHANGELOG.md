@@ -12,6 +12,7 @@
 * the Pro screen now shows the managed monthly spend cap and the real per-feature allowances (replacing the placeholder "this month's usage" numbers), and the plan tiers use the shared design component
 * the BYOK note now uses the shared wording making clear your key is used directly from the device and never routes through TwoBits managed infrastructure or your Pro allowance
 * internal: the AI configuration screen's Local/BYOK/Pro segment controls for Transcription and Transforms now hold the shared `ExecutionMode` type instead of raw strings, so the compiler enforces all three modes are handled everywhere the segment is read; no change to persisted settings or behavior
+* internal: fixed a `:core:model` build-script bug where the `local-models` dependency was declared with `api(...)`, a configuration that requires the `java-library` plugin this pure `kotlin.jvm` module doesn't apply; switched to `implementation(...)` since consumers already declare their own direct `local-models` dependency
 
 ### Fixes
 
