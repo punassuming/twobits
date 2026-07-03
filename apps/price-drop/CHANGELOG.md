@@ -4,9 +4,18 @@
 
 ### Features
 
+* PriceDrop now shows an automatic "What's New" popup after an update, matching Scrybe and Shelf Snap (previously PriceDrop had no automatic update notice at all — only the Settings → What's New screen)
+
 ### Improvements
 
+* the Settings screen's Pro card and About/What's New/Privacy section now use shared design-system components, matching Scrybe and Shelf Snap — "Upgrade" now purchases inline from Settings instead of only navigating to the Pro screen, and a "Restore purchases" option is now available there too
+* internal: fixed a fallback-value inconsistency where the check-frequency default was `24` in one place (`SettingsPrefs.DEFAULT_CHECK_FREQ_HOURS`, used at app boot) but hardcoded to `6` in two others (the Settings screen's initial state and its DataStore-read fallback) — all three now reference the same constant
+
 ### Fixes
+
+* fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the "What's New" screen was silently rendering empty
+* internal: fixed a shared credential-card bug where the "Connected" badge was tied to session-only validation state instead of whether a key is saved; PriceDrop's own credential flow already re-validates on every save so this was latent here, but the fix removes the risk of a saved-but-not-yet-tested key showing as "Not configured"
+* the background check-frequency slider no longer allows hourly (or sub-4-hour) polling — the range is now 4–96 hours; a previously saved value outside that range is transparently clamped on next read instead of being scheduled as-is
 
 ## 0.10.0 (2026-07-02)
 

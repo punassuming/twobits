@@ -73,6 +73,7 @@ class RecordingForegroundService : Service() {
     private var locationDeferred: Deferred<Triple<Double, Double, String?>?>? = null
     private var pendingMode: String = RecordingMode.JOURNAL.name
     private var pendingCustomTypeId: String? = null
+    private var pendingSkipTransform: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -89,6 +90,9 @@ class RecordingForegroundService : Service() {
                 ?: RecordingMode.JOURNAL.name
         if (intent?.action == RecordingServiceActions.ACTION_START) {
             pendingCustomTypeId = intent.getStringExtra(RecordingServiceActions.EXTRA_CUSTOM_TYPE_ID)
+        }
+        if (intent?.action == RecordingServiceActions.ACTION_STOP) {
+            pendingSkipTransform = intent.getBooleanExtra(RecordingServiceActions.EXTRA_SKIP_TRANSFORM, false)
         }
         when (intent?.action) {
             RecordingServiceActions.ACTION_START -> handleStart()
@@ -176,7 +180,7 @@ class RecordingForegroundService : Service() {
                                     it.message ?: "Auto-transcription failed",
                                 )
                             }
-                            if (transcriptionResult.isSuccess) {
+                            if (transcriptionResult.isSuccess && !pendingSkipTransform) {
                                 val customTypeId = pendingCustomTypeId
                                 if (customTypeId != null) {
                                     val defaultProfileId =

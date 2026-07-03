@@ -1,33 +1,34 @@
 package com.twobits.design.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
- * One entry in the update dialog: a short bold title with an optional plain
- * description beneath it. Built from the parsed changelog's structured items.
+ * The automatic "what's new in this version" popup. Reuses the same [WhatsNewCategory]/
+ * [WhatsNewItem] model the full What's New screen ([WhatsNewScreenLayout]) renders, so bold
+ * topic rows and sub-bullets look identical on both surfaces — no separate flattened model.
  */
-data class WhatsNewDialogEntry(
-    val title: String,
-    val description: String = "",
-)
-
 @Composable
 fun AppWhatsNewDialog(
     title: String,
-    entries: List<WhatsNewDialogEntry>,
+    categories: List<WhatsNewCategory>,
     confirmLabel: String = "Close",
     onDismiss: () -> Unit,
     onViewHistory: (() -> Unit)? = null,
@@ -39,11 +40,11 @@ fun AppWhatsNewDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 400.dp)
+                    .heightIn(max = 420.dp)
                     .verticalScroll(rememberScrollState()),
             ) {
-                entries.forEach { entry ->
-                    WhatsNewDialogEntryRow(entry)
+                categories.forEach { category ->
+                    WhatsNewDialogCategorySection(category)
                 }
             }
         },
@@ -61,41 +62,63 @@ fun AppWhatsNewDialog(
                     Text("View history")
                 }
             }
-        } else null,
+        } else {
+            null
+        },
     )
 }
 
 @Composable
-private fun WhatsNewDialogEntryRow(entry: WhatsNewDialogEntry) {
+private fun WhatsNewDialogCategorySection(category: WhatsNewCategory) {
+    if (category.items.isEmpty()) return
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 10.dp),
+            .padding(top = 12.dp),
     ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = category.icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = category.label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Column(
+            modifier = Modifier.padding(top = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            category.items.forEach { item ->
+                WhatsNewDialogItemRow(item)
+            }
+        }
+    }
+}
+
+@Composable
+private fun WhatsNewDialogItemRow(item: WhatsNewItem) {
+    Column {
         Text(
-            text = entry.title,
+            text = item.title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
-        if (entry.description.isNotBlank()) {
-            val bullets = entry.description.split(" · ")
-            if (bullets.size <= 1) {
-                Text(
-                    text = entry.description,
-                    modifier = Modifier.padding(top = 2.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                bullets.forEach { bullet ->
-                    Text(
-                        text = "• $bullet",
-                        modifier = Modifier.padding(top = 2.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+        if (item.description.isNotBlank()) {
+            WhatsNewDescriptionText(
+                description = item.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
+            )
         }
     }
 }

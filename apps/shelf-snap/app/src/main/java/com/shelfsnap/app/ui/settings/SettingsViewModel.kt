@@ -75,6 +75,7 @@ data class SettingsUiState(
     val reasoningModel: ReasoningModel = ReasoningModel.default,
     val visionSource: String = "byok",
     val textSource: String = "byok",
+    val listingSource: String = "byok",
     val moondreamStates: Map<LocalMoondreamModel, LocalModelState> = emptyMap(),
     val selectedMoondream: LocalMoondreamModel? = null,
     val gemmaStates: Map<LocalGemmaModel, LocalModelState> = emptyMap(),
@@ -239,10 +240,11 @@ class SettingsViewModel
                 combine(
                     repository.observeVisionSource(),
                     repository.observeTextSource(),
-                ) { vs, ts -> vs to ts },
+                    repository.observeListingSource(),
+                ) { vs, ts, ls -> Triple(vs, ts, ls) },
                 localModelsFlow,
-            ) { vision, reasoning, (visionSource, textSource), localModels ->
-                ModelsState(vision, reasoning, visionSource, textSource, localModels)
+            ) { vision, reasoning, (visionSource, textSource, listingSource), localModels ->
+                ModelsState(vision, reasoning, visionSource, textSource, listingSource, localModels)
             }
 
         private val prefsFlow =
@@ -299,6 +301,7 @@ class SettingsViewModel
                     reasoningModel = models.reasoningModel,
                     visionSource = models.visionSource,
                     textSource = models.textSource,
+                    listingSource = models.listingSource,
                     moondreamStates = models.localModels.moondreamStates,
                     selectedMoondream = models.localModels.selectedMoondream,
                     gemmaStates = models.localModels.gemmaStates,
@@ -550,6 +553,10 @@ class SettingsViewModel
             viewModelScope.launch { repository.saveTextSource(source) }
         }
 
+        fun onListingSourceChange(source: String) {
+            viewModelScope.launch { repository.saveListingSource(source) }
+        }
+
         fun onAiConditionDetectionChange(enabled: Boolean) {
             viewModelScope.launch { repository.saveAiConditionDetection(enabled) }
         }
@@ -701,6 +708,7 @@ class SettingsViewModel
             val reasoningModel: ReasoningModel,
             val visionSource: String,
             val textSource: String,
+            val listingSource: String,
             val localModels: LocalModelsState,
         )
 

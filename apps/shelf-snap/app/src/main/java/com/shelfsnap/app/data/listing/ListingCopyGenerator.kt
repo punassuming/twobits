@@ -3,6 +3,7 @@ package com.shelfsnap.app.data.listing
 import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.Platform
+import com.shelfsnap.app.data.model.displayTitle
 
 data class ListingCopy(
     val title: String,
@@ -16,12 +17,7 @@ object ListingCopyGenerator {
         item: Item,
         platform: Platform,
     ): ListingCopy {
-        val rawTitle =
-            listOfNotNull(
-                item.brand.takeIf { it.isNotBlank() },
-                item.model.takeIf { it.isNotBlank() },
-            ).joinToString(" ").ifBlank { item.category }
-        val title = rawTitle.take(platform.titleCharLimit)
+        val title = item.displayTitle.take(platform.titleCharLimit)
         val description = item.description.ifBlank { item.category }
         val condition = item.condition.displayLabel()
         val shipping = "I'll ship it — prepaid label"

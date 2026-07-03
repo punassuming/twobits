@@ -338,8 +338,15 @@ class PriceResearchService
         }
 
         private fun buildSearchQueries(item: Item): List<String> {
-            val hasBrandModel = item.brand.isNotBlank() || item.model.isNotBlank()
-            val base = listOf(item.brand, item.model).filter { it.isNotBlank() }.joinToString(" ")
+            // Prefer brand+model; fall back to a user-set title when brand/model are both blank
+            // so a custom title still yields a precise, quotable descriptor instead of dropping
+            // straight to the weaker generic description+category path below.
+            val base =
+                listOf(item.brand, item.model)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ")
+                    .ifBlank { item.title }
+            val hasQuotableDescriptor = base.isNotBlank()
             val quoted = if (base.isNotBlank()) "\"$base\"" else ""
             val conditionLabel = item.condition.searchLabel()
             val queries = mutableListOf<String>()
@@ -353,7 +360,7 @@ class PriceResearchService
                     .joinToString(" ")
             val descriptor =
                 when {
-                    hasBrandModel -> "$quoted $conditionLabel ${item.category}"
+                    hasQuotableDescriptor -> "$quoted $conditionLabel ${item.category}"
                     else -> "$genericDescriptor $conditionLabel"
                 }.trim()
 

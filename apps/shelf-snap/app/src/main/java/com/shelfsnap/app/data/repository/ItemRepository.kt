@@ -5,19 +5,23 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.shelfsnap.app.data.listing.ListingCopy
 import com.shelfsnap.app.data.local.ItemDao
 import com.shelfsnap.app.data.local.toDomain
 import com.shelfsnap.app.data.local.toEntity
 import com.shelfsnap.app.data.model.Item
+import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.pro.executionModeFromSourceKey
 import com.shelfsnap.app.data.remote.DraftItemResult
+import com.shelfsnap.app.data.remote.ListingGenerationService
 import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionRepository
+import com.twobits.billing.SubscriptionTier
 import com.twobits.core.pro.ExecutionMode
 import com.twobits.securestore.CredentialCrypto
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +37,7 @@ class ItemRepository
         private val dao: ItemDao,
         private val visionService: VisionAnalysisService,
         private val priceResearchService: PriceResearchService,
+        private val listingGenerationService: ListingGenerationService,
         private val dataStore: DataStore<Preferences>,
         private val subscriptionRepository: SubscriptionRepository,
         private val crypto: CredentialCrypto,
@@ -53,7 +58,12 @@ class ItemRepository
             private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
             private val KEY_REASONING_MODEL = stringPreferencesKey("reasoning_model")
             private val KEY_VISION_SOURCE = stringPreferencesKey("vision_source")
+
+            // Market-research source. Historically named "text_source" and shared with listing
+            // generation; listing generation now has its own KEY_LISTING_SOURCE below, so this key
+            // is kept (not renamed) to avoid silently resetting existing users' saved preference.
             private val KEY_TEXT_SOURCE = stringPreferencesKey("text_source")
+            private val KEY_LISTING_SOURCE = stringPreferencesKey("listing_source")
             private val KEY_AI_CONDITION_DETECTION = booleanPreferencesKey("ai_condition_detection")
             private val KEY_AUTO_PRICE_ESTIMATE = booleanPreferencesKey("auto_price_estimate")
             private val KEY_MULTI_PHOTO_ANALYSIS = booleanPreferencesKey("multi_photo_analysis")
@@ -106,10 +116,36 @@ class ItemRepository
         /**
          * Researches a resale price for [item] using OpenAI inference plus the
          * configured web-search provider. Caller must check [PriceResearchResult.error].
+         *
+         * Preflights the selected source before doing any network work, so a missing BYOK key, an
+         * inactive Pro subscription, or the feature being turned off fails immediately with a clear
+         * message instead of spinning for several seconds before the underlying call errors out.
          */
         suspend fun researchPrice(item: Item): PriceResearchResult {
             val sourceKey = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok"
-            return when (executionModeFromSourceKey(sourceKey)) {
+            val mode = executionModeFromSourceKey(sourceKey)
+
+            when (mode) {
+                ExecutionMode.BYOK -> {
+                    val hasSearchProvider = getSearchapiSearchEnabled() || getJinaSearchEnabled() || getBraveSearchEnabled()
+                    if (getApiKey().isBlank() || !hasSearchProvider) {
+                        return PriceResearchResult(
+                            error = "Add an OpenAI key and enable at least one search provider in AI configuration.",
+                        )
+                    }
+                }
+                ExecutionMode.PRO -> {
+                    // Refresh first so a cold-started Pro subscriber isn't rejected as Free.
+                    subscriptionRepository.ensureFresh()
+                    if (subscriptionRepository.subscriptionTier.value !is SubscriptionTier.Pro) {
+                        return PriceResearchResult(error = "Market research needs an active Shelf Snap Pro subscription.")
+                    }
+                }
+                ExecutionMode.OFF -> return PriceResearchResult(error = "Market research is turned off in AI configuration.")
+                ExecutionMode.LOCAL -> {}
+            }
+
+            return when (mode) {
                 ExecutionMode.PRO -> {
                     val appUserId = subscriptionRepository.getAppUserId()
                     priceResearchService.research(
@@ -143,6 +179,46 @@ class ItemRepository
                     )
                 }
             }
+        }
+
+        /**
+         * AI-refines a platform listing's copy, routed by the Listing feature's own source
+         * (independent of Market Research's [KEY_TEXT_SOURCE]) — mirrors [analysePhotos]/
+         * [researchPrice]'s Pro/BYOK/Local branching. [ListingGenerationService] already falls back
+         * to returning [current] unchanged on any failure, which also covers the Local case here
+         * since no local listing-generation implementation exists yet.
+         */
+        suspend fun refineListing(
+            item: Item,
+            platform: Platform,
+            current: ListingCopy,
+        ): ListingCopy {
+            val sourceKey = dataStore.data.firstOrNull()?.get(KEY_LISTING_SOURCE) ?: "byok"
+            val model = getReasoningModel().apiName
+            return when (executionModeFromSourceKey(sourceKey)) {
+                ExecutionMode.PRO -> {
+                    val appUserId = subscriptionRepository.getAppUserId()
+                    listingGenerationService.refine(
+                        item = item,
+                        platform = platform,
+                        current = current,
+                        openAiKey = appUserId,
+                        openAiBaseUrl = WORKER_BASE,
+                        openAiAuthHeader = "Bearer $appUserId",
+                        model = model,
+                    )
+                }
+                ExecutionMode.LOCAL -> current
+                ExecutionMode.BYOK, ExecutionMode.OFF -> listingGenerationService.refine(item, platform, current, getApiKey(), model = model)
+            }
+        }
+
+        fun observeListingSource(): Flow<String> = dataStore.data.map { it[KEY_LISTING_SOURCE] ?: "byok" }
+
+        suspend fun getListingSource(): String = dataStore.data.firstOrNull()?.get(KEY_LISTING_SOURCE) ?: "byok"
+
+        suspend fun saveListingSource(source: String) {
+            dataStore.edit { it[KEY_LISTING_SOURCE] = source }
         }
 
         /** Verifies that the saved OpenAI API key is accepted by the API. */

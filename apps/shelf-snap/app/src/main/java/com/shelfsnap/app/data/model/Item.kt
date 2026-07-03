@@ -34,6 +34,8 @@ data class Item(
     val updatedAt: Long = System.currentTimeMillis(),
     // ── v3: primary photo index ───────────────────────────────────────────────
     val primaryPhotoIndex: Int = 0,
+    // ── v4: item-level display title ──────────────────────────────────────────
+    val title: String = "",
 ) {
     /** True when the item has at least one active (not sold) platform listing. */
     val hasActiveListing: Boolean
@@ -43,3 +45,15 @@ data class Item(
     val hasSold: Boolean
         get() = listings.any { it.status == ListingStatus.SOLD }
 }
+
+/**
+ * Canonical display title: the persisted [Item.title] if set, else brand+model, else category.
+ * Used wherever a human-facing item name is needed (inventory cards, listing summaries, market
+ * research queries) so the fallback logic isn't duplicated at each call site, and so pre-v4 items
+ * without a persisted title still show something sensible.
+ */
+val Item.displayTitle: String
+    get() =
+        title.ifBlank {
+            listOf(brand, model).filter { it.isNotBlank() }.joinToString(" ").ifBlank { category }
+        }

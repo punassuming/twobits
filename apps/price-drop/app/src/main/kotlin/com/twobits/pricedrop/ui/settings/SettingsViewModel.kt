@@ -61,7 +61,7 @@ data class FeatureState(
 
 data class SettingsUiState(
     val subscriptionTier: SubscriptionTier = SubscriptionTier.Free,
-    val checkFrequencyHours: Int = 6,
+    val checkFrequencyHours: Int = SettingsPrefs.DEFAULT_CHECK_FREQ_HOURS,
     val wifiOnly: Boolean = false,
     val onlyWhileCharging: Boolean = false,
     val quietHoursEnabled: Boolean = false,
@@ -120,7 +120,9 @@ class SettingsViewModel
             ) { prefs, tier, purchasing, error ->
                 SettingsUiState(
                     subscriptionTier = tier,
-                    checkFrequencyHours = prefs[SettingsPrefs.CHECK_FREQ] ?: 6,
+                    checkFrequencyHours =
+                        (prefs[SettingsPrefs.CHECK_FREQ] ?: SettingsPrefs.DEFAULT_CHECK_FREQ_HOURS)
+                            .coerceIn(SettingsPrefs.MIN_CHECK_FREQ_HOURS, SettingsPrefs.MAX_CHECK_FREQ_HOURS),
                     wifiOnly = prefs[SettingsPrefs.WIFI_ONLY] ?: false,
                     onlyWhileCharging = prefs[SettingsPrefs.CHARGING_ONLY] ?: false,
                     quietHoursEnabled = prefs[SettingsPrefs.QUIET_HOURS] ?: false,

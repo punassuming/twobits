@@ -2,6 +2,7 @@ package com.shelfsnap.app.ui.itemdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shelfsnap.app.data.listing.ListingCopy
 import com.shelfsnap.app.data.listing.ListingCopyGenerator
 import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.Item
@@ -9,7 +10,7 @@ import com.shelfsnap.app.data.model.ListingStatus
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
 import com.shelfsnap.app.data.model.VisionModel
-import com.shelfsnap.app.data.remote.ListingGenerationService
+import com.shelfsnap.app.data.model.displayTitle
 import com.shelfsnap.app.data.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +38,10 @@ data class ItemDetailUiState(
     val refiningPlatforms: Set<String> = emptySet(),
     val isRefiningAll: Boolean = false,
     // Editable field mirrors
+    val editTitle: String = "",
+    // True once the user has actually typed into the title field this load, as opposed to it
+    // merely being pre-filled with the displayTitle fallback for a blank persisted title.
+    val titleEdited: Boolean = false,
     val editCategory: String = "",
     val editBrand: String = "",
     val editModel: String = "",
@@ -61,7 +66,6 @@ class ItemDetailViewModel
     @Inject
     constructor(
         private val repository: ItemRepository,
-        private val listingGenerationService: ListingGenerationService,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ItemDetailUiState())
         val uiState: StateFlow<ItemDetailUiState> = _uiState.asStateFlow()
@@ -82,6 +86,11 @@ class ItemDetailViewModel
             copy(
                 item = item,
                 isLoading = false,
+                // Pre-migration rows have a blank persisted title; displayTitle falls back to
+                // brand+model/category so the field isn't empty on first edit. titleEdited stays
+                // false until the user actually types, so an untouched fallback isn't persisted.
+                editTitle = item.displayTitle,
+                titleEdited = false,
                 editCategory = item.category,
                 editBrand = item.brand,
                 editModel = item.model,
@@ -159,6 +168,8 @@ class ItemDetailViewModel
         /** Applies a platform's suggested price to the editable asking-price field. */
         fun applySuggestedPrice(price: Double) = _uiState.update { it.copy(editEstimatedValue = "%.2f".format(price), tab = DetailTab.DETAILS) }
 
+        fun onTitleChange(value: String) = _uiState.update { it.copy(editTitle = value, titleEdited = true) }
+
         fun onCategoryChange(value: String) = _uiState.update { it.copy(editCategory = value) }
 
         fun onBrandChange(value: String) = _uiState.update { it.copy(editBrand = value) }
@@ -198,6 +209,11 @@ class ItemDetailViewModel
             val state = _uiState.value
             val item = state.item ?: return null
             return item.copy(
+                // Only overwrite the persisted title once the user has actually edited it —
+                // otherwise a blank persisted title (pre-migration rows) would freeze onto
+                // whatever displayTitle fallback happened to be showing at load time, even
+                // when the user only edited an unrelated field.
+                title = if (state.titleEdited) state.editTitle else item.title,
                 category = state.editCategory,
                 brand = state.editBrand,
                 model = state.editModel,
@@ -304,14 +320,13 @@ class ItemDetailViewModel
             viewModelScope.launch {
                 _uiState.update { it.copy(refiningPlatforms = it.refiningPlatforms + platformKey) }
                 val current =
-                    com.shelfsnap.app.data.listing.ListingCopy(
+                    ListingCopy(
                         title = listing.title ?: "",
                         description = listing.description ?: "",
                         condition = listing.condition ?: "",
                         shipping = listing.shipping ?: "",
                     )
-                val openAiKey = repository.getApiKey()
-                val refined = listingGenerationService.refine(item, platform, current, openAiKey)
+                val refined = repository.refineListing(item, platform, current)
                 val updatedItem =
                     item.copy(
                         listings =

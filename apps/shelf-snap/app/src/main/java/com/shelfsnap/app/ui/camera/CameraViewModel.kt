@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.Item
+import com.shelfsnap.app.data.model.displayTitle
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.repository.ItemRepository
 import com.shelfsnap.app.util.ApiKeyValidator
@@ -149,7 +150,7 @@ class CameraViewModel
                         estimatedValue = result.estimatedValue,
                         confidencePercent = result.confidencePercent,
                         isDraft = true,
-                    )
+                    ).let { it.copy(title = it.displayTitle) }
                 val itemId = repository.save(draft)
                 _uiState.update {
                     it.copy(isAnalysing = false, draftResult = result, savedItemId = itemId)

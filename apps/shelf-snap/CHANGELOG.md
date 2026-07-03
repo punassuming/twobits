@@ -4,9 +4,22 @@
 
 ### Features
 
+* items now have an editable Title field (Item Detail → Title, above Category). New AI-created items get a generated title (brand + model, or category as fallback); existing items show the same fallback until edited. The title is now used for the Inventory list, the listing preview, per-platform listing copy, and market-research search queries instead of each screen recomputing its own brand/model fallback
+
 ### Improvements
 
+* the automatic "What's New" popup now renders the same polished, topic-grouped changelog formatting (bold topic rows with sub-bullets) as the full Settings → What's New screen, instead of a flatter list
+* internal: de-duplicated the popup's version-tracking and changelog-loading logic into a shared `WhatsNewPopupCoordinator`
+* the Settings screen's Pro card and About/What's New/Privacy section now use shared design-system components, matching Scrybe and PriceDrop
+* AI configuration now has a dedicated "Listing generation" section (separate from "Market research"), each with its own Pro / BYOK / Local source control and model picker, matching PriceDrop's per-feature layout — listing refinement is routed through the same Pro/BYOK logic as Vision and Market Research instead of always using your raw OpenAI key directly
+* Market Research now fails immediately with a clear message ("Add an OpenAI key and enable at least one search provider…", "needs an active Shelf Snap Pro subscription…", or "is turned off…") instead of spinning for several seconds before a generic error when nothing is configured
+
 ### Fixes
+
+* fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the full "What's New" screen and the automatic popup were both silently rendering empty
+* API keys (OpenAI, Jina, Brave, SearchAPI.io) now correctly show as "Connected" immediately after a cold app restart — the "Connected" badge was tied to this session's live validation result, which always starts unset, instead of to whether a key is actually saved; a re-test can still reset the validation feedback, but the saved key now always shows as configured
+* internal: Market Research's Pro-tier preflight check now refreshes the subscription status before rejecting a request — otherwise a cold-started Pro user could hit the "needs an active Pro subscription" error until they'd separately opened Settings once
+* internal: editing an item's category, brand, or any other field no longer silently writes the title-field's fallback text (brand+model or category) into the persisted title — the fallback stays a display-only fallback until the title field is actually edited
 
 ## 1.20.0 (2026-07-02)
 

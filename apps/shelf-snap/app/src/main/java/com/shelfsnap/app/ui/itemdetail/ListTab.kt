@@ -64,6 +64,7 @@ import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.ListingStatus
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
+import com.shelfsnap.app.data.model.displayTitle
 import com.shelfsnap.app.data.model.formatListingText
 import com.shelfsnap.app.ui.components.PlatformBadge
 import com.shelfsnap.app.ui.components.brandColor
@@ -498,11 +499,7 @@ private fun ListingPreviewCard(
                 item.condition.name
                     .lowercase()
                     .replaceFirstChar { it.uppercase() }
-            val title =
-                listOf(item.brand, item.model)
-                    .filter { it.isNotBlank() }
-                    .joinToString(" ")
-                    .ifBlank { item.category.ifBlank { "—" } }
+            val title = item.displayTitle.ifBlank { "—" }
             Text(
                 text = "$title — $condLabel",
                 style = MaterialTheme.typography.bodyMedium,

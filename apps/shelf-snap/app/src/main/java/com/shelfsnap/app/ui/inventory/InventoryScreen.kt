@@ -69,6 +69,7 @@ import com.shelfsnap.app.R
 import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.Platform
+import com.shelfsnap.app.data.model.displayTitle
 import com.shelfsnap.app.ui.components.ItemThumb
 import com.shelfsnap.app.ui.components.brandColor
 import com.shelfsnap.app.ui.theme.ConditionExcellent
@@ -319,17 +320,8 @@ private fun InventoryItemCard(
                     verticalAlignment = Alignment.Top,
                 ) {
                     Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                        val title =
-                            buildString {
-                                val parts = listOf(item.brand, item.model).filter { it.isNotBlank() }
-                                if (parts.isNotEmpty()) {
-                                    append(parts.joinToString(" "))
-                                } else {
-                                    append(item.category)
-                                }
-                            }
                         Text(
-                            text = title,
+                            text = item.displayTitle,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,

@@ -281,7 +281,8 @@ fun CaptureScreen(
                 RecordingActiveView(
                     state = uiState,
                     paddingValues = paddingValues,
-                    onStop = viewModel::stopRecording,
+                    onStop = { viewModel.stopRecording() },
+                    onStopSaveRawOnly = { viewModel.stopRecording(skipTransform = true) },
                     onBack = viewModel::minimize,
                     onCancel = viewModel::cancelRecording,
                     onPause = viewModel::pauseRecording,
@@ -594,6 +595,7 @@ private fun RecordingActiveView(
     state: CaptureUiState,
     paddingValues: PaddingValues,
     onStop: () -> Unit,
+    onStopSaveRawOnly: () -> Unit,
     onBack: () -> Unit,
     onCancel: () -> Unit,
     onPause: () -> Unit,
@@ -633,9 +635,10 @@ private fun RecordingActiveView(
         )
         if (!isStopping || state.liveTranscript == null) {
             RecordingStopButtons(
-                modeName = state.activeMode.label,
+                modeName = state.activeCustomTypeName ?: state.activeMode.label,
                 enabled = !isStopping,
                 onStop = onStop,
+                onStopSaveRawOnly = onStopSaveRawOnly,
                 onCancel = onCancel,
             )
         }
@@ -726,7 +729,12 @@ private fun LiveTranscriptPanel(
                             tint = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
                         )
                         Text(
-                            text = "Transcript will appear here when recording stops.",
+                            text =
+                                if (state.activeCustomTypeName != null) {
+                                    "Will transcribe automatically • ${state.activeCustomTypeName} profile"
+                                } else {
+                                    "Will transcribe automatically • processed as ${state.activeMode.label}"
+                                },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -753,7 +761,7 @@ private fun RecordingActiveHeader(
         IconButton(onClick = onBack, enabled = !isStopping) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
         }
-        ModeBadge(mode = state.activeMode)
+        ModeBadge(mode = state.activeMode, customLabel = state.activeCustomTypeName)
         Spacer(Modifier.weight(1f))
         if (isStopping) {
             Text(
@@ -841,6 +849,7 @@ private fun RecordingStopButtons(
     modeName: String,
     enabled: Boolean,
     onStop: () -> Unit,
+    onStopSaveRawOnly: () -> Unit,
     onCancel: () -> Unit,
 ) {
     Column(
@@ -860,7 +869,7 @@ private fun RecordingStopButtons(
             )
         }
         OutlinedButton(
-            onClick = onStop,
+            onClick = onStopSaveRawOnly,
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),

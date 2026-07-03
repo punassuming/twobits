@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
@@ -48,7 +47,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -62,7 +60,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -80,7 +77,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -88,6 +84,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionLabel
+import com.twobits.design.components.SettingsAppInfoSection
+import com.twobits.design.components.SettingsProStatusCard
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.PostStopDestination
@@ -107,7 +105,6 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val activity = LocalContext.current as? Activity
-    val uriHandler = LocalUriHandler.current
     var showPostStopPicker by remember { mutableStateOf(false) }
     var showFormatPicker by remember { mutableStateOf(false) }
     var showSampleRatePicker by remember { mutableStateOf(false) }
@@ -167,14 +164,18 @@ fun SettingsScreen(
                         .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
             ) {
-                ProSubscriptionCard(
-                    tier = uiState.subscriptionTier,
+                SettingsProStatusCard(
+                    appName = "Scrybe",
+                    isPro = uiState.subscriptionTier is SubscriptionTier.Pro,
+                    upgradeLabel = "Upgrade to Pro — \$1.99 / month",
+                    upgradeDescription = "Skip the API key — Pro includes managed OpenAI access for transcription and transforms.",
+                    activeDescription = "Managed API keys are active — no personal key required for transcription or AI features.",
                     isPurchasing = uiState.isPurchasing,
                     purchaseError = uiState.purchaseError,
                     onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                     onRestore = viewModel::restorePurchases,
                     onDismissError = viewModel::dismissPurchaseError,
-                    onNavigateToPro = onNavigateToPro,
+                    onDetails = onNavigateToPro,
                 )
 
                 ProfilesProminentCard(onClick = onNavigateToProfiles)
@@ -669,49 +670,11 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSectionCard(
-                    title = "About & What's New",
-                    icon = Icons.Filled.Info,
-                ) {
-                    Text(
-                        text = "Version ${uiState.versionName.ifBlank { "dev" }} (${uiState.versionCode})",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = uiState.latestReleaseTitle ?: "Bundled repository changelog available for this build.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(
-                        onClick = onNavigateToWhatsNew,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("What's new")
-                    }
-                    Surface(
-                        onClick = { uriHandler.openUri("https://punassuming.github.io/twobits/privacy.html") },
-                        shape = MaterialTheme.shapes.medium,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Icon(Icons.Filled.PrivacyTip, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Privacy policy", style = MaterialTheme.typography.bodyLarge)
-                                Text(
-                                    text = "punassuming.github.io/twobits/privacy",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
+                SettingsAppInfoSection(
+                    versionLabel = "Version ${uiState.versionName.ifBlank { "dev" }} (${uiState.versionCode})",
+                    subtitle = uiState.latestReleaseTitle ?: "Bundled repository changelog available for this build.",
+                    onWhatsNew = onNavigateToWhatsNew,
+                )
             }
         }
     }
@@ -866,90 +829,6 @@ private fun IntegrationRow(
             Text("Connect", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (!isLast) HorizontalDivider(Modifier.padding(start = 34.dp))
-    }
-}
-
-@Composable
-private fun ProSubscriptionCard(
-    tier: SubscriptionTier,
-    isPurchasing: Boolean,
-    purchaseError: String?,
-    onUpgrade: () -> Unit,
-    onRestore: () -> Unit,
-    onDismissError: () -> Unit,
-    onNavigateToPro: () -> Unit,
-) {
-    AppSectionCard(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text("Scrybe Pro", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            if (tier is SubscriptionTier.Pro) {
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                ) {
-                    Text(
-                        "Active",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
-        }
-        when (tier) {
-            SubscriptionTier.Free -> {
-                Text(
-                    "Skip the API key — Pro includes managed OpenAI access for transcription and transforms.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Button(
-                    onClick = onUpgrade,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isPurchasing,
-                ) {
-                    if (isPurchasing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    Text(if (isPurchasing) "Processing…" else "Upgrade to Pro — \$1.99 / month")
-                }
-                TextButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
-                    Text("Restore purchases")
-                }
-                TextButton(onClick = onNavigateToPro, modifier = Modifier.fillMaxWidth()) {
-                    Text("See plans →")
-                }
-            }
-            SubscriptionTier.Pro -> {
-                Text(
-                    "Managed API keys are active — no personal key required for transcription or AI features.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                TextButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
-                    Text("Restore purchases")
-                }
-                TextButton(onClick = onNavigateToPro, modifier = Modifier.fillMaxWidth()) {
-                    Text("Details →")
-                }
-            }
-        }
-        if (purchaseError != null) {
-            Text(purchaseError, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            TextButton(onClick = onDismissError) { Text("Dismiss") }
-        }
     }
 }
 

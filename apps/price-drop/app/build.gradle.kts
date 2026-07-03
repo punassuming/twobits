@@ -99,10 +99,10 @@ android {
 val generatedChangelogAssetsDir = layout.buildDirectory.dir("generated/assets/changelog")
 
 val copyChangelogToAssets by tasks.registering(Copy::class) {
-    val changelog = rootProject.file("CHANGELOG.md")
-    onlyIf { changelog.exists() }
+    val changelog = projectDir.resolve("../CHANGELOG.md")
     from(changelog)
     into(generatedChangelogAssetsDir)
+    rename { "CHANGELOG.md" }
 }
 
 tasks.named("preBuild") {

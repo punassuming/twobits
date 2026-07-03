@@ -6,6 +6,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.twobits.pricedrop.data.settings.SettingsPrefs
 import java.util.concurrent.TimeUnit
 
 /** Schedules the periodic background price check honoring the user's settings. */
@@ -19,15 +20,19 @@ object PriceCheckScheduler {
         chargingOnly: Boolean,
     ) {
         val constraints =
-            Constraints.Builder()
+            Constraints
+                .Builder()
                 .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
                 .setRequiresCharging(chargingOnly)
                 .build()
+        val boundedFreqHours =
+            freqHours.coerceIn(SettingsPrefs.MIN_CHECK_FREQ_HOURS, SettingsPrefs.MAX_CHECK_FREQ_HOURS)
         val request =
-            PeriodicWorkRequestBuilder<PriceCheckWorker>(freqHours.toLong().coerceAtLeast(1), TimeUnit.HOURS)
+            PeriodicWorkRequestBuilder<PriceCheckWorker>(boundedFreqHours.toLong(), TimeUnit.HOURS)
                 .setConstraints(constraints)
                 .build()
-        WorkManager.getInstance(context)
+        WorkManager
+            .getInstance(context)
             .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 }

@@ -15,6 +15,7 @@ data class CaptureUiState(
     val showModePickerSheet: Boolean = false,
     val openTaskTotal: Int = 0,
     val activeMode: RecordingMode = RecordingMode.JOURNAL,
+    val activeCustomTypeName: String? = null,
     val folderNames: Map<String, String> = emptyMap(),
     val selectedSessionIds: Set<String> = emptySet(),
     val customTypes: List<CustomRecordingType> = emptyList(),
