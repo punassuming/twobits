@@ -11,6 +11,7 @@ import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.model.displayTitle
+import com.shelfsnap.app.data.model.displayTitleFallback
 import com.shelfsnap.app.data.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -122,6 +123,14 @@ class ItemDetailViewModel
                 _uiState.update {
                     it.copy(
                         isAnalysing = false,
+                        // A fresh analysis's brand/model/category should refresh the title too,
+                        // unless the user already typed one themselves.
+                        editTitle =
+                            if (it.titleEdited) {
+                                it.editTitle
+                            } else {
+                                displayTitleFallback(result.brand, result.model, result.category)
+                            },
                         editCategory = result.category,
                         editBrand = result.brand,
                         editModel = result.model,

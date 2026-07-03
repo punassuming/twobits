@@ -6,24 +6,30 @@
 
 ### Improvements
 
+**Settings & AI configuration card style** — the Settings screen's "Tracking" and "Privacy" cards and the AI configuration screen's "Credentials" card now use the same shared card components Scrybe and Shelf Snap use — Settings cards gain the correct rounded corners (they were missing an explicit shape before), and the Credentials card switches from a flat card to the same elevated-card style as the rest of AI configuration in all three apps, a visible but intentional style change
+**Internal: shared empty-state component** — the empty watchlist state now uses a shared `AppEmptyState` component instead of a private implementation, matching Scrybe's task-list empty state
+
 ### Fixes
+
+**What's New — bold formatting** — item titles in the full What's New screen (Settings → What's New) now render bold, matching the automatic popup — previously only the popup applied bold weight to item titles, so the two "unified" surfaces looked inconsistent
+**Internal: What's New last-seen key** — standardized on the same DataStore key name/type Scrybe and Shelf Snap use, with a one-time migration from the old key so existing users don't see a spurious re-prompt of the popup
 
 ## 0.11.0 (2026-07-03)
 
 ### Features
 
-* PriceDrop now shows an automatic "What's New" popup after an update, matching Scrybe and Shelf Snap (previously PriceDrop had no automatic update notice at all — only the Settings → What's New screen)
+**What's New popup** — PriceDrop now shows an automatic popup after an update, matching Scrybe and Shelf Snap (previously PriceDrop had no automatic update notice at all — only the Settings → What's New screen)
 
 ### Improvements
 
-* the Settings screen's Pro card and About/What's New/Privacy section now use shared design-system components, matching Scrybe and Shelf Snap — "Upgrade" now purchases inline from Settings instead of only navigating to the Pro screen, and a "Restore purchases" option is now available there too
-* internal: fixed a fallback-value inconsistency where the check-frequency default was `24` in one place (`SettingsPrefs.DEFAULT_CHECK_FREQ_HOURS`, used at app boot) but hardcoded to `6` in two others (the Settings screen's initial state and its DataStore-read fallback) — all three now reference the same constant
+**Settings screen** — the Pro card and About/What's New/Privacy section now use shared design-system components, matching Scrybe and Shelf Snap — "Upgrade" now purchases inline from Settings instead of only navigating to the Pro screen, and a "Restore purchases" option is now available there too
+**Internal: check-frequency default** — fixed a fallback-value inconsistency where the default was `24` in one place (`SettingsPrefs.DEFAULT_CHECK_FREQ_HOURS`, used at app boot) but hardcoded to `6` in two others (the Settings screen's initial state and its DataStore-read fallback) — all three now reference the same constant
 
 ### Fixes
 
-* fixed a build bug where the in-app changelog asset was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the "What's New" screen was silently rendering empty
-* internal: fixed a shared credential-card bug where the "Connected" badge was tied to session-only validation state instead of whether a key is saved; PriceDrop's own credential flow already re-validates on every save so this was latent here, but the fix removes the risk of a saved-but-not-yet-tested key showing as "Not configured"
-* the background check-frequency slider no longer allows hourly (or sub-4-hour) polling — the range is now 4–96 hours; a previously saved value outside that range is transparently clamped on next read instead of being scheduled as-is
+**Changelog asset** — fixed a build bug where it was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the "What's New" screen was silently rendering empty
+**Internal: credential card** — fixed a shared bug where the "Connected" badge was tied to session-only validation state instead of whether a key is saved; PriceDrop's own credential flow already re-validates on every save so this was latent here, but the fix removes the risk of a saved-but-not-yet-tested key showing as "Not configured"
+**Check-frequency slider** — no longer allows hourly (or sub-4-hour) polling — the range is now 4–96 hours; a previously saved value outside that range is transparently clamped on next read instead of being scheduled as-is
 
 
 ## 0.10.0 (2026-07-02)

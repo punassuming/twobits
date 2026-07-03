@@ -51,6 +51,11 @@ class ListingGenerationService
                         "You are a resale listing copywriter for ${platform.displayName}. " +
                             "Platform tips:\n• $tipsText\n" +
                             "Title character limit: ${platform.titleCharLimit}. " +
+                            "Write a specific, keyword-rich title in the style experienced resale sellers use — " +
+                            "lead with brand and model/product name, then work in the most distinguishing " +
+                            "attribute available (size, color, or material) and a condition qualifier if space " +
+                            "allows. Avoid generic titles like just the category or brand alone when a more " +
+                            "specific product name is available in the fields below. " +
                             "Respond with ONLY valid JSON: " +
                             "{\"title\":\"...\",\"description\":\"...\",\"condition\":\"...\",\"shipping\":\"...\"}"
                     val userMessage =
@@ -58,6 +63,8 @@ class ListingGenerationService
                             if (item.brand.isNotBlank()) appendLine("Brand: ${item.brand}")
                             if (item.model.isNotBlank()) appendLine("Model: ${item.model}")
                             appendLine("Category: ${item.category}")
+                            if (item.size.isNotBlank()) appendLine("Size: ${item.size}")
+                            if (item.color.isNotBlank()) appendLine("Color: ${item.color}")
                             appendLine("Condition: ${item.condition.name.lowercase()}")
                             if (item.description.isNotBlank()) appendLine("Description: ${item.description}")
                             if (item.tags.isNotEmpty()) appendLine("Tags: ${item.tags.joinToString(", ")}")

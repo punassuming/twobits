@@ -41,8 +41,17 @@ class WhatsNewViewModel
                 welcomeTitle = "Welcome to Shelf Snap",
                 firstRunCategory = firstRunCategory(),
                 loadChangelogText = { loadChangelogText() },
-                readLastSeenVersionCode = { dataStore.data.map { it[LAST_SEEN_KEY] ?: 0L }.first() },
-                writeLastSeenVersionCode = { versionCode -> dataStore.edit { it[LAST_SEEN_KEY] = versionCode } },
+                readLastSeenVersionCode = {
+                    dataStore.data
+                        .map { it[LAST_SEEN_KEY] ?: it[LAST_SEEN_KEY_LEGACY] ?: 0L }
+                        .first()
+                },
+                writeLastSeenVersionCode = { versionCode ->
+                    dataStore.edit {
+                        it[LAST_SEEN_KEY] = versionCode
+                        it.remove(LAST_SEEN_KEY_LEGACY)
+                    }
+                },
             )
 
         init {
@@ -96,6 +105,10 @@ class WhatsNewViewModel
             )
 
         private companion object {
-            val LAST_SEEN_KEY = longPreferencesKey("ss_last_seen_version_code")
+            val LAST_SEEN_KEY = longPreferencesKey("whats_new_last_seen_version_code")
+
+            // Legacy key — kept only as a one-time migration fallback so upgrading users
+            // don't see a spurious re-prompt of the What's New popup.
+            val LAST_SEEN_KEY_LEGACY = longPreferencesKey("ss_last_seen_version_code")
         }
     }

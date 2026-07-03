@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppEmptyState
 import dev.scrybe.core.common.ModeBadge
 
 private val TODAY_LABELS = setOf("today", "Today")
@@ -153,7 +154,15 @@ private fun TaskInboxContent(
             )
         }
         if (state.tasks.isEmpty()) {
-            item { TasksEmptyState() }
+            item {
+                AppEmptyState(
+                    icon = Icons.Filled.CheckCircle,
+                    title = "All clear",
+                    subtitle = "No tasks match this filter",
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                    iconTint = MaterialTheme.colorScheme.tertiary,
+                )
+            }
         } else {
             grouped.forEach { (groupName, tasks) ->
                 item(key = "header_$groupName") {
@@ -164,17 +173,6 @@ private fun TaskInboxContent(
                     HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun TasksEmptyState() {
-    Box(Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.tertiary)
-            Text("All clear", style = MaterialTheme.typography.bodyMedium)
-            Text("No tasks match this filter", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

@@ -419,3 +419,29 @@ fun AiSectionHeader(
         )
     }
 }
+
+/**
+ * An [AiSectionHeader] above an elevated card — the standard AI-configuration-screen section
+ * shape, distinct from [AppLabeledSectionCard]'s flat card (regular Settings screens use that
+ * one). Was previously hand-rolled identically as a private wrapper in each app's AI config
+ * screen; call this directly instead.
+ */
+@Composable
+fun AiSectionCard(
+    icon: ImageVector,
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        AiSectionHeader(title = title, icon = icon)
+        ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                content()
+            }
+        }
+    }
+}

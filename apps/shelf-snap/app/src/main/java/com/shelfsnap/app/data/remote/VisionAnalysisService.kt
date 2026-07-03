@@ -329,7 +329,7 @@ class VisionAnalysisService
                 {
                   "category": "<short category, e.g. Clothing, Electronics, Books, Furniture, Toys, Kitchenware, Other>",
                   "brand": "<brand or manufacturer name, or empty string if unknown>",
-                  "model": "<model name or number, or empty string if unknown>",
+                  "model": "<the specific product/style name or model number when identifiable from packaging, labels, or design (e.g. 'Air Force 1 07', 'Instant Pot Duo 6Qt'), not just a generic category restated — this is combined with brand to form the item's display title, so be as specific as the photos allow; empty string if truly unidentifiable>",
                   "description": "<3–5 sentence marketplace listing description. Cover: overall condition and appearance, notable features or design elements, any visible defects or wear, material/fabric/finish if discernible, and how the item is best used. Write as if posting on eBay — specific, factual, no fluff.>",
                   "tags": ["<6–10 searchable marketplace keywords — include brand name (if present), style/era, material, dominant color, use case, and condition descriptor. All lowercase.>"],
                   "condition": "<one of: EXCELLENT, GOOD, FAIR, POOR>",

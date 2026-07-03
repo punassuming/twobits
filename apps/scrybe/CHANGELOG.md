@@ -6,7 +6,12 @@
 
 ### Improvements
 
+**Internal: shared section-card components** — Settings and AI configuration screens now use shared `AppLabeledSectionCard`/`AiSectionCard`/`AppEmptyState` components instead of a private near-duplicate implementation in each app, so the two screen styles (flat cards for Settings, elevated cards for AI config) are now byte-identical across Scrybe, Shelf Snap, and PriceDrop rather than three subtly different implementations
+
 ### Fixes
+
+**What's New — bold formatting** — item titles in the full What's New screen (Settings → What's New) now render bold, matching the automatic popup — previously only the popup applied bold weight to item titles, so the two "unified" surfaces looked inconsistent
+**Internal: What's New last-seen key** — standardized on the same DataStore key name/type Shelf Snap and PriceDrop use, with a one-time migration from the old key so existing users don't see a spurious re-prompt of the popup
 
 ## 1.29.0 (2026-07-03)
 
@@ -14,17 +19,17 @@
 
 ### Improvements
 
-* the automatic "What's New" popup now renders the same polished, topic-grouped changelog formatting (bold topic rows with sub-bullets) as the full Settings → What's New screen, instead of a flatter list
-* internal: de-duplicated the popup's version-tracking and changelog-loading logic into a shared `WhatsNewPopupCoordinator`
-* the Settings screen's Pro card and About/What's New/Privacy section now use shared design-system components, matching Shelf Snap and PriceDrop
-* internal: fixed a shared credential-card bug where the "Connected" badge was tied to session-only validation state instead of whether a key is saved (Scrybe's own credential UI is unaffected — it already derived "Connected" from the saved key)
+**What's New popup** — now renders the same polished, topic-grouped changelog formatting (bold topic rows with sub-bullets) as the full Settings → What's New screen, instead of a flatter list
+**Internal: What's New popup** — de-duplicated the popup's version-tracking and changelog-loading logic into a shared `WhatsNewPopupCoordinator`
+**Settings screen** — the Pro card and About/What's New/Privacy section now use shared design-system components, matching Shelf Snap and PriceDrop
+**Internal: credential card** — fixed a shared bug where the "Connected" badge was tied to session-only validation state instead of whether a key is saved (Scrybe's own credential UI is unaffected — it already derived "Connected" from the saved key)
 
 ### Fixes
 
-* the recent-sessions list, folder names, open-task count, and custom recording types no longer disappear from the capture screen while a recording is in progress or right after cancelling — starting or cancelling a recording was replacing the whole screen state with a fresh default instead of updating just the recording-specific fields
-* a recording started from a custom type now shows its real name (mode badge, "Stop — process as …" button, and the live-transcript status line) instead of silently displaying as "Journal"
-* "Stop, save raw transcript only" now actually skips the linked transform profile — it previously ran the exact same stop path as the primary "Stop — process as …" button and always applied the transform anyway
-* the live-transcript panel now shows how the recording will be processed while it's still active (e.g. which profile it'll auto-transform into) instead of a generic "will appear here" placeholder
+**Recent-sessions list** — no longer disappears from the capture screen while a recording is in progress or right after cancelling; starting or cancelling a recording was replacing the whole screen state with a fresh default instead of updating just the recording-specific fields
+**Custom recording types** — a recording started from a custom type now shows its real name (mode badge, "Stop — process as …" button, and the live-transcript status line) instead of silently displaying as "Journal"
+**"Stop, save raw transcript only"** — now actually skips the linked transform profile; it previously ran the exact same stop path as the primary "Stop — process as …" button and always applied the transform anyway
+**Live-transcript panel** — now shows how the recording will be processed while it's still active (e.g. which profile it'll auto-transform into) instead of a generic "will appear here" placeholder
 
 
 ## 1.28.0 (2026-07-02)

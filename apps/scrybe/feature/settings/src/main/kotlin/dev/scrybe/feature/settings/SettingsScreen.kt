@@ -13,7 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -82,8 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
-import com.twobits.design.components.AppSectionCard
-import com.twobits.design.components.AppSectionLabel
+import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsProStatusCard
 import dev.scrybe.core.common.ScrybeLayoutDefaults
@@ -180,7 +178,7 @@ fun SettingsScreen(
 
                 ProfilesProminentCard(onClick = onNavigateToProfiles)
 
-                SettingsSectionCard(title = "Intelligence", icon = Icons.Filled.AutoAwesome) {
+                AppLabeledSectionCard(title = "Intelligence", icon = Icons.Filled.AutoAwesome) {
                     Row(
                         modifier =
                             Modifier
@@ -262,7 +260,7 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSectionCard(
+                AppLabeledSectionCard(
                     title = "Recording",
                     icon = Icons.Filled.Storage,
                 ) {
@@ -342,7 +340,7 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSectionCard(
+                AppLabeledSectionCard(
                     title = "Recording Behavior",
                     icon = Icons.Filled.AutoAwesome,
                 ) {
@@ -394,7 +392,7 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSectionCard(
+                AppLabeledSectionCard(
                     title = "Recording Feedback",
                     icon = Icons.Filled.Notifications,
                 ) {
@@ -440,7 +438,7 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSectionCard(
+                AppLabeledSectionCard(
                     title = "Appearance",
                     icon = Icons.Filled.Palette,
                 ) {
@@ -459,7 +457,7 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSectionCard(
+                AppLabeledSectionCard(
                     title = "Send to App",
                     icon = Icons.Filled.IosShare,
                 ) {
@@ -502,7 +500,7 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSectionCard(
+                AppLabeledSectionCard(
                     title = "Integrations",
                     icon = Icons.Filled.Sync,
                 ) {
@@ -549,7 +547,7 @@ fun SettingsScreen(
                     AddIntegrationRow()
                 }
 
-                SettingsSectionCard(
+                AppLabeledSectionCard(
                     title = "File Manager",
                     icon = Icons.Filled.FolderOpen,
                 ) {
@@ -565,7 +563,7 @@ fun SettingsScreen(
                     }
                 }
 
-                SettingsSectionCard(
+                AppLabeledSectionCard(
                     title = "Usage",
                     icon = Icons.Filled.Info,
                 ) {
@@ -882,22 +880,5 @@ private fun ProfilesProminentCard(onClick: () -> Unit) {
                 modifier = Modifier.size(18.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun SettingsSectionCard(
-    title: String,
-    icon: ImageVector,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        AppSectionLabel(title, icon, Modifier.padding(start = 4.dp))
-        AppSectionCard(
-            containerColor = containerColor,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = content,
-        )
     }
 }
