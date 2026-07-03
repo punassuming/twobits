@@ -63,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppEmptyState
 import com.twobits.pricedrop.data.model.WatchedProduct
 import java.text.NumberFormat
 import java.util.Locale
@@ -124,7 +125,11 @@ fun WatchScreen(
                 }
             }
             if (watchlist.isEmpty()) {
-                EmptyWatchlist()
+                AppEmptyState(
+                    icon = Icons.Filled.Bookmark,
+                    title = "No watched products",
+                    subtitle = "Tap 'Add or ask' to start tracking prices",
+                )
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -162,33 +167,6 @@ fun WatchScreen(
                 onNavigateToAsk()
             },
         )
-    }
-}
-
-@Composable
-private fun EmptyWatchlist() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                Icons.Filled.Bookmark,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "No watched products",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                "Tap 'Add or ask' to start tracking prices",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

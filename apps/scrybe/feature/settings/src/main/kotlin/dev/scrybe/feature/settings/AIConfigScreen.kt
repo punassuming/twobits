@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -59,7 +58,7 @@ import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.AiCredentialsDock
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
-import com.twobits.design.components.AiSectionHeader
+import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AiSourceSegment
 import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelStatus
@@ -315,25 +314,6 @@ fun AIConfigScreen(
             onDismiss = { showTransformModelPicker = false },
             onSelect = { viewModel.setTransformModel(it.apiName) },
         )
-    }
-}
-
-@Composable
-private fun AiSectionCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    content: @Composable () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        AiSectionHeader(title = title, icon = icon)
-        ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                content()
-            }
-        }
     }
 }
 

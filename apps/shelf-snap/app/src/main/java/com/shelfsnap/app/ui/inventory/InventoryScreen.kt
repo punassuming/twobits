@@ -77,6 +77,7 @@ import com.shelfsnap.app.ui.theme.ConditionFair
 import com.shelfsnap.app.ui.theme.ConditionGood
 import com.shelfsnap.app.ui.theme.ConditionPoor
 import com.shelfsnap.app.ui.theme.LocalEstimateLabel
+import com.twobits.design.components.AppEmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -196,15 +197,13 @@ fun InventoryScreen(
                     }
 
                 uiState.items.isEmpty() ->
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        if (uiState.searchQuery.isNotBlank()) {
-                            Text(
-                                text = stringResource(R.string.no_items_match_search),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(32.dp),
-                            )
-                        } else {
+                    if (uiState.searchQuery.isNotBlank()) {
+                        AppEmptyState(
+                            icon = Icons.Filled.Search,
+                            title = stringResource(R.string.no_items_match_search),
+                        )
+                    } else {
+                        Box(Modifier.fillMaxSize(), Alignment.Center) {
                             InventoryWalkthrough(onSettingsClick = onSettingsClick)
                         }
                     }

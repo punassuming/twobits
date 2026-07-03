@@ -45,6 +45,34 @@ fun AppSectionCard(
     }
 }
 
+/**
+ * A gray [AppSectionLabel] above an [AppSectionCard] — the standard settings-screen section
+ * shape (label outside the card, flat card body below it). Was previously hand-rolled
+ * near-identically as a private wrapper in each app's Settings screen; call this directly instead.
+ */
+@Composable
+fun AppLabeledSectionCard(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(12.dp),
+    // Zero this out for content that's already full-bleed and self-padded, e.g. a Column of
+    // Material3 ListItems — the default 16dp otherwise double-insets them.
+    contentPadding: PaddingValues = PaddingValues(16.dp),
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        AppSectionLabel(title, icon, Modifier.padding(start = 4.dp))
+        AppSectionCard(
+            contentPadding = contentPadding,
+            containerColor = containerColor,
+            verticalArrangement = verticalArrangement,
+            content = content,
+        )
+    }
+}
+
 @Composable
 fun AppSectionHeader(
     title: String,

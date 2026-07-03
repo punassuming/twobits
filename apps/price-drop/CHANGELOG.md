@@ -6,6 +6,9 @@
 
 ### Improvements
 
+**Settings & AI configuration card style** — the Settings screen's "Tracking" and "Privacy" cards and the AI configuration screen's "Credentials" card now use the same shared card components Scrybe and Shelf Snap use — Settings cards gain the correct rounded corners (they were missing an explicit shape before), and the Credentials card switches from a flat card to the same elevated-card style as the rest of AI configuration in all three apps, a visible but intentional style change
+**Internal: shared empty-state component** — the empty watchlist state now uses a shared `AppEmptyState` component instead of a private implementation, matching Scrybe's task-list empty state
+
 ### Fixes
 
 **What's New — bold formatting** — item titles in the full What's New screen (Settings → What's New) now render bold, matching the automatic popup — previously only the popup applied bold weight to item titles, so the two "unified" surfaces looked inconsistent

@@ -63,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.components.AiProManagedCard
+import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AppSectionLabel
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.ModelRadioList
@@ -178,55 +179,50 @@ private fun FeatureListContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            SectionCard2("Credentials") {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(12.dp),
-                ) {
-                    if (hasPro) {
-                        AiProManagedCard(
-                            description = "PriceDrop Pro is active. Shopping, coupons, and AI route through the managed proxy — no key setup needed.",
-                        )
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Text(
-                                text = "Upgrade to PriceDrop Pro for managed connectors — no keys needed.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Button(onClick = onUpgrade) { Text("Upgrade") }
-                        }
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            AiSectionCard(icon = Icons.Filled.VpnKey, title = "Credentials") {
+                if (hasPro) {
+                    AiProManagedCard(
+                        description = "PriceDrop Pro is active. Shopping, coupons, and AI route through the managed proxy — no key setup needed.",
+                    )
+                } else {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(
-                            Icons.Filled.VpnKey,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(11.dp),
-                        )
                         Text(
-                            text = "BYOK · YOUR KEYS",
-                            style = MaterialTheme.typography.labelSmall,
+                            text = "Upgrade to PriceDrop Pro for managed connectors — no keys needed.",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
                         )
+                        Button(onClick = onUpgrade) { Text("Upgrade") }
                     }
-                    PriceDropProvider.entries.forEach { provider ->
-                        val state = providerStates[provider] ?: ProviderState(ProviderMode.PRO, "")
-                        ProviderCredentialItem(
-                            provider = provider,
-                            state = state,
-                            viewModel = viewModel,
-                        )
-                    }
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Icon(
+                        Icons.Filled.VpnKey,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(11.dp),
+                    )
+                    Text(
+                        text = "BYOK · YOUR KEYS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                PriceDropProvider.entries.forEach { provider ->
+                    val state = providerStates[provider] ?: ProviderState(ProviderMode.PRO, "")
+                    ProviderCredentialItem(
+                        provider = provider,
+                        state = state,
+                        viewModel = viewModel,
+                    )
                 }
             }
         }
@@ -808,20 +804,4 @@ private fun ProviderCredentialItem(
         signupUrl = provider.signupUrl,
         costEstimate = provider.costEstimate,
     )
-}
-
-@Composable
-private fun SectionCard2(
-    title: String,
-    content: @Composable () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        AppSectionLabel(title, modifier = Modifier.padding(start = 4.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        ) {
-            content()
-        }
-    }
 }

@@ -42,6 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.BuildConfig
 import com.shelfsnap.app.R
 import com.twobits.billing.SubscriptionTier
+import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsProStatusCard
 
@@ -62,7 +63,7 @@ fun SettingsScreen(
                 title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
             )
@@ -94,7 +95,7 @@ fun SettingsScreen(
             AiConfigCard(onClick = onAiConfig)
 
             // ── Capture & storage ──────────────────────────────────────────
-            SettingsSectionCard(
+            AppLabeledSectionCard(
                 icon = Icons.Default.PhotoCamera,
                 title = stringResource(R.string.capture_storage_section),
             ) {

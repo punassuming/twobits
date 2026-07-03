@@ -6,6 +6,8 @@
 
 ### Improvements
 
+**Internal: shared section-card components** — Settings and AI configuration screens now use shared `AppLabeledSectionCard`/`AiSectionCard`/`AppEmptyState` components instead of a private near-duplicate implementation in each app, so the two screen styles (flat cards for Settings, elevated cards for AI config) are now byte-identical across Scrybe, Shelf Snap, and PriceDrop rather than three subtly different implementations
+
 ### Fixes
 
 **What's New — bold formatting** — item titles in the full What's New screen (Settings → What's New) now render bold, matching the automatic popup — previously only the popup applied bold weight to item titles, so the two "unified" surfaces looked inconsistent
