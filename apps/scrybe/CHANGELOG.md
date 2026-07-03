@@ -9,6 +9,7 @@
 **Internal: shared section-card components** — Settings and AI configuration screens now use shared `AppLabeledSectionCard`/`AiSectionCard`/`AppEmptyState` components instead of a private near-duplicate implementation in each app, so the two screen styles (flat cards for Settings, elevated cards for AI config) are now byte-identical across Scrybe, Shelf Snap, and PriceDrop rather than three subtly different implementations
 * internal: added a raw-audio capture path (`AudioRecord`-based) alongside the existing file recorder, laying groundwork for upcoming real-time transcription; not wired into any recording flow yet, no behavior change
 * internal: added a WebSocket client for OpenAI's Realtime API transcription streaming, routed through the same Pro/BYOK endpoint resolver as batch transcription; not wired into any recording flow yet, no behavior change
+* internal: the recording service now attempts a live realtime transcription stream (Pro/BYOK only, gated on the auto-transcribe setting) alongside the file recording — when it succeeds, the streamed transcript is saved directly and the post-stop batch transcription call is skipped, avoiding double-billing for the same recording; falls back to today's batch flow whenever streaming wasn't available or the connection dropped mid-recording. No UI surface yet — live transcript display is a follow-up phase; needs live-device verification before this is relied on (see PR description)
 
 ### Fixes
 

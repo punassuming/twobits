@@ -17,6 +17,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.scrybe.core.audio.AudioRecorder
+import dev.scrybe.core.audio.RealtimeAudioSource
 import dev.scrybe.core.audio.RecordedAudio
 import dev.scrybe.core.audio.RecordingConfig
 import dev.scrybe.core.common.WaveformCodec
@@ -24,9 +25,13 @@ import dev.scrybe.core.database.CustomRecordingTypeDao
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
+import dev.scrybe.core.transcription.realtime.OpenAiRealtimeTranscriptionProvider
+import dev.scrybe.core.transcription.realtime.RealtimeTranscriptSession
+import dev.scrybe.core.transcription.realtime.TranscriptEvent
 import dev.scrybe.core.transforms.SessionTransformCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -50,6 +55,10 @@ import javax.inject.Inject
 class RecordingForegroundService : Service() {
     @Inject lateinit var audioRecorder: AudioRecorder
 
+    @Inject lateinit var realtimeAudioSource: RealtimeAudioSource
+
+    @Inject lateinit var realtimeTranscriptionProvider: OpenAiRealtimeTranscriptionProvider
+
     @Inject lateinit var recordingSessionDao: RecordingSessionDao
 
     @Inject lateinit var notificationFactory: RecordingNotificationFactory
@@ -68,12 +77,19 @@ class RecordingForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val streamingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var lastNotifiedSecond: Long = -1L
     private var telemetryJob: Job? = null
     private var locationDeferred: Deferred<Triple<Double, Double, String?>?>? = null
     private var pendingMode: String = RecordingMode.JOURNAL.name
     private var pendingCustomTypeId: String? = null
     private var pendingSkipTransform: Boolean = false
+
+    // Realtime streaming is best-effort and keyed by a client-generated correlation id, since the
+    // real (DB) session id doesn't exist until persistRecording() runs in handleStop().
+    private var streamingJob: Job? = null
+    private var activeRealtimeSession: RealtimeTranscriptSession? = null
+    private var lastRealtimeTranscript: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -111,6 +127,7 @@ class RecordingForegroundService : Service() {
             notificationFactory.buildNotification(this),
         )
         serviceScope.launch { playRecordingFeedback() }
+        startRealtimeStreamingIfEligible()
         locationDeferred =
             serviceScope.async {
                 if (preferencesDataStore.locationRecordingEnabled.first()) {
@@ -153,8 +170,82 @@ class RecordingForegroundService : Service() {
         }
     }
 
+    /**
+     * Opens a best-effort realtime transcription stream alongside the file recording, gated on
+     * the same auto-transcribe preference and skipped entirely for the Local provider (no
+     * streaming implementation exists for Local). Any failure along this path — mic-capture
+     * unavailable, connection failure, mid-recording drop — is reported via
+     * [RecordingSessionEvents.onLiveStreamEvent] and never touches the file/batch-transcription
+     * path, which keeps working exactly as before regardless of streaming's outcome.
+     */
+    private fun startRealtimeStreamingIfEligible() {
+        val correlationId = UUID.randomUUID().toString()
+        lastRealtimeTranscript = null
+        streamingJob?.cancel()
+        streamingJob =
+            streamingScope.launch {
+                if (!preferencesDataStore.autoTranscribe.first() ||
+                    preferencesDataStore.transcriptionProvider.first() == ProviderType.LOCAL.name
+                ) {
+                    recordingSessionEvents.onLiveStreamEvent(
+                        LiveStreamEvent.Unavailable(correlationId, "not eligible for this AI source"),
+                    )
+                    return@launch
+                }
+
+                recordingSessionEvents.onLiveStreamEvent(LiveStreamEvent.Connecting(correlationId))
+
+                realtimeAudioSource.start().onFailure {
+                    recordingSessionEvents.onLiveStreamEvent(
+                        LiveStreamEvent.Unavailable(correlationId, it.message ?: "microphone unavailable"),
+                    )
+                    return@launch
+                }
+
+                val session =
+                    realtimeTranscriptionProvider.open().getOrElse {
+                        realtimeAudioSource.stop()
+                        recordingSessionEvents.onLiveStreamEvent(
+                            LiveStreamEvent.Unavailable(correlationId, it.message ?: "connect failed"),
+                        )
+                        return@launch
+                    }
+                activeRealtimeSession = session
+
+                launch {
+                    realtimeAudioSource.pcmFrames.collect { frame -> session.appendAudio(frame) }
+                }
+                session.events.collect { event ->
+                    when (event) {
+                        is TranscriptEvent.Delta -> {
+                            lastRealtimeTranscript = event.textSoFar
+                            recordingSessionEvents.onLiveStreamEvent(LiveStreamEvent.Delta(correlationId, event.textSoFar))
+                        }
+                        is TranscriptEvent.Completed -> {
+                            lastRealtimeTranscript = event.finalText
+                        }
+                        is TranscriptEvent.Failed -> {
+                            recordingSessionEvents.onLiveStreamEvent(LiveStreamEvent.Dropped(correlationId))
+                        }
+                    }
+                }
+            }
+    }
+
+    /** Stops streaming (if it was ever started) and returns the best-effort final transcript. */
+    private suspend fun closeRealtimeStreamingIfActive(): String? {
+        streamingJob?.cancel()
+        streamingJob = null
+        val session = activeRealtimeSession
+        activeRealtimeSession = null
+        realtimeAudioSource.stop()
+        val closedText = session?.close()?.getOrNull()
+        return closedText ?: lastRealtimeTranscript
+    }
+
     private fun handleStop() {
         serviceScope.launch {
+            val streamedText = closeRealtimeStreamingIfActive()
             playRecordingFeedback()
             audioRecorder
                 .stopRecording()
@@ -172,8 +263,14 @@ class RecordingForegroundService : Service() {
                                 return@launch
                             }
                             val transcriptionResult =
-                                sessionTranscriptionCoordinator
-                                    .autoTranscribeIfEnabled(sessionId)
+                                if (!streamedText.isNullOrBlank()) {
+                                    sessionTranscriptionCoordinator
+                                        .acceptRealtimeTranscript(sessionId, streamedText)
+                                        .map { true }
+                                } else {
+                                    sessionTranscriptionCoordinator
+                                        .autoTranscribeIfEnabled(sessionId)
+                                }
                             transcriptionResult.onFailure {
                                 android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
                                 recordingSessionEvents.onRecordingError(
@@ -210,6 +307,7 @@ class RecordingForegroundService : Service() {
 
     private fun handleCancel() {
         audioRecorder.cancelRecording()
+        serviceScope.launch { closeRealtimeStreamingIfActive() }
         cleanupAfterRecordingCommand()
     }
 
@@ -225,6 +323,8 @@ class RecordingForegroundService : Service() {
 
     override fun onDestroy() {
         serviceScope.cancel()
+        streamingScope.cancel()
+        realtimeAudioSource.stop()
         telemetryJob?.cancel()
         lastNotifiedSecond = -1L
         super.onDestroy()
