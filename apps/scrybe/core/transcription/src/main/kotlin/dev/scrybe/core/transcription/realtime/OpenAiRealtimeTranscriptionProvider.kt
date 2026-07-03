@@ -89,6 +89,12 @@ private class OpenAiRealtimeSession(
     private var completedText: String = ""
     private var currentSegmentText: String = ""
 
+    // Once a Failed event has fired, close() must not report success with whatever partial text
+    // happened to accumulate before the drop — the caller (RecordingForegroundService) relies on
+    // close() failing here to fall back to the full post-stop batch transcription instead of
+    // silently truncating the transcript at the point of the drop.
+    private var failed = false
+
     fun connect(
         okHttpClient: OkHttpClient,
         request: Request,
@@ -130,6 +136,7 @@ private class OpenAiRealtimeSession(
             "error" -> {
                 val message = event.error?.message ?: "Realtime session error"
                 Log.w(TAG, "Realtime session error event: $message")
+                failed = true
                 _events.tryEmit(TranscriptEvent.Failed(message))
             }
         }
@@ -141,6 +148,7 @@ private class OpenAiRealtimeSession(
         response: Response?,
     ) {
         Log.w(TAG, "Realtime session connection failed", t)
+        failed = true
         _events.tryEmit(TranscriptEvent.Failed(t.message ?: "Connection failed"))
         handshake.complete(Result.failure(t))
     }
@@ -157,6 +165,7 @@ private class OpenAiRealtimeSession(
         runCatching {
             webSocket?.close(NORMAL_CLOSURE_CODE, "done")
             webSocket = null
+            check(!failed) { "realtime session failed before it could be closed cleanly" }
             fullTextSoFar()
         }
 

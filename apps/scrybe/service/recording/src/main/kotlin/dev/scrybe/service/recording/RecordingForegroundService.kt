@@ -225,6 +225,12 @@ class RecordingForegroundService : Service() {
                             lastRealtimeTranscript = event.finalText
                         }
                         is TranscriptEvent.Failed -> {
+                            // A dropped/failed stream must not ship a transcript truncated at the
+                            // point of the drop — clearing this forces closeRealtimeStreamingIfActive()
+                            // to return null so handleStop() falls back to the full post-stop batch
+                            // transcription instead, matching the "will transcribe after you stop"
+                            // UI copy shown for the DROPPED state.
+                            lastRealtimeTranscript = null
                             recordingSessionEvents.onLiveStreamEvent(LiveStreamEvent.Dropped(correlationId))
                         }
                     }
