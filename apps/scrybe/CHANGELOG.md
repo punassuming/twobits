@@ -7,6 +7,7 @@
 ### Improvements
 
 **Internal: shared section-card components** — Settings and AI configuration screens now use shared `AppLabeledSectionCard`/`AiSectionCard`/`AppEmptyState` components instead of a private near-duplicate implementation in each app, so the two screen styles (flat cards for Settings, elevated cards for AI config) are now byte-identical across Scrybe, Shelf Snap, and PriceDrop rather than three subtly different implementations
+* internal: added a raw-audio capture path (`AudioRecord`-based) alongside the existing file recorder, laying groundwork for upcoming real-time transcription; not wired into any recording flow yet, no behavior change
 
 ### Fixes
 
