@@ -4,6 +4,8 @@
 
 ### Features
 
+**Live transcript while recording** — Pro and BYOK users now see the transcript grow in real time during recording instead of only after you stop (Local-tier users are unaffected — no live preview is available for that tier, and the capture screen tells you so). If the live connection drops mid-recording, the screen falls back to today's "will transcribe after you stop" message and the save-time transcript still completes normally — nothing is lost.
+
 ### Improvements
 
 **Internal: shared section-card components** — Settings and AI configuration screens now use shared `AppLabeledSectionCard`/`AiSectionCard`/`AppEmptyState` components instead of a private near-duplicate implementation in each app, so the two screen styles (flat cards for Settings, elevated cards for AI config) are now byte-identical across Scrybe, Shelf Snap, and PriceDrop rather than three subtly different implementations

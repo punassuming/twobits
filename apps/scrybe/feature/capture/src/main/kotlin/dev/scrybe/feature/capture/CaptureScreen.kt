@@ -697,6 +697,16 @@ private fun LiveTranscriptPanel(
                         )
                     }
                 }
+                state.phase == CapturePhase.RECORDING &&
+                    state.streamingStatus == LiveStreamStatus.STREAMING &&
+                    state.streamingPartialTranscript != null -> {
+                    Text(
+                        text = state.streamingPartialTranscript,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
+                    )
+                }
                 !state.autoTranscribeEnabled -> {
                     Text(
                         text = "Auto-transcription is off — enable it in Settings to get a transcript after recording.",
@@ -730,10 +740,15 @@ private fun LiveTranscriptPanel(
                         )
                         Text(
                             text =
-                                if (state.activeCustomTypeName != null) {
-                                    "Will transcribe automatically • ${state.activeCustomTypeName} profile"
-                                } else {
-                                    "Will transcribe automatically • processed as ${state.activeMode.label}"
+                                when {
+                                    state.streamingStatus == LiveStreamStatus.CONNECTING ->
+                                        "Connecting live transcript…"
+                                    state.streamingStatus == LiveStreamStatus.DROPPED ->
+                                        "Live transcript lost connection — will transcribe after you stop"
+                                    state.activeCustomTypeName != null ->
+                                        "Will transcribe automatically • ${state.activeCustomTypeName} profile"
+                                    else ->
+                                        "Will transcribe automatically • processed as ${state.activeMode.label}"
                                 },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

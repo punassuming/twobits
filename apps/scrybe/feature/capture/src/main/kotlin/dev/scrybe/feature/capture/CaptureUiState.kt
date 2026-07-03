@@ -23,8 +23,24 @@ data class CaptureUiState(
     val autoTranscribeEnabled: Boolean = true,
     val liveTranscript: String? = null,
     val activeSessionId: String? = null,
+    val streamingPartialTranscript: String? = null,
+    val streamingStatus: LiveStreamStatus = LiveStreamStatus.OFF,
 ) {
     val isSelecting: Boolean get() = selectedSessionIds.isNotEmpty()
+}
+
+/**
+ * Live realtime-transcription connection status for the recording currently in progress.
+ * Deliberately separate from [CaptureUiState.liveTranscript], whose existing post-stop-only
+ * semantics (shown during [CapturePhase.STOPPING]) must not change.
+ */
+enum class LiveStreamStatus {
+    /** Local/OFF tier, or streaming hasn't been attempted yet — no live preview available. */
+    OFF,
+    CONNECTING,
+    STREAMING,
+    UNAVAILABLE,
+    DROPPED,
 }
 
 data class CaptureTransformDialogState(
