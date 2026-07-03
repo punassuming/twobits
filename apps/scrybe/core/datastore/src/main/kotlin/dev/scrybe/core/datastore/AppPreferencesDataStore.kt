@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -49,7 +50,12 @@ class AppPreferencesDataStore
             val CONFIRM_RECORD_SWIPE_ACTIONS = booleanPreferencesKey("confirm_record_swipe_actions")
             val SHOW_RECORDING_INFO_IN_LIST = booleanPreferencesKey("show_recording_info_in_list")
             val POST_STOP_DESTINATION = stringPreferencesKey("post_stop_destination")
-            val LAST_SEEN_WHATS_NEW_VERSION_CODE = stringPreferencesKey("last_seen_whats_new_version_code")
+
+            // Legacy key — stored the Long as a String. Kept only as a one-time migration
+            // fallback so upgrading users don't see a spurious re-prompt of the What's New
+            // popup; see [lastSeenWhatsNewVersionCode]/[setLastSeenWhatsNewVersionCode].
+            val LAST_SEEN_WHATS_NEW_VERSION_CODE_LEGACY = stringPreferencesKey("last_seen_whats_new_version_code")
+            val WHATS_NEW_LAST_SEEN_VERSION_CODE = longPreferencesKey("whats_new_last_seen_version_code")
             val RECORDING_VIBRATE_ON_START_STOP = booleanPreferencesKey("recording_vibrate_on_start_stop")
             val RECORDING_SOUND_ON_START_STOP = booleanPreferencesKey("recording_sound_on_start_stop")
             val TASKFORGE_ENABLED = booleanPreferencesKey("taskforge_enabled")
@@ -167,7 +173,9 @@ class AppPreferencesDataStore
 
         val lastSeenWhatsNewVersionCode: Flow<Long> =
             context.dataStore.data.map { prefs ->
-                prefs[Keys.LAST_SEEN_WHATS_NEW_VERSION_CODE]?.toLongOrNull() ?: 0L
+                prefs[Keys.WHATS_NEW_LAST_SEEN_VERSION_CODE]
+                    ?: prefs[Keys.LAST_SEEN_WHATS_NEW_VERSION_CODE_LEGACY]?.toLongOrNull()
+                    ?: 0L
             }
 
         val recordingVibrateOnStartStop: Flow<Boolean> =
@@ -336,7 +344,8 @@ class AppPreferencesDataStore
 
         suspend fun setLastSeenWhatsNewVersionCode(versionCode: Long) {
             context.dataStore.edit { prefs ->
-                prefs[Keys.LAST_SEEN_WHATS_NEW_VERSION_CODE] = versionCode.toString()
+                prefs[Keys.WHATS_NEW_LAST_SEEN_VERSION_CODE] = versionCode
+                prefs.remove(Keys.LAST_SEEN_WHATS_NEW_VERSION_CODE_LEGACY)
             }
         }
 

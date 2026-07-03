@@ -6,7 +6,8 @@ Update the `## Unreleased` section of the relevant app's `CHANGELOG.md` before t
 
 - Scrybe changes → `apps/scrybe/CHANGELOG.md`
 - Shelf Snap changes → `apps/shelf-snap/CHANGELOG.md`
-- Changes to `shared/` that affect app behaviour → update both
+- PriceDrop changes → `apps/price-drop/CHANGELOG.md`
+- Changes to `shared/` that affect app behaviour → update all three
 
 ## Format
 
@@ -22,6 +23,17 @@ Add entries under `### Features`, `### Improvements`, or `### Fixes` inside `## 
 - Em-dash `—` (U+2014, not a hyphen) separates component from description
 - Sub-bullets expand when the user taps the row
 - Blank line required between consecutive bold-title items
+
+**The bold title line has NO leading `* `.** The parser (`ReleaseNotesParser.parseGroupItems`) only recognizes a new titled item when the line starts with `**` directly — `* **Topic** — description` is parsed as a plain untitled bullet (title == description, which then renders as flat undifferentiated text with no bold, defeating the whole point of Format A). This is an easy mistake to make since every *other* line in a changelog is bullet-prefixed — double-check every bold-title line starts with `**`, not `* **`.
+
+Correct:
+```
+**Item title field** — items now have an editable Title field.
+```
+Wrong (looks almost identical, parses as a flat untitled bullet):
+```
+* **Item title field** — items now have an editable Title field.
+```
 
 **Format B — invisible/infra change** (plain bullet anywhere):
 ```
