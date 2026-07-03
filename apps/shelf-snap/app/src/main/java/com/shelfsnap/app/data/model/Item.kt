@@ -47,13 +47,21 @@ data class Item(
 }
 
 /**
+ * Brand+model, else category — the title fallback shared by [Item.displayTitle] and by
+ * re-analysis, which needs the same fallback computed from a fresh AI result rather than the
+ * (possibly stale) persisted [Item].
+ */
+fun displayTitleFallback(
+    brand: String,
+    model: String,
+    category: String,
+): String = listOf(brand, model).filter { it.isNotBlank() }.joinToString(" ").ifBlank { category }
+
+/**
  * Canonical display title: the persisted [Item.title] if set, else brand+model, else category.
  * Used wherever a human-facing item name is needed (inventory cards, listing summaries, market
  * research queries) so the fallback logic isn't duplicated at each call site, and so pre-v4 items
  * without a persisted title still show something sensible.
  */
 val Item.displayTitle: String
-    get() =
-        title.ifBlank {
-            listOf(brand, model).filter { it.isNotBlank() }.joinToString(" ").ifBlank { category }
-        }
+    get() = title.ifBlank { displayTitleFallback(brand, model, category) }

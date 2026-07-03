@@ -10,6 +10,9 @@
 
 **What's New — bold formatting** — item titles in the full What's New screen (Settings → What's New) now render bold, matching the automatic popup — previously only the popup applied bold weight to item titles, so the two "unified" surfaces looked inconsistent
 **Internal: What's New last-seen key** — standardized on the same DataStore key name/type Scrybe and PriceDrop use, with a one-time migration from the old key so existing users don't see a spurious re-prompt of the popup
+**Re-analyze — item title** — re-running AI analysis on an existing item now refreshes the title from the new brand/model/category, unless you've already typed your own title — previously the title stayed stuck at whatever it was when the item was first created, even after re-analysis found very different brand/model info
+**Vision analysis — more specific titles** — the AI is now asked to identify the specific product/style name when it's visible in photos (e.g. "Air Force 1 '07"), not just a generic brand — this feeds directly into the item's auto-generated title
+**Listing refine — better titles** — AI-refined per-platform listing titles are now explicitly composed to be specific and keyword-rich (brand + model + size/color + condition), the way experienced resale sellers write them, instead of a generic copywriting instruction with no guidance on title quality; size and color are now included in what the AI sees when refining a listing
 
 ## 1.21.0 (2026-07-03)
 
