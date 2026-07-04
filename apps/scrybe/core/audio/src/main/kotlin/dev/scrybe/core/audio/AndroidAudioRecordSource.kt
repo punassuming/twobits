@@ -1,6 +1,7 @@
 package dev.scrybe.core.audio
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.AudioFormat
@@ -40,6 +41,11 @@ class AndroidAudioRecordSource
         private val _pcmFrames = MutableSharedFlow<ByteArray>(extraBufferCapacity = 16)
         override val pcmFrames: Flow<ByteArray> = _pcmFrames.asSharedFlow()
 
+        // The RECORD_AUDIO check below runs before AudioRecord() is ever constructed, but lint's
+        // MissingPermission detector can't trace that guard across the runCatching {} lambda
+        // boundary into the actual constructor call — same limitation already suppressed the
+        // same way in LocationProvider.kt elsewhere in this module.
+        @SuppressLint("MissingPermission")
         override suspend fun start(sampleRateHz: Int): Result<Unit> {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
                 PackageManager.PERMISSION_GRANTED
