@@ -2,6 +2,7 @@ package dev.scrybe.core.transcription
 
 import android.util.Log
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TranscriptEntity
