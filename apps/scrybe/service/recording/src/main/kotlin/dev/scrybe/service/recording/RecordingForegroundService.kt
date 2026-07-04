@@ -87,9 +87,27 @@ class RecordingForegroundService : Service() {
 
     // Realtime streaming is best-effort and keyed by a client-generated correlation id, since the
     // real (DB) session id doesn't exist until persistRecording() runs in handleStop().
+    // lastRealtimeTranscript/realtimeStreamDropped/realtimeCapturePaused are written from the
+    // streamingScope (IO) collector below and read from serviceScope (Main) in
+    // closeRealtimeStreamingIfActive() / the pcmFrames-forwarding loop — @Volatile so a write on
+    // one dispatcher's thread is guaranteed visible to a read on the other's.
     private var streamingJob: Job? = null
     private var activeRealtimeSession: RealtimeTranscriptSession? = null
+
+    @Volatile
     private var lastRealtimeTranscript: String? = null
+
+    // Set once a Failed event fires; forces closeRealtimeStreamingIfActive() to discard any
+    // cached text rather than ship a transcript truncated at the point of the drop, regardless of
+    // what session.close() itself returns.
+    @Volatile
+    private var realtimeStreamDropped: Boolean = false
+
+    // Gates the pcmFrames -> WS forwarding loop while the file recording is paused, so audio
+    // spoken during a pause (which the saved file omits) can never end up in the realtime
+    // transcript that handleStop() would otherwise accept as the final result.
+    @Volatile
+    private var realtimeCapturePaused: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -181,6 +199,8 @@ class RecordingForegroundService : Service() {
     private fun startRealtimeStreamingIfEligible() {
         val correlationId = UUID.randomUUID().toString()
         lastRealtimeTranscript = null
+        realtimeStreamDropped = false
+        realtimeCapturePaused = false
         streamingJob?.cancel()
         streamingJob =
             streamingScope.launch {
@@ -213,7 +233,14 @@ class RecordingForegroundService : Service() {
                 activeRealtimeSession = session
 
                 launch {
-                    realtimeAudioSource.pcmFrames.collect { frame -> session.appendAudio(frame) }
+                    realtimeAudioSource.pcmFrames.collect { frame ->
+                        // Skip frames captured while the recording is paused — the saved file
+                        // omits this audio too, so forwarding it here would let paused-period
+                        // speech reach the transcript even though it was never actually recorded.
+                        if (!realtimeCapturePaused) {
+                            session.appendAudio(frame)
+                        }
+                    }
                 }
                 session.events.collect { event ->
                     when (event) {
@@ -225,11 +252,12 @@ class RecordingForegroundService : Service() {
                             lastRealtimeTranscript = event.finalText
                         }
                         is TranscriptEvent.Failed -> {
-                            // A dropped/failed stream must not ship a transcript truncated at the
-                            // point of the drop — clearing this forces closeRealtimeStreamingIfActive()
-                            // to return null so handleStop() falls back to the full post-stop batch
-                            // transcription instead, matching the "will transcribe after you stop"
-                            // UI copy shown for the DROPPED state.
+                            // A dropped/failed stream must never be accepted as final — marking it
+                            // dropped forces closeRealtimeStreamingIfActive() to discard any cached
+                            // text and return null so handleStop() falls back to the full post-stop
+                            // batch transcription instead, matching the "will transcribe after you
+                            // stop" UI copy shown for the DROPPED state.
+                            realtimeStreamDropped = true
                             lastRealtimeTranscript = null
                             recordingSessionEvents.onLiveStreamEvent(LiveStreamEvent.Dropped(correlationId))
                         }
@@ -238,7 +266,11 @@ class RecordingForegroundService : Service() {
             }
     }
 
-    /** Stops streaming (if it was ever started) and returns the best-effort final transcript. */
+    /**
+     * Stops streaming (if it was ever started) and returns the best-effort final transcript, or
+     * null if streaming never produced usable text — including when it was dropped mid-recording,
+     * in which case any cached text is deliberately discarded rather than treated as final.
+     */
     private suspend fun closeRealtimeStreamingIfActive(): String? {
         streamingJob?.cancel()
         streamingJob = null
@@ -246,6 +278,7 @@ class RecordingForegroundService : Service() {
         activeRealtimeSession = null
         realtimeAudioSource.stop()
         val closedText = session?.close()?.getOrNull()
+        if (realtimeStreamDropped) return null
         return closedText ?: lastRealtimeTranscript
     }
 
@@ -318,10 +351,12 @@ class RecordingForegroundService : Service() {
     }
 
     private fun handlePause() {
+        realtimeCapturePaused = true
         serviceScope.launch { audioRecorder.pauseRecording() }
     }
 
     private fun handleResume() {
+        realtimeCapturePaused = false
         serviceScope.launch { audioRecorder.resumeRecording() }
     }
 
