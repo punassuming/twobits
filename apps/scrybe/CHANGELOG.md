@@ -22,6 +22,7 @@
 * internal: the recording service now attempts a live realtime transcription stream (Pro/BYOK only, gated on the auto-transcribe setting) alongside the file recording — when it succeeds, the streamed transcript is saved directly and the post-stop batch transcription call is skipped, avoiding double-billing for the same recording; falls back to today's batch flow whenever streaming wasn't available or the connection dropped mid-recording. No UI surface yet — live transcript display is a follow-up phase; needs live-device verification before this is relied on (see PR description)
 * internal: a realtime stream that drops mid-recording now correctly discards its partial transcript and falls back to the full post-stop batch transcription, instead of silently saving a transcript truncated at the point of the drop
 * internal: pausing a recording now also pauses the live realtime transcript stream, so audio spoken while paused (which the saved file already omits) can no longer leak into the final transcript
+* internal: fixed the realtime session-configuration message to match OpenAI's current (GA) schema — the Realtime API Beta this was originally built against was retired, and the old flat config shape was being rejected almost immediately after connecting, confirmed via a live BYOK test
 
 ### Fixes
 
