@@ -25,6 +25,7 @@ import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transforms.SessionTransformCoordinator
+import dev.scrybe.service.recording.LiveStreamEvent
 import dev.scrybe.service.recording.RecordingForegroundService
 import dev.scrybe.service.recording.RecordingServiceActions
 import dev.scrybe.service.recording.RecordingSessionEvents
@@ -250,6 +251,30 @@ class CaptureViewModel
                     _uiState.value = _uiState.value.copy(customTypes = types)
                 }
             }
+            viewModelScope.launch {
+                recordingSessionEvents.liveStreamEvents.collectLatest { event ->
+                    _uiState.value =
+                        when (event) {
+                            is LiveStreamEvent.Connecting ->
+                                _uiState.value.copy(streamingStatus = LiveStreamStatus.CONNECTING)
+                            is LiveStreamEvent.Delta ->
+                                _uiState.value.copy(
+                                    streamingStatus = LiveStreamStatus.STREAMING,
+                                    streamingPartialTranscript = event.textSoFar,
+                                )
+                            is LiveStreamEvent.Unavailable ->
+                                _uiState.value.copy(
+                                    streamingStatus = LiveStreamStatus.UNAVAILABLE,
+                                    streamingPartialTranscript = null,
+                                )
+                            is LiveStreamEvent.Dropped ->
+                                _uiState.value.copy(
+                                    streamingStatus = LiveStreamStatus.DROPPED,
+                                    streamingPartialTranscript = null,
+                                )
+                        }
+                }
+            }
         }
 
         fun showModePicker() {
@@ -275,6 +300,8 @@ class CaptureViewModel
                         showModePickerSheet = false,
                         activeMode = mode,
                         activeCustomTypeName = null,
+                        streamingPartialTranscript = null,
+                        streamingStatus = LiveStreamStatus.OFF,
                     )
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
@@ -301,6 +328,8 @@ class CaptureViewModel
                         showModePickerSheet = false,
                         activeMode = RecordingMode.CUSTOM,
                         activeCustomTypeName = typeName,
+                        streamingPartialTranscript = null,
+                        streamingStatus = LiveStreamStatus.OFF,
                     )
                 val intent =
                     Intent(context, RecordingForegroundService::class.java).apply {
@@ -371,6 +400,8 @@ class CaptureViewModel
                     liveTranscript = null,
                     activeSessionId = null,
                     minimized = false,
+                    streamingPartialTranscript = null,
+                    streamingStatus = LiveStreamStatus.OFF,
                 )
         }
 
@@ -403,6 +434,8 @@ class CaptureViewModel
                         activeSessionId = null,
                         minimized = false,
                         errorMessage = null,
+                        streamingPartialTranscript = null,
+                        streamingStatus = LiveStreamStatus.OFF,
                     )
             }
         }

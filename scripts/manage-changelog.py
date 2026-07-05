@@ -328,7 +328,7 @@ def has_new_unreleased_since_tag(
     unreleased_bullets = {
         line.strip()
         for line in unreleased.body
-        if line.strip().startswith(("* ", "- "))
+        if line.strip().startswith(("* ", "- ", "**"))
     }
 
     if not unreleased_bullets:
@@ -341,7 +341,7 @@ def has_new_unreleased_since_tag(
         released_bullets.update(
             line.strip()
             for line in section.body
-            if line.strip().startswith(("* ", "- "))
+            if line.strip().startswith(("* ", "- ", "**"))
         )
 
     new_bullets = unreleased_bullets - released_bullets

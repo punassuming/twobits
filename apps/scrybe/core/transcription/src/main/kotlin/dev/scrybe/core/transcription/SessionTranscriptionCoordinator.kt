@@ -2,6 +2,7 @@ package dev.scrybe.core.transcription
 
 import android.util.Log
 import dev.scrybe.core.database.RecordingSessionDao
+import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.database.SpeakerSegmentDao
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TranscriptEntity
@@ -81,23 +82,7 @@ class SessionTranscriptionCoordinator
 
             return result.fold(
                 onSuccess = { batchResult ->
-                    transcriptDao.deleteTranscriptsForSessionAndType(
-                        sessionId = sessionId,
-                        type = TranscriptType.RAW.name,
-                    )
-                    val transcriptEntity =
-                        TranscriptEntity(
-                            id = UUID.randomUUID().toString(),
-                            sessionId = sessionId,
-                            content = batchResult.text,
-                            type = TranscriptType.RAW.name,
-                            sourceTranscriptId = null,
-                            providerType = providerType.name,
-                            transformProfileId = null,
-                            transformRunId = null,
-                            createdAt = System.currentTimeMillis(),
-                        )
-                    transcriptDao.insertTranscript(transcriptEntity)
+                    val transcriptEntity = insertRawTranscript(sessionId, batchResult.text, providerType)
 
                     if (batchResult.isPartial) {
                         updateSessionStatus(sessionId, SessionStatus.PARTIAL_TRANSCRIPTION)
@@ -109,17 +94,7 @@ class SessionTranscriptionCoordinator
                         return Result.success(transcriptEntity)
                     }
 
-                    updateSessionStatus(
-                        sessionId = sessionId,
-                        status = SessionStatus.TRANSCRIBED,
-                        estimatedCostUsd = TranscriptionPricing.estimateUsd(session.durationMs),
-                    )
-                    if (preferencesDataStore.enableSpeakerIdentification.first()) {
-                        launchDiarization(sessionId, audioFile, batchResult.text, aiFeaturesProviderType)
-                    }
-                    if (preferencesDataStore.enableInsightAnalysis.first()) {
-                        launchInsights(sessionId, batchResult.text, session.durationMs, aiFeaturesProviderType)
-                    }
+                    markTranscribedAndLaunchFollowUps(sessionId, session, batchResult.text, aiFeaturesProviderType)
                     Result.success(transcriptEntity)
                 },
                 onFailure = { error ->
@@ -131,6 +106,77 @@ class SessionTranscriptionCoordinator
         }
 
         suspend fun retranscribePartial(sessionId: String): Result<TranscriptEntity> = transcribeSession(sessionId)
+
+        /**
+         * Accepts a transcript produced by a live realtime session as the final result for
+         * [sessionId], skipping the batch API call entirely — used when
+         * [RecordingForegroundService][dev.scrybe.service.recording.RecordingForegroundService]'s
+         * realtime stream already produced usable text, so the batch call that would otherwise
+         * run in [autoTranscribeIfEnabled] is skipped (avoids double-billing Pro users for the
+         * same recording). Shares the persist/status/follow-up path [transcribeSession] uses for
+         * a full (non-partial) success.
+         */
+        suspend fun acceptRealtimeTranscript(
+            sessionId: String,
+            text: String,
+        ): Result<TranscriptEntity> =
+            runCatching {
+                val session =
+                    sessionDao.getSessionByIdOnce(sessionId)
+                        ?: error("Session $sessionId not found")
+                val aiFeaturesProviderType =
+                    runCatching {
+                        ProviderType.valueOf(preferencesDataStore.aiFeaturesProvider.first())
+                    }.getOrDefault(ProviderType.OPENAI)
+
+                val transcriptEntity = insertRawTranscript(sessionId, text, ProviderType.OPENAI)
+                markTranscribedAndLaunchFollowUps(sessionId, session, text, aiFeaturesProviderType)
+                transcriptEntity
+            }
+
+        private suspend fun insertRawTranscript(
+            sessionId: String,
+            text: String,
+            providerType: ProviderType,
+        ): TranscriptEntity {
+            transcriptDao.deleteTranscriptsForSessionAndType(sessionId = sessionId, type = TranscriptType.RAW.name)
+            val transcriptEntity =
+                TranscriptEntity(
+                    id = UUID.randomUUID().toString(),
+                    sessionId = sessionId,
+                    content = text,
+                    type = TranscriptType.RAW.name,
+                    sourceTranscriptId = null,
+                    providerType = providerType.name,
+                    transformProfileId = null,
+                    transformRunId = null,
+                    createdAt = System.currentTimeMillis(),
+                )
+            transcriptDao.insertTranscript(transcriptEntity)
+            return transcriptEntity
+        }
+
+        private suspend fun markTranscribedAndLaunchFollowUps(
+            sessionId: String,
+            session: RecordingSessionEntity,
+            text: String,
+            aiFeaturesProviderType: ProviderType,
+        ) {
+            updateSessionStatus(
+                sessionId = sessionId,
+                status = SessionStatus.TRANSCRIBED,
+                // Realtime billing granularity isn't confirmed yet (see Phase W0 notes) — this
+                // reuses the batch-per-minute estimate as a placeholder display figure; it does
+                // not drive actual billing, which is enforced server-side by the Worker.
+                estimatedCostUsd = TranscriptionPricing.estimateUsd(session.durationMs),
+            )
+            if (preferencesDataStore.enableSpeakerIdentification.first()) {
+                launchDiarization(sessionId, File(session.audioFilePath), text, aiFeaturesProviderType)
+            }
+            if (preferencesDataStore.enableInsightAnalysis.first()) {
+                launchInsights(sessionId, text, session.durationMs, aiFeaturesProviderType)
+            }
+        }
 
         suspend fun fetchSpeakerInfo(sessionId: String): Result<Int> =
             runCatching {
