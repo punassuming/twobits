@@ -109,17 +109,27 @@ private class OpenAiRealtimeSession(
         webSocket: WebSocket,
         response: Response,
     ) {
+        // Every field below is passed explicitly, even where the value never varies: the shared
+        // Json instance (NetworkModule.providesNetworkJson()) doesn't set encodeDefaults = true,
+        // so kotlinx.serialization silently drops any field left at its Kotlin default —
+        // including the "type" discriminators the GA API needs to even recognize this as a
+        // session.update event. These data classes have no defaults left for exactly that reason;
+        // don't reintroduce one without also fixing serialization.
         val configMessage =
             json.encodeToString(
                 SessionUpdateMessage.serializer(),
                 SessionUpdateMessage(
+                    type = "session.update",
                     session =
                         SessionConfig(
+                            type = "transcription",
                             audio =
                                 AudioConfig(
                                     input =
                                         AudioInputConfig(
+                                            format = AudioFormatConfig(type = "audio/pcm", rate = 24_000),
                                             transcription = TranscriptionModelConfig(model = model),
+                                            turnDetection = TurnDetectionConfig(type = "server_vad"),
                                         ),
                                 ),
                         ),
@@ -176,7 +186,12 @@ private class OpenAiRealtimeSession(
     override suspend fun appendAudio(pcm16: ByteArray) {
         val socket = webSocket ?: return
         val base64Audio = Base64.encodeToString(pcm16, Base64.NO_WRAP)
-        socket.send(json.encodeToString(AudioAppendMessage.serializer(), AudioAppendMessage(audio = base64Audio)))
+        socket.send(
+            json.encodeToString(
+                AudioAppendMessage.serializer(),
+                AudioAppendMessage(type = "input_audio_buffer.append", audio = base64Audio),
+            ),
+        )
     }
 
     override suspend fun close(): Result<String> =
@@ -193,15 +208,19 @@ private class OpenAiRealtimeSession(
     }
 }
 
+// No default values below: the shared Json instance doesn't set encodeDefaults = true, so
+// kotlinx.serialization silently omits any field left at its declared default — including "type"
+// discriminators the GA API needs to recognize these events at all. Every field is required and
+// passed explicitly at each (single) construction call site instead.
 @Serializable
 private data class SessionUpdateMessage(
-    val type: String = "session.update",
+    val type: String,
     val session: SessionConfig,
 )
 
 @Serializable
 private data class SessionConfig(
-    val type: String = "transcription",
+    val type: String,
     val audio: AudioConfig,
 )
 
@@ -212,15 +231,15 @@ private data class AudioConfig(
 
 @Serializable
 private data class AudioInputConfig(
-    val format: AudioFormatConfig = AudioFormatConfig(),
+    val format: AudioFormatConfig,
     val transcription: TranscriptionModelConfig,
-    @SerialName("turn_detection") val turnDetection: TurnDetectionConfig = TurnDetectionConfig(),
+    @SerialName("turn_detection") val turnDetection: TurnDetectionConfig,
 )
 
 @Serializable
 private data class AudioFormatConfig(
-    val type: String = "audio/pcm",
-    val rate: Int = 24_000,
+    val type: String,
+    val rate: Int,
 )
 
 @Serializable
@@ -230,12 +249,12 @@ private data class TranscriptionModelConfig(
 
 @Serializable
 private data class TurnDetectionConfig(
-    val type: String = "server_vad",
+    val type: String,
 )
 
 @Serializable
 private data class AudioAppendMessage(
-    val type: String = "input_audio_buffer.append",
+    val type: String,
     val audio: String,
 )
 
