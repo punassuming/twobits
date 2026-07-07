@@ -30,11 +30,12 @@ import javax.inject.Singleton
  * Local has no streaming implementation at all (explicit non-goal), so this is injected directly
  * wherever needed and callers gate its use on `ExecutionMode != LOCAL && != OFF` themselves.
  *
- * ⚠️ Protocol note: the exact wrapper event name for the session-configuration message
- * (`session.update` with `session.type = "transcription"`, per GA-era sources cross-checked
- * during implementation) is the single most likely detail to have drifted by the time this ships
- * — verify against a live connection (e.g. `wscat`) before relying on it in production, per the
- * plan's W0 spike notes.
+ * Session-configuration schema: the Realtime API's Beta was fully retired on 2026-05-12, replacing
+ * the old flat `session.{input_audio_format,input_audio_transcription,turn_detection}` shape with
+ * a nested `session.audio.input.{format,transcription,turn_detection}` object (confirmed against
+ * the current, non-beta `openai-python` SDK types — `openai.types.realtime.*`, not the deprecated
+ * `openai.types.beta.realtime.*`). A live BYOK test against the old flat shape failed the
+ * connection almost immediately after opening, consistent with the GA server rejecting it.
  */
 @Singleton
 class OpenAiRealtimeTranscriptionProvider
@@ -108,10 +109,31 @@ private class OpenAiRealtimeSession(
         webSocket: WebSocket,
         response: Response,
     ) {
+        // Every field below is passed explicitly, even where the value never varies: the shared
+        // Json instance (NetworkModule.providesNetworkJson()) doesn't set encodeDefaults = true,
+        // so kotlinx.serialization silently drops any field left at its Kotlin default —
+        // including the "type" discriminators the GA API needs to even recognize this as a
+        // session.update event. These data classes have no defaults left for exactly that reason;
+        // don't reintroduce one without also fixing serialization.
         val configMessage =
             json.encodeToString(
                 SessionUpdateMessage.serializer(),
-                SessionUpdateMessage(session = SessionConfig(inputAudioTranscription = TranscriptionModelConfig(model = model))),
+                SessionUpdateMessage(
+                    type = "session.update",
+                    session =
+                        SessionConfig(
+                            type = "transcription",
+                            audio =
+                                AudioConfig(
+                                    input =
+                                        AudioInputConfig(
+                                            format = AudioFormatConfig(type = "audio/pcm", rate = 24_000),
+                                            transcription = TranscriptionModelConfig(model = model),
+                                            turnDetection = TurnDetectionConfig(type = "server_vad"),
+                                        ),
+                                ),
+                        ),
+                ),
             )
         webSocket.send(configMessage)
         handshake.complete(Result.success(Unit))
@@ -132,6 +154,12 @@ private class OpenAiRealtimeSession(
                 completedText = listOf(completedText, segmentText).filter { it.isNotBlank() }.joinToString(" ")
                 currentSegmentText = ""
                 _events.tryEmit(TranscriptEvent.Completed(completedText))
+            }
+            "conversation.item.input_audio_transcription.failed" -> {
+                val message = event.error?.message ?: "Transcription failed for this segment"
+                Log.w(TAG, "Realtime transcription failed event: $message")
+                failed = true
+                _events.tryEmit(TranscriptEvent.Failed(message))
             }
             "error" -> {
                 val message = event.error?.message ?: "Realtime session error"
@@ -158,7 +186,12 @@ private class OpenAiRealtimeSession(
     override suspend fun appendAudio(pcm16: ByteArray) {
         val socket = webSocket ?: return
         val base64Audio = Base64.encodeToString(pcm16, Base64.NO_WRAP)
-        socket.send(json.encodeToString(AudioAppendMessage.serializer(), AudioAppendMessage(audio = base64Audio)))
+        socket.send(
+            json.encodeToString(
+                AudioAppendMessage.serializer(),
+                AudioAppendMessage(type = "input_audio_buffer.append", audio = base64Audio),
+            ),
+        )
     }
 
     override suspend fun close(): Result<String> =
@@ -175,18 +208,38 @@ private class OpenAiRealtimeSession(
     }
 }
 
+// No default values below: the shared Json instance doesn't set encodeDefaults = true, so
+// kotlinx.serialization silently omits any field left at its declared default — including "type"
+// discriminators the GA API needs to recognize these events at all. Every field is required and
+// passed explicitly at each (single) construction call site instead.
 @Serializable
 private data class SessionUpdateMessage(
-    val type: String = "session.update",
+    val type: String,
     val session: SessionConfig,
 )
 
 @Serializable
 private data class SessionConfig(
-    val type: String = "transcription",
-    @SerialName("input_audio_format") val inputAudioFormat: String = "pcm16",
-    @SerialName("input_audio_transcription") val inputAudioTranscription: TranscriptionModelConfig,
-    @SerialName("turn_detection") val turnDetection: TurnDetectionConfig = TurnDetectionConfig(),
+    val type: String,
+    val audio: AudioConfig,
+)
+
+@Serializable
+private data class AudioConfig(
+    val input: AudioInputConfig,
+)
+
+@Serializable
+private data class AudioInputConfig(
+    val format: AudioFormatConfig,
+    val transcription: TranscriptionModelConfig,
+    @SerialName("turn_detection") val turnDetection: TurnDetectionConfig,
+)
+
+@Serializable
+private data class AudioFormatConfig(
+    val type: String,
+    val rate: Int,
 )
 
 @Serializable
@@ -196,12 +249,12 @@ private data class TranscriptionModelConfig(
 
 @Serializable
 private data class TurnDetectionConfig(
-    val type: String = "server_vad",
+    val type: String,
 )
 
 @Serializable
 private data class AudioAppendMessage(
-    val type: String = "input_audio_buffer.append",
+    val type: String,
     val audio: String,
 )
 

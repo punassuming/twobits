@@ -8,6 +8,9 @@
 
 ### Fixes
 
+* internal: fixed the realtime session-configuration message to match OpenAI's current (GA) schema — the Realtime API Beta this was originally built against was retired, and the old flat config shape was being rejected almost immediately after connecting; v1.30.0 shipped with the old (broken) shape, so live streaming didn't work in that release
+* internal: the realtime session-update and audio-append messages were missing their required "type" fields and audio format/VAD config in transit — the shared JSON serializer doesn't encode default-valued properties, so those fields were silently dropped even after the GA schema fix above; every field is now passed explicitly instead of relying on a default
+
 ## 1.30.0 (2026-07-05)
 
 ### Features
