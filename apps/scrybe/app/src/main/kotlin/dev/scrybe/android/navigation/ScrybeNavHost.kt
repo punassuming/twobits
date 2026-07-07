@@ -17,6 +17,7 @@ import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
+import dev.scrybe.feature.settings.AiCallDebugScreen
 import dev.scrybe.feature.settings.AIConfigScreen
 import dev.scrybe.feature.settings.PeopleScreen
 import dev.scrybe.feature.settings.ProScreen
@@ -41,6 +42,8 @@ sealed class Screen(
     object Tasks : Screen("tasks")
 
     object AiConfig : Screen("ai_config")
+
+    object AiCallDebugLog : Screen("ai_call_debug_log")
 
     object WhatsNew : Screen("whats_new")
 
@@ -149,7 +152,13 @@ fun ScrybeNavHost(navController: NavHostController) {
             )
         }
         composable(Screen.AiConfig.route) {
-            AIConfigScreen(onBack = { navController.popBackStack() })
+            AIConfigScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToAiCallLog = { navController.navigate(Screen.AiCallDebugLog.route) },
+            )
+        }
+        composable(Screen.AiCallDebugLog.route) {
+            AiCallDebugScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.People.route) {
             PeopleScreen(onNavigateBack = { navController.popBackStack() })

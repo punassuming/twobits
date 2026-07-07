@@ -4,7 +4,11 @@
 
 ### Features
 
+**AI call log** — Settings → AI configuration's debug toggle (renamed "AI call debug") now records every AI request/response — transcription, diarization, and insights, not just diarization — with a new "View AI call log" screen showing what was called, whether it succeeded, and a short redacted summary of the response or error. Never logs raw audio or full transcript/prompt text.
+
 ### Improvements
+
+* internal: diarization's Whisper verbose-transcription call is now recorded to the AI call log on both success and failure — previously a failure there was invisible everywhere except Logcat, since the per-session diarization debug card only ever gets written after that call already succeeded
 
 ### Fixes
 

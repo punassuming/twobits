@@ -31,6 +31,7 @@ class OpenAiDiarizationService
         private val json: Json,
         private val endpointResolver: OpenAiEndpointResolver,
         private val debugStore: DiarizationDebugStore,
+        private val aiCallDebugStore: AiCallDebugStore,
         private val preferencesDataStore: AppPreferencesDataStore,
     ) : DiarizationService {
         override suspend fun diarize(
@@ -44,7 +45,7 @@ class OpenAiDiarizationService
                     val debugEnabled = preferencesDataStore.debugDiarization.first()
                     val endpoint = endpointResolver.resolve()
 
-                    val verboseSegments = transcribeVerbose(audioFile, endpoint)
+                    val verboseSegments = transcribeVerbose(audioFile, endpoint, debugEnabled)
                     Log.d(
                         TAG,
                         "verbose transcription: ${verboseSegments.size} segments, " +
@@ -94,9 +95,10 @@ class OpenAiDiarizationService
                 mergedSegmentCount = mergedSegmentCount,
             )
 
-        private fun transcribeVerbose(
+        private suspend fun transcribeVerbose(
             audioFile: File,
             endpoint: OpenAiEndpoint,
+            debugEnabled: Boolean,
         ): List<VerboseSegment> {
             val mediaType =
                 when (audioFile.extension.lowercase()) {
@@ -128,17 +130,54 @@ class OpenAiDiarizationService
                     .post(requestBody)
                     .build()
 
-            return okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    val err =
-                        response.body
-                            ?.string()
-                            .orEmpty()
-                            .take(300)
-                    throw IOException("Whisper verbose_json failed: ${response.code} $err")
+            // Recorded here (not just in the outer diarize() runCatching) because a failure at this
+            // step never reaches DiarizationDebugStore.write() below — that only fires after this
+            // call already succeeded, so without this, the single most common failure point would
+            // be invisible in the per-session debug card with nothing indicating why. `recorded`
+            // guards against double-recording: it's set the moment any branch below writes an
+            // entry, so the outer catch (network failure, timeout — anything before/after a
+            // response) only records if nothing more specific already did.
+            var recorded = false
+            suspend fun recordOnce(
+                success: Boolean,
+                httpStatus: Int?,
+                snippet: String,
+            ) {
+                if (!debugEnabled || recorded) return
+                recorded = true
+                aiCallDebugStore.record(
+                    AiCallDebugEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        op = "diarize-audio",
+                        endpoint = "/v1/audio/transcriptions",
+                        model = "whisper-1",
+                        requestSummary = "verbose_json, file=${audioFile.name}",
+                        success = success,
+                        httpStatus = httpStatus,
+                        responseSnippet = snippet,
+                    ),
+                )
+            }
+
+            return runCatching {
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        val err =
+                            response.body
+                                ?.string()
+                                .orEmpty()
+                                .take(300)
+                        recordOnce(success = false, httpStatus = response.code, snippet = err)
+                        throw IOException("Whisper verbose_json failed: ${response.code} $err")
+                    }
+                    val body = response.body?.string() ?: throw IOException("Empty response")
+                    val segments = json.decodeFromString<VerboseTranscriptionResponse>(body).segments ?: emptyList()
+                    recordOnce(success = true, httpStatus = response.code, snippet = "${segments.size} segments")
+                    segments
                 }
-                val body = response.body?.string() ?: throw IOException("Empty response")
-                json.decodeFromString<VerboseTranscriptionResponse>(body).segments ?: emptyList()
+            }.getOrElse { error ->
+                recordOnce(success = false, httpStatus = null, snippet = "${error.javaClass.simpleName}: ${error.message}")
+                throw error
             }
         }
 
@@ -176,9 +215,10 @@ class OpenAiDiarizationService
             $segmentsJson
             """.trimIndent()
 
-        private fun callDiarizationLlm(
+        private suspend fun callDiarizationLlm(
             prompt: String,
             endpoint: OpenAiEndpoint,
+            debugEnabled: Boolean,
         ): String? {
             val requestPayload =
                 OpenAiResponseRequest(
@@ -207,20 +247,65 @@ class OpenAiDiarizationService
                             .encodeToString(OpenAiResponseRequest.serializer(), requestPayload)
                             .toRequestBody(JSON_MEDIA_TYPE),
                     ).build()
-            return okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                val body = response.body?.string() ?: return@use null
-                val parsed =
-                    runCatching { json.decodeFromString<OpenAiResponseResponse>(body) }.getOrNull()
-                        ?: return@use null
-                parsed.outputText
-                    ?: parsed.output
-                        .orEmpty()
-                        .flatMap { it.content.orEmpty() }
-                        .filter { it.type == "output_text" }
-                        .joinToString("") { it.text.orEmpty() }
-            }
+            // callDiarizationLlm() deliberately never throws (a null result just falls back to
+            // "SPEAKER_1" for everyone in parseAssignments()) — record() calls below are the only
+            // way any failure here becomes visible without adb.
+            val (outputText, debugEntry) =
+                runCatching {
+                    okHttpClient.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            val err = response.body?.string().orEmpty().take(300)
+                            return@use null to
+                                AiCallDebugEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    op = "diarize-assign",
+                                    endpoint = "/v1/responses",
+                                    model = MODEL,
+                                    requestSummary = "prompt ${prompt.length} chars",
+                                    success = false,
+                                    httpStatus = response.code,
+                                    responseSnippet = err,
+                                )
+                        }
+                        val body = response.body?.string()
+                        val parsed = body?.let { runCatching { json.decodeFromString<OpenAiResponseResponse>(it) }.getOrNull() }
+                        val text =
+                            parsed?.outputText
+                                ?: parsed
+                                    ?.output
+                                    .orEmpty()
+                                    .flatMap { it.content.orEmpty() }
+                                    .filter { it.type == "output_text" }
+                                    .joinToString("") { it.text.orEmpty() }
+                                    .takeIf { parsed != null }
+                        text to
+                            AiCallDebugEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                op = "diarize-assign",
+                                endpoint = "/v1/responses",
+                                model = MODEL,
+                                requestSummary = "prompt ${prompt.length} chars",
+                                success = text != null,
+                                httpStatus = response.code,
+                                responseSnippet = text?.take(200) ?: "empty or unparseable response",
+                            )
+                    }
+                }.getOrElse { error ->
+                    null to
+                        AiCallDebugEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            op = "diarize-assign",
+                            endpoint = "/v1/responses",
+                            model = MODEL,
+                            requestSummary = "prompt ${prompt.length} chars",
+                            success = false,
+                            responseSnippet = "${error.javaClass.simpleName}: ${error.message}",
+                        )
+                }
+            if (debugEnabled) aiCallDebugStore.record(debugEntry)
+            return outputText
         }
+
 
         private fun parseAssignments(
             outputText: String?,
@@ -242,14 +327,14 @@ class OpenAiDiarizationService
             }.getOrElse { List(size) { "SPEAKER_1" } }
         }
 
-        private fun assignSpeakers(
+        private suspend fun assignSpeakers(
             segments: List<VerboseSegment>,
             endpoint: OpenAiEndpoint,
             debugEnabled: Boolean,
         ): DiarizationLlmRun {
             val prompt = buildDiarizationPrompt(buildSegmentsJson(segments))
             if (debugEnabled) Log.d(TAG, "LLM prompt (${prompt.length} chars): ${prompt.take(500)}")
-            val outputText = callDiarizationLlm(prompt, endpoint)
+            val outputText = callDiarizationLlm(prompt, endpoint, debugEnabled)
             if (debugEnabled) Log.d(TAG, "LLM response: ${outputText?.take(500) ?: "<null>"}")
             val assignments = parseAssignments(outputText, segments.size)
             Log.d(TAG, "assignments: ${assignments.groupingBy { it }.eachCount()}")
