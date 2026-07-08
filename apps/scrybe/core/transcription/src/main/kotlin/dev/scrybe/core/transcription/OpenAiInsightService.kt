@@ -1,7 +1,9 @@
 package dev.scrybe.core.transcription
 
+import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -21,6 +23,8 @@ class OpenAiInsightService
         private val okHttpClient: OkHttpClient,
         private val json: Json,
         private val endpointResolver: OpenAiEndpointResolver,
+        private val aiCallDebugStore: AiCallDebugStore,
+        private val preferencesDataStore: AppPreferencesDataStore,
     ) : InsightService {
         override suspend fun analyzeSentiment(
             transcriptText: String,
@@ -30,6 +34,7 @@ class OpenAiInsightService
             runCatching {
                 withContext(Dispatchers.IO) {
                     val endpoint = endpointResolver.resolve()
+                    val debugEnabled = preferencesDataStore.debugDiarization.first()
                     val prompt =
                         """
                         Analyze the sentiment of this transcript over time. Duration: ${durationMs}ms.
@@ -37,7 +42,7 @@ class OpenAiInsightService
                         Use POSITIVE, NEGATIVE, or NEUTRAL. Cover the entire duration without gaps.
                         Transcript: ${transcriptText.take(800)}
                         """.trimIndent()
-                    val raw = callOpenAi(endpoint, prompt)
+                    val raw = callOpenAi(endpoint, prompt, "insight-sentiment", debugEnabled)
                     unwrapJson(raw).ifBlank { """[{"startMs":0,"endMs":$durationMs,"sentiment":"NEUTRAL"}]""" }
                 }
             }
@@ -50,6 +55,7 @@ class OpenAiInsightService
             runCatching {
                 withContext(Dispatchers.IO) {
                     val endpoint = endpointResolver.resolve()
+                    val debugEnabled = preferencesDataStore.debugDiarization.first()
                     val prompt =
                         """
                         Extract key topics from this transcript. Estimate when each topic is discussed within ${durationMs}ms.
@@ -57,14 +63,16 @@ class OpenAiInsightService
                         Keep labels short (2-4 words). Return 5-15 topics.
                         Transcript: ${transcriptText.take(1200)}
                         """.trimIndent()
-                    val raw = callOpenAi(endpoint, prompt)
+                    val raw = callOpenAi(endpoint, prompt, "insight-topics", debugEnabled)
                     unwrapJson(raw).ifBlank { "[]" }
                 }
             }
 
-        private fun callOpenAi(
+        private suspend fun callOpenAi(
             endpoint: OpenAiEndpoint,
             userPrompt: String,
+            op: String,
+            debugEnabled: Boolean,
         ): String {
             val requestBody =
                 InsightRequest(
@@ -92,24 +100,56 @@ class OpenAiInsightService
                             .encodeToString(InsightRequest.serializer(), requestBody)
                             .toRequestBody(JSON_MEDIA_TYPE),
                     ).build()
-            okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    val err =
-                        response.body
-                            ?.string()
-                            .orEmpty()
-                            .take(400)
-                    throw IOException("OpenAI insight error: ${response.code} - $err")
+            var recorded = false
+
+            suspend fun recordOnce(
+                success: Boolean,
+                httpStatus: Int?,
+                snippet: String,
+            ) {
+                if (!debugEnabled || recorded) return
+                recorded = true
+                aiCallDebugStore.record(
+                    AiCallDebugEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        op = op,
+                        endpoint = "/v1/responses",
+                        model = MODEL_NAME,
+                        requestSummary = "prompt ${userPrompt.length} chars",
+                        success = success,
+                        httpStatus = httpStatus,
+                        responseSnippet = snippet,
+                    ),
+                )
+            }
+
+            return runCatching {
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        val err =
+                            response.body
+                                ?.string()
+                                .orEmpty()
+                                .take(400)
+                        recordOnce(success = false, httpStatus = response.code, snippet = err)
+                        throw IOException("OpenAI insight error: ${response.code} - $err")
+                    }
+                    val body = response.body?.string() ?: throw IOException("Empty response")
+                    val parsed = json.decodeFromString(InsightResponse.serializer(), body)
+                    val text =
+                        parsed.outputText
+                            ?: parsed.output
+                                .orEmpty()
+                                .flatMap { it.content.orEmpty() }
+                                .filter { it.type == "output_text" }
+                                .joinToString("\n") { it.text.orEmpty() }
+                                .trim()
+                    recordOnce(success = true, httpStatus = response.code, snippet = "${text.length} chars")
+                    text
                 }
-                val body = response.body?.string() ?: throw IOException("Empty response")
-                val parsed = json.decodeFromString(InsightResponse.serializer(), body)
-                return parsed.outputText
-                    ?: parsed.output
-                        .orEmpty()
-                        .flatMap { it.content.orEmpty() }
-                        .filter { it.type == "output_text" }
-                        .joinToString("\n") { it.text.orEmpty() }
-                        .trim()
+            }.getOrElse { error ->
+                recordOnce(success = false, httpStatus = null, snippet = "${error.javaClass.simpleName}: ${error.message}")
+                throw error
             }
         }
 

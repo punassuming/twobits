@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FolderOpen
@@ -81,6 +82,7 @@ private fun LocalModelState.toStatus(): LocalModelStatus =
 @Composable
 fun AIConfigScreen(
     onBack: () -> Unit,
+    onNavigateToAiCallLog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -293,11 +295,19 @@ fun AIConfigScreen(
                     )
                     HorizontalDivider()
                     AiToggleRow(
-                        title = "Diarization debug",
-                        subtitle = "Show raw speaker segments and model output on session screens",
+                        title = "AI call debug",
+                        subtitle = "Log every AI request/response (transcription, diarization, insights) for on-device troubleshooting",
                         checked = uiState.debugDiarization,
                         onCheckedChange = viewModel::setDebugDiarization,
                     )
+                    if (uiState.debugDiarization) {
+                        HorizontalDivider()
+                        AiNavigationRow(
+                            title = "View AI call log",
+                            subtitle = "Recent requests and responses across every AI feature",
+                            onClick = onNavigateToAiCallLog,
+                        )
+                    }
                 }
             }
         }
@@ -390,6 +400,33 @@ private fun AiToggleRow(
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun AiNavigationRow(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

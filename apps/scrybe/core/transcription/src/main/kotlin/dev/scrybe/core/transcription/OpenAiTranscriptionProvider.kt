@@ -1,9 +1,11 @@
 package dev.scrybe.core.transcription
 
 import android.util.Log
+import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -23,6 +25,8 @@ class OpenAiTranscriptionProvider
         private val json: Json,
         private val endpointResolver: OpenAiEndpointResolver,
         private val audioChunker: OpenAiAudioChunker,
+        private val aiCallDebugStore: AiCallDebugStore,
+        private val preferencesDataStore: AppPreferencesDataStore,
     ) : TranscriptionProvider {
         override val providerType: ProviderType = ProviderType.OPENAI
 
@@ -32,13 +36,21 @@ class OpenAiTranscriptionProvider
         ): Result<TranscriptResult> =
             runCatching {
                 withContext(Dispatchers.IO) {
+                    val debugEnabled = preferencesDataStore.debugDiarization.first()
                     val endpoint = endpointResolver.resolve()
 
                     val audioChunks = audioChunker.createChunksIfNeeded(audioFile)
                     try {
                         val parts = mutableListOf<String>()
                         for (chunk in audioChunks) {
-                            parts.add(transcribeChunk(audioFile = chunk, endpoint = endpoint, options = options))
+                            parts.add(
+                                transcribeChunk(
+                                    audioFile = chunk,
+                                    endpoint = endpoint,
+                                    options = options,
+                                    debugEnabled = debugEnabled,
+                                ),
+                            )
                         }
                         val transcriptText = parts.joinToString(separator = "\n\n")
 
@@ -57,11 +69,12 @@ class OpenAiTranscriptionProvider
             audioFile: File,
             endpoint: OpenAiEndpoint,
             options: TranscriptionOptions,
+            debugEnabled: Boolean,
         ): String {
             var lastError: Exception = IllegalStateException("No attempts made")
             for (attempt in 0 until MAX_CHUNK_ATTEMPTS) {
                 try {
-                    return doTranscribeChunk(audioFile, endpoint, options)
+                    return doTranscribeChunk(audioFile, endpoint, options, debugEnabled)
                 } catch (e: ChunkApiException) {
                     lastError = e
                     if (!e.isRetriable || attempt == MAX_CHUNK_ATTEMPTS - 1) throw e
@@ -76,10 +89,11 @@ class OpenAiTranscriptionProvider
             throw lastError
         }
 
-        private fun doTranscribeChunk(
+        private suspend fun doTranscribeChunk(
             audioFile: File,
             endpoint: OpenAiEndpoint,
             options: TranscriptionOptions,
+            debugEnabled: Boolean,
         ): String {
             val mediaType = audioFile.toMediaType()
             val requestBody =
@@ -108,24 +122,55 @@ class OpenAiTranscriptionProvider
                     .post(requestBody)
                     .build()
 
-            return okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    val errorBody =
-                        response.body
-                            ?.string()
-                            .orEmpty()
-                            .replace("\n", " ")
-                            .take(500)
-                    Log.e(TAG, "OpenAI transcription failed: ${response.code} ${response.message} $errorBody")
-                    throw ChunkApiException(
-                        code = response.code,
-                        message =
-                            "OpenAI API error: ${response.code} ${response.message}" +
-                                if (errorBody.isNotBlank()) " - $errorBody" else "",
-                    )
+            var recorded = false
+
+            suspend fun recordOnce(
+                success: Boolean,
+                httpStatus: Int?,
+                snippet: String,
+            ) {
+                if (!debugEnabled || recorded) return
+                recorded = true
+                aiCallDebugStore.record(
+                    AiCallDebugEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        op = "transcribe",
+                        endpoint = "/v1/audio/transcriptions",
+                        model = options.model,
+                        requestSummary = "file=${audioFile.name}, format=${options.responseFormat}",
+                        success = success,
+                        httpStatus = httpStatus,
+                        responseSnippet = snippet,
+                    ),
+                )
+            }
+
+            return runCatching {
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        val errorBody =
+                            response.body
+                                ?.string()
+                                .orEmpty()
+                                .replace("\n", " ")
+                                .take(500)
+                        Log.e(TAG, "OpenAI transcription failed: ${response.code} ${response.message} $errorBody")
+                        recordOnce(success = false, httpStatus = response.code, snippet = errorBody)
+                        throw ChunkApiException(
+                            code = response.code,
+                            message =
+                                "OpenAI API error: ${response.code} ${response.message}" +
+                                    if (errorBody.isNotBlank()) " - $errorBody" else "",
+                        )
+                    }
+                    val body = response.body?.string() ?: throw IllegalStateException("Empty response body")
+                    val text = json.decodeFromString<OpenAiTranscriptionResponse>(body).text
+                    recordOnce(success = true, httpStatus = response.code, snippet = "${text.length} chars")
+                    text
                 }
-                val body = response.body?.string() ?: throw IllegalStateException("Empty response body")
-                json.decodeFromString<OpenAiTranscriptionResponse>(body).text
+            }.getOrElse { error ->
+                recordOnce(success = false, httpStatus = null, snippet = "${error.javaClass.simpleName}: ${error.message}")
+                throw error
             }
         }
 
