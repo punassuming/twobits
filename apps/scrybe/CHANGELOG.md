@@ -9,6 +9,7 @@
 ### Improvements
 
 * internal: diarization's Whisper verbose-transcription call is now recorded to the AI call log on both success and failure — previously a failure there was invisible everywhere except Logcat, since the per-session diarization debug card only ever gets written after that call already succeeded
+* internal: a transport failure (timeout, no connectivity, TLS error) in the speaker-assignment call now correctly fails the whole diarization run again, instead of being caught for debug-log recording and silently defaulting every segment to a single speaker
 
 ### Fixes
 

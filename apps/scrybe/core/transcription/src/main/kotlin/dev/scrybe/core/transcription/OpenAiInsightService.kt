@@ -101,6 +101,7 @@ class OpenAiInsightService
                             .toRequestBody(JSON_MEDIA_TYPE),
                     ).build()
             var recorded = false
+
             suspend fun recordOnce(
                 success: Boolean,
                 httpStatus: Int?,

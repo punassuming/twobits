@@ -123,6 +123,7 @@ class OpenAiTranscriptionProvider
                     .build()
 
             var recorded = false
+
             suspend fun recordOnce(
                 success: Boolean,
                 httpStatus: Int?,

@@ -17,8 +17,8 @@ import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
-import dev.scrybe.feature.settings.AiCallDebugScreen
 import dev.scrybe.feature.settings.AIConfigScreen
+import dev.scrybe.feature.settings.AiCallDebugScreen
 import dev.scrybe.feature.settings.PeopleScreen
 import dev.scrybe.feature.settings.ProScreen
 import dev.scrybe.feature.settings.SettingsScreen

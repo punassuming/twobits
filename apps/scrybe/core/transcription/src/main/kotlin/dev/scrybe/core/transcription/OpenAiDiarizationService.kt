@@ -138,6 +138,7 @@ class OpenAiDiarizationService
             // entry, so the outer catch (network failure, timeout — anything before/after a
             // response) only records if nothing more specific already did.
             var recorded = false
+
             suspend fun recordOnce(
                 success: Boolean,
                 httpStatus: Int?,
@@ -247,65 +248,63 @@ class OpenAiDiarizationService
                             .encodeToString(OpenAiResponseRequest.serializer(), requestPayload)
                             .toRequestBody(JSON_MEDIA_TYPE),
                     ).build()
-            // callDiarizationLlm() deliberately never throws (a null result just falls back to
-            // "SPEAKER_1" for everyone in parseAssignments()) — record() calls below are the only
-            // way any failure here becomes visible without adb.
-            val (outputText, debugEntry) =
-                runCatching {
-                    okHttpClient.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) {
-                            val err = response.body?.string().orEmpty().take(300)
-                            return@use null to
-                                AiCallDebugEntry(
-                                    timestampMs = System.currentTimeMillis(),
-                                    op = "diarize-assign",
-                                    endpoint = "/v1/responses",
-                                    model = MODEL,
-                                    requestSummary = "prompt ${prompt.length} chars",
-                                    success = false,
-                                    httpStatus = response.code,
-                                    responseSnippet = err,
-                                )
-                        }
-                        val body = response.body?.string()
-                        val parsed = body?.let { runCatching { json.decodeFromString<OpenAiResponseResponse>(it) }.getOrNull() }
-                        val text =
-                            parsed?.outputText
-                                ?: parsed
-                                    ?.output
-                                    .orEmpty()
-                                    .flatMap { it.content.orEmpty() }
-                                    .filter { it.type == "output_text" }
-                                    .joinToString("") { it.text.orEmpty() }
-                                    .takeIf { parsed != null }
-                        text to
-                            AiCallDebugEntry(
-                                timestampMs = System.currentTimeMillis(),
-                                op = "diarize-assign",
-                                endpoint = "/v1/responses",
-                                model = MODEL,
-                                requestSummary = "prompt ${prompt.length} chars",
-                                success = text != null,
-                                httpStatus = response.code,
-                                responseSnippet = text?.take(200) ?: "empty or unparseable response",
-                            )
-                    }
-                }.getOrElse { error ->
-                    null to
-                        AiCallDebugEntry(
-                            timestampMs = System.currentTimeMillis(),
-                            op = "diarize-assign",
-                            endpoint = "/v1/responses",
-                            model = MODEL,
-                            requestSummary = "prompt ${prompt.length} chars",
-                            success = false,
-                            responseSnippet = "${error.javaClass.simpleName}: ${error.message}",
-                        )
-                }
-            if (debugEnabled) aiCallDebugStore.record(debugEntry)
-            return outputText
-        }
 
+            // A non-2xx response or an unparseable body are treated as a soft "no assignment"
+            // outcome (null -> parseAssignments() defaults everyone to SPEAKER_1) — this always
+            // has been callDiarizationLlm()'s contract. A genuine transport failure (timeout, no
+            // connectivity, TLS, etc.) is NOT part of that contract: it must still fail the whole
+            // diarize() run via the outer runCatching, exactly as it did before this file gained
+            // debug recording, rather than being silently folded into the same "everyone is
+            // SPEAKER_1" fallback. So only the response-level record() calls below return null;
+            // the transport-failure catch records for visibility and rethrows.
+            suspend fun record(
+                success: Boolean,
+                httpStatus: Int?,
+                snippet: String,
+            ) {
+                if (!debugEnabled) return
+                aiCallDebugStore.record(
+                    AiCallDebugEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        op = "diarize-assign",
+                        endpoint = "/v1/responses",
+                        model = MODEL,
+                        requestSummary = "prompt ${prompt.length} chars",
+                        success = success,
+                        httpStatus = httpStatus,
+                        responseSnippet = snippet,
+                    ),
+                )
+            }
+
+            val response =
+                try {
+                    okHttpClient.newCall(request).execute()
+                } catch (e: IOException) {
+                    record(success = false, httpStatus = null, snippet = "${e.javaClass.simpleName}: ${e.message}")
+                    throw e
+                }
+            return response.use {
+                if (!response.isSuccessful) {
+                    val err = response.body?.string().orEmpty().take(300)
+                    record(success = false, httpStatus = response.code, snippet = err)
+                    return@use null
+                }
+                val body = response.body?.string()
+                val parsed = body?.let { runCatching { json.decodeFromString<OpenAiResponseResponse>(it) }.getOrNull() }
+                val text =
+                    parsed?.outputText
+                        ?: parsed
+                            ?.output
+                            .orEmpty()
+                            .flatMap { it.content.orEmpty() }
+                            .filter { it.type == "output_text" }
+                            .joinToString("") { it.text.orEmpty() }
+                            .takeIf { parsed != null }
+                record(success = text != null, httpStatus = response.code, snippet = text?.take(200) ?: "empty or unparseable response")
+                text
+            }
+        }
 
         private fun parseAssignments(
             outputText: String?,
