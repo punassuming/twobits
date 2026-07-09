@@ -8,12 +8,29 @@
 
 ### Fixes
 
-**Speaker identification, insights, and other AI features silently going nowhere** — the "AI features" source no longer inherits the legacy single-provider setting from before transcription and AI features were split. For installs that once used local transcription, that inheritance silently routed diarization, insights, auto-rename, tag suggestions, and clustering to on-device models (typically not installed — so they produced nothing, with no error) even though transcription itself correctly used OpenAI. AI features now go local only when explicitly set to Local.
-**AI configuration screen showed the wrong source** — the Local/BYOK/Pro selectors for Transcription and Transforms captured their state once before settings finished loading and never re-synced, so the screen could show "BYOK" while the stored setting was actually Local — hiding exactly the misroute above. The selectors now always reflect the stored setting.
-**"No distinct speakers were detected" masking a real error** — when AI features are set to Local and the on-device model isn't installed, speaker identification now reports that clearly instead of pretending the recording had no distinct speakers. The AI call log also now records when a diarization or insight run was routed to the on-device model, so "no OpenAI calls at all" is distinguishable from "never ran".
-**Speaker assignment and insights returning empty results** — the model behind speaker assignment and insights spends part of its output-token budget on internal reasoning, and the cost caps added in v1.26.0 were routinely consumed entirely by that reasoning: the API then returns an "incomplete" response with no text at all, which speaker identification silently turned into "everything is one speaker" and insights turned into "no sentiment/topics". Both calls now request terse reasoning and budget output tokens by the size of the job (speaker assignment scales with segment count), and an empty/incomplete assignment response now fails loudly instead of quietly producing a single-speaker result.
-**Word timestamps never reaching diarization** — the transcription API returns word-level timestamps as a separate top-level list, not attached to each segment as the code assumed, so the speaker-assignment prompt's per-word timing data was always empty ("word timestamps: no" in the debug card). Words are now matched to their segments, giving the assignment model the fine-grained timing signal it was designed to use.
-**"API calls per session" card undercounted** — it only mentioned transcription and transforms; it now also shows the 2 speaker-identification calls (timestamped re-transcription + assignment) and 2 insight calls (sentiment + topics) when those features are enabled, so the per-recording call estimate matches what actually happens.
+**AI features source** — no longer inherits the old pre-split provider setting:
+* installs that once used local transcription had speaker ID, insights, auto-rename, tags, and clustering silently running on-device
+* with no on-device model installed, those features produced nothing — with no error shown
+* AI features now go local only when explicitly set to Local
+
+**AI source selectors** — now always show the stored setting:
+* previously captured once before settings loaded and never re-synced
+* the screen could show BYOK while the stored source was actually Local
+
+**Speaker identification** — failed runs now report real errors:
+* a missing on-device model no longer reads as "No distinct speakers were detected"
+* an empty assignment response fails visibly instead of labeling everything one speaker
+* the AI call log records when a run was routed on-device
+
+**Speaker ID & insights** — restored results that token limits silently emptied:
+* the assignment and insight models spend output tokens on internal reasoning
+* the cost caps added in v1.26.0 were often exhausted before any answer was written
+* both calls now use terse reasoning, with budgets sized to the job
+* word timestamps now reach the assignment prompt — they were parsed from the wrong field
+
+**API call estimate** — the per-session card now counts everything:
+* adds the 2 speaker-identification and 2 insight calls when those features are enabled
+* previously only transcription and transforms were shown
 
 ## 1.32.0 (2026-07-08)
 
