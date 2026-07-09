@@ -84,9 +84,15 @@ class AppPreferencesDataStore
                 prefs[Keys.TRANSCRIPTION_PROVIDER] ?: prefs[Keys.DEFAULT_PROVIDER] ?: "OPENAI"
             }
 
+        // Deliberately does NOT fall back to the legacy DEFAULT_PROVIDER key: that pref predates
+        // the transcription/AI-features split and only ever described transcription. Inheriting
+        // it here silently routed diarization and insights to the on-device implementations for
+        // anyone whose pre-split install had default_provider=LOCAL — with no UI showing it and
+        // the local services returning empty results when no on-device model is installed.
+        // AI features go local only when the user explicitly picks Local for them.
         val aiFeaturesProvider: Flow<String> =
             context.dataStore.data.map { prefs ->
-                prefs[Keys.AI_FEATURES_PROVIDER] ?: prefs[Keys.DEFAULT_PROVIDER] ?: "OPENAI"
+                prefs[Keys.AI_FEATURES_PROVIDER] ?: "OPENAI"
             }
 
         val autoTranscribe: Flow<Boolean> =

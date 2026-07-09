@@ -23,10 +23,18 @@ class LocalDiarizationService
             runCatching {
                 if (transcriptText.isBlank()) return@runCatching emptyList()
 
+                // A failed local LLM call (most commonly: no on-device model installed) must
+                // surface as an error, not collapse into an empty list — an empty result reads
+                // as "no distinct speakers were detected" in the UI, hiding the real problem.
                 val speakerTurns =
                     localLlmService
                         .identifySpeakerTurns(transcriptText)
-                        .getOrElse { return@runCatching emptyList() }
+                        .getOrElse { cause ->
+                            error(
+                                "On-device speaker identification failed (${cause.message ?: cause.javaClass.simpleName}). " +
+                                    "Download the local model in AI configuration, or switch AI features off Local.",
+                            )
+                        }
 
                 if (speakerTurns.size <= 1) return@runCatching emptyList()
 

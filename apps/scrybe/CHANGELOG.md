@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**Speaker identification, insights, and other AI features silently going nowhere** — the "AI features" source no longer inherits the legacy single-provider setting from before transcription and AI features were split. For installs that once used local transcription, that inheritance silently routed diarization, insights, auto-rename, tag suggestions, and clustering to on-device models (typically not installed — so they produced nothing, with no error) even though transcription itself correctly used OpenAI. AI features now go local only when explicitly set to Local.
+**AI configuration screen showed the wrong source** — the Local/BYOK/Pro selectors for Transcription and Transforms captured their state once before settings finished loading and never re-synced, so the screen could show "BYOK" while the stored setting was actually Local — hiding exactly the misroute above. The selectors now always reflect the stored setting.
+**"No distinct speakers were detected" masking a real error** — when AI features are set to Local and the on-device model isn't installed, speaker identification now reports that clearly instead of pretending the recording had no distinct speakers. The AI call log also now records when a diarization or insight run was routed to the on-device model, so "no OpenAI calls at all" is distinguishable from "never ran".
+
 ## 1.32.0 (2026-07-08)
 
 ### Features

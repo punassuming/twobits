@@ -2,6 +2,8 @@ package dev.scrybe.core.localai
 
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
+import dev.scrybe.core.transcription.AiCallDebugEntry
+import dev.scrybe.core.transcription.AiCallDebugStore
 import dev.scrybe.core.transcription.InsightService
 import dev.scrybe.core.transcription.OpenAiInsightService
 import kotlinx.coroutines.flow.first
@@ -15,13 +17,14 @@ class InsightServiceFacade
         private val openAiService: OpenAiInsightService,
         private val localService: LocalInsightService,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val aiCallDebugStore: AiCallDebugStore,
     ) : InsightService {
         override suspend fun analyzeSentiment(
             transcriptText: String,
             durationMs: Long,
             providerType: ProviderType,
         ): Result<String> =
-            if (preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name) {
+            if (routedLocal("insight-sentiment")) {
                 localService.analyzeSentiment(transcriptText, durationMs, providerType)
             } else {
                 openAiService.analyzeSentiment(transcriptText, durationMs, providerType)
@@ -32,9 +35,29 @@ class InsightServiceFacade
             durationMs: Long,
             providerType: ProviderType,
         ): Result<String> =
-            if (preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name) {
+            if (routedLocal("insight-topics")) {
                 localService.extractTopics(transcriptText, durationMs, providerType)
             } else {
                 openAiService.extractTopics(transcriptText, durationMs, providerType)
             }
+
+        // Records the routing decision itself when debug is on: an on-device run makes no network
+        // calls, so without this the AI call log shows nothing for the whole insight pass —
+        // indistinguishable from insights never running.
+        private suspend fun routedLocal(op: String): Boolean {
+            val local = preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name
+            if (local && preferencesDataStore.debugDiarization.first()) {
+                aiCallDebugStore.record(
+                    AiCallDebugEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        op = op,
+                        endpoint = "on-device",
+                        model = "local",
+                        requestSummary = "AI features source is Local — routed to on-device model, not OpenAI",
+                        success = true,
+                    ),
+                )
+            }
+            return local
+        }
     }

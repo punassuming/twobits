@@ -44,7 +44,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,28 +103,26 @@ fun AIConfigScreen(
     val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
     var showTransformModelPicker by remember { mutableStateOf(false) }
 
-    var transcriptionMode by rememberSaveable {
-        mutableStateOf(
-            executionModeFromSegment(
-                when {
-                    uiState.transcriptionProvider == "LOCAL" -> "local"
-                    hasPro -> "pro"
-                    else -> "byok"
-                },
-            ),
+    // Derived from uiState on every recomposition rather than captured once in rememberSaveable:
+    // the old snapshot was taken before DataStore emitted the real values and never re-synced, so
+    // the control could permanently display BYOK while the stored preference was actually LOCAL —
+    // hiding exactly the misconfiguration that silently routes diarization/insights on-device.
+    val transcriptionMode =
+        executionModeFromSegment(
+            when {
+                uiState.transcriptionProvider == "LOCAL" -> "local"
+                hasPro -> "pro"
+                else -> "byok"
+            },
         )
-    }
-    var featuresMode by rememberSaveable {
-        mutableStateOf(
-            executionModeFromSegment(
-                when {
-                    uiState.aiFeaturesProvider == "LOCAL" -> "local"
-                    hasPro -> "pro"
-                    else -> "byok"
-                },
-            ),
+    val featuresMode =
+        executionModeFromSegment(
+            when {
+                uiState.aiFeaturesProvider == "LOCAL" -> "local"
+                hasPro -> "pro"
+                else -> "byok"
+            },
         )
-    }
 
     Scaffold(
         topBar = {
@@ -185,7 +182,6 @@ fun AIConfigScreen(
                         hasPro = hasPro,
                         onChange = { seg ->
                             val mode = executionModeFromSegment(seg)
-                            transcriptionMode = mode
                             viewModel.setTranscriptionProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
                         },
                     )
@@ -238,7 +234,6 @@ fun AIConfigScreen(
                         hasPro = hasPro,
                         onChange = { seg ->
                             val mode = executionModeFromSegment(seg)
-                            featuresMode = mode
                             viewModel.setAiFeaturesProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
                         },
                     )
