@@ -81,4 +81,18 @@ interface RecordingSessionDao {
         topicsJson: String?,
         updatedAt: Long,
     )
+
+    /**
+     * Reassigns every recording of a (deleted) custom type back to the Journal mode so no
+     * session is left pointing at a type that no longer exists.
+     */
+    @Query(
+        "UPDATE recording_sessions SET mode = :journalMode, customTypeId = NULL, updatedAt = :updatedAt " +
+            "WHERE customTypeId = :customTypeId",
+    )
+    suspend fun reassignCustomTypeToJournal(
+        customTypeId: String,
+        journalMode: String,
+        updatedAt: Long,
+    )
 }

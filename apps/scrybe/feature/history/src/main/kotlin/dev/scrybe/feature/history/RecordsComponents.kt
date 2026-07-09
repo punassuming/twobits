@@ -117,6 +117,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import dev.scrybe.core.common.customTypeIcon
+import dev.scrybe.core.common.shapeWaveformBars
 import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
@@ -162,6 +164,7 @@ private fun historyModeIcon(mode: RecordingMode): ImageVector =
 private fun HistoryModeBadge(
     mode: RecordingMode,
     customTypeName: String? = null,
+    customTypeIconName: String? = null,
 ) {
     val accentColor = modeAccentColor(mode, MaterialTheme.colorScheme)
     Surface(
@@ -173,7 +176,12 @@ private fun HistoryModeBadge(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(historyModeIcon(mode), contentDescription = null, modifier = Modifier.size(11.dp), tint = accentColor)
+            Icon(
+                if (mode == RecordingMode.CUSTOM) customTypeIcon(customTypeIconName) else historyModeIcon(mode),
+                contentDescription = null,
+                modifier = Modifier.size(11.dp),
+                tint = accentColor,
+            )
             Text(customTypeName ?: mode.label, style = MaterialTheme.typography.labelSmall, color = accentColor)
         }
     }
@@ -185,26 +193,25 @@ private fun HistoryMiniWaveform(
     accentColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val barCount = 22
-    val normalized =
-        if (samples.isEmpty()) {
-            List(barCount) { 0.3f }
-        } else {
-            val step = samples.size.toFloat() / barCount
-            List(barCount) { i -> samples[(i * step).toInt().coerceAtMost(samples.size - 1)] }
-        }
+    val barCount = 36
+    // Shared shaping (peak-normalized + sqrt) keeps quiet recordings readable and matches the
+    // capture list's waveform language; naive point-sampling used to miss transients entirely.
+    val bars = if (samples.isEmpty()) List(barCount) { 0.3f } else shapeWaveformBars(samples, barCount)
     Row(
         modifier = modifier.height(28.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        normalized.forEach { amp ->
+        bars.forEach { amp ->
             Box(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .fillMaxHeight(amp.coerceIn(0.1f, 1f))
-                        .background(accentColor.copy(alpha = 0.55f), RoundedCornerShape(1.dp)),
+                        .fillMaxHeight(amp.coerceIn(0.08f, 1f))
+                        .background(
+                            accentColor.copy(alpha = 0.32f + amp * 0.42f),
+                            RoundedCornerShape(percent = 50),
+                        ),
             )
         }
     }
@@ -264,7 +271,11 @@ private fun RecordRowContent(
         Column(modifier = Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(item.session.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                HistoryModeBadge(mode = item.session.mode, customTypeName = item.customTypeName)
+                HistoryModeBadge(
+                    mode = item.session.mode,
+                    customTypeName = item.customTypeName,
+                    customTypeIconName = item.customTypeIconName,
+                )
                 item.session.locationLabel?.let { loc ->
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.LocationOn, contentDescription = null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

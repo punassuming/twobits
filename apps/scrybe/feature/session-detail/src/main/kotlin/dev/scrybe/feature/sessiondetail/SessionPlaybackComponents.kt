@@ -25,8 +25,10 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -77,6 +79,13 @@ internal fun PlaybackCard(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column {
+            LegendInfoRow(
+                hasTopicMarkers = state.topicMarkers.isNotEmpty(),
+                hasSentimentSegments = state.sentimentSegments.isNotEmpty(),
+                speakerSegments = state.speakerSegments,
+                persons = state.persons,
+                onSpeakerClick = onSpeakerClick,
+            )
             IntentDotStrip(
                 markers = state.topicMarkers,
                 durationMs = state.playbackDurationMs,
@@ -103,10 +112,6 @@ internal fun PlaybackCard(
                 segments = state.sentimentSegments,
                 durationMs = state.playbackDurationMs,
                 modifier = Modifier.fillMaxWidth().height(14.dp),
-            )
-            MarkerLegend(
-                hasTopicMarkers = state.topicMarkers.isNotEmpty(),
-                hasSentimentSegments = state.sentimentSegments.isNotEmpty(),
             )
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -162,18 +167,107 @@ internal fun PlaybackCard(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (onManageSpeakers != null) {
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = onManageSpeakers, modifier = Modifier.size(44.dp)) {
+                    Icon(
+                        Icons.Filled.RecordVoiceOver,
+                        contentDescription =
+                            if (state.speakerSegments.isEmpty()) "Identify speakers" else "Manage speakers",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
-        if (state.speakerSegments.isNotEmpty()) {
-            SpeakerLegend(
-                segments = state.speakerSegments,
-                persons = state.persons,
-                onSpeakerClick = onSpeakerClick,
-                onManageSpeakers = onManageSpeakers,
-            )
-        } else if (onManageSpeakers != null) {
-            TextButton(onClick = onManageSpeakers) {
-                Icon(Icons.Filled.RecordVoiceOver, contentDescription = null, modifier = Modifier.size(16.dp))
-                Text("  Identify Speakers", style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+/**
+ * Compact row above the waveform: an info button that reveals the marker and speaker legends in
+ * a click tooltip, replacing the always-visible legend rows that used to surround the waveform.
+ * Hidden entirely when there is nothing to explain (no markers, no sentiments, no speakers).
+ */
+@Composable
+private fun LegendInfoRow(
+    hasTopicMarkers: Boolean,
+    hasSentimentSegments: Boolean,
+    speakerSegments: List<SpeakerSegment>,
+    persons: List<Person>,
+    onSpeakerClick: (speakerId: String) -> Unit,
+) {
+    if (!hasTopicMarkers && !hasSentimentSegments && speakerSegments.isEmpty()) return
+    var expanded by remember { mutableStateOf(false) }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Box {
+            IconButton(onClick = { expanded = true }, modifier = Modifier.size(28.dp)) {
+                Icon(
+                    Icons.Outlined.Info,
+                    contentDescription = "Show marker and speaker legend",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    if (hasTopicMarkers || hasSentimentSegments) {
+                        Text(
+                            "Markers",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (hasTopicMarkers) {
+                            LegendChip(color = Color(0xFFFF9800), label = "Topics — tap a dot to hear that moment")
+                        }
+                        if (hasSentimentSegments) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                LegendChip(color = Color(0xFF4CAF50), label = "Positive")
+                                LegendChip(color = Color(0xFF9E9E9E), label = "Neutral")
+                                LegendChip(color = Color(0xFFF44336), label = "Negative")
+                            }
+                        }
+                    }
+                    val speakerIds = speakerSegments.map { it.speakerId }.distinct().sorted()
+                    if (speakerIds.isNotEmpty()) {
+                        Text(
+                            "Speakers",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        val personMap = persons.associate { it.id to it.name }
+                        speakerIds.forEachIndexed { idx, speakerId ->
+                            val color = speakerColorForIndex(idx)
+                            val seg = speakerSegments.first { it.speakerId == speakerId }
+                            val personName = seg.personId?.let { personMap[it] }
+                            Row(
+                                modifier =
+                                    Modifier.clickable {
+                                        expanded = false
+                                        onSpeakerClick(speakerId)
+                                    },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Canvas(modifier = Modifier.size(8.dp)) { drawCircle(color = color) }
+                                Text(
+                                    text =
+                                        personName
+                                            ?: speakerId.removePrefix("SPEAKER_").let { "Speaker $it" },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                        Text(
+                            "Tap a speaker to assign a person",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
@@ -323,58 +417,6 @@ private fun WaveformTimeline(
     }
 }
 
-@Composable
-private fun SpeakerLegend(
-    segments: List<SpeakerSegment>,
-    persons: List<Person> = emptyList(),
-    onSpeakerClick: (speakerId: String) -> Unit = {},
-    onManageSpeakers: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-) {
-    val speakerIds = segments.map { it.speakerId }.distinct().sorted()
-    if (speakerIds.isEmpty()) return
-    val personMap = persons.associate { it.id to it.name }
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            speakerIds.forEachIndexed { idx, speakerId ->
-                val color = speakerColorForIndex(idx)
-                val label = speakerId.removePrefix("SPEAKER_").let { "Speaker $it" }
-                val seg = segments.first { it.speakerId == speakerId }
-                val personName = seg.personId?.let { personMap[it] }
-                Row(
-                    modifier = Modifier.clickable { onSpeakerClick(speakerId) },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Canvas(modifier = Modifier.size(8.dp)) { drawCircle(color = color) }
-                    Column {
-                        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (personName != null) {
-                            Text(personName, style = MaterialTheme.typography.labelSmall, color = color)
-                        }
-                    }
-                }
-            }
-        }
-        if (onManageSpeakers != null) {
-            IconButton(onClick = onManageSpeakers, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    Icons.Filled.RecordVoiceOver,
-                    contentDescription = "Manage speakers",
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
 private fun playbackAmplitude(sample: Float): Float {
     val gated = if (sample < 0.02f) 0f else sample
     return (0.012f + (gated * 0.88f)).coerceIn(0.012f, 0.9f)
@@ -518,28 +560,6 @@ internal fun PerSpeakerTimelineSection(
                     modifier = Modifier.weight(1f),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun MarkerLegend(
-    hasTopicMarkers: Boolean,
-    hasSentimentSegments: Boolean,
-) {
-    if (!hasTopicMarkers && !hasSentimentSegments) return
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = 2.dp),
-    ) {
-        if (hasTopicMarkers) {
-            LegendChip(color = Color(0xFFFF9800), label = "Topics")
-        }
-        if (hasSentimentSegments) {
-            LegendChip(color = Color(0xFF4CAF50), label = "Positive")
-            LegendChip(color = Color(0xFF9E9E9E), label = "Neutral")
-            LegendChip(color = Color(0xFFF44336), label = "Negative")
         }
     }
 }

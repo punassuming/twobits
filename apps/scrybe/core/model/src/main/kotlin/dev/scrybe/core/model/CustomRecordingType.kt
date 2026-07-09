@@ -5,4 +5,5 @@ data class CustomRecordingType(
     val name: String,
     val defaultProfileId: String?,
     val createdAt: Long,
+    val iconName: String? = null,
 )

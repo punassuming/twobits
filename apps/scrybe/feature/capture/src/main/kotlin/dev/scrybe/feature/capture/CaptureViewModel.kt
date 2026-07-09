@@ -94,6 +94,7 @@ class CaptureViewModel
                             name = e.name,
                             defaultProfileId = e.defaultProfileId,
                             createdAt = e.createdAt,
+                            iconName = e.iconName,
                         )
                     }
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -344,6 +345,7 @@ class CaptureViewModel
         fun createCustomType(
             name: String,
             defaultProfileId: String?,
+            iconName: String? = null,
         ) {
             viewModelScope.launch {
                 customRecordingTypeDao.insert(
@@ -355,13 +357,23 @@ class CaptureViewModel
                         name = name,
                         defaultProfileId = defaultProfileId,
                         createdAt = System.currentTimeMillis(),
+                        iconName = iconName,
                     ),
                 )
             }
         }
 
         fun deleteCustomType(id: String) {
-            viewModelScope.launch { customRecordingTypeDao.delete(id) }
+            viewModelScope.launch {
+                // Reassign this type's recordings to Journal FIRST so no session ever points at
+                // a type that no longer exists, then remove the type itself.
+                recordingSessionDao.reassignCustomTypeToJournal(
+                    customTypeId = id,
+                    journalMode = RecordingMode.JOURNAL.name,
+                    updatedAt = System.currentTimeMillis(),
+                )
+                customRecordingTypeDao.delete(id)
+            }
         }
 
         fun minimize() {

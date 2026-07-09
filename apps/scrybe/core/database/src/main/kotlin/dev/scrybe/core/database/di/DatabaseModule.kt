@@ -13,6 +13,7 @@ import dev.scrybe.core.database.MIGRATION_11_12
 import dev.scrybe.core.database.MIGRATION_12_13
 import dev.scrybe.core.database.MIGRATION_13_14
 import dev.scrybe.core.database.MIGRATION_14_15
+import dev.scrybe.core.database.MIGRATION_15_16
 import dev.scrybe.core.database.MIGRATION_4_5
 import dev.scrybe.core.database.MIGRATION_5_6
 import dev.scrybe.core.database.MIGRATION_6_7
@@ -46,6 +47,7 @@ object DatabaseModule {
                 MIGRATION_12_13,
                 MIGRATION_13_14,
                 MIGRATION_14_15,
+                MIGRATION_15_16,
             ).fallbackToDestructiveMigrationFrom(1, 2, 3)
             .build()
 

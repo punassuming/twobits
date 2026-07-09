@@ -4,7 +4,26 @@
 
 ### Features
 
+**Custom types** — now first-class recording types:
+* pick an icon when creating a type — shown in the mode picker and session badges
+* custom types render as full mode cards, matching the built-in modes
+* delete a type from the mode picker; its recordings safely become Journal recordings
+
 ### Improvements
+
+**Waveforms** — clearer at every size:
+* quiet recordings no longer render near-flat — bars are peak-normalized
+* capture and history rows now share one waveform style with amplitude-tinted bars
+* the live recording meter uses perceptual loudness shaping
+
+**Playback card** — cleaner layout:
+* the speaker button now sits with the playback controls, all centered
+* topic, sentiment, and speaker legends moved into an info button above the waveform
+* tap a speaker inside the legend to assign a person, as before
+
+**Transcription** — multilingual recordings stay multilingual:
+* each utterance is kept in the language it was spoken in — no more translating
+* applies to live transcription and gpt-4o batch transcription
 
 ### Fixes
 

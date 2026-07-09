@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -108,12 +109,16 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
+import dev.scrybe.core.common.CustomTypeIcon
 import dev.scrybe.core.common.ModeBadge
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.SessionStatusChip
+import dev.scrybe.core.common.customTypeIcon
 import dev.scrybe.core.common.modeAccentColor
 import dev.scrybe.core.common.modeIcon
 import dev.scrybe.core.common.scrybeContentWidth
+import dev.scrybe.core.common.shapeLiveAmplitude
+import dev.scrybe.core.common.shapeWaveformBars
 import dev.scrybe.core.model.CustomRecordingType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
@@ -516,7 +521,8 @@ fun CaptureScreen(
             },
             customTypes = uiState.customTypes,
             profiles = profiles,
-            onCreateType = { name, profileId -> viewModel.createCustomType(name, profileId) },
+            onCreateType = { name, profileId, iconName -> viewModel.createCustomType(name, profileId, iconName) },
+            onDeleteType = viewModel::deleteCustomType,
             onDismiss = viewModel::dismissModePicker,
         )
     }
@@ -937,19 +943,21 @@ private fun AmplitudeWaveform(amplitudeHistory: List<Float>) {
         bars.forEachIndexed { index, amplitude ->
             val isRecent = index >= bars.size - recentCount
             val gradientRatio = index.toFloat() / (bars.size - recentCount).coerceAtLeast(1)
+            // sqrt shaping keeps quiet speech visibly alive instead of hovering at the floor.
+            val shaped = shapeLiveAmplitude(amplitude)
             val color =
                 if (isRecent) {
-                    MaterialTheme.colorScheme.tertiary
+                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.55f + shaped * 0.45f)
                 } else {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f + gradientRatio * 0.47f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f + gradientRatio * 0.42f + shaped * 0.12f)
                 }
-            val heightFraction = (0.08f + amplitude * 0.92f).coerceIn(0.08f, 1f)
+            val heightFraction = (0.08f + shaped * 0.92f).coerceIn(0.08f, 1f)
             Box(
                 modifier =
                     Modifier
                         .width(3.dp)
                         .fillMaxHeight(heightFraction)
-                        .background(color, RoundedCornerShape(2.dp)),
+                        .background(color, RoundedCornerShape(percent = 50)),
             )
         }
     }
@@ -967,12 +975,14 @@ private fun ModePickerSheet(
     onStartCustomType: (String) -> Unit,
     customTypes: List<CustomRecordingType>,
     profiles: List<TransformProfile>,
-    onCreateType: (String, String?) -> Unit,
+    onCreateType: (String, String?, String?) -> Unit,
+    onDeleteType: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedMode by remember { mutableStateOf(RecordingMode.JOURNAL) }
     var showCreateTypeDialog by remember { mutableStateOf(false) }
+    var typePendingDelete by remember { mutableStateOf<CustomRecordingType?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1023,28 +1033,13 @@ private fun ModePickerSheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         row.forEach { customType ->
-                            val profileName = customType.defaultProfileId?.let { profileMap[it] }
-                            OutlinedButton(
+                            CustomTypeCard(
+                                customType = customType,
+                                profileName = customType.defaultProfileId?.let { profileMap[it] },
                                 onClick = { onStartCustomType(customType.id) },
+                                onDelete = { typePendingDelete = customType },
                                 modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        customType.name,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        style = MaterialTheme.typography.labelMedium,
-                                    )
-                                    Text(
-                                        text = profileName ?: "Plain transcript",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            }
+                            )
                         }
                         if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
@@ -1077,23 +1072,47 @@ private fun ModePickerSheet(
     if (showCreateTypeDialog) {
         CreateTypeDialog(
             profiles = profiles,
-            onConfirm = { name, profileId ->
-                onCreateType(name, profileId)
+            onConfirm = { name, profileId, iconName ->
+                onCreateType(name, profileId, iconName)
                 showCreateTypeDialog = false
             },
             onDismiss = { showCreateTypeDialog = false },
         )
     }
+
+    typePendingDelete?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { typePendingDelete = null },
+            title = { Text("Delete \"${pending.name}\"?") },
+            text = {
+                Text(
+                    "Recordings made with this type are kept and become Journal recordings. " +
+                        "This can't be undone.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteType(pending.id)
+                    typePendingDelete = null
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { typePendingDelete = null }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CreateTypeDialog(
     profiles: List<TransformProfile>,
-    onConfirm: (String, String?) -> Unit,
+    onConfirm: (String, String?, String?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var selectedProfileId by remember { mutableStateOf<String?>(null) }
+    var selectedIcon by remember { mutableStateOf(CustomTypeIcon.LABEL) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("New recording type") },
@@ -1111,6 +1130,37 @@ private fun CreateTypeDialog(
                     label = { Text("Type name") },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Text("Icon", style = MaterialTheme.typography.labelMedium)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    CustomTypeIcon.entries.forEach { option ->
+                        val selected = option == selectedIcon
+                        Surface(
+                            onClick = { selectedIcon = option },
+                            shape = CircleShape,
+                            color =
+                                if (selected) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                },
+                        ) {
+                            Icon(
+                                imageVector = option.vector,
+                                contentDescription = option.name.lowercase(),
+                                modifier = Modifier.padding(8.dp).size(20.dp),
+                                tint =
+                                    if (selected) {
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                            )
+                        }
+                    }
+                }
                 if (profiles.isNotEmpty()) {
                     Text(
                         "Default transform profile (optional)",
@@ -1140,7 +1190,7 @@ private fun CreateTypeDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(name.trim(), selectedProfileId) },
+                onClick = { if (name.isNotBlank()) onConfirm(name.trim(), selectedProfileId, selectedIcon.name) },
                 enabled = name.isNotBlank(),
             ) {
                 Text("Create")
@@ -1177,20 +1227,20 @@ private fun MiniWaveform(
     samples: List<Float>,
     modifier: Modifier = Modifier,
 ) {
-    val barColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+    val baseColor = MaterialTheme.colorScheme.primary
     Canvas(modifier = modifier.height(28.dp)) {
         if (samples.isEmpty()) return@Canvas
-        val targetCount = 40
-        val step = samples.size.toFloat() / targetCount
+        val targetCount = 48
+        // Peak-normalized + sqrt-shaped so quiet recordings still read as a waveform instead of
+        // a near-flat line, and transients survive the downsampling.
+        val bars = shapeWaveformBars(samples, targetCount)
         val barWidth = (size.width / (targetCount * 2.2f)).coerceAtLeast(1f)
         val gap = size.width / targetCount - barWidth
-        repeat(targetCount) { i ->
-            val srcIdx = (i * step).toInt().coerceIn(0, samples.lastIndex)
-            val amp = samples[srcIdx].coerceIn(0f, 1f)
+        bars.forEachIndexed { i, amp ->
             val barHeight = (4f + amp * (size.height - 4f)).coerceAtLeast(4f)
             val x = i * (barWidth + gap) + barWidth / 2f
             drawLine(
-                color = barColor,
+                color = baseColor.copy(alpha = 0.28f + amp * 0.42f),
                 start =
                     androidx.compose.ui.geometry
                         .Offset(x, size.height / 2f - barHeight / 2f),
@@ -1250,6 +1300,70 @@ private fun ModeCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = contentColor.copy(alpha = 0.72f),
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/**
+ * A user-created recording type rendered with the same card language as the built-in [ModeCard]s
+ * — icon, name, output subtitle, CUSTOM accent — so custom types read as first-class modes.
+ * Starts a recording on tap; the trailing delete affordance asks for confirmation and reassigns
+ * the type's recordings to Journal.
+ */
+@Composable
+private fun CustomTypeCard(
+    customType: CustomRecordingType,
+    profileName: String?,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accentColor = modeAccentColor(RecordingMode.CUSTOM)
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Icon(
+                    imageVector = customTypeIcon(customType.iconName),
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(22.dp),
+                )
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Delete ${customType.name}",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier =
+                        Modifier
+                            .size(18.dp)
+                            .clickable(onClick = onDelete),
+                )
+            }
+            Text(
+                text = customType.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = profileName ?: "Plain transcript",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }

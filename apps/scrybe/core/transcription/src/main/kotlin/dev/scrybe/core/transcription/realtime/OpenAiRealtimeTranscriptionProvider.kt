@@ -4,6 +4,7 @@ import android.util.Base64
 import android.util.Log
 import dev.scrybe.core.transcription.OpenAiEndpoint
 import dev.scrybe.core.transcription.OpenAiEndpointResolver
+import dev.scrybe.core.transcription.PRESERVE_LANGUAGES_PROMPT
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -128,7 +129,11 @@ private class OpenAiRealtimeSession(
                                     input =
                                         AudioInputConfig(
                                             format = AudioFormatConfig(type = "audio/pcm", rate = 24_000),
-                                            transcription = TranscriptionModelConfig(model = model),
+                                            transcription =
+                                                TranscriptionModelConfig(
+                                                    model = model,
+                                                    prompt = PRESERVE_LANGUAGES_PROMPT,
+                                                ),
                                             turnDetection = TurnDetectionConfig(type = "server_vad"),
                                         ),
                                 ),
@@ -245,6 +250,7 @@ private data class AudioFormatConfig(
 @Serializable
 private data class TranscriptionModelConfig(
     val model: String,
+    val prompt: String,
 )
 
 @Serializable

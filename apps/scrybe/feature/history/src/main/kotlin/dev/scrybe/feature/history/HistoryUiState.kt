@@ -12,6 +12,7 @@ data class HistorySessionItem(
     val speakerCount: Int = 0,
     val openTaskCount: Int = 0,
     val customTypeName: String? = null,
+    val customTypeIconName: String? = null,
 )
 
 data class FolderNode(

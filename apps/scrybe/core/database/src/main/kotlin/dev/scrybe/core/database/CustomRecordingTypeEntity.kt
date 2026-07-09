@@ -9,4 +9,6 @@ data class CustomRecordingTypeEntity(
     val name: String,
     val defaultProfileId: String? = null,
     val createdAt: Long,
+    // Name from the shared CustomTypeIcon set (core/common); null renders the default label icon.
+    val iconName: String? = null,
 )
