@@ -174,7 +174,10 @@ fun AIConfigScreen(
                     onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                 )
 
-                CallBudgetCard()
+                CallBudgetCard(
+                    speakerIdEnabled = uiState.enableSpeakerIdentification,
+                    insightsEnabled = uiState.enableInsightAnalysis,
+                )
 
                 AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
                     AiSourceSegment(
@@ -426,7 +429,10 @@ private fun AiNavigationRow(
 }
 
 @Composable
-private fun CallBudgetCard() {
+private fun CallBudgetCard(
+    speakerIdEnabled: Boolean,
+    insightsEnabled: Boolean,
+) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -439,10 +445,23 @@ private fun CallBudgetCard() {
             )
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 CallBudgetRow("Transcription", calls = 1, color = MaterialTheme.colorScheme.primary)
-                CallBudgetRow("Transforms", calls = 2, color = MaterialTheme.colorScheme.secondary)
+                if (speakerIdEnabled) {
+                    CallBudgetRow("Speakers", calls = 2, color = MaterialTheme.colorScheme.tertiary)
+                }
+                if (insightsEnabled) {
+                    CallBudgetRow("Insights", calls = 2, color = MaterialTheme.colorScheme.secondary)
+                }
+                CallBudgetRow("Transforms", calls = 2, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            val parts =
+                buildList {
+                    add("Transcription = 1 call")
+                    if (speakerIdEnabled) add("Speaker ID = 2 (timestamped re-transcription + assignment)")
+                    if (insightsEnabled) add("Insights = 2 (sentiment + topics)")
+                    add("Transforms = 1–2 per transform applied")
+                }
             Text(
-                "Per session. Transcription = 1 Whisper call · Transforms = 1–2 calls per transform applied.",
+                "Per session. ${parts.joinToString(" · ")}.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
