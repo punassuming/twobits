@@ -85,7 +85,14 @@ class OpenAiInsightService
                                 content = listOf(InsightInputText(type = "input_text", text = userPrompt)),
                             ),
                         ),
-                    maxOutputTokens = 600,
+                    // gpt-5-mini is a reasoning model: reasoning tokens count against
+                    // max_output_tokens, and hitting the cap mid-reasoning returns
+                    // status="incomplete" with EMPTY output text — which the callers' .ifBlank
+                    // fallbacks silently turned into "no sentiment/topics" on every recording.
+                    // The old cap of 600 was routinely consumed entirely by reasoning; low
+                    // effort keeps thinking terse and the raised cap leaves room for output.
+                    maxOutputTokens = 2000,
+                    reasoning = InsightReasoningConfig(effort = "low"),
                 )
             val request =
                 Request
@@ -161,11 +168,19 @@ class OpenAiInsightService
                 .removeSuffix("```")
                 .trim()
 
+        // No default values on encode-side fields: the shared Json doesn't set
+        // encodeDefaults = true, so a defaulted field would be silently dropped from the wire.
         @Serializable
         private data class InsightRequest(
             val model: String,
             val input: List<InsightInputMessage>,
-            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int,
+            val reasoning: InsightReasoningConfig,
+        )
+
+        @Serializable
+        private data class InsightReasoningConfig(
+            val effort: String,
         )
 
         @Serializable

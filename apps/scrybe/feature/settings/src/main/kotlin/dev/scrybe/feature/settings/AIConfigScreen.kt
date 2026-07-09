@@ -44,7 +44,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,28 +103,26 @@ fun AIConfigScreen(
     val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
     var showTransformModelPicker by remember { mutableStateOf(false) }
 
-    var transcriptionMode by rememberSaveable {
-        mutableStateOf(
-            executionModeFromSegment(
-                when {
-                    uiState.transcriptionProvider == "LOCAL" -> "local"
-                    hasPro -> "pro"
-                    else -> "byok"
-                },
-            ),
+    // Derived from uiState on every recomposition rather than captured once in rememberSaveable:
+    // the old snapshot was taken before DataStore emitted the real values and never re-synced, so
+    // the control could permanently display BYOK while the stored preference was actually LOCAL —
+    // hiding exactly the misconfiguration that silently routes diarization/insights on-device.
+    val transcriptionMode =
+        executionModeFromSegment(
+            when {
+                uiState.transcriptionProvider == "LOCAL" -> "local"
+                hasPro -> "pro"
+                else -> "byok"
+            },
         )
-    }
-    var featuresMode by rememberSaveable {
-        mutableStateOf(
-            executionModeFromSegment(
-                when {
-                    uiState.aiFeaturesProvider == "LOCAL" -> "local"
-                    hasPro -> "pro"
-                    else -> "byok"
-                },
-            ),
+    val featuresMode =
+        executionModeFromSegment(
+            when {
+                uiState.aiFeaturesProvider == "LOCAL" -> "local"
+                hasPro -> "pro"
+                else -> "byok"
+            },
         )
-    }
 
     Scaffold(
         topBar = {
@@ -177,7 +174,10 @@ fun AIConfigScreen(
                     onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                 )
 
-                CallBudgetCard()
+                CallBudgetCard(
+                    speakerIdEnabled = uiState.enableSpeakerIdentification,
+                    insightsEnabled = uiState.enableInsightAnalysis,
+                )
 
                 AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
                     AiSourceSegment(
@@ -185,7 +185,6 @@ fun AIConfigScreen(
                         hasPro = hasPro,
                         onChange = { seg ->
                             val mode = executionModeFromSegment(seg)
-                            transcriptionMode = mode
                             viewModel.setTranscriptionProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
                         },
                     )
@@ -238,7 +237,6 @@ fun AIConfigScreen(
                         hasPro = hasPro,
                         onChange = { seg ->
                             val mode = executionModeFromSegment(seg)
-                            featuresMode = mode
                             viewModel.setAiFeaturesProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
                         },
                     )
@@ -431,7 +429,10 @@ private fun AiNavigationRow(
 }
 
 @Composable
-private fun CallBudgetCard() {
+private fun CallBudgetCard(
+    speakerIdEnabled: Boolean,
+    insightsEnabled: Boolean,
+) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -444,10 +445,23 @@ private fun CallBudgetCard() {
             )
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 CallBudgetRow("Transcription", calls = 1, color = MaterialTheme.colorScheme.primary)
-                CallBudgetRow("Transforms", calls = 2, color = MaterialTheme.colorScheme.secondary)
+                if (speakerIdEnabled) {
+                    CallBudgetRow("Speakers", calls = 2, color = MaterialTheme.colorScheme.tertiary)
+                }
+                if (insightsEnabled) {
+                    CallBudgetRow("Insights", calls = 2, color = MaterialTheme.colorScheme.secondary)
+                }
+                CallBudgetRow("Transforms", calls = 2, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            val parts =
+                buildList {
+                    add("Transcription = 1 call")
+                    if (speakerIdEnabled) add("Speaker ID = 2 (timestamped re-transcription + assignment)")
+                    if (insightsEnabled) add("Insights = 2 (sentiment + topics)")
+                    add("Transforms = 1–2 per transform applied")
+                }
             Text(
-                "Per session. Transcription = 1 Whisper call · Transforms = 1–2 calls per transform applied.",
+                "Per session. ${parts.joinToString(" · ")}.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

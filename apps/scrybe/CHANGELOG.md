@@ -8,6 +8,30 @@
 
 ### Fixes
 
+**AI features source** — no longer inherits the old pre-split provider setting:
+* installs that once used local transcription had speaker ID, insights, auto-rename, tags, and clustering silently running on-device
+* with no on-device model installed, those features produced nothing — with no error shown
+* AI features now go local only when explicitly set to Local
+
+**AI source selectors** — now always show the stored setting:
+* previously captured once before settings loaded and never re-synced
+* the screen could show BYOK while the stored source was actually Local
+
+**Speaker identification** — failed runs now report real errors:
+* a missing on-device model no longer reads as "No distinct speakers were detected"
+* an empty assignment response fails visibly instead of labeling everything one speaker
+* the AI call log records when a run was routed on-device
+
+**Speaker ID & insights** — restored results that token limits silently emptied:
+* the assignment and insight models spend output tokens on internal reasoning
+* the cost caps added in v1.26.0 were often exhausted before any answer was written
+* both calls now use terse reasoning, with budgets sized to the job
+* word timestamps now reach the assignment prompt — they were parsed from the wrong field
+
+**API call estimate** — the per-session card now counts everything:
+* adds the 2 speaker-identification and 2 insight calls when those features are enabled
+* previously only transcription and transforms were shown
+
 ## 1.32.0 (2026-07-08)
 
 ### Features

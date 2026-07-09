@@ -3,6 +3,8 @@ package dev.scrybe.core.localai
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.SpeakerSegment
+import dev.scrybe.core.transcription.AiCallDebugEntry
+import dev.scrybe.core.transcription.AiCallDebugStore
 import dev.scrybe.core.transcription.DiarizationService
 import dev.scrybe.core.transcription.OpenAiDiarizationService
 import kotlinx.coroutines.flow.first
@@ -17,6 +19,7 @@ class DiarizationServiceFacade
         private val openAiService: OpenAiDiarizationService,
         private val localService: LocalDiarizationService,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val aiCallDebugStore: AiCallDebugStore,
     ) : DiarizationService {
         override suspend fun diarize(
             sessionId: String,
@@ -25,6 +28,21 @@ class DiarizationServiceFacade
             providerType: ProviderType,
         ): Result<List<SpeakerSegment>> =
             if (preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name) {
+                // Record the routing decision itself: an on-device run makes no network calls, so
+                // without this the AI call log shows nothing at all for the whole diarization —
+                // indistinguishable from diarization never running.
+                if (preferencesDataStore.debugDiarization.first()) {
+                    aiCallDebugStore.record(
+                        AiCallDebugEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            op = "diarize",
+                            endpoint = "on-device",
+                            model = "local",
+                            requestSummary = "AI features source is Local — routed to on-device model, not OpenAI",
+                            success = true,
+                        ),
+                    )
+                }
                 localService.diarize(sessionId, audioFile, transcriptText, providerType)
             } else {
                 openAiService.diarize(sessionId, audioFile, transcriptText, providerType)
