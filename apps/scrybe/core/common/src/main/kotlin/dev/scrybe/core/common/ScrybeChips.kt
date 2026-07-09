@@ -65,6 +65,7 @@ fun modeIcon(mode: RecordingMode): ImageVector =
 fun ModeBadge(
     mode: RecordingMode,
     customLabel: String? = null,
+    customIcon: ImageVector? = null,
 ) {
     val accentColor = modeAccentColor(mode)
     Surface(
@@ -79,7 +80,7 @@ fun ModeBadge(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                imageVector = modeIcon(mode),
+                imageVector = customIcon ?: modeIcon(mode),
                 contentDescription = null,
                 tint = accentColor,
                 modifier =

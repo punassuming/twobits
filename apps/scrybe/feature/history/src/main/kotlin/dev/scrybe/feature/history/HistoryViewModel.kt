@@ -225,12 +225,12 @@ class HistoryViewModel
                     openTaskCountsPerSession,
                     customRecordingTypeDao.getAll(),
                 ) { nav, counts, customTypes ->
-                    Triple(nav, counts, customTypes.associate { it.id to it.name })
+                    Triple(nav, counts, customTypes.associateBy { it.id })
                 },
             ) { entities, transcripts, inputs, currentlyTransforming, folderNavAndCounts ->
                 val folderNav = folderNavAndCounts.first
                 val taskCounts = folderNavAndCounts.second
-                val customTypeNameMap = folderNavAndCounts.third
+                val customTypeMap = folderNavAndCounts.third
                 val speakerPersonNames = folderNav.speakerPersonNames
                 val taskCountMap = taskCounts.associate { it.sessionId to it.count }
                 val sessions =
@@ -310,7 +310,8 @@ class HistoryViewModel
                                 transcriptPreview = latestTranscriptBySession[session.id],
                                 speakerCount = speakerPersonNames[session.id]?.size ?: 0,
                                 openTaskCount = taskCountMap[session.id] ?: 0,
-                                customTypeName = session.customTypeId?.let { customTypeNameMap[it] },
+                                customTypeName = session.customTypeId?.let { customTypeMap[it]?.name },
+                                customTypeIconName = session.customTypeId?.let { customTypeMap[it]?.iconName },
                             )
                         }
 
@@ -359,7 +360,8 @@ class HistoryViewModel
                                         transcriptPreview = latestTranscriptBySession[session.id],
                                         speakerCount = speakerPersonNames[session.id]?.size ?: 0,
                                         openTaskCount = taskCountMap[session.id] ?: 0,
-                                        customTypeName = session.customTypeId?.let { customTypeNameMap[it] },
+                                        customTypeName = session.customTypeId?.let { customTypeMap[it]?.name },
+                                        customTypeIconName = session.customTypeId?.let { customTypeMap[it]?.iconName },
                                     )
                                 }
                         }

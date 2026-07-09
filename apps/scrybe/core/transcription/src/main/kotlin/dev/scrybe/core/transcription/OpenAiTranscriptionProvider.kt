@@ -107,7 +107,13 @@ class OpenAiTranscriptionProvider
                         audioFile.asRequestBody(mediaType.toMediaType()),
                     ).apply {
                         options.language?.let { addFormDataPart("language", it) }
-                        options.prompt?.let { addFormDataPart("prompt", it) }
+                        // gpt-4o transcription models accept instructions via `prompt`; use it to
+                        // stop mixed-language audio being normalized into one language. whisper-1
+                        // is excluded — see PRESERVE_LANGUAGES_PROMPT's doc.
+                        val prompt =
+                            options.prompt
+                                ?: PRESERVE_LANGUAGES_PROMPT.takeIf { options.model.startsWith("gpt-4o") }
+                        prompt?.let { addFormDataPart("prompt", it) }
                         addFormDataPart("response_format", options.responseFormat)
                     }.build()
 

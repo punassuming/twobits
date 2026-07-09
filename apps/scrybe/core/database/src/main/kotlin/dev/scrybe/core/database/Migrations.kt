@@ -157,3 +157,10 @@ val MIGRATION_14_15: Migration =
             db.execSQL("ALTER TABLE transform_profiles ADD COLUMN useCount INTEGER NOT NULL DEFAULT 0")
         }
     }
+
+val MIGRATION_15_16: Migration =
+    object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE custom_recording_types ADD COLUMN iconName TEXT DEFAULT NULL")
+        }
+    }
