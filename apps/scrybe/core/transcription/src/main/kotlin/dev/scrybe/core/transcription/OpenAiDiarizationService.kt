@@ -172,13 +172,40 @@ class OpenAiDiarizationService
                         throw IOException("Whisper verbose_json failed: ${response.code} $err")
                     }
                     val body = response.body?.string() ?: throw IOException("Empty response")
-                    val segments = json.decodeFromString<VerboseTranscriptionResponse>(body).segments ?: emptyList()
+                    val parsed = json.decodeFromString<VerboseTranscriptionResponse>(body)
+                    val segments = attachWordTimestamps(parsed.segments ?: emptyList(), parsed.words)
                     recordOnce(success = true, httpStatus = response.code, snippet = "${segments.size} segments")
                     segments
                 }
             }.getOrElse { error ->
                 recordOnce(success = false, httpStatus = null, snippet = "${error.javaClass.simpleName}: ${error.message}")
                 throw error
+            }
+        }
+
+        // With timestamp_granularities[]=word, verbose_json returns the word timestamps as a
+        // TOP-LEVEL `words` array alongside `segments` — not nested inside each segment. This
+        // code originally modeled them as per-segment, so `wordTimestampsPresent` was always
+        // false and the assignment prompt's word runs were always empty. Bucket the top-level
+        // words into their owning segment by start time.
+        private fun attachWordTimestamps(
+            segments: List<VerboseSegment>,
+            words: List<WordTimestamp>?,
+        ): List<VerboseSegment> {
+            if (words.isNullOrEmpty() || segments.all { !it.words.isNullOrEmpty() }) return segments
+            val lastIndex = segments.lastIndex
+            return segments.mapIndexed { index, segment ->
+                if (!segment.words.isNullOrEmpty()) {
+                    segment
+                } else {
+                    segment.copy(
+                        words =
+                            words.filter { w ->
+                                w.start >= segment.start &&
+                                    (w.start < segment.end || (index == lastIndex && w.start <= segment.end))
+                            },
+                    )
+                }
             }
         }
 
@@ -218,9 +245,10 @@ class OpenAiDiarizationService
 
         private suspend fun callDiarizationLlm(
             prompt: String,
+            segmentCount: Int,
             endpoint: OpenAiEndpoint,
             debugEnabled: Boolean,
-        ): String? {
+        ): String {
             val requestPayload =
                 OpenAiResponseRequest(
                     model = MODEL,
@@ -233,7 +261,15 @@ class OpenAiDiarizationService
                                 content = listOf(InputText(type = "input_text", text = prompt)),
                             ),
                         ),
-                    maxOutputTokens = 3000,
+                    // gpt-5-mini is a reasoning model on /v1/responses: reasoning tokens count
+                    // against max_output_tokens, and when the cap is hit mid-reasoning the
+                    // response comes back status="incomplete" with EMPTY output_text. The old
+                    // flat 3000 cap was routinely consumed entirely by reasoning on real
+                    // recordings (~90 segments), which silently produced single-speaker results.
+                    // Low reasoning effort keeps thinking terse; the cap scales with how many
+                    // assignments actually need to be emitted (~12-16 tokens each) plus headroom.
+                    maxOutputTokens = ASSIGN_BASE_OUTPUT_TOKENS + ASSIGN_TOKENS_PER_SEGMENT * segmentCount,
+                    reasoning = ReasoningConfig(effort = "low"),
                 )
             val request =
                 Request
@@ -249,14 +285,12 @@ class OpenAiDiarizationService
                             .toRequestBody(JSON_MEDIA_TYPE),
                     ).build()
 
-            // A non-2xx response or an unparseable body are treated as a soft "no assignment"
-            // outcome (null -> parseAssignments() defaults everyone to SPEAKER_1) — this always
-            // has been callDiarizationLlm()'s contract. A genuine transport failure (timeout, no
-            // connectivity, TLS, etc.) is NOT part of that contract: it must still fail the whole
-            // diarize() run via the outer runCatching, exactly as it did before this file gained
-            // debug recording, rather than being silently folded into the same "everyone is
-            // SPEAKER_1" fallback. So only the response-level record() calls below return null;
-            // the transport-failure catch records for visibility and rethrows.
+            // EVERY failure here — transport, non-2xx, empty/incomplete response — now fails the
+            // whole diarize() run via the outer runCatching. The old contract turned response
+            // problems into null so parseAssignments() could default everyone to SPEAKER_1, which
+            // meant an assignment failure was indistinguishable from a genuine single-speaker
+            // recording: the exact silent breakage that hid the reasoning-token/cap bug. record()
+            // captures each failure in the AI call log before it propagates.
             suspend fun record(
                 success: Boolean,
                 httpStatus: Int?,
@@ -288,7 +322,7 @@ class OpenAiDiarizationService
                 if (!response.isSuccessful) {
                     val err = response.body?.string().orEmpty().take(300)
                     record(success = false, httpStatus = response.code, snippet = err)
-                    return@use null
+                    throw IOException("Speaker assignment failed: ${response.code} $err")
                 }
                 val body = response.body?.string()
                 val parsed = body?.let { runCatching { json.decodeFromString<OpenAiResponseResponse>(it) }.getOrNull() }
@@ -300,17 +334,24 @@ class OpenAiDiarizationService
                             .flatMap { it.content.orEmpty() }
                             .filter { it.type == "output_text" }
                             .joinToString("") { it.text.orEmpty() }
-                            .takeIf { parsed != null }
-                record(success = text != null, httpStatus = response.code, snippet = text?.take(200) ?: "empty or unparseable response")
+                if (text.isNullOrBlank()) {
+                    val detail =
+                        listOfNotNull(
+                            parsed?.status?.let { "status=$it" },
+                            parsed?.incompleteDetails?.reason?.let { "reason=$it" },
+                        ).joinToString(", ").ifBlank { "no detail" }
+                    record(success = false, httpStatus = response.code, snippet = "empty model response ($detail)")
+                    throw IOException(
+                        "Speaker assignment returned no output ($detail) — " +
+                            "the model likely spent its whole output-token budget on reasoning.",
+                    )
+                }
+                record(success = true, httpStatus = response.code, snippet = text.take(200))
                 text
             }
         }
 
-        private fun parseAssignments(
-            outputText: String?,
-            size: Int,
-        ): List<String> {
-            if (outputText == null) return List(size) { "SPEAKER_1" }
+        private fun parseAssignments(outputText: String): List<String> {
             val cleaned =
                 outputText
                     .trim()
@@ -323,7 +364,12 @@ class OpenAiDiarizationService
                     .decodeFromString<List<SpeakerAssignment>>(cleaned)
                     .sortedBy { it.index }
                     .map { it.speakerId }
-            }.getOrElse { List(size) { "SPEAKER_1" } }
+            }.getOrElse {
+                // Also a hard failure: silently defaulting everyone to SPEAKER_1 here made a
+                // truncated/malformed assignment list indistinguishable from a genuine
+                // single-speaker recording.
+                throw IOException("Speaker assignment response was not parseable JSON (truncated?): ${cleaned.take(120)}")
+            }
         }
 
         private suspend fun assignSpeakers(
@@ -333,9 +379,9 @@ class OpenAiDiarizationService
         ): DiarizationLlmRun {
             val prompt = buildDiarizationPrompt(buildSegmentsJson(segments))
             if (debugEnabled) Log.d(TAG, "LLM prompt (${prompt.length} chars): ${prompt.take(500)}")
-            val outputText = callDiarizationLlm(prompt, endpoint, debugEnabled)
-            if (debugEnabled) Log.d(TAG, "LLM response: ${outputText?.take(500) ?: "<null>"}")
-            val assignments = parseAssignments(outputText, segments.size)
+            val outputText = callDiarizationLlm(prompt, segments.size, endpoint, debugEnabled)
+            if (debugEnabled) Log.d(TAG, "LLM response: ${outputText.take(500)}")
+            val assignments = parseAssignments(outputText)
             Log.d(TAG, "assignments: ${assignments.groupingBy { it }.eachCount()}")
             return DiarizationLlmRun(prompt = prompt, rawOutput = outputText, assignments = assignments)
         }
@@ -367,6 +413,9 @@ class OpenAiDiarizationService
         @Serializable
         private data class VerboseTranscriptionResponse(
             val segments: List<VerboseSegment>? = null,
+            // Word-level timestamps arrive as a top-level array, not inside each segment —
+            // see attachWordTimestamps().
+            val words: List<WordTimestamp>? = null,
         )
 
         @Serializable
@@ -391,12 +440,20 @@ class OpenAiDiarizationService
             val speakerId: String,
         )
 
+        // No default values on encode-side fields: the shared Json doesn't set
+        // encodeDefaults = true, so a defaulted field would be silently dropped from the wire.
         @Serializable
         private data class OpenAiResponseRequest(
             val model: String,
             val instructions: String,
             val input: List<ResponseInputMessage>,
-            @SerialName("max_output_tokens") val maxOutputTokens: Int? = null,
+            @SerialName("max_output_tokens") val maxOutputTokens: Int,
+            val reasoning: ReasoningConfig,
+        )
+
+        @Serializable
+        private data class ReasoningConfig(
+            val effort: String,
         )
 
         @Serializable
@@ -416,6 +473,13 @@ class OpenAiDiarizationService
         private data class OpenAiResponseResponse(
             @SerialName("output_text") val outputText: String? = null,
             val output: List<OutputItem>? = null,
+            val status: String? = null,
+            @SerialName("incomplete_details") val incompleteDetails: IncompleteDetails? = null,
+        )
+
+        @Serializable
+        private data class IncompleteDetails(
+            val reason: String? = null,
         )
 
         @Serializable
@@ -431,7 +495,17 @@ class OpenAiDiarizationService
 
         private companion object {
             const val TAG = "Diarization"
+
+            // Hardcoded on BYOK (the "Transform model" picker in AI configuration does NOT apply
+            // here); on Pro the Worker dictates the model per-op and overrides this.
             const val MODEL = "gpt-5-mini"
+
+            // Output-token budget for the assignment call: each emitted assignment costs
+            // ~12-16 tokens of JSON, and (with reasoning effort "low") the base covers the
+            // model's remaining reasoning. See callDiarizationLlm() for why this must never be
+            // small enough for reasoning to consume it entirely.
+            const val ASSIGN_BASE_OUTPUT_TOKENS = 3000
+            const val ASSIGN_TOKENS_PER_SEGMENT = 24
 
             /** Minimum gap between the last word of one segment and the first word of the next
              *  before the model is allowed to assign a different speaker. Below this threshold
