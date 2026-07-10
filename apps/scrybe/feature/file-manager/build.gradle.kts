@@ -20,6 +20,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:audio"))
     implementation(project(":core:base"))
     implementation(project(":core:database"))
     implementation(project(":core:export"))

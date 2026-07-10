@@ -320,9 +320,7 @@ private fun RecordRowContent(
             }
         }
     }
-    if (item.session.waveformSamples.isNotEmpty()) {
-        HistoryMiniWaveform(samples = item.session.waveformSamples, accentColor = accentColor, modifier = Modifier.fillMaxWidth())
-    }
+    HistoryMiniWaveform(samples = item.session.waveformSamples, accentColor = accentColor, modifier = Modifier.fillMaxWidth())
     RecordRowFooter(item = item)
     item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
         Text(preview, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)

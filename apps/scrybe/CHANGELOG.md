@@ -8,6 +8,11 @@
 
 ### Fixes
 
+**Missing waveforms** — imported and older recordings get them back:
+* recordings without stored waveform data are backfilled from audio on launch
+* recovered and imported recordings now generate their waveform right away
+* rows show a thin baseline until their waveform is ready
+
 ## 1.36.0 (2026-07-10)
 
 ### Features

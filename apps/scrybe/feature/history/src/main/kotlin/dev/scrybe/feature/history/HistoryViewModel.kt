@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.scrybe.core.audio.WaveformExtractor
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
@@ -39,6 +40,7 @@ import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transforms.SessionSummary
 import dev.scrybe.core.transforms.SessionTransformCoordinator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -51,6 +53,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -123,6 +126,7 @@ class HistoryViewModel
         private val clusteringService: ClusteringServiceFacade,
         private val autoRenameService: AutoRenameServiceFacade,
         private val semanticSearchService: SemanticSearchServiceFacade,
+        private val waveformExtractor: WaveformExtractor,
     ) : ViewModel() {
         private val query = MutableStateFlow("")
         private val filters = MutableStateFlow(RecordsFilterState())
@@ -953,7 +957,10 @@ class HistoryViewModel
                         sampleRateHz = sampleRate,
                         encodingBitRate = bitrate,
                         channelCount = channelCount,
-                        waveformSamples = "",
+                        waveformSamples =
+                            withContext(Dispatchers.IO) {
+                                WaveformCodec.encode(waveformExtractor.extract(file))
+                            },
                         status = SessionStatus.RECORDED.name,
                         isArchived = false,
                         estimatedTranscriptionCostUsd = null,

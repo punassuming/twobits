@@ -7,6 +7,7 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.transforms.DefaultProfiles
+import dev.scrybe.service.recording.WaveformBackfiller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,10 +21,15 @@ class ScrybeApplication : Application() {
 
     @Inject lateinit var preferencesDataStore: AppPreferencesDataStore
 
+    @Inject lateinit var waveformBackfiller: WaveformBackfiller
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
+        applicationScope.launch {
+            waveformBackfiller.backfillMissingWaveforms()
+        }
         applicationScope.launch {
             val deletedIds = preferencesDataStore.deletedDefaultProfileIds.first()
             DefaultProfiles.ALL.forEach { profile ->
