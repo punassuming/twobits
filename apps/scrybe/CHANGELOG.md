@@ -6,6 +6,11 @@
 
 ### Improvements
 
+**Waveform envelope** — bars replaced with a smooth shape:
+* recording, list rows, and playback now share one mirrored envelope look
+* resolution follows the view width, so short and long recordings scale fluidly
+* playback keeps speaker colors, progress shading, and tap-to-seek
+
 ### Fixes
 
 ## 1.35.0 (2026-07-10)

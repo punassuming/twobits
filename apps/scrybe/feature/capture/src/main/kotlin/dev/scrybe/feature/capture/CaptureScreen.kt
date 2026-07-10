@@ -97,6 +97,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -114,12 +117,14 @@ import dev.scrybe.core.common.CustomTypeIcon
 import dev.scrybe.core.common.ModeBadge
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.SessionStatusChip
+import dev.scrybe.core.common.buildWaveformEnvelopePath
 import dev.scrybe.core.common.customTypeIcon
 import dev.scrybe.core.common.modeAccentColor
 import dev.scrybe.core.common.modeIcon
 import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.common.shapeLiveAmplitude
-import dev.scrybe.core.common.shapeWaveformBars
+import dev.scrybe.core.common.shapeWaveformEnvelope
+import dev.scrybe.core.common.smoothWaveformPoints
 import dev.scrybe.core.model.CustomRecordingType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
@@ -920,47 +925,45 @@ private fun RecordingStopButtons(
 
 @Composable
 private fun AmplitudeWaveform(amplitudeHistory: List<Float>) {
-    val bars = amplitudeHistory.takeLast(48)
-    val recentCount = 6
-    Row(
-        modifier = Modifier.fillMaxWidth().height(52.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val totalBars = 48
-        val padding = totalBars - bars.size
-        repeat(padding) {
-            Box(
-                modifier =
-                    Modifier
-                        .width(3.dp)
-                        .fillMaxHeight(0.08f)
-                        .background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                            RoundedCornerShape(2.dp),
-                        ),
+    val historyWindow = 48
+    val primary = MaterialTheme.colorScheme.primary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+    Canvas(modifier = Modifier.fillMaxWidth().height(52.dp)) {
+        val centerY = size.height / 2f
+        val minHalf = 1.5.dp.toPx()
+        // Idle baseline across the full width; the envelope grows over it from the right.
+        drawLine(
+            color = primary.copy(alpha = 0.15f),
+            start = Offset(0f, centerY),
+            end = Offset(size.width, centerY),
+            strokeWidth = minHalf * 2f,
+            cap = StrokeCap.Round,
+        )
+        // sqrt shaping keeps quiet speech visibly alive instead of hovering at the floor. No
+        // peak normalization here — the live meter shows absolute level, matching the old bars.
+        val points = smoothWaveformPoints(amplitudeHistory.takeLast(historyWindow).map { shapeLiveAmplitude(it) })
+        if (points.size < 2) return@Canvas
+        val left = size.width * (1f - points.size.toFloat() / historyWindow)
+        val path =
+            buildWaveformEnvelopePath(
+                points = points,
+                left = left,
+                right = size.width,
+                centerY = centerY,
+                maxHalfHeight = size.height / 2f,
+                minHalfHeight = minHalf,
             )
-        }
-        bars.forEachIndexed { index, amplitude ->
-            val isRecent = index >= bars.size - recentCount
-            val gradientRatio = index.toFloat() / (bars.size - recentCount).coerceAtLeast(1)
-            // sqrt shaping keeps quiet speech visibly alive instead of hovering at the floor.
-            val shaped = shapeLiveAmplitude(amplitude)
-            val color =
-                if (isRecent) {
-                    MaterialTheme.colorScheme.tertiary.copy(alpha = 0.55f + shaped * 0.45f)
-                } else {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.18f + gradientRatio * 0.42f + shaped * 0.12f)
-                }
-            val heightFraction = (0.08f + shaped * 0.92f).coerceIn(0.08f, 1f)
-            Box(
-                modifier =
-                    Modifier
-                        .width(3.dp)
-                        .fillMaxHeight(heightFraction)
-                        .background(color, RoundedCornerShape(percent = 50)),
-            )
-        }
+        drawPath(
+            path = path,
+            brush =
+                Brush.horizontalGradient(
+                    0f to primary.copy(alpha = 0.25f),
+                    0.78f to primary.copy(alpha = 0.60f),
+                    1f to tertiary.copy(alpha = 0.90f),
+                    startX = left,
+                    endX = size.width,
+                ),
+        )
     }
 }
 
@@ -1241,27 +1244,28 @@ private fun MiniWaveform(
     val baseColor = MaterialTheme.colorScheme.primary
     Canvas(modifier = modifier.height(28.dp)) {
         if (samples.isEmpty()) return@Canvas
-        val targetCount = 48
-        // Peak-normalized + sqrt-shaped so quiet recordings still read as a waveform instead of
-        // a near-flat line, and transients survive the downsampling.
-        val bars = shapeWaveformBars(samples, targetCount)
-        val barWidth = (size.width / (targetCount * 2.2f)).coerceAtLeast(1f)
-        val gap = size.width / targetCount - barWidth
-        bars.forEachIndexed { i, amp ->
-            val barHeight = (4f + amp * (size.height - 4f)).coerceAtLeast(4f)
-            val x = i * (barWidth + gap) + barWidth / 2f
-            drawLine(
-                color = baseColor.copy(alpha = 0.28f + amp * 0.42f),
-                start =
-                    androidx.compose.ui.geometry
-                        .Offset(x, size.height / 2f - barHeight / 2f),
-                end =
-                    androidx.compose.ui.geometry
-                        .Offset(x, size.height / 2f + barHeight / 2f),
-                strokeWidth = barWidth,
-                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+        // One envelope point every ~2dp: resolution tracks the rendered width, so short and long
+        // recordings both fill the row fluidly instead of stretching a fixed bar count.
+        val pointCount = (size.width / 2.dp.toPx()).toInt().coerceIn(24, 200)
+        val points = shapeWaveformEnvelope(samples, pointCount)
+        val path =
+            buildWaveformEnvelopePath(
+                points = points,
+                left = 0f,
+                right = size.width,
+                centerY = size.height / 2f,
+                maxHalfHeight = size.height / 2f,
+                minHalfHeight = 1.2.dp.toPx(),
             )
-        }
+        drawPath(
+            path = path,
+            brush =
+                Brush.verticalGradient(
+                    0f to baseColor.copy(alpha = 0.30f),
+                    0.5f to baseColor.copy(alpha = 0.70f),
+                    1f to baseColor.copy(alpha = 0.30f),
+                ),
+        )
     }
 }
 
