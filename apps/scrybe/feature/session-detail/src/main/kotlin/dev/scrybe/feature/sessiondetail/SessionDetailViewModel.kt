@@ -13,6 +13,8 @@ import dev.scrybe.core.audio.PlaybackState
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.common.WaveformCodec
+import dev.scrybe.core.database.CustomRecordingTypeDao
+import dev.scrybe.core.database.CustomRecordingTypeEntity
 import dev.scrybe.core.database.FolderDao
 import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.database.PersonDao
@@ -78,6 +80,7 @@ class SessionDetailViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val sessionDao: RecordingSessionDao,
+        private val customRecordingTypeDao: CustomRecordingTypeDao,
         private val folderDao: FolderDao,
         private val transcriptDao: TranscriptDao,
         private val transformProfileDao: TransformProfileDao,
@@ -282,6 +285,7 @@ class SessionDetailViewModel
                                 sentimentJson = sessionEntity.sentimentJson,
                                 topicsJson = sessionEntity.topicsJson,
                                 mode = RecordingMode.valueOf(sessionEntity.mode),
+                                customTypeId = sessionEntity.customTypeId,
                                 createdAt = Instant.ofEpochMilli(sessionEntity.createdAt),
                                 updatedAt = Instant.ofEpochMilli(sessionEntity.updatedAt),
                             )
@@ -1062,6 +1066,42 @@ class SessionDetailViewModel
         fun acceptTagsSuggestion() {
             val tags = _analysisSuggestion.value?.suggestedTags?.takeIf { it.isNotEmpty() } ?: return
             saveTags(tags)
+        }
+
+        val customTypes: StateFlow<List<CustomRecordingTypeEntity>> =
+            customRecordingTypeDao
+                .getAll()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+        /** Reassigns this recording's type: a built-in mode, or a custom type (mode = CUSTOM). */
+        fun setRecordingType(
+            mode: RecordingMode,
+            customTypeId: String? = null,
+        ) {
+            viewModelScope.launch {
+                val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+                sessionDao.updateSession(
+                    session.copy(
+                        mode = if (customTypeId != null) RecordingMode.CUSTOM.name else mode.name,
+                        customTypeId = customTypeId,
+                        updatedAt = System.currentTimeMillis(),
+                    ),
+                )
+            }
+        }
+
+        /** Updates the location label in place (blank clears it); coordinates are kept. */
+        fun updateLocationLabel(label: String) {
+            viewModelScope.launch {
+                val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
+                sessionDao.updateLocation(
+                    id = sessionId,
+                    lat = session.locationLat,
+                    lng = session.locationLng,
+                    label = label.trim().ifBlank { null },
+                    updatedAt = System.currentTimeMillis(),
+                )
+            }
         }
 
         fun acceptModeSuggestion() {

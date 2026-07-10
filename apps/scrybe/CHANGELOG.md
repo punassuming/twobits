@@ -4,9 +4,39 @@
 
 ### Features
 
+**Recording types** — manage them from Settings:
+* new Settings → Recording types screen lists all your custom types
+* rename a type, change its icon, or relink its transform profile
+* deleting still safely turns that type's recordings into Journal recordings
+
+**Session header** — type and location are now editable:
+* tap the type chip to move a recording to another mode or custom type
+* tap the location chip to edit or clear the place label — or add one
+* the marker/speaker legend button now sits inline with this header row
+
 ### Improvements
 
+**Spoken languages** — a new AI configuration setting:
+* name the languages you speak (e.g. "English, Korean")
+* they're passed to transcription so multilingual recordings keep each language
+* naming languages works far better than the generic keep-original instruction alone
+
+**Recording details** — quieter diagnostics:
+* the transcription & diarization details card is now fully collapsed by default
+* the raw model response was removed — the AI call log covers troubleshooting
+
 ### Fixes
+
+**List waveforms** — no more dotted gaps:
+* short recordings drew periodic dots where downsampling left empty bars
+* every bar now covers at least one audio sample
+
+**Mode picker** — nothing hidden off-screen anymore:
+* the sheet scrolls and respects the navigation bar, so Start recording stays visible
+* the new-type dialog scrolls, keeping Create reachable with many profiles
+
+**Playback controls** — speaker button matches its neighbours:
+* switched to the outlined style so its visual weight matches the skip buttons
 
 ## 1.34.0 (2026-07-09)
 

@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -989,7 +990,14 @@ private fun ModePickerSheet(
         sheetState = sheetState,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier =
+                Modifier
+                    .padding(horizontal = 20.dp)
+                    // Scrollable + inset-aware: the sheet's content (modes grid, preview, custom
+                    // types, action buttons) can exceed the sheet height, which used to clip the
+                    // Start recording / New type buttons behind the navigation bar.
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
@@ -1117,7 +1125,10 @@ private fun CreateTypeDialog(
         onDismissRequest = onDismiss,
         title = { Text("New recording type") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text(
                     "Custom types record audio just like standard modes. Link a transform profile so Scrybe automatically processes the transcript your way after recording.",
                     style = MaterialTheme.typography.bodySmall,

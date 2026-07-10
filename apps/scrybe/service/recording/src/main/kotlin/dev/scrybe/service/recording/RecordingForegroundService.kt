@@ -404,6 +404,15 @@ class RecordingForegroundService : Service() {
         val sessionId = UUID.randomUUID().toString()
 
         val location = runCatching { locationDeferred?.await() }.getOrNull()
+        // The custom type can be deleted from Settings while this recording is still running, so
+        // re-resolve it now: a stale id would leave a CUSTOM session pointing at a deleted type.
+        val customTypeId = pendingCustomTypeId?.takeIf { customRecordingTypeDao.getById(it) != null }
+        val mode =
+            if (pendingCustomTypeId != null && customTypeId == null) {
+                RecordingMode.JOURNAL.name
+            } else {
+                pendingMode
+            }
         recordingSessionDao.insertSession(
             RecordingSessionEntity(
                 id = sessionId,
@@ -423,8 +432,8 @@ class RecordingForegroundService : Service() {
                 locationLat = location?.first,
                 locationLng = location?.second,
                 locationLabel = location?.third,
-                mode = pendingMode,
-                customTypeId = pendingCustomTypeId,
+                mode = mode,
+                customTypeId = customTypeId,
                 createdAt = createdAt,
                 updatedAt = finishedAt,
             ),

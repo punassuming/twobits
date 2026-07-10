@@ -62,6 +62,7 @@ class AppPreferencesDataStore
             val TASKFORGE_PACKAGE_NAME = stringPreferencesKey("taskforge_package_name")
             val TASKFORGE_ACTION = stringPreferencesKey("taskforge_action")
             val CLOUD_TRANSCRIPTION_MODEL = stringPreferencesKey("cloud_transcription_model")
+            val SPOKEN_LANGUAGES = stringPreferencesKey("spoken_languages")
             val LOCAL_GEMMA_MODEL = stringPreferencesKey("local_gemma_model")
             val LOCAL_WHISPER_MODEL = stringPreferencesKey("local_whisper_model")
             val DELETED_DEFAULT_PROFILE_IDS = stringPreferencesKey("deleted_default_profile_ids")
@@ -207,6 +208,14 @@ class AppPreferencesDataStore
         val taskForgeAction: Flow<String> =
             context.dataStore.data.map { prefs ->
                 prefs[Keys.TASKFORGE_ACTION] ?: "android.intent.action.SEND"
+            }
+
+        // Comma-separated list of languages the user speaks (free text, e.g. "English, Korean").
+        // Fed into transcription prompts so multilingual recordings keep each utterance in its
+        // spoken language; blank means no language hint.
+        val spokenLanguages: Flow<String> =
+            context.dataStore.data.map { prefs ->
+                prefs[Keys.SPOKEN_LANGUAGES] ?: ""
             }
 
         val cloudTranscriptionModel: Flow<OpenAiTranscriptionModel> =
@@ -377,6 +386,10 @@ class AppPreferencesDataStore
 
         suspend fun setCloudTranscriptionModel(model: OpenAiTranscriptionModel) {
             context.dataStore.edit { prefs -> prefs[Keys.CLOUD_TRANSCRIPTION_MODEL] = model.apiName }
+        }
+
+        suspend fun setSpokenLanguages(languages: String) {
+            context.dataStore.edit { prefs -> prefs[Keys.SPOKEN_LANGUAGES] = languages }
         }
 
         suspend fun setLocalGemmaModel(model: LocalGemmaModel) {

@@ -164,6 +164,14 @@ class SettingsViewModel
                     initialValue = emptyList(),
                 )
 
+        val spokenLanguages: StateFlow<String> =
+            preferencesDataStore.spokenLanguages
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+        fun setSpokenLanguages(languages: String) {
+            viewModelScope.launch { preferencesDataStore.setSpokenLanguages(languages) }
+        }
+
         val whisperStates: StateFlow<Map<LocalWhisperModel, LocalModelState>> = localModelManager.whisperStates
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = localModelManager.selectedWhisperModel
         val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = localModelManager.gemmaStates
