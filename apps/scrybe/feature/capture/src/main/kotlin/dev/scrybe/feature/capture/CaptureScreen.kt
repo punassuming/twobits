@@ -1243,7 +1243,18 @@ private fun MiniWaveform(
 ) {
     val baseColor = MaterialTheme.colorScheme.primary
     Canvas(modifier = modifier.height(28.dp)) {
-        if (samples.isEmpty()) return@Canvas
+        if (samples.isEmpty()) {
+            // No stored waveform (yet) — the startup backfill fills these in; until then a thin
+            // baseline keeps the row from looking broken.
+            drawLine(
+                color = baseColor.copy(alpha = 0.30f),
+                start = Offset(0f, size.height / 2f),
+                end = Offset(size.width, size.height / 2f),
+                strokeWidth = 2.4.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+            return@Canvas
+        }
         // One envelope point every ~2dp: resolution tracks the rendered width, so short and long
         // recordings both fill the row fluidly instead of stretching a fixed bar count.
         val pointCount = (size.width / 2.dp.toPx()).toInt().coerceIn(24, 200)
@@ -1424,9 +1435,7 @@ private fun HomeSessionCard(
             } else {
                 HomeSessionCardHeader(session)
             }
-            if (session.waveformSamples.isNotEmpty()) {
-                MiniWaveform(samples = session.waveformSamples, modifier = Modifier.fillMaxWidth())
-            }
+            MiniWaveform(samples = session.waveformSamples, modifier = Modifier.fillMaxWidth())
             HomeSessionCardFooter(session = session)
             session.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
                 Text(

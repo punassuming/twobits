@@ -1,7 +1,6 @@
 package dev.scrybe.feature.filemanager
 
 import android.content.Context
-import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
@@ -11,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.scrybe.core.audio.WaveformExtractor
 import dev.scrybe.core.common.TagsCodec
 import dev.scrybe.core.common.WaveformCodec
 import dev.scrybe.core.common.sanitizeFileName
@@ -37,15 +37,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.math.sqrt
 
 @HiltViewModel
 class FileManagerViewModel
@@ -55,6 +52,7 @@ class FileManagerViewModel
         private val sessionDao: RecordingSessionDao,
         private val transcriptDao: TranscriptDao,
         private val markdownExporter: MarkdownExporter,
+        private val waveformExtractor: WaveformExtractor,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<FileManagerUiState>(FileManagerUiState.Loading)
         val uiState: StateFlow<FileManagerUiState> = _uiState.asStateFlow()
@@ -267,7 +265,10 @@ class FileManagerViewModel
                     sampleRateHz = sampleRateHz,
                     encodingBitRate = encodingBitRate,
                     channelCount = channelCount,
-                    waveformSamples = withContext(Dispatchers.IO) { generateWaveformSamples(file) },
+                    waveformSamples =
+                        withContext(Dispatchers.IO) {
+                            WaveformCodec.encode(waveformExtractor.extract(file))
+                        },
                     status = "RECORDED",
                     isArchived = false,
                     estimatedTranscriptionCostUsd = null,
@@ -289,86 +290,9 @@ class FileManagerViewModel
                 else -> "AAC"
             }
 
-        private fun generateWaveformSamples(file: File): String =
-            runCatching {
-                val extractor = MediaExtractor()
-                FileInputStream(file).use { fis -> extractor.setDataSource(fis.fd) }
-                val trackIndex =
-                    (0 until extractor.trackCount).firstOrNull { i ->
-                        extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
-                    }
-                if (trackIndex == null) {
-                    extractor.release()
-                    return@runCatching ""
-                }
-                extractor.selectTrack(trackIndex)
-                val format = extractor.getTrackFormat(trackIndex)
-                val mime = format.getString(MediaFormat.KEY_MIME)
-                if (mime == null) {
-                    extractor.release()
-                    return@runCatching ""
-                }
-                val codec = MediaCodec.createDecoderByType(mime)
-                val chunkRms = mutableListOf<Float>()
-                try {
-                    codec.configure(format, null, null, 0)
-                    codec.start()
-                    val bufferInfo = MediaCodec.BufferInfo()
-                    var inputDone = false
-                    var outputDone = false
-                    while (!outputDone) {
-                        if (!inputDone) {
-                            val idx = codec.dequeueInputBuffer(10_000L)
-                            if (idx >= 0) {
-                                val buf = codec.getInputBuffer(idx)!!
-                                val sz = extractor.readSampleData(buf, 0)
-                                if (sz < 0) {
-                                    codec.queueInputBuffer(idx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                                    inputDone = true
-                                } else {
-                                    codec.queueInputBuffer(idx, 0, sz, extractor.sampleTime, 0)
-                                    extractor.advance()
-                                }
-                            }
-                        }
-                        val outIdx = codec.dequeueOutputBuffer(bufferInfo, 10_000L)
-                        if (outIdx >= 0) {
-                            val buf = codec.getOutputBuffer(outIdx)
-                            if (buf != null && bufferInfo.size >= 2) {
-                                val bytes = ByteArray(bufferInfo.size)
-                                buf.get(bytes)
-                                val shorts = ShortArray(bytes.size / 2)
-                                ByteBuffer
-                                    .wrap(bytes)
-                                    .order(ByteOrder.LITTLE_ENDIAN)
-                                    .asShortBuffer()
-                                    .get(shorts)
-                                var sumSq = 0.0
-                                for (s in shorts) sumSq += (s / 32768.0).let { it * it }
-                                chunkRms.add(sqrt(sumSq / shorts.size).toFloat().coerceIn(0f, 1f))
-                            }
-                            codec.releaseOutputBuffer(outIdx, false)
-                            if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
-                        }
-                    }
-                    codec.stop()
-                } finally {
-                    codec.release()
-                    extractor.release()
-                }
-                if (chunkRms.isEmpty()) return@runCatching ""
-                val step = chunkRms.size.toFloat() / WAVEFORM_SAMPLE_COUNT
-                WaveformCodec.encode(
-                    List(WAVEFORM_SAMPLE_COUNT) { i ->
-                        chunkRms[(i * step).toInt().coerceAtMost(chunkRms.size - 1)]
-                    },
-                )
-            }.getOrDefault("")
-
         companion object {
             private const val DEFAULT_SAMPLE_RATE = 48_000
             private const val DEFAULT_BIT_RATE = 128_000
-            private const val WAVEFORM_SAMPLE_COUNT = 100
         }
 
         fun deleteFile(absolutePath: String) {

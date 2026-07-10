@@ -95,4 +95,14 @@ interface RecordingSessionDao {
         journalMode: String,
         updatedAt: Long,
     )
+
+    @Query("SELECT * FROM recording_sessions WHERE waveformSamples = ''")
+    suspend fun getSessionsMissingWaveform(): List<RecordingSessionEntity>
+
+    /** Cosmetic backfill of display data — deliberately does not bump updatedAt. */
+    @Query("UPDATE recording_sessions SET waveformSamples = :waveformSamples WHERE id = :id")
+    suspend fun updateWaveformSamples(
+        id: String,
+        waveformSamples: String,
+    )
 }
