@@ -2,13 +2,15 @@ package dev.scrybe.core.transcription.realtime
 
 import android.util.Base64
 import android.util.Log
+import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.transcription.OpenAiEndpoint
 import dev.scrybe.core.transcription.OpenAiEndpointResolver
-import dev.scrybe.core.transcription.PRESERVE_LANGUAGES_PROMPT
+import dev.scrybe.core.transcription.preserveLanguagesPrompt
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -45,9 +47,11 @@ class OpenAiRealtimeTranscriptionProvider
         private val okHttpClient: OkHttpClient,
         private val json: Json,
         private val endpointResolver: OpenAiEndpointResolver,
+        private val preferencesDataStore: AppPreferencesDataStore,
     ) {
         suspend fun open(model: String = DEFAULT_MODEL): Result<RealtimeTranscriptSession> {
             val endpoint = runCatching { endpointResolver.resolve() }.getOrElse { return Result.failure(it) }
+            val languagePrompt = preserveLanguagesPrompt(preferencesDataStore.spokenLanguages.first())
             val request =
                 Request
                     .Builder()
@@ -56,7 +60,7 @@ class OpenAiRealtimeTranscriptionProvider
                     .header("X-TwoBits-App", "scrybe")
                     .header("X-TwoBits-Op", "realtime-transcribe")
                     .build()
-            val session = OpenAiRealtimeSession(json, model)
+            val session = OpenAiRealtimeSession(json, model, languagePrompt)
             session.connect(okHttpClient, request)
             return session.awaitHandshake().map { session }
         }
@@ -78,6 +82,7 @@ class OpenAiRealtimeTranscriptionProvider
 private class OpenAiRealtimeSession(
     private val json: Json,
     private val model: String,
+    private val languagePrompt: String,
 ) : WebSocketListener(),
     RealtimeTranscriptSession {
     private val handshake = CompletableDeferred<Result<Unit>>()
@@ -132,7 +137,7 @@ private class OpenAiRealtimeSession(
                                             transcription =
                                                 TranscriptionModelConfig(
                                                     model = model,
-                                                    prompt = PRESERVE_LANGUAGES_PROMPT,
+                                                    prompt = languagePrompt,
                                                 ),
                                             turnDetection = TurnDetectionConfig(type = "server_vad"),
                                         ),

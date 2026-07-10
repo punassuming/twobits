@@ -33,6 +33,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -86,6 +87,8 @@ fun AIConfigScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val whisperStates by viewModel.whisperStates.collectAsState()
+    val storedSpokenLanguages by viewModel.spokenLanguages.collectAsState()
+    var spokenLanguagesText by remember { mutableStateOf<String?>(null) }
     val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
     val gemmaStates by viewModel.gemmaStates.collectAsState()
     val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
@@ -228,6 +231,21 @@ fun AIConfigScreen(
                                 description = { it.description },
                                 progressLabel = "Downloading",
                             )
+                    }
+                    if (transcriptionMode != ExecutionMode.LOCAL) {
+                        OutlinedTextField(
+                            value = spokenLanguagesText ?: storedSpokenLanguages,
+                            onValueChange = {
+                                spokenLanguagesText = it
+                                viewModel.setSpokenLanguages(it)
+                            },
+                            singleLine = true,
+                            label = { Text("Spoken languages") },
+                            supportingText = {
+                                Text("Comma-separated, e.g. English, Korean — keeps multilingual recordings in their original languages")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
 

@@ -38,6 +38,16 @@ class OpenAiTranscriptionProvider
                 withContext(Dispatchers.IO) {
                     val debugEnabled = preferencesDataStore.debugDiarization.first()
                     val endpoint = endpointResolver.resolve()
+                    // gpt-4o transcription models accept instructions via `prompt`; use it to stop
+                    // mixed-language audio being normalized into one language, naming the user's
+                    // spoken languages when configured. whisper-1 is excluded — see
+                    // PRESERVE_LANGUAGES_PROMPT's doc.
+                    val effectiveOptions =
+                        if (options.prompt == null && options.model.startsWith("gpt-4o")) {
+                            options.copy(prompt = preserveLanguagesPrompt(preferencesDataStore.spokenLanguages.first()))
+                        } else {
+                            options
+                        }
 
                     val audioChunks = audioChunker.createChunksIfNeeded(audioFile)
                     try {
@@ -47,7 +57,7 @@ class OpenAiTranscriptionProvider
                                 transcribeChunk(
                                     audioFile = chunk,
                                     endpoint = endpoint,
-                                    options = options,
+                                    options = effectiveOptions,
                                     debugEnabled = debugEnabled,
                                 ),
                             )
@@ -107,13 +117,7 @@ class OpenAiTranscriptionProvider
                         audioFile.asRequestBody(mediaType.toMediaType()),
                     ).apply {
                         options.language?.let { addFormDataPart("language", it) }
-                        // gpt-4o transcription models accept instructions via `prompt`; use it to
-                        // stop mixed-language audio being normalized into one language. whisper-1
-                        // is excluded — see PRESERVE_LANGUAGES_PROMPT's doc.
-                        val prompt =
-                            options.prompt
-                                ?: PRESERVE_LANGUAGES_PROMPT.takeIf { options.model.startsWith("gpt-4o") }
-                        prompt?.let { addFormDataPart("prompt", it) }
+                        options.prompt?.let { addFormDataPart("prompt", it) }
                         addFormDataPart("response_format", options.responseFormat)
                     }.build()
 

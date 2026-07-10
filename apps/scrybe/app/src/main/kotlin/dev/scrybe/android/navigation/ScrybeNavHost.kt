@@ -21,6 +21,7 @@ import dev.scrybe.feature.settings.AIConfigScreen
 import dev.scrybe.feature.settings.AiCallDebugScreen
 import dev.scrybe.feature.settings.PeopleScreen
 import dev.scrybe.feature.settings.ProScreen
+import dev.scrybe.feature.settings.RecordingTypesScreen
 import dev.scrybe.feature.settings.SettingsScreen
 import dev.scrybe.feature.tasks.TaskInboxScreen
 
@@ -44,6 +45,8 @@ sealed class Screen(
     object AiConfig : Screen("ai_config")
 
     object AiCallDebugLog : Screen("ai_call_debug_log")
+
+    object RecordingTypes : Screen("recording_types")
 
     object WhatsNew : Screen("whats_new")
 
@@ -149,6 +152,7 @@ fun ScrybeNavHost(navController: NavHostController) {
                 onNavigateToWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
                 onNavigateToPeople = { navController.navigate(Screen.People.route) },
                 onNavigateToPro = { navController.navigate(Screen.Pro.route) },
+                onNavigateToRecordingTypes = { navController.navigate(Screen.RecordingTypes.route) },
             )
         }
         composable(Screen.AiConfig.route) {
@@ -159,6 +163,9 @@ fun ScrybeNavHost(navController: NavHostController) {
         }
         composable(Screen.AiCallDebugLog.route) {
             AiCallDebugScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.RecordingTypes.route) {
+            RecordingTypesScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.People.route) {
             PeopleScreen(onNavigateBack = { navController.popBackStack() })

@@ -112,9 +112,14 @@ import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.SessionStatusPresentation
+import dev.scrybe.core.common.customTypeIcon
+import dev.scrybe.core.common.modeAccentColor
+import dev.scrybe.core.common.modeIcon
 import dev.scrybe.core.common.scrybeContentWidth
+import dev.scrybe.core.database.CustomRecordingTypeEntity
 import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.model.Person
+import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.SessionTask
 import dev.scrybe.core.model.SpeakerSegment
@@ -150,6 +155,9 @@ fun SessionDetailScreen(
     var showTransformSheet by remember { mutableStateOf(false) }
     var showFolderSheet by remember { mutableStateOf(false) }
     var showSpeakerManageSheet by remember { mutableStateOf(false) }
+    var showChangeTypeDialog by remember { mutableStateOf(false) }
+    var showEditLocationDialog by remember { mutableStateOf(false) }
+    val customTypes by viewModel.customTypes.collectAsState()
     val transformSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var speakerAssignTarget by remember { mutableStateOf<String?>(null) }
 
@@ -327,7 +335,46 @@ fun SessionDetailScreen(
                                 .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
                     ) {
-                        SessionMetaStrip(state)
+                        SessionMetaStrip(
+                            state = state,
+                            customTypeName =
+                                state.session.customTypeId?.let { id -> customTypes.firstOrNull { it.id == id }?.name },
+                            onChangeType = { showChangeTypeDialog = true },
+                            onEditLocation = { showEditLocationDialog = true },
+                            legend = {
+                                LegendInfoButton(
+                                    hasTopicMarkers = state.topicMarkers.isNotEmpty(),
+                                    hasSentimentSegments = state.sentimentSegments.isNotEmpty(),
+                                    speakerSegments = state.speakerSegments,
+                                    persons = state.persons,
+                                    onSpeakerClick = { speakerId -> speakerAssignTarget = speakerId },
+                                )
+                            },
+                        )
+                        if (showChangeTypeDialog) {
+                            ChangeTypeDialog(
+                                customTypes = customTypes,
+                                onSelectMode = { mode ->
+                                    viewModel.setRecordingType(mode)
+                                    showChangeTypeDialog = false
+                                },
+                                onSelectCustomType = { type ->
+                                    viewModel.setRecordingType(RecordingMode.CUSTOM, type.id)
+                                    showChangeTypeDialog = false
+                                },
+                                onDismiss = { showChangeTypeDialog = false },
+                            )
+                        }
+                        if (showEditLocationDialog) {
+                            EditLocationDialog(
+                                initialLabel = state.session.locationLabel.orEmpty(),
+                                onConfirm = { label ->
+                                    viewModel.updateLocationLabel(label)
+                                    showEditLocationDialog = false
+                                },
+                                onDismiss = { showEditLocationDialog = false },
+                            )
+                        }
                         PlaybackCard(
                             state = state,
                             onTogglePlayback = viewModel::togglePlayback,
@@ -1332,31 +1379,141 @@ private fun TransformResultDialog(
 @Composable
 private fun SessionMetaStrip(
     state: SessionDetailUiState.Success,
+    customTypeName: String?,
+    onChangeType: () -> Unit,
+    onEditLocation: () -> Unit,
+    legend: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val session = state.session
-    FlowRow(
+    Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (session.isArchived) {
+        FlowRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (session.isArchived) {
+                MetaChip(
+                    icon = Icons.Filled.Archive,
+                    text = "Archived",
+                    tint = MaterialTheme.colorScheme.tertiary,
+                )
+            }
             MetaChip(
-                icon = Icons.Filled.Archive,
-                text = "Archived",
-                tint = MaterialTheme.colorScheme.tertiary,
+                icon = Icons.Filled.Mic,
+                text = customTypeName ?: session.mode.label,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(onClick = onChangeType),
             )
+            MetaChip(
+                icon = Icons.Filled.LocationOn,
+                text = session.locationLabel ?: "Add location",
+                tint =
+                    if (session.locationLabel != null) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    },
+                modifier = Modifier.clickable(onClick = onEditLocation),
+            )
+            session.tags.forEach { tag -> TagPill(tag = tag) }
         }
-        MetaChip(
-            icon = Icons.Filled.Mic,
-            text = session.mode.label,
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        session.locationLabel?.let { loc ->
-            MetaChip(icon = Icons.Filled.LocationOn, text = loc)
-        }
-        session.tags.forEach { tag -> TagPill(tag = tag) }
+        legend()
     }
+}
+
+@Composable
+private fun ChangeTypeDialog(
+    customTypes: List<CustomRecordingTypeEntity>,
+    onSelectMode: (RecordingMode) -> Unit,
+    onSelectCustomType: (CustomRecordingTypeEntity) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Change recording type") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                RecordingMode.entries.filter { it != RecordingMode.CUSTOM }.forEach { mode ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelectMode(mode) }
+                                .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            modeIcon(mode),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = modeAccentColor(mode),
+                        )
+                        Text(mode.label, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                customTypes.forEach { type ->
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelectCustomType(type) }
+                                .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            customTypeIcon(type.iconName),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = modeAccentColor(RecordingMode.CUSTOM),
+                        )
+                        Text(type.name, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun EditLocationDialog(
+    initialLabel: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var label by remember { mutableStateOf(initialLabel) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit location") },
+        text = {
+            OutlinedTextField(
+                value = label,
+                onValueChange = { label = it },
+                singleLine = true,
+                label = { Text("Location label") },
+                supportingText = { Text("Leave blank to remove the location from this recording") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(label) }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable
@@ -2575,7 +2732,10 @@ private fun DiarizationDebugCard(
     debugInfo: DiarizationDebugInfo?,
     speakerSegments: List<SpeakerSegment>,
 ) {
-    var showRawResponse by remember { mutableStateOf(false) }
+    // Fully collapsed by default — this is diagnostic detail, not primary content. The raw
+    // model response was dropped entirely: the per-speaker timeline below is the useful part,
+    // and the AI call log already captures request/response summaries for troubleshooting.
+    var expanded by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
@@ -2584,11 +2744,27 @@ private fun DiarizationDebugCard(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(
-                text = "Diarization debug",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.tertiary,
-            )
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Transcription & diarization details",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "Collapse details" else "Expand details",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            if (!expanded) return@Column
             if (debugInfo == null && speakerSegments.isEmpty()) {
                 Text(
                     text = "No diarization run recorded yet. Run speaker identification to capture debug data.",
@@ -2619,19 +2795,6 @@ private fun DiarizationDebugCard(
                     fontFamily = FontFamily.Monospace,
                 )
                 prevEndMs = segment.endMs
-            }
-            debugInfo?.rawLlmResponse?.let { raw ->
-                TextButton(onClick = { showRawResponse = !showRawResponse }) {
-                    Text(if (showRawResponse) "Hide model response" else "Show model response")
-                }
-                if (showRawResponse) {
-                    Text(
-                        text = raw,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
         }
     }
