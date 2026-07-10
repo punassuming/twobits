@@ -6,6 +6,11 @@
 
 ### Improvements
 
+**Settings** — reorganized into clearer sections:
+* Profiles now lives in Recording setup, alongside recording types, people, and AI configuration
+* Recording behavior and feedback settings are combined into one section
+* Send to app is now part of Integrations; File Manager is now part of Storage
+
 ### Fixes
 
 ## 1.37.0 (2026-07-10)

@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,9 +34,9 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Storage
@@ -45,8 +44,6 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -77,7 +74,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -178,133 +174,43 @@ fun SettingsScreen(
                     onDetails = onNavigateToPro,
                 )
 
-                ProfilesProminentCard(onClick = onNavigateToProfiles)
-
-                AppLabeledSectionCard(title = "Intelligence", icon = Icons.Filled.AutoAwesome) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable(onClick = onNavigateToAiConfig)
-                                .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Filled.AutoAwesome,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("AI configuration", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "Transcription · transforms · local models · API key",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+                AppLabeledSectionCard(title = "Recording setup", icon = Icons.Filled.Tune) {
+                    SettingsNavRow(
+                        icon = Icons.Filled.Tune,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        title = "Profiles",
+                        subtitle = "Pipeline recipes for recording + AI transforms + destinations",
+                        onClick = onNavigateToProfiles,
+                    )
                     HorizontalDivider()
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable(onClick = onNavigateToPeople)
-                                .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Filled.Group,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("People", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "Rename, merge, or delete speaker profiles",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+                    SettingsNavRow(
+                        icon = Icons.Filled.Label,
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        title = "Recording types",
+                        subtitle = "Rename, change icons, or delete your custom types",
+                        onClick = onNavigateToRecordingTypes,
+                    )
                     HorizontalDivider()
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable(onClick = onNavigateToRecordingTypes)
-                                .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Filled.Label,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Recording types", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "Rename, change icons, or delete your custom types",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+                    SettingsNavRow(
+                        icon = Icons.Filled.Group,
+                        iconTint = MaterialTheme.colorScheme.secondary,
+                        title = "People",
+                        subtitle = "Rename, merge, or delete speaker profiles",
+                        onClick = onNavigateToPeople,
+                    )
+                    HorizontalDivider()
+                    SettingsNavRow(
+                        icon = Icons.Filled.AutoAwesome,
+                        iconTint = MaterialTheme.colorScheme.primary,
+                        title = "AI configuration",
+                        subtitle = "Transcription · transforms · local models · API key",
+                        onClick = onNavigateToAiConfig,
+                    )
                 }
 
                 AppLabeledSectionCard(
-                    title = "Recording",
-                    icon = Icons.Filled.Storage,
+                    title = "Capture quality",
+                    icon = Icons.Filled.Mic,
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -432,12 +338,8 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-
-                AppLabeledSectionCard(
-                    title = "Recording Feedback",
-                    icon = Icons.Filled.Notifications,
-                ) {
+                    HorizontalDivider()
+                    SettingsSubsectionHeader(icon = Icons.Filled.Notifications, label = "Feedback")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -500,9 +402,50 @@ fun SettingsScreen(
                 }
 
                 AppLabeledSectionCard(
-                    title = "Send to App",
-                    icon = Icons.Filled.IosShare,
+                    title = "Integrations",
+                    icon = Icons.Filled.Sync,
                 ) {
+                    Text(
+                        text = "Connect external apps and services.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.FolderOpen,
+                            contentDescription = null,
+                            tint = Color(0xFF7C3AED),
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Obsidian vault", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                text =
+                                    if (uiState.obsidianVaultUri.isBlank()) {
+                                        "No vault selected"
+                                    } else {
+                                        Uri.parse(uiState.obsidianVaultUri).lastPathSegment
+                                            ?: uiState.obsidianVaultUri
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        OutlinedButton(onClick = { obsidianVaultLauncher.launch(null) }) {
+                            Text(if (uiState.obsidianVaultUri.isBlank()) "Choose vault" else "Change")
+                        }
+                    }
+                    HorizontalDivider()
+                    IntegrationRow(Icons.Filled.CalendarToday, "Calendar", "Suggest title from active event", Color(0xFF4285F4))
+                    IntegrationRow(Icons.Filled.Chat, "Slack", "Post summaries to channels", Color(0xFFE01E5A))
+                    IntegrationRow(Icons.Filled.Article, "Notion", "Export sessions as pages", MaterialTheme.colorScheme.onSurface, isLast = true)
+                    AddIntegrationRow()
+                    HorizontalDivider()
+                    SettingsSubsectionHeader(icon = Icons.Filled.IosShare, label = "Send to app")
                     Text(
                         text = "Send transcripts to another app via a configurable intent.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -543,55 +486,8 @@ fun SettingsScreen(
                 }
 
                 AppLabeledSectionCard(
-                    title = "Integrations",
-                    icon = Icons.Filled.Sync,
-                ) {
-                    Text(
-                        text = "Connect external apps and services.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    HorizontalDivider()
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.FolderOpen,
-                                contentDescription = null,
-                                tint = Color(0xFF7C3AED),
-                                modifier = Modifier.size(22.dp),
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Obsidian vault", style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text =
-                                        if (uiState.obsidianVaultUri.isBlank()) {
-                                            "No vault selected"
-                                        } else {
-                                            Uri.parse(uiState.obsidianVaultUri).lastPathSegment
-                                                ?: uiState.obsidianVaultUri
-                                        },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            OutlinedButton(onClick = { obsidianVaultLauncher.launch(null) }) {
-                                Text(if (uiState.obsidianVaultUri.isBlank()) "Choose vault" else "Change")
-                            }
-                        }
-                    }
-                    HorizontalDivider()
-                    IntegrationRow(Icons.Filled.CalendarToday, "Calendar", "Suggest title from active event", Color(0xFF4285F4))
-                    IntegrationRow(Icons.Filled.Chat, "Slack", "Post summaries to channels", Color(0xFFE01E5A))
-                    IntegrationRow(Icons.Filled.Article, "Notion", "Export sessions as pages", MaterialTheme.colorScheme.onSurface)
-                    AddIntegrationRow()
-                }
-
-                AppLabeledSectionCard(
-                    title = "File Manager",
-                    icon = Icons.Filled.FolderOpen,
+                    title = "Storage",
+                    icon = Icons.Filled.Storage,
                 ) {
                     Text(
                         text = "Browse, import, export, and manage recording files.",
@@ -603,12 +499,7 @@ fun SettingsScreen(
                     ) {
                         Text("Manage Files")
                     }
-                }
-
-                AppLabeledSectionCard(
-                    title = "Usage",
-                    icon = Icons.Filled.Info,
-                ) {
+                    HorizontalDivider()
                     val storageGb = uiState.usageStats.totalStorageBytes / (1024f * 1024f * 1024f)
                     val storageFraction = (storageGb / 10f).coerceIn(0f, 1f)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -872,55 +763,59 @@ private fun IntegrationRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** A tappable row inside a section card that navigates to another screen. */
 @Composable
-private fun ProfilesProminentCard(onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        shape = MaterialTheme.shapes.large,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+private fun SettingsNavRow(
+    icon: ImageVector,
+    iconTint: Color,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(ScrybeLayoutDefaults.sectionPadding),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Box(
+            modifier =
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(iconTint.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Filled.Tune,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Profiles",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Text(
-                    "Pipeline recipes for recording + AI transforms + destinations",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                )
-            }
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(18.dp),
-            )
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+/** A small label marking a distinct subgroup of settings inside a merged section card. */
+@Composable
+private fun SettingsSubsectionHeader(
+    icon: ImageVector,
+    label: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
