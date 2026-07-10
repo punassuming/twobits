@@ -103,6 +103,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
@@ -117,8 +119,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import dev.scrybe.core.common.buildWaveformEnvelopePath
 import dev.scrybe.core.common.customTypeIcon
-import dev.scrybe.core.common.shapeWaveformBars
+import dev.scrybe.core.common.shapeWaveformEnvelope
 import dev.scrybe.core.model.Folder
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.RecordingSession
@@ -193,27 +196,41 @@ private fun HistoryMiniWaveform(
     accentColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val barCount = 36
-    // Shared shaping (peak-normalized + sqrt) keeps quiet recordings readable and matches the
-    // capture list's waveform language; naive point-sampling used to miss transients entirely.
-    val bars = if (samples.isEmpty()) List(barCount) { 0.3f } else shapeWaveformBars(samples, barCount)
-    Row(
-        modifier = modifier.height(28.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        bars.forEach { amp ->
-            Box(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight(amp.coerceIn(0.08f, 1f))
-                        .background(
-                            accentColor.copy(alpha = 0.32f + amp * 0.42f),
-                            RoundedCornerShape(percent = 50),
-                        ),
+    Canvas(modifier = modifier.height(28.dp)) {
+        val centerY = size.height / 2f
+        val minHalf = 1.2.dp.toPx()
+        if (samples.isEmpty()) {
+            drawLine(
+                color = accentColor.copy(alpha = 0.30f),
+                start = Offset(0f, centerY),
+                end = Offset(size.width, centerY),
+                strokeWidth = minHalf * 2f,
+                cap = StrokeCap.Round,
             )
+            return@Canvas
         }
+        // One envelope point every ~2dp, so resolution tracks the rendered width instead of a
+        // fixed bar count — short and long recordings both fill the row fluidly.
+        val pointCount = (size.width / 2.dp.toPx()).toInt().coerceIn(24, 200)
+        val points = shapeWaveformEnvelope(samples, pointCount)
+        val path =
+            buildWaveformEnvelopePath(
+                points = points,
+                left = 0f,
+                right = size.width,
+                centerY = centerY,
+                maxHalfHeight = size.height / 2f,
+                minHalfHeight = minHalf,
+            )
+        drawPath(
+            path = path,
+            brush =
+                Brush.verticalGradient(
+                    0f to accentColor.copy(alpha = 0.30f),
+                    0.5f to accentColor.copy(alpha = 0.70f),
+                    1f to accentColor.copy(alpha = 0.30f),
+                ),
+        )
     }
 }
 

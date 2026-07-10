@@ -47,21 +47,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.twobits.design.components.AppSectionCard
+import dev.scrybe.core.common.buildWaveformEnvelopePath
+import dev.scrybe.core.common.shapeWaveformEnvelope
 import dev.scrybe.core.model.Person
 import dev.scrybe.core.model.SentimentSegment
 import dev.scrybe.core.model.SpeakerSegment
 import dev.scrybe.core.model.TopicMarker
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.math.roundToLong
-
-private const val PLAYBACK_WAVEFORM_TARGET_BAR_COUNT = 120
-private val PLAYBACK_WAVEFORM_MAX_BAR_WIDTH = 2.dp
 
 @Composable
 internal fun PlaybackCard(
@@ -275,7 +274,6 @@ private fun WaveformTimeline(
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bars = normalizePlaybackSamples(samples, targetCount = PLAYBACK_WAVEFORM_TARGET_BAR_COUNT)
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
     val activeColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
     val baselineColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.20f)
@@ -290,6 +288,22 @@ private fun WaveformTimeline(
     BoxWithConstraints(modifier = modifier) {
         val density = LocalDensity.current
         val waveformWidthPx = with(density) { maxWidth.toPx().coerceAtLeast(1f) }
+        // The envelope shape only depends on the samples and the laid-out size, not on playback
+        // progress — memoize it so per-frame redraws only re-fill the same path.
+        val envelopePath =
+            remember(samples, waveformWidthPx, maxHeight) {
+                with(density) {
+                    val pointCount = (waveformWidthPx / 2.dp.toPx()).toInt().coerceIn(48, 300)
+                    buildWaveformEnvelopePath(
+                        points = shapeWaveformEnvelope(samples, pointCount),
+                        left = 0f,
+                        right = waveformWidthPx,
+                        centerY = maxHeight.toPx() / 2f,
+                        maxHalfHeight = maxHeight.toPx() * 0.34f,
+                        minHalfHeight = 1.2.dp.toPx(),
+                    )
+                }
+            }
         val activeIntent =
             remember(topicMarkers, playbackPositionMs, durationMs) {
                 nearestIntentMarker(topicMarkers, playbackPositionMs, durationMs)
@@ -353,50 +367,45 @@ private fun WaveformTimeline(
                 strokeWidth = 2.dp.toPx(),
                 cap = StrokeCap.Round,
             )
-            val barWidth =
-                (size.width / (bars.size * 3.2f))
-                    .coerceAtLeast(1.dp.toPx())
-                    .coerceAtMost(PLAYBACK_WAVEFORM_MAX_BAR_WIDTH.toPx())
-            val spacing = (size.width - (barWidth * bars.size)) / bars.size.coerceAtLeast(1)
-            val progressIndex = (bars.size * progress.coerceIn(0f, 1f)).toInt()
-            bars.forEachIndexed { index, sample ->
-                val smoothed = densitySmoothed(bars, index, windowRadius = 2)
-                if (smoothed > 0.02f) {
-                    val x = (index * (barWidth + spacing)) + (barWidth / 2f)
-                    val lh = (size.height * 0.34f) * smoothed
-                    drawLine(
-                        color = activeColor.copy(alpha = smoothed * 0.18f),
-                        start = Offset(x, centerY - lh * 1.6f),
-                        end = Offset(x, centerY + lh * 1.6f),
-                        strokeWidth = barWidth * 4f,
-                        cap = StrokeCap.Round,
-                    )
+            val playheadX = size.width * progress.coerceIn(0f, 1f)
+            if (samples.isNotEmpty()) {
+                fun xFor(timeMs: Float): Float =
+                    if (durationMs > 0L) {
+                        ((timeMs / durationMs.toFloat()) * size.width).coerceIn(0f, size.width)
+                    } else {
+                        0f
+                    }
+                // Partition the width into uniform-color spans (speaker segments and the gaps
+                // between them, each split at the playhead) and fill the same envelope path
+                // clipped to each span — no overpainting, so the translucent colors stay exact.
+                val cuts =
+                    (
+                        listOf(0f, size.width, playheadX) +
+                            speakerSegments.flatMap { listOf(xFor(it.startMs.toFloat()), xFor(it.endMs.toFloat())) }
+                    ).distinct().sorted()
+                for (k in 0 until cuts.size - 1) {
+                    val leftX = cuts[k]
+                    val rightX = cuts[k + 1]
+                    if (rightX - leftX < 0.5f) continue
+                    val midX = (leftX + rightX) / 2f
+                    val midTimeMs = if (durationMs > 0L) (midX / size.width) * durationMs.toFloat() else 0f
+                    val segment =
+                        speakerSegments.firstOrNull { midTimeMs >= it.startMs && midTimeMs <= it.endMs }
+                    val played = midX <= playheadX
+                    val spanColor =
+                        when {
+                            segment != null -> {
+                                val idx = speakerIndex[segment.speakerId] ?: 0
+                                speakerColorForIndex(idx).copy(alpha = if (played) 0.85f else 0.40f)
+                            }
+                            played -> activeColor
+                            else -> inactiveColor
+                        }
+                    clipRect(left = leftX, top = 0f, right = rightX, bottom = size.height) {
+                        drawPath(envelopePath, spanColor)
+                    }
                 }
             }
-            bars.forEachIndexed { index, sample ->
-                val shapedAmplitude = playbackAmplitude(sample)
-                val lineHeight = (size.height * 0.34f) * shapedAmplitude
-                val x = (index * (barWidth + spacing)) + (barWidth / 2f)
-                val barTimeMs =
-                    if (durationMs > 0L) (index.toFloat() / bars.size.toFloat()) * durationMs else 0f
-                val activeSpeaker =
-                    speakerSegments.firstOrNull { barTimeMs >= it.startMs && barTimeMs <= it.endMs }
-                val barColor =
-                    if (activeSpeaker != null) {
-                        val idx = speakerIndex[activeSpeaker.speakerId] ?: 0
-                        speakerColorForIndex(idx).copy(alpha = if (index <= progressIndex) 0.85f else 0.40f)
-                    } else {
-                        if (index <= progressIndex) activeColor else inactiveColor
-                    }
-                drawLine(
-                    color = barColor,
-                    start = Offset(x, centerY - lineHeight),
-                    end = Offset(x, centerY + lineHeight),
-                    strokeWidth = barWidth,
-                    cap = StrokeCap.Round,
-                )
-            }
-            val playheadX = size.width * progress.coerceIn(0f, 1f)
             drawLine(
                 color = playheadColor,
                 start = Offset(playheadX, size.height * 0.1f),
@@ -406,40 +415,6 @@ private fun WaveformTimeline(
             )
         }
     }
-}
-
-private fun playbackAmplitude(sample: Float): Float {
-    val gated = if (sample < 0.02f) 0f else sample
-    return (0.012f + (gated * 0.88f)).coerceIn(0.012f, 0.9f)
-}
-
-private fun normalizePlaybackSamples(
-    samples: List<Float>,
-    targetCount: Int,
-): List<Float> {
-    if (targetCount <= 0) return emptyList()
-    if (samples.isEmpty()) return List(targetCount) { 0f }
-    if (samples.size == 1) return List(targetCount) { samples.first() }
-
-    val normalized = MutableList(targetCount) { 0f }
-    samples.forEachIndexed { index, sample ->
-        val bucket =
-            ((index.toFloat() / samples.lastIndex.coerceAtLeast(1)) * (targetCount - 1))
-                .roundToInt()
-                .coerceIn(0, targetCount - 1)
-        normalized[bucket] = maxOf(normalized[bucket], sample)
-    }
-    return normalized
-}
-
-private fun densitySmoothed(
-    bars: List<Float>,
-    index: Int,
-    windowRadius: Int,
-): Float {
-    val from = (index - windowRadius).coerceAtLeast(0)
-    val to = (index + windowRadius).coerceAtMost(bars.lastIndex)
-    return bars.subList(from, to + 1).average().toFloat()
 }
 
 internal val speakerColorPalette =
