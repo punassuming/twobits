@@ -36,8 +36,8 @@ android {
         applicationId = "dev.scrybe.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1038000
-        versionName = "1.38.0"
+        versionCode = 1039000
+        versionName = "1.39.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
