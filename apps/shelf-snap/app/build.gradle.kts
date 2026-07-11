@@ -14,8 +14,8 @@ android {
         applicationId = "com.shelfsnap.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1021000
-        versionName = "1.21.0"
+        versionCode = 1021001
+        versionName = "1.21.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.21.1 (2026-07-11)
+
+### Features
+
+### Improvements
+
 **Internal: shared section-card components** — Settings and AI configuration screens now use shared `AppLabeledSectionCard`/`AiSectionCard`/`AppEmptyState` components instead of a private near-duplicate implementation, matching Scrybe and PriceDrop's card styling exactly
 
 **BYOK clarity** — AI configuration now shows what's required vs optional:
@@ -25,6 +33,7 @@
 **Listing refine — better titles** — AI-refined per-platform listing titles are now explicitly composed to be specific and keyword-rich (brand + model + size/color + condition), the way experienced resale sellers write them, instead of a generic copywriting instruction with no guidance on title quality; size and color are now included in what the AI sees when refining a listing
 **Inventory search — no-results state** — searching with no matches now shows a proper empty state (search icon + message) instead of plain unstyled text
 **Back button accessibility** — every screen's back button now has a "Back" content description for screen readers, instead of none
+
 
 ## 1.21.0 (2026-07-03)
 
@@ -48,6 +57,7 @@
 **Internal: item title field** — editing an item's category, brand, or any other field no longer silently writes the title-field's fallback text (brand+model or category) into the persisted title — the fallback stays a display-only fallback until the title field is actually edited
 
 
+
 ## 1.20.0 (2026-07-02)
 
 ### Features
@@ -62,6 +72,7 @@
 * internal: `ItemRepository.analysePhotos`/`researchPrice` now dispatch on the shared `ExecutionMode` type instead of raw "pro"/"byok"/"local" strings, so the compiler enforces all three modes are handled at the exact call sites that decide whether a request goes to the worker, direct to the provider, or on-device; no change to behavior or persisted settings
 
 ### Fixes
+
 
 
 
@@ -87,6 +98,7 @@
 ### Fixes
 
 * List tab: a sold listing can now be marked unsold (reverted to active) — previously a listing marked sold had no way to undo it
+
 
 
 
@@ -122,6 +134,7 @@
 
 
 
+
 ## 1.17.0 (2026-06-25)
 
 ### Features
@@ -144,6 +157,7 @@
 * Search queries for items without a brand or model are now shorter and more targeted, producing real sold-listing results from eBay and Mercari instead of generic article pages
 
 ### Fixes
+
 
 
 
@@ -194,6 +208,7 @@
 
 
 
+
 ## 1.15.0 (2026-06-23)
 
 ### Features
@@ -227,6 +242,7 @@
 
 
 
+
 ## 1.14.0 (2026-06-22)
 
 ### Features
@@ -243,6 +259,7 @@
 ### Fixes
 
 * Item Detail: "GPT-4o analysis" label now shows the actual model name used (tracked in UI state)
+
 
 
 
@@ -278,6 +295,7 @@
 
 
 
+
 ## 1.12.0 (2026-06-21)
 
 ### Features
@@ -297,6 +315,7 @@
 
 
 
+
 ## 1.11.0 (2026-06-19)
 
 ### Features
@@ -306,6 +325,7 @@
 * migrated to shared `gradle/libs.versions.toml` version catalog across all three apps; upgraded Compose BOM to 2024.12.01, coreKtx to 1.15.0, lifecycleRuntimeKtx to 2.8.7, and navigationCompose to 2.8.5
 
 ### Fixes
+
 
 
 
@@ -354,6 +374,7 @@
 
 
 
+
 ## 1.9.0 (2026-06-17)
 
 ### Features
@@ -373,6 +394,7 @@
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
 * `ProScreen` top bar extracted into private composable — satisfies ktlint function-body-expression rules without changing visible behaviour
+
 
 
 
@@ -427,6 +449,7 @@
 
 
 
+
 ## 1.7.0 (2026-06-11)
 
 ### Features
@@ -448,6 +471,7 @@
 
 
 
+
 ## 1.6.0 (2026-06-11)
 
 ### Features
@@ -461,6 +485,7 @@
 * test result (connected or error message) shown inline below the buttons
 
 ### Fixes
+
 
 
 
@@ -501,6 +526,7 @@
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
 * missing FilterChip import in MarketTab restored after wildcard-import replacement
+
 
 
 
@@ -550,6 +576,7 @@
 
 
 
+
 ## 1.3.1 (2026-06-06)
 
 ### Improvements
@@ -563,11 +590,13 @@
 
 
 
+
 ## 1.3.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -612,6 +641,7 @@
 
 
 
+
 ## 1.1.3 (2026-06-05)
 
 ### Improvements
@@ -625,11 +655,13 @@
 
 
 
+
 ## 1.1.2 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
+
 
 
 
@@ -652,12 +684,14 @@
 
 
 
+
 ## 1.1.0 (2026-06-04)
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
+
 
 
 
@@ -679,6 +713,7 @@
 
 
 
+
 ## 1.0.1 (2026-06-03)
 
 ### Features
@@ -692,9 +727,11 @@
 
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 
