@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 0.12.0 (2026-07-11)
+
+### Features
+
+### Improvements
+
 **Settings & AI configuration card style** — the Settings screen's "Tracking" and "Privacy" cards and the AI configuration screen's "Credentials" card now use the same shared card components Scrybe and Shelf Snap use — Settings cards gain the correct rounded corners (they were missing an explicit shape before), and the Credentials card switches from a flat card to the same elevated-card style as the rest of AI configuration in all three apps, a visible but intentional style change
 **Internal: shared empty-state component** — the empty watchlist state now uses a shared `AppEmptyState` component instead of a private implementation, matching Scrybe's task-list empty state
 
@@ -29,6 +37,7 @@
 **What's New — bold formatting** — item titles in the full What's New screen (Settings → What's New) now render bold, matching the automatic popup — previously only the popup applied bold weight to item titles, so the two "unified" surfaces looked inconsistent
 **Internal: What's New last-seen key** — standardized on the same DataStore key name/type Scrybe and Shelf Snap use, with a one-time migration from the old key so existing users don't see a spurious re-prompt of the popup
 
+
 ## 0.11.0 (2026-07-03)
 
 ### Features
@@ -47,6 +56,7 @@
 **Check-frequency slider** — no longer allows hourly (or sub-4-hour) polling — the range is now 4–96 hours; a previously saved value outside that range is transparently clamped on next read instead of being scheduled as-is
 
 
+
 ## 0.10.0 (2026-07-02)
 
 ### Features
@@ -63,6 +73,7 @@
 
 
 
+
 ## 0.9.0 (2026-06-28)
 
 ### Features
@@ -76,6 +87,7 @@
 * Free product cap now refreshes subscription status on a cold start, so a returning PriceDrop Pro subscriber isn't temporarily limited to 3 products before opening Settings
 * BYOK Google Shopping results are now parsed from SearchAPI.io's actual response shape (shopping_results + popular_products, seller / product_link), so common queries no longer return empty or save products with a blank retailer/URL
 * AI Config: a provider key that previously passed verification now shows "Connected" on launch — the verified state is persisted, so you no longer have to expand, save, and test each key every time you open the app
+
 
 
 
@@ -120,6 +132,7 @@
 
 
 
+
 ## 0.7.0 (2026-06-26)
 
 ### Features
@@ -133,6 +146,7 @@
 * **URL product metadata** — when adding a product by URL the extracted title and current price (from Jina reader + OpenAI) are now saved to the watchlist; previously the product was always stored with the placeholder title "Product from URL" and price $0.00
 * **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
 * **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
+
 
 
 
@@ -161,6 +175,7 @@
 
 
 
+
 ## 0.5.0 (2026-06-24)
 
 ### Features
@@ -182,6 +197,7 @@
 * Price lookups for ASIN products now prefer Rainforest BYOK when configured, rather than always falling back to SerpAPI/Shopping
 * Chat model selection now reads the user's AI Config model choice for the Ask feature; falls back to default Pro/BYOK model constants only when the user has not selected a model
 * `ProviderSettingsStore` gains `getFeatureModel()` suspend getter (was missing — only the flow + setter existed); `isByok()` in `PriceDropApiClient` is now a suspend function to correctly call the suspend `getMode()` — fixes compile errors in CI
+
 
 
 
@@ -221,6 +237,7 @@
 
 
 
+
 ## 0.3.0 (2026-06-22)
 
 ### Features
@@ -249,6 +266,7 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 
 
 
@@ -306,6 +324,7 @@
 
 
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -315,6 +334,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 
