@@ -153,6 +153,24 @@
   .price-row .source {
     font-size: 11px; color: var(--t3); font-weight: 400;
   }
+
+  /* Pro banner */
+  .pro-banner {
+    background: linear-gradient(135deg, var(--ember-dim), #2A1508);
+    border: 1px solid rgba(255,182,149,0.15);
+    border-radius: var(--r-xl); padding: 36px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    align-items: center;
+  }
+  @media (max-width: 768px) { .pro-banner { grid-template-columns: 1fr; } }
+  .pro-banner h3 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .pro-banner p { font-size: 14px; color: var(--t2); line-height: 1.6; }
+  .pro-option {
+    background: rgba(255,255,255,0.04); border-radius: var(--r-sm);
+    padding: 16px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .pro-option h4 { font-size: 15px; font-weight: 600; }
+  .pro-option p { font-size: 13px; color: var(--t3); line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -162,7 +180,7 @@
     <a href="index.html" class="site-logo"><span class="dot"></span> twobits</a>
     <div class="site-nav-links">
       <a href="scrybe.html">Scrybe</a>
-      <a href="shelf-snap.html" class="active">Shelf-Snap</a>
+      <a href="shelf-snap.html" class="active">Shelf-Snap</a><a href="price-drop.html">PriceDrop</a>
       <a href="privacy.html">Privacy</a>
     </div>
   </div>
@@ -281,7 +299,7 @@
       </div>
       <div class="step">
         <h4>AI drafts the listing</h4>
-        <p>Photos go to OpenAI Vision (GPT-4o). The API returns category, description, condition, estimated value, and a confidence score — saved as a draft record you can review and edit.</p>
+        <p>Photos go to OpenAI Vision. The API returns category, description, condition, estimated value, and a confidence score — saved as a draft record you can review and edit.</p>
       </div>
       <div class="step">
         <h4>Price, list, or donate</h4>
@@ -317,8 +335,8 @@
           Market
         </div>
         <div class="tab-body">
-          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">search</span> Web search via Brave or DuckDuckGo</div>
-          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">auto_awesome</span> AI pricing analysis (gpt-4o-mini)</div>
+          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">search</span> Web search via Jina, Brave, SearchAPI.io, or Serper</div>
+          <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">auto_awesome</span> AI pricing analysis (fast OpenAI model)</div>
           <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">bar_chart</span> Average sold price + range</div>
           <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">storefront</span> Per-platform suggested prices</div>
           <div class="tab-row"><span class="material-icons-round" style="color: var(--glow);">link</span> Comparable listings with cited sources</div>
@@ -359,14 +377,14 @@
           <span class="material-icons-round" style="color: var(--glow);">auto_awesome</span>
         </div>
         <h3 class="t-h3">AI item analysis</h3>
-        <p class="t-body-sm">OpenAI Vision (GPT-4o) returns structured JSON: category, description, condition, estimated value, and confidence. Values are always labeled as estimates — never presented as authoritative.</p>
+        <p class="t-body-sm">OpenAI Vision returns structured JSON: category, description, condition, estimated value, and confidence. Values are always labeled as estimates — never presented as authoritative.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: var(--signal-dim);">
           <span class="material-icons-round" style="color: var(--signal);">price_change</span>
         </div>
         <h3 class="t-h3">Market research</h3>
-        <p class="t-body-sm">The Market tab queries OpenAI (gpt-4o-mini) plus an optional web search (Brave or DuckDuckGo). It surfaces average sold price, a range, per-platform suggestions, and comparable listings with cited sources.</p>
+        <p class="t-body-sm">The Market tab queries a fast OpenAI model plus an optional web search (Jina, Brave, SearchAPI.io, or Serper). It surfaces average sold price, a range, per-platform suggestions, and comparable listings with cited sources.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="background: rgba(196,171,255,0.12);">
@@ -414,7 +432,7 @@
       <div>
         <p class="t-label mb-16 text-ember">Market research</p>
         <h3>Real prices, real sources</h3>
-        <p>Every price estimate comes with cited comparable listings. AI inference is augmented with live web search (Brave or DuckDuckGo) so you see where the numbers come from — not just a model's guess.</p>
+        <p>Every price estimate comes with cited comparable listings. AI inference is augmented with live web search (Jina, Brave, SearchAPI.io, or Serper) so you see where the numbers come from — not just a model's guess.</p>
       </div>
       <div class="price-example">
         <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Kindle Paperwhite (2021)</div>
@@ -445,6 +463,29 @@
   </div>
 </section>
 
+<!-- Pro / BYOK -->
+<section class="section-sm">
+  <div class="wrap">
+    <div class="pro-banner reveal">
+      <div>
+        <p class="t-label mb-16 text-ember">Two ways to use AI</p>
+        <h3>BYOK or Shelf-Snap Pro</h3>
+        <p>Like every twobits app, Shelf-Snap never locks you in. Use your own OpenAI key, or subscribe to Shelf-Snap Pro for managed access.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="pro-option">
+          <h4 class="text-ember">Bring your own key</h4>
+          <p>Add your own OpenAI key (required) and optionally a web-search key. Calls go directly to each provider — you pay them at their published rates.</p>
+        </div>
+        <div class="pro-option">
+          <h4 style="color: var(--brand-soft);">Shelf-Snap Pro</h4>
+          <p>Subscribe via Google Play for managed AI access — no keys to add. Calls route through the TwoBits Worker, validated by RevenueCat.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Google Play Listing -->
 <section class="section" id="play-listing">
   <div class="wrap">
@@ -461,11 +502,11 @@
           <span class="dev">twobits</span>
           <div style="display: flex; gap: 16px; margin-top: 8px; align-items: center;">
             <div class="stars">
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
-              <span class="material-icons-round empty" style="font-size: 16px; color: var(--s4);">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round empty" style="font-size: 16px;">star</span>
               <span style="font-size: 13px; color: var(--t2); margin-left: 4px;">4.2</span>
             </div>
             <button class="play-install-btn" style="background: var(--ember); color: var(--ember-dim);">Install</button>
@@ -595,15 +636,15 @@
         <h4>About this app</h4>
         <p class="play-desc">Shelf-Snap helps you document, value, and export a donation or resale inventory using your camera and AI.
 
-Snap photos of any item — clothing, electronics, furniture, books, kitchenware. OpenAI Vision (GPT-4o) analyzes each photo and returns a structured draft: category, description, condition, estimated value, and confidence score. All values are clearly labeled as estimates.
+Snap photos of any item — clothing, electronics, furniture, books, kitchenware. OpenAI Vision analyzes each photo and returns a structured draft: category, description, condition, estimated value, and confidence score. All values are clearly labeled as estimates.
 
-Use the Market tab to research real resale prices. Shelf-Snap queries an AI model (gpt-4o-mini) plus an optional web search (Brave or DuckDuckGo) and surfaces average sold prices, price ranges, per-platform suggestions, and comparable listings with cited sources.
+Use the Market tab to research real resale prices. Shelf-Snap queries a fast OpenAI model plus an optional web search (Jina AI, Brave, SearchAPI.io, or Serper) and surfaces average sold prices, price ranges, per-platform suggestions, and comparable listings with cited sources.
 
 Ready to sell? The List tab lets you select platforms — eBay, Mercari, OfferUp, FB Marketplace, Craigslist — and record listings at platform-adjusted prices. Track Listed and Sold status from your inventory.
 
 Donating instead? The summary screen shows per-item subtotals and total estimated donation value. One-tap CSV export creates a sharable file for tax documentation.
 
-Like all twobits apps, Shelf-Snap uses your OpenAI API key — billed directly to your account. Photos are sent to OpenAI for analysis and web-search snippets are sent to your chosen search provider only when you tap "Research price." Nothing else leaves your device.</p>
+Bring your own OpenAI key (billed directly to your account), or subscribe to Shelf-Snap Pro for managed access — no keys to add. Photos are sent to OpenAI for analysis and web-search snippets are sent to your chosen search provider only when you tap "Research price." Nothing else leaves your device.</p>
       </div>
 
       <div class="play-section">
@@ -613,20 +654,20 @@ Like all twobits apps, Shelf-Snap uses your OpenAI API key — billed directly t
           <div class="safety-item"><span class="material-icons-round">photo_camera</span><div><p style="color: var(--t1); font-weight: 500;">Photos processed, not stored remotely</p><p style="margin-top: 2px;">Images sent to OpenAI Vision for analysis, then cache copy purged</p></div></div>
           <div class="safety-item"><span class="material-icons-round">smartphone</span><div><p style="color: var(--t1); font-weight: 500;">Inventory stored on-device only</p><p style="margin-top: 2px;">Item data lives in a local Room database on your phone</p></div></div>
           <div class="safety-item"><span class="material-icons-round">lock</span><div><p style="color: var(--t1); font-weight: 500;">Data encrypted in transit</p><p style="margin-top: 2px;">All API calls use TLS; keys stored in local DataStore</p></div></div>
-          <div class="safety-item"><span class="material-icons-round">vpn_key</span><div><p style="color: var(--t1); font-weight: 500;">Your API key, your account</p><p style="margin-top: 2px;">OpenAI and web-search costs billed directly to your provider</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">vpn_key</span><div><p style="color: var(--t1); font-weight: 500;">Your key or Pro — your choice</p><p style="margin-top: 2px;">BYOK billed directly to each provider; Pro routes through the TwoBits Worker</p></div></div>
         </div>
       </div>
 
       <div class="play-section">
         <h4>What's new</h4>
-        <p class="t-body-sm" style="color: var(--t3); margin-bottom: 6px;">v1.0.0 — June 1, 2026</p>
+        <p class="t-body-sm" style="color: var(--t3); margin-bottom: 6px;">v1.21.1 — July 11, 2026</p>
         <p class="t-body-sm">
-          • Shared ItemThumb with category-specific icon fallbacks<br>
-          • Photo thumbnails on every inventory and donation row<br>
-          • Color-coded condition selector in item detail<br>
-          • Market price-range bar with platform filter chips<br>
-          • Camera: numbered strip, framing grid, flash toggle<br>
-          • Settings: auto-analyze, keep-original-photos toggles
+          • BYOK settings now tag each key Required, Recommended, or Optional<br>
+          • New Serper.dev option for BYOK web search<br>
+          • Smarter, more specific AI-generated listing titles<br>
+          • Item titles auto-refresh after re-analyzing a listing<br>
+          • New empty state when an inventory search has no results<br>
+          • Shared section-card styling across the app
         </p>
       </div>
 
@@ -648,12 +689,32 @@ Like all twobits apps, Shelf-Snap uses your OpenAI API key — billed directly t
   <div class="wrap text-center reveal">
     <h2 class="t-h2 mb-16">Know what you have. Know what it's worth.</h2>
     <p class="t-body mb-24" style="max-width: 520px; margin-left: auto; margin-right: auto;">
-      Free to use. AI analysis costs pennies per item via your own OpenAI key.
+      Free with your own OpenAI key, or subscribe to Shelf-Snap Pro for managed AI access.
     </p>
     <a href="#" class="btn btn-ember" style="font-size: 17px; padding: 14px 32px;">
       <span class="material-icons-round" style="font-size: 20px;">play_arrow</span>
       Get Shelf-Snap on Google Play
     </a>
+  </div>
+</section>
+
+
+<!-- More from twobits -->
+<section class="section-sm">
+  <div class="wrap">
+    <p class="t-label mb-16">More from twobits</p>
+    <div class="related-grid">
+      <a class="related-card" href="scrybe.html">
+        <div class="ic" style="background: var(--signal-dim);"><span class="material-icons-round" style="color: var(--signal);">graphic_eq</span></div>
+        <div><h4 class="text-signal">Scrybe</h4><p>Record anything; get back transcripts, summaries, and action items.</p></div>
+        <span class="material-icons-round arr">arrow_forward</span>
+      </a>
+      <a class="related-card" href="price-drop.html">
+        <div class="ic" style="background: var(--glow-dim);"><span class="material-icons-round" style="color: var(--glow);">trending_down</span></div>
+        <div><h4 class="text-glow">PriceDrop</h4><p>Track prices, catch drops and coupons, buy at the historical low.</p></div>
+        <span class="material-icons-round arr">arrow_forward</span>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -663,7 +724,7 @@ Like all twobits apps, Shelf-Snap uses your OpenAI API key — billed directly t
       <a class="site-logo" href="index.html"><span class="dot"></span> twobits</a>
       <span class="t-caption" style="margin-top: 4px;">AI tools that respect your intelligence.</span>
     </div>
-    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a></div>
+    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a><a href="price-drop.html">PriceDrop</a></div>
     <div class="footer-col"><h5>Company</h5><a href="privacy.html">Privacy</a><a href="https://github.com/punassuming/twobits">GitHub</a></div>
   </div>
   <div class="footer-bottom">© 2026 twobits. All rights reserved.</div>

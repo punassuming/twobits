@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PriceDrop — Track prices, catch the drop</title>
+<meta name="description" content="PriceDrop watches your products in the background, finds coupons, and alerts you the moment the price hits your target or a historical low.">
+<link rel="stylesheet" href="site.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+  .hero-product {
+    padding: 100px 0 64px;
+    position: relative; overflow: hidden;
+  }
+  .hero-product::before {
+    content: '';
+    position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 450px;
+    background: radial-gradient(ellipse, var(--glow-glow, rgba(136,215,168,0.12)) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-product-inner {
+    display: flex; align-items: center; gap: 48px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .hero-text { max-width: 480px; }
+  .hero-text .tagline {
+    font-size: 20px; color: var(--t2); line-height: 1.6;
+    margin-top: 16px; text-wrap: pretty;
+  }
+  .hero-badges { display: flex; gap: 10px; margin-top: 28px; flex-wrap: wrap; }
+
+  /* Phone mockup */
+  .phone-mock {
+    width: 220px; height: 440px;
+    background: var(--s1); border-radius: 28px;
+    border: 2px solid var(--border-l);
+    overflow: hidden; position: relative; flex-shrink: 0;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+  .phone-status {
+    height: 28px; padding: 0 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--t3); flex-shrink: 0;
+  }
+  .phone-body { flex: 1; overflow: hidden; }
+  .pd-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 40px; background: var(--s2);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 12px;
+  }
+  .pd-fab {
+    position: absolute; bottom: 48px; right: 16px;
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--glow); display: flex;
+    align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(136,215,168,0.25);
+  }
+  .pd-item-row {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--s3); border-radius: 12px;
+    padding: 8px 10px; margin: 0 10px 6px;
+  }
+  .pd-thumb {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Steps */
+  .steps {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;
+    counter-reset: step;
+  }
+  @media (max-width: 768px) { .steps { grid-template-columns: 1fr; } }
+  .step {
+    counter-increment: step; padding: 28px;
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+  }
+  .step::before {
+    content: counter(step, decimal-leading-zero);
+    font-size: 48px; font-weight: 700;
+    color: var(--glow); opacity: 0.14;
+    line-height: 1; display: block; margin-bottom: 12px;
+  }
+  .step h4 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .step p { font-size: 14px; color: var(--t2); line-height: 1.6; }
+
+  /* Add-methods grid */
+  .add-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .add-chip {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 20px 16px;
+    text-align: center; font-size: 14px; font-weight: 500;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    transition: border-color 0.2s;
+  }
+  .add-chip:hover { border-color: var(--border-l); }
+  .add-icon {
+    width: 40px; height: 40px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--glow-dim);
+  }
+
+  /* Chart card */
+  .chart-card {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-xl); padding: 32px;
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px;
+    align-items: center;
+  }
+  @media (max-width: 768px) { .chart-card { grid-template-columns: 1fr; } }
+  .chart-metrics {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .metric {
+    background: var(--s2); border-radius: var(--r-sm); padding: 14px 16px;
+  }
+  .metric .lbl { font-size: 11px; color: var(--t3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .metric .val { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .range-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .range-tab {
+    font-size: 12px; padding: 4px 12px; border-radius: 9999px;
+    background: var(--s2); color: var(--t3); border: 1px solid var(--border);
+  }
+  .range-tab.active { background: var(--glow-dim); color: var(--glow); border-color: transparent; }
+
+  /* Pro banner */
+  .pro-banner {
+    background: linear-gradient(135deg, var(--glow-dim), #0E2A1E);
+    border: 1px solid rgba(136,215,168,0.15);
+    border-radius: var(--r-xl); padding: 36px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    align-items: center;
+  }
+  @media (max-width: 768px) { .pro-banner { grid-template-columns: 1fr; } }
+  .pro-banner h3 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .pro-banner p { font-size: 14px; color: var(--t2); line-height: 1.6; }
+  .pro-option {
+    background: rgba(255,255,255,0.04); border-radius: var(--r-sm);
+    padding: 16px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .pro-option h4 { font-size: 15px; font-weight: 600; }
+  .pro-option p { font-size: 13px; color: var(--t3); line-height: 1.5; }
+
+  /* Providers table */
+  .providers {
+    background: var(--s1); border: 1px solid var(--border);
+    border-radius: var(--r-xl); overflow: hidden;
+  }
+  .provider-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 24px; border-top: 1px solid var(--border);
+  }
+  .provider-row:first-child { border-top: none; }
+  .provider-row .name { font-size: 15px; font-weight: 600; flex: 1; }
+  .provider-row .name span { display: block; font-size: 12px; color: var(--t3); font-weight: 400; margin-top: 2px; }
+  .seg {
+    display: flex; gap: 4px; background: var(--s2);
+    border-radius: 9999px; padding: 3px;
+  }
+  .seg span {
+    font-size: 11px; font-weight: 500; padding: 4px 12px; border-radius: 9999px;
+    color: var(--t3);
+  }
+  .seg span.on { background: var(--glow); color: var(--glow-dim); }
+  .seg span.byok { background: var(--signal-dim); color: var(--signal); }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="index.html" class="site-logo"><span class="dot"></span> twobits</a>
+    <div class="site-nav-links">
+      <a href="scrybe.html">Scrybe</a>
+      <a href="shelf-snap.html">Shelf-Snap</a>
+      <a href="price-drop.html" class="active">PriceDrop</a>
+      <a href="privacy.html">Privacy</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero-product">
+  <div class="wrap">
+    <div class="hero-product-inner">
+      <div class="hero-text">
+        <div class="pill" style="background: var(--glow-dim); color: var(--glow); margin-bottom: 16px;">
+          <span class="material-icons-round" style="font-size: 14px;">trending_down</span>
+          Android · minSdk 26
+        </div>
+        <h1 class="t-display text-glow">PriceDrop</h1>
+        <p class="tagline">
+          Track the price of anything you want to buy. PriceDrop watches your products in the background, finds coupons, and alerts you the moment the price hits your target or a historical low.
+        </p>
+        <div class="hero-badges">
+          <a href="#play-listing" class="btn" style="background: var(--glow); color: var(--glow-dim); box-shadow: 0 4px 24px rgba(136,215,168,0.18);">
+            <span class="material-icons-round" style="font-size: 18px;">play_arrow</span>
+            Google Play
+          </a>
+          <a href="privacy.html" class="btn btn-outline">
+            <span class="material-icons-round" style="font-size: 16px;">shield</span>
+            Privacy
+          </a>
+        </div>
+      </div>
+
+      <!-- Phone mockup — watchlist -->
+      <div class="phone-mock">
+        <div class="phone-status">
+          <span>9:41</span>
+          <span style="display: flex; gap: 4px; align-items: center;">
+            <span class="material-icons-round" style="font-size: 13px;">signal_cellular_alt</span>
+            <span class="material-icons-round" style="font-size: 13px;">battery_full</span>
+          </span>
+        </div>
+        <div class="phone-body">
+          <div style="padding: 8px 12px; display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 15px; font-weight: 700; color: var(--t1);">Watching</span>
+            <span style="flex: 1;"></span>
+            <span class="material-icons-round" style="font-size: 16px; color: var(--t3);">search</span>
+            <span class="material-icons-round" style="font-size: 16px; color: var(--t3);">settings</span>
+          </div>
+          <!-- Item rows -->
+          <div class="pd-item-row">
+            <div class="pd-thumb" style="background: var(--signal-dim);">
+              <span class="material-icons-round" style="font-size: 16px; color: var(--signal);">headphones</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 10px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Sony WH-1000XM5</div>
+              <div style="font-size: 9px; color: var(--glow); font-weight: 600;">$278 <span style="color: var(--t3); font-weight: 400;">↓ target $280</span></div>
+            </div>
+            <span style="background: var(--glow-dim); color: var(--glow); font-size: 7px; padding: 1px 5px; border-radius: 99px; font-weight: 500;">Hit</span>
+          </div>
+          <div class="pd-item-row">
+            <div class="pd-thumb" style="background: var(--ember-dim);">
+              <span class="material-icons-round" style="font-size: 16px; color: var(--ember);">checkroom</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 10px; font-weight: 600; color: var(--t1);">Nike Pegasus 41</div>
+              <div style="font-size: 9px; color: var(--t1);">$104 <span style="color: var(--t3);">target $90</span></div>
+            </div>
+            <span style="background: var(--signal-dim); color: var(--signal); font-size: 7px; padding: 1px 5px; border-radius: 99px; font-weight: 500;">−12%</span>
+          </div>
+          <div class="pd-item-row">
+            <div class="pd-thumb" style="background: rgba(196,171,255,0.12);">
+              <span class="material-icons-round" style="font-size: 16px; color: #C4ABFF;">videogame_asset</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 10px; font-weight: 600; color: var(--t1);">Steam Deck OLED</div>
+              <div style="font-size: 9px; color: var(--t1);">$549 <span style="color: var(--t3);">target $480</span></div>
+            </div>
+            <span style="background: var(--s4); color: var(--amber); font-size: 7px; padding: 1px 5px; border-radius: 99px; font-weight: 500;">Coupon</span>
+          </div>
+          <div class="pd-item-row" style="opacity: 0.55;">
+            <div class="pd-thumb" style="background: var(--glow-dim);">
+              <span class="material-icons-round" style="font-size: 16px; color: var(--glow);">blender</span>
+            </div>
+            <div style="flex: 1;">
+              <div style="font-size: 10px; font-weight: 600; color: var(--t1);">Vitamix E310</div>
+              <div style="font-size: 9px; color: var(--t3);">$349 · watching</div>
+            </div>
+          </div>
+        </div>
+        <div class="pd-fab">
+          <span class="material-icons-round" style="font-size: 22px; color: var(--glow-dim);">add</span>
+        </div>
+        <div class="pd-nav">
+          <span class="material-icons-round" style="font-size: 18px; color: var(--glow);">visibility</span>
+          <span class="material-icons-round" style="font-size: 18px; color: var(--t3);">trending_down</span>
+          <span class="material-icons-round" style="font-size: 18px; color: var(--t3);">auto_awesome</span>
+          <span class="material-icons-round" style="font-size: 18px; color: var(--t3);">settings</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="section">
+  <div class="wrap">
+    <p class="t-label mb-16 text-center text-glow">How it works</p>
+    <h2 class="t-h1 text-center mb-24">Add it. Watch it. Catch the drop.</h2>
+    <div class="steps reveal">
+      <div class="step">
+        <h4>Add a product to your watchlist</h4>
+        <p>Paste a product URL, search by keyword, or scan a barcode with your camera. PriceDrop resolves it through the TwoBits Worker, fills in the current price, and backfills its price history from Rainforest.</p>
+      </div>
+      <div class="step">
+        <h4>It checks prices in the background</h4>
+        <p>A WorkManager job refreshes price and coupons for every active product on your schedule (every 24 hours by default) — honoring Wi-Fi-only, charging-only, and check-frequency settings, with quiet hours from 22:00 to 08:00.</p>
+      </div>
+      <div class="step">
+        <h4>Get alerted at the right moment</h4>
+        <p>When the price crosses your target or drops past your alert threshold, PriceDrop posts a notification. Tap it to open the product, compare other sellers, and copy any valid coupon.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Ways to add -->
+<section class="section-sm">
+  <div class="wrap">
+    <h2 class="t-h2 mb-24 text-center">Three ways to add a product</h2>
+    <div class="add-grid reveal">
+      <div class="add-chip">
+        <div class="add-icon"><span class="material-icons-round" style="font-size: 20px; color: var(--glow);">link</span></div>
+        Paste a URL
+      </div>
+      <div class="add-chip">
+        <div class="add-icon"><span class="material-icons-round" style="font-size: 20px; color: var(--glow);">search</span></div>
+        Search by keyword
+      </div>
+      <div class="add-chip">
+        <div class="add-icon"><span class="material-icons-round" style="font-size: 20px; color: var(--glow);">qr_code_scanner</span></div>
+        Scan a barcode
+      </div>
+    </div>
+    <p class="t-body-sm text-center mt-24" style="max-width: 540px; margin-left: auto; margin-right: auto;">
+      Barcode scans resolve the UPC through the Worker and pre-fill the product before you track it — with a manual fallback when there's no catalog match.
+    </p>
+  </div>
+</section>
+
+<!-- Price history chart -->
+<section class="section">
+  <div class="wrap">
+    <p class="t-label mb-16 text-glow">Product detail</p>
+    <h2 class="t-h2 mb-24">See the whole price story</h2>
+    <div class="chart-card reveal">
+      <div>
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Sony WH-1000XM5</div>
+        <div class="range-tabs">
+          <span class="range-tab">7D</span>
+          <span class="range-tab active">30D</span>
+          <span class="range-tab">90D</span>
+          <span class="range-tab">All</span>
+        </div>
+        <!-- Chart -->
+        <svg viewBox="0 0 420 150" width="100%" height="150" style="overflow: visible;">
+          <!-- target line -->
+          <line x1="0" y1="92" x2="420" y2="92" stroke="var(--glow)" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.6"></line>
+          <text x="2" y="86" fill="var(--glow)" font-size="9" font-family="DM Sans">target $280</text>
+          <!-- effective price (lighter) -->
+          <polyline fill="none" stroke="var(--signal)" stroke-width="1.5" opacity="0.4"
+            points="0,52 60,58 120,50 180,70 240,66 300,84 360,100 420,98"></polyline>
+          <!-- observed price -->
+          <polyline fill="none" stroke="var(--signal)" stroke-width="2.5"
+            points="0,40 60,46 120,38 180,58 240,54 300,72 360,90 420,86"></polyline>
+          <!-- drop marker -->
+          <circle cx="360" cy="90" r="4" fill="var(--glow)"></circle>
+          <circle cx="360" cy="90" r="8" fill="none" stroke="var(--glow)" stroke-width="1" opacity="0.4"></circle>
+        </svg>
+        <div style="display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: var(--t3);">
+          <span style="display: flex; align-items: center; gap: 5px;"><span style="width: 12px; height: 2px; background: var(--signal); display: inline-block;"></span> Observed</span>
+          <span style="display: flex; align-items: center; gap: 5px;"><span style="width: 12px; height: 2px; background: var(--signal); opacity: 0.4; display: inline-block;"></span> Effective (incl. fees)</span>
+          <span style="display: flex; align-items: center; gap: 5px;"><span style="width: 12px; height: 0; border-top: 2px dashed var(--glow); display: inline-block;"></span> Target</span>
+        </div>
+      </div>
+      <div class="chart-metrics">
+        <div class="metric"><div class="lbl">Current</div><div class="val text-glow">$278</div></div>
+        <div class="metric"><div class="lbl">Low</div><div class="val">$268</div></div>
+        <div class="metric"><div class="lbl">Average</div><div class="val">$329</div></div>
+        <div class="metric"><div class="lbl">High</div><div class="val">$399</div></div>
+      </div>
+    </div>
+    <p class="t-body-sm mt-16" style="max-width: 620px;">
+      The chart plots observed price, effective price (including shipping and fees), and your target line — across 7-day, 30-day, 90-day, and all-time ranges. Effective price uses <em>item + shipping + fees − coupon</em>, never below zero.
+    </p>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="section-sm">
+  <div class="wrap">
+    <h2 class="t-h2 mb-24">What's inside</h2>
+    <div class="feature-grid reveal">
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--glow-dim);">
+          <span class="material-icons-round" style="color: var(--glow);">notifications_active</span>
+        </div>
+        <h3 class="t-h3">Smart alerts</h3>
+        <p class="t-body-sm">Notifications fire on target-hit, big-drop, and new-historical-low crossings. Three channels — price drops, coupons, and provider issues — with quiet hours from 22:00 to 08:00.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--signal-dim);">
+          <span class="material-icons-round" style="color: var(--signal);">confirmation_number</span>
+        </div>
+        <h3 class="t-h3">Coupons that work</h3>
+        <p class="t-body-sm">PriceDrop finds coupons and shows verification badges — Valid, Untested, Restricted, or Expired — with discount labels and one-tap copy to clipboard. No more dead codes at checkout.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(196,171,255,0.12);">
+          <span class="material-icons-round" style="color: #C4ABFF;">storefront</span>
+        </div>
+        <h3 class="t-h3">Compare every seller</h3>
+        <p class="t-body-sm">Product detail surfaces competing-seller offers sorted by effective price (base + shipping) — so you see the genuinely cheapest option, not just the headline price.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--ember-dim);">
+          <span class="material-icons-round" style="color: var(--ember);">history</span>
+        </div>
+        <h3 class="t-h3">Activity timeline</h3>
+        <p class="t-body-sm">Every product keeps a timeline — added, checked, dropped, coupon found, alert sent — with relative timestamps, so you always know what PriceDrop has been doing on your behalf.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--glow-dim);">
+          <span class="material-icons-round" style="color: var(--glow);">bolt</span>
+        </div>
+        <h3 class="t-h3">Drops feed</h3>
+        <p class="t-body-sm">A dedicated feed shows price drops, coupons found, and new historical lows across your whole watchlist — the highlight reel of everything worth acting on right now.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background: var(--signal-dim);">
+          <span class="material-icons-round" style="color: var(--signal);">smart_toy</span>
+        </div>
+        <h3 class="t-h3">Ask the assistant</h3>
+        <p class="t-body-sm">A shopping-scoped AI assistant answers buying questions — "is this a good price?", "what's a comparable alternative?" — via the managed chat proxy or your own key.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI Config / providers -->
+<section class="section">
+  <div class="wrap">
+    <p class="t-label mb-16 text-glow">AI config</p>
+    <h2 class="t-h2 mb-24">Per-provider control</h2>
+    <p class="t-body mb-24" style="max-width: 600px;">
+      PriceDrop routes each data source independently. Every provider has an Off / BYOK / Pro toggle — bring your own key to call upstream directly, use Pro for a managed model, or switch it off entirely.
+    </p>
+    <div class="providers reveal">
+      <div class="provider-row">
+        <span class="material-icons-round text-signal">auto_awesome</span>
+        <div class="name">OpenAI <span>Ask assistant &amp; analysis</span></div>
+        <div class="seg"><span class="byok">BYOK</span><span>Off</span><span class="on">Pro</span></div>
+      </div>
+      <div class="provider-row">
+        <span class="material-icons-round text-glow">travel_explore</span>
+        <div class="name">Web search (Jina AI) <span>Find current offers</span></div>
+        <div class="seg"><span>BYOK</span><span>Off</span><span class="on">Pro</span></div>
+      </div>
+      <div class="provider-row">
+        <span class="material-icons-round" style="color: #C4ABFF;">shopping_cart</span>
+        <div class="name">Shopping search <span>Product discovery (SearchAPI.io / Serper.dev)</span></div>
+        <div class="seg"><span>BYOK</span><span>Off</span><span class="on">Pro</span></div>
+      </div>
+      <div class="provider-row">
+        <span class="material-icons-round text-ember">show_chart</span>
+        <div class="name">Rainforest <span>Price tracking, history &amp; barcode lookup</span></div>
+        <div class="seg"><span class="byok">BYOK</span><span>Off</span><span>Pro</span></div>
+      </div>
+      <div class="provider-row">
+        <span class="material-icons-round text-glow">confirmation_number</span>
+        <div class="name">Coupons <span>Code discovery &amp; verification</span></div>
+        <div class="seg"><span>BYOK</span><span>Off</span><span class="on">Pro</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pro / BYOK -->
+<section class="section-sm">
+  <div class="wrap">
+    <div class="pro-banner reveal">
+      <div>
+        <p class="t-label mb-16 text-glow">Two ways to power it</p>
+        <h3>BYOK or Pro</h3>
+        <p>Like every twobits app, PriceDrop never locks you in. Run it on your own provider keys, or subscribe to PriceDrop Pro for fully managed data.</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="pro-option">
+          <h4 class="text-signal">Bring your own keys</h4>
+          <p>Add your own OpenAI, search, shopping, Rainforest, or coupon keys. In BYOK mode, calls go directly to each upstream provider — the twobits Worker is never involved. You pay each provider directly.</p>
+        </div>
+        <div class="pro-option">
+          <h4 class="text-glow">PriceDrop Pro</h4>
+          <p>Monthly or annual via Google Play. Uses an internally-managed model and routes through the TwoBits Worker — no keys to manage. Validated by RevenueCat (pricedrop_pro entitlement).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Google Play Listing -->
+<section class="section" id="play-listing">
+  <div class="wrap">
+    <p class="t-label mb-16 text-center text-glow">Google Play</p>
+    <h2 class="t-h1 text-center mb-24">Store listing</h2>
+
+    <div class="play-store reveal">
+      <div class="play-header">
+        <div class="play-icon" style="background: linear-gradient(135deg, var(--glow-dim), #0E2A1E);">
+          <span class="material-icons-round" style="font-size: 36px; color: var(--glow);">trending_down</span>
+        </div>
+        <div class="play-meta">
+          <h3>PriceDrop — Price Tracker</h3>
+          <span class="dev">twobits</span>
+          <div style="display: flex; gap: 16px; margin-top: 8px; align-items: center;">
+            <div class="stars">
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round empty" style="font-size: 16px;">star</span>
+              <span style="font-size: 13px; color: var(--t2); margin-left: 4px;">New</span>
+            </div>
+            <button class="play-install-btn" style="background: var(--glow); color: var(--glow-dim);">Install</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="play-stats">
+        <div class="play-stat"><div class="val">New</div><div class="lbl">Released Jun 2026</div></div>
+        <div class="play-stat"><div class="val">100+</div><div class="lbl">Downloads</div></div>
+        <div class="play-stat"><div class="val">3+</div><div class="lbl">Rated for</div></div>
+        <div class="play-stat"><div class="val">31 MB</div><div class="lbl">Size</div></div>
+      </div>
+
+      <!-- Screenshots -->
+      <div class="play-screenshots">
+        <!-- SS1: Watchlist -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 12px; color: var(--glow);">visibility</span> Watching</div>
+            <div class="ss-card" style="flex-direction: row; align-items: center; gap: 6px;">
+              <div style="width: 22px; height: 22px; border-radius: 5px; background: var(--signal-dim); display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="font-size: 11px; color: var(--signal);">headphones</span></div>
+              <div style="flex: 1;"><div style="font-size: 9px; font-weight: 600;">Sony XM5</div><div style="font-size: 7px; color: var(--glow);">$278 · target $280</div></div>
+              <span class="ss-pill-sm" style="background: var(--glow-dim); color: var(--glow);">Hit</span>
+            </div>
+            <div class="ss-card" style="flex-direction: row; align-items: center; gap: 6px;">
+              <div style="width: 22px; height: 22px; border-radius: 5px; background: var(--ember-dim); display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="font-size: 11px; color: var(--ember);">checkroom</span></div>
+              <div style="flex: 1;"><div style="font-size: 9px; font-weight: 600;">Pegasus 41</div><div style="font-size: 7px; color: var(--t3);">$104 · target $90</div></div>
+              <span class="ss-pill-sm" style="background: var(--signal-dim); color: var(--signal);">−12%</span>
+            </div>
+            <div class="ss-card" style="flex-direction: row; align-items: center; gap: 6px;">
+              <div style="width: 22px; height: 22px; border-radius: 5px; background: rgba(196,171,255,0.12); display: flex; align-items: center; justify-content: center;"><span class="material-icons-round" style="font-size: 11px; color: #C4ABFF;">videogame_asset</span></div>
+              <div style="flex: 1;"><div style="font-size: 9px; font-weight: 600;">Steam Deck</div><div style="font-size: 7px; color: var(--t3);">$549 · target $480</div></div>
+              <span class="ss-pill-sm" style="background: var(--s4); color: var(--amber);">Coupon</span>
+            </div>
+          </div>
+        </div>
+        <!-- SS2: Product detail / chart -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 10px; color: var(--t3);">arrow_back</span> Sony XM5</div>
+            <div style="padding: 0 8px;">
+              <div class="ss-card">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-size: 14px; font-weight: 700; color: var(--glow);">$278</span><span style="font-size: 7px; color: var(--t3);">low $268 · avg $329</span></div>
+                <div style="display: flex; gap: 2px; margin: 2px 0;">
+                  <span style="font-size: 6px; background: var(--glow-dim); color: var(--glow); padding: 1px 4px; border-radius: 99px;">30D</span>
+                  <span style="font-size: 6px; background: var(--s4); color: var(--t3); padding: 1px 4px; border-radius: 99px;">90D</span>
+                  <span style="font-size: 6px; background: var(--s4); color: var(--t3); padding: 1px 4px; border-radius: 99px;">All</span>
+                </div>
+                <svg viewBox="0 0 150 44" width="100%" height="44">
+                  <line x1="0" y1="30" x2="150" y2="30" stroke="var(--glow)" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.6"></line>
+                  <polyline fill="none" stroke="var(--signal)" stroke-width="1.5" points="0,14 25,16 50,12 75,22 100,20 125,30 150,28"></polyline>
+                  <circle cx="125" cy="30" r="2" fill="var(--glow)"></circle>
+                </svg>
+              </div>
+              <div class="ss-card">
+                <span style="font-size: 7px; color: var(--t3); letter-spacing: 0.05em;">OTHER SELLERS</span>
+                <div style="display: flex; justify-content: space-between;"><span style="font-size: 8px;">Amazon</span><span style="font-size: 8px; color: var(--glow); font-weight: 600;">$278</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="font-size: 8px;">Best Buy</span><span style="font-size: 8px; color: var(--t2);">$289</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="font-size: 8px;">Walmart</span><span style="font-size: 8px; color: var(--t2);">$298</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- SS3: Coupons -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 12px; color: var(--glow);">confirmation_number</span> Coupons</div>
+            <div style="padding: 0 8px;">
+              <div class="ss-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em;">SAVE15</span><span class="ss-pill-sm" style="background: var(--glow-dim); color: var(--glow);">Valid</span></div>
+                <span style="font-size: 8px; color: var(--t2);">15% off audio · expires in 4 days</span>
+                <div style="display: flex; align-items: center; gap: 3px; color: var(--glow);"><span class="material-icons-round" style="font-size: 9px;">content_copy</span><span style="font-size: 8px;">Copy code</span></div>
+              </div>
+              <div class="ss-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em;">WELCOME10</span><span class="ss-pill-sm" style="background: var(--s4); color: var(--amber);">Untested</span></div>
+                <span style="font-size: 8px; color: var(--t2);">$10 off first order</span>
+              </div>
+              <div class="ss-card" style="opacity: 0.6;">
+                <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 10px; font-weight: 700; letter-spacing: 0.05em;">SPRING20</span><span class="ss-pill-sm" style="background: var(--ember-dim); color: var(--ember);">Expired</span></div>
+                <span style="font-size: 8px; color: var(--t3);">20% off · ended May 31</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- SS4: Drops feed -->
+        <div class="play-screenshot">
+          <div class="ss">
+            <div class="ss-bar"><span class="material-icons-round" style="font-size: 12px; color: var(--glow);">trending_down</span> Drops</div>
+            <div style="padding: 0 8px;">
+              <div class="ss-card">
+                <div style="display: flex; align-items: center; gap: 4px;"><span class="material-icons-round" style="font-size: 9px; color: var(--glow);">south</span><span style="font-size: 9px; font-weight: 600;">Sony XM5</span></div>
+                <span style="font-size: 8px; color: var(--glow);">$329 → $278 · hit your target</span>
+                <span style="font-size: 7px; color: var(--t3);">2h ago</span>
+              </div>
+              <div class="ss-card">
+                <div style="display: flex; align-items: center; gap: 4px;"><span class="material-icons-round" style="font-size: 9px; color: var(--amber);">confirmation_number</span><span style="font-size: 9px; font-weight: 600;">Steam Deck</span></div>
+                <span style="font-size: 8px; color: var(--t2);">Coupon found · SAVE40</span>
+                <span style="font-size: 7px; color: var(--t3);">5h ago</span>
+              </div>
+              <div class="ss-card">
+                <div style="display: flex; align-items: center; gap: 4px;"><span class="material-icons-round" style="font-size: 9px; color: var(--signal);">emoji_events</span><span style="font-size: 9px; font-weight: 600;">Pegasus 41</span></div>
+                <span style="font-size: 8px; color: var(--t2);">New 90-day low · $104</span>
+                <span style="font-size: 7px; color: var(--t3);">Yesterday</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="play-section">
+        <h4>About this app</h4>
+        <p class="play-desc">PriceDrop watches the price of everything you want to buy and tells you the moment it's worth buying.
+
+Add a product three ways — paste a URL, search by keyword, or scan its barcode. PriceDrop resolves it, fills in the current price, and backfills its full price history so you can see whether today's price is actually a good deal.
+
+Then it works in the background. A scheduled job refreshes prices and hunts for coupons on your terms — Wi-Fi-only, charging-only, on your chosen frequency, and silenced during quiet hours (22:00–08:00). When a price hits your target or drops past your alert threshold, you get a notification.
+
+What you get:
+• Price-history chart — observed price, effective price (incl. shipping & fees), and your target line, across 7D / 30D / 90D / All
+• Other sellers — competing offers sorted by effective price, not just the headline number
+• Coupons — with Valid / Untested / Restricted / Expired badges and one-tap copy
+• Drops feed — price drops, coupons, and new historical lows across your watchlist
+• Activity timeline — added, checked, dropped, coupon found, alert sent
+• Ask assistant — a shopping-scoped AI for buying questions
+• Barcode scanner — resolve a UPC and track it in seconds
+
+Per-provider AI config gives you an Off / BYOK / Pro toggle for OpenAI, web search, shopping search, Rainforest price tracking, and coupons. Bring your own keys and pay each provider directly, or subscribe to PriceDrop Pro for fully managed data.</p>
+      </div>
+
+      <div class="play-section">
+        <h4>Data safety</h4>
+        <p class="t-body-sm mb-16">The developer says this app follows Play's data safety guidelines.</p>
+        <div class="safety-grid">
+          <div class="safety-item"><span class="material-icons-round">smartphone</span><div><p style="color: var(--t1); font-weight: 500;">Watchlist stored on-device</p><p style="margin-top: 2px;">Products, price history, coupons, and activity live in a local Room database</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">vpn_key</span><div><p style="color: var(--t1); font-weight: 500;">Your keys or Pro — your choice</p><p style="margin-top: 2px;">BYOK calls go upstream directly; Pro routes through the TwoBits Worker</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">lock</span><div><p style="color: var(--t1); font-weight: 500;">Data encrypted in transit</p><p style="margin-top: 2px;">All API calls use TLS; keys stored in local, on-device storage</p></div></div>
+          <div class="safety-item"><span class="material-icons-round">visibility_off</span><div><p style="color: var(--t1); font-weight: 500;">No analytics or tracking</p><p style="margin-top: 2px;">Only anonymous crash reports via Google Play Console</p></div></div>
+        </div>
+      </div>
+
+      <div class="play-section">
+        <h4>What's new</h4>
+        <p class="t-body-sm" style="color: var(--t3); margin-bottom: 6px;">v0.12.0 — July 11, 2026</p>
+        <p class="t-body-sm">
+          • Price history is now backfilled and tracked via Rainforest (Keepa retired)<br>
+          • New Serper.dev option for BYOK shopping search<br>
+          • BYOK credential rows tagged Required / Recommended / Optional<br>
+          • Clearer "no key saved" error message for BYOK providers<br>
+          • Shared Settings and AI-config card styling
+        </p>
+      </div>
+
+      <div class="play-section">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">trending_down</span> Price Tracker</span>
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">confirmation_number</span> Coupons</span>
+          <span class="play-chip"><span class="material-icons-round" style="font-size: 14px;">shopping_cart</span> Shopping</span>
+          <span class="play-chip">Deals</span>
+          <span class="play-chip">Tools</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section-sm">
+  <div class="wrap text-center reveal">
+    <h2 class="t-h2 mb-16">Never overpay again.</h2>
+    <p class="t-body mb-24" style="max-width: 520px; margin-left: auto; margin-right: auto;">
+      Free with your own provider keys, or subscribe to PriceDrop Pro for fully managed price tracking.
+    </p>
+    <a href="#" class="btn" style="background: var(--glow); color: var(--glow-dim); font-size: 17px; padding: 14px 32px; box-shadow: 0 4px 24px rgba(136,215,168,0.18);">
+      <span class="material-icons-round" style="font-size: 20px;">play_arrow</span>
+      Get PriceDrop on Google Play
+    </a>
+  </div>
+</section>
+
+<!-- More from twobits -->
+<section class="section-sm">
+  <div class="wrap">
+    <p class="t-label mb-16">More from twobits</p>
+    <div class="related-grid">
+      <a class="related-card" href="scrybe.html">
+        <div class="ic" style="background: var(--signal-dim);"><span class="material-icons-round" style="color: var(--signal);">graphic_eq</span></div>
+        <div><h4 class="text-signal">Scrybe</h4><p>Record anything; get back transcripts, summaries, and action items.</p></div>
+        <span class="material-icons-round arr">arrow_forward</span>
+      </a>
+      <a class="related-card" href="shelf-snap.html">
+        <div class="ic" style="background: var(--ember-dim);"><span class="material-icons-round" style="color: var(--ember);">photo_camera</span></div>
+        <div><h4 class="text-ember">Shelf-Snap</h4><p>Photograph your stuff, value it with AI, then list or donate.</p></div>
+        <span class="material-icons-round arr">arrow_forward</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-col">
+      <a class="site-logo" href="index.html"><span class="dot"></span> twobits</a>
+      <span class="t-caption" style="margin-top: 4px;">AI tools that respect your intelligence.</span>
+    </div>
+    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a><a href="price-drop.html">PriceDrop</a></div>
+    <div class="footer-col"><h5>Company</h5><a href="privacy.html">Privacy</a><a href="https://github.com/punassuming/twobits">GitHub</a></div>
+  </div>
+  <div class="footer-bottom">© 2026 twobits. All rights reserved.</div>
+</footer>
+
+<script>
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+</script>
+</body>
+</html>

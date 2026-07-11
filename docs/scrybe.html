@@ -138,7 +138,7 @@
     <a href="index.html" class="site-logo"><span class="dot"></span> twobits</a>
     <div class="site-nav-links">
       <a href="scrybe.html" class="active">Scrybe</a>
-      <a href="shelf-snap.html">Shelf-Snap</a>
+      <a href="shelf-snap.html">Shelf-Snap</a><a href="price-drop.html">PriceDrop</a>
       <a href="privacy.html">Privacy</a>
     </div>
   </div>
@@ -244,7 +244,7 @@
     <div class="steps reveal">
       <div class="step">
         <h4>Choose a mode, tap record</h4>
-        <p>Pick Meeting, Idea, Tasks, Conversation, Story, Interview, or Journal. Each mode shapes the AI output. Recording runs as a foreground service with a persistent notification — configurable format, sample rate up to 48 kHz.</p>
+        <p>Pick Meeting, Idea, Tasks, Conversation, Story, Interview, or Journal — or create your own custom type. Recording runs as a foreground service with a persistent notification — configurable format, sample rate up to 48 kHz.</p>
       </div>
       <div class="step">
         <h4>AI transcribes and identifies speakers</h4>
@@ -261,7 +261,7 @@
 <!-- Recording modes -->
 <section class="section-sm">
   <div class="wrap">
-    <h2 class="t-h2 mb-24 text-center">Seven recording modes</h2>
+    <h2 class="t-h2 mb-24 text-center">Seven recording modes — plus your own</h2>
     <div class="modes-grid reveal">
       <div class="mode-chip">
         <div class="mode-icon" style="background: var(--signal-dim);"><span class="material-icons-round" style="font-size: 18px; color: var(--signal);">groups</span></div>
@@ -293,7 +293,7 @@
       </div>
     </div>
     <p class="t-body-sm text-center mt-24" style="max-width: 520px; margin-left: auto; margin-right: auto;">
-      Each mode shapes how the AI processes your transcript. Meeting extracts action items and summaries. Idea captures brainstorms. Tasks pulls out to-dos. Create custom modes with your own system prompts.
+      Each mode shapes how the AI processes your transcript. Meeting extracts action items and summaries. Idea captures brainstorms. Tasks pulls out to-dos. Recording types are first-class — create unlimited custom ones with their own icon and system prompt.
     </p>
   </div>
 </section>
@@ -379,7 +379,7 @@
         </div>
         <div class="pro-option">
           <h4 style="color: var(--brand-soft);">Scrybe Pro — $1.99/mo</h4>
-          <p>Subscribe via Google Play. AI calls route through our Cloudflare proxy (api.twobits.app) — the OpenAI key stays server-side, never on your device. Managed by RevenueCat.</p>
+          <p>Subscribe via Google Play. AI calls route through the TwoBits Worker (api.twobits.app) — the OpenAI key stays server-side, never on your device. A monthly spend cap keeps usage in check.</p>
         </div>
         <div class="pro-option">
           <h4 class="text-glow">Fully local</h4>
@@ -406,11 +406,11 @@
           <span class="dev">twobits</span>
           <div style="display: flex; gap: 16px; margin-top: 8px; align-items: center;">
             <div class="stars">
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star</span>
-              <span class="material-icons-round filled" style="font-size: 16px; color: var(--amber);">star_half</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star</span>
+              <span class="material-icons-round filled" style="font-size: 16px;">star_half</span>
               <span style="font-size: 13px; color: var(--t2); margin-left: 4px;">4.6</span>
             </div>
             <button class="play-install-btn" style="background: var(--signal); color: var(--signal-dim);">Install</button>
@@ -506,7 +506,7 @@
               </div>
               <div class="ss-card">
                 <span style="font-size: 7px; color: var(--t3); letter-spacing: 0.05em;">AI FEATURES</span>
-                <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;"><span class="material-icons-round" style="font-size: 9px; color: var(--signal);">auto_awesome</span><span style="font-size: 9px; font-weight: 500; color: var(--signal);">GPT-4o</span></div>
+                <div style="display: flex; align-items: center; gap: 4px; margin-top: 2px;"><span class="material-icons-round" style="font-size: 9px; color: var(--signal);">auto_awesome</span><span style="font-size: 9px; font-weight: 500; color: var(--signal);">GPT-4o mini</span></div>
                 <div style="display: flex; align-items: center; gap: 4px; opacity: 0.5;"><span class="material-icons-round" style="font-size: 9px;">terminal</span><span style="font-size: 9px;">Gemma 2 2B (local)</span></div>
               </div>
               <div class="ss-card">
@@ -526,7 +526,7 @@
         <h4>About this app</h4>
         <p class="play-desc">Scrybe is a voice-to-document pipeline for Android. Record any conversation and get back a clean transcript, summary, action items, or whatever structure you need — shaped by the recording mode you choose.
 
-Seven modes — Meeting, Idea, Tasks, Conversation, Story, Interview, Journal — each shape AI output differently. Create unlimited custom modes with your own system prompts and a {{transcript}} template variable.
+Seven built-in modes — Meeting, Idea, Tasks, Conversation, Story, Interview, Journal — each shape AI output differently. Recording types are first-class: create unlimited custom types with their own icon and system prompt.
 
 AI provider choice: OpenAI Whisper (cloud) or on-device Whisper tiny/base/small for transcription. OpenAI GPT models or on-device Gemma 2 2B for transforms. Swap providers anytime. Bring your own API key (billed directly to OpenAI) or subscribe to Scrybe Pro ($1.99/mo) for managed API access.
 
@@ -539,6 +539,7 @@ Key capabilities:
 • Insight visualizations — sentiment timeline, topic markers, speech density heatmap
 • Obsidian vault export — Markdown with YAML frontmatter
 • Folder organization — manual or AI-powered clustering
+• Multilingual transcription — preserves each spoken language rather than translating
 • Location tagging — optional GPS capture, reverse-geocoded city label</p>
       </div>
 
@@ -557,12 +558,13 @@ Key capabilities:
       <!-- What's new -->
       <div class="play-section">
         <h4>What's new</h4>
-        <p class="t-body-sm" style="color: var(--t3); margin-bottom: 6px;">v0.29.0 — June 1, 2026</p>
+        <p class="t-body-sm" style="color: var(--t3); margin-bottom: 6px;">v1.39.0 — July 11, 2026</p>
         <p class="t-body-sm">
-          • Smart Analyze — title, tag, and mode classification in parallel<br>
-          • Multi-select delete and archive on home screen<br>
-          • Recording-type classification from transcript content<br>
-          • Dynamic profile cards filtered by recording mode
+          • Custom recording types are now first-class, with their own icons alongside the built-in seven<br>
+          • Redesigned waveform envelope, with automatic backfill for recordings missing one<br>
+          • New "spoken languages" setting — multilingual recordings keep each language rather than translating it<br>
+          • Session type and location are now editable directly from the session chips<br>
+          • Reorganized Settings into clearer sections
         </p>
       </div>
 
@@ -593,13 +595,33 @@ Key capabilities:
   </div>
 </section>
 
+
+<!-- More from twobits -->
+<section class="section-sm">
+  <div class="wrap">
+    <p class="t-label mb-16">More from twobits</p>
+    <div class="related-grid">
+      <a class="related-card" href="shelf-snap.html">
+        <div class="ic" style="background: var(--ember-dim);"><span class="material-icons-round" style="color: var(--ember);">photo_camera</span></div>
+        <div><h4 class="text-ember">Shelf-Snap</h4><p>Photograph your stuff, value it with AI, then list or donate.</p></div>
+        <span class="material-icons-round arr">arrow_forward</span>
+      </a>
+      <a class="related-card" href="price-drop.html">
+        <div class="ic" style="background: var(--glow-dim);"><span class="material-icons-round" style="color: var(--glow);">trending_down</span></div>
+        <div><h4 class="text-glow">PriceDrop</h4><p>Track prices, catch drops and coupons, buy at the historical low.</p></div>
+        <span class="material-icons-round arr">arrow_forward</span>
+      </a>
+    </div>
+  </div>
+</section>
+
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-col">
       <a class="site-logo" href="index.html"><span class="dot"></span> twobits</a>
       <span class="t-caption" style="margin-top: 4px;">AI tools that respect your intelligence.</span>
     </div>
-    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a></div>
+    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a><a href="price-drop.html">PriceDrop</a></div>
     <div class="footer-col"><h5>Company</h5><a href="privacy.html">Privacy</a><a href="https://github.com/punassuming/twobits">GitHub</a></div>
   </div>
   <div class="footer-bottom">© 2026 twobits. All rights reserved.</div>
