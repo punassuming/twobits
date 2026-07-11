@@ -22,7 +22,9 @@ enum class PriceDropProvider(
         key = "openai",
         displayName = "OpenAI",
         byokBaseUrl = "https://api.openai.com/",
-        description = "AI query understanding + answer generation",
+        description =
+            "Required for the Ask assistant and for turning a pasted product URL into a " +
+                "watchlist item — both fail without it. Keyword search and price tracking don't need it.",
         setupHint =
             "Sign in at platform.openai.com → open API Keys → click Create new secret key → " +
                 "copy and paste here. Usage is billed per token — a typical session costs a few cents.",
@@ -33,7 +35,10 @@ enum class PriceDropProvider(
         key = "web_search",
         displayName = "Jina AI",
         byokBaseUrl = "https://s.jina.ai/",
-        description = "Web search + page reading via r.jina.ai",
+        description =
+            "Required to turn a pasted product URL into a watchlist item (paired with OpenAI). " +
+                "Also works as a keyword-search fallback when SearchAPI.io/Serper aren't configured, " +
+                "but plain web search has no price data — SearchAPI.io or Serper are needed for that.",
         setupHint =
             "Create an account at jina.ai → open the dashboard → copy your API key. " +
                 "Free tier includes 1 million tokens — enough for hundreds of price searches.",
@@ -44,29 +49,34 @@ enum class PriceDropProvider(
         key = "shopping",
         displayName = "SearchAPI.io",
         byokBaseUrl = "https://www.searchapi.io/",
-        description = "Google Shopping results · supplements Jina for broader coverage",
+        description =
+            "Recommended for keyword search — the only BYOK search path with real shopping " +
+                "price data. Without it (or Serper), search falls back to Jina and shows no prices.",
         setupHint =
             "Sign up at searchapi.io → open the Dashboard → copy your API key. " +
                 "Developer plan includes 100 free searches per month.",
         signupUrl = "https://www.searchapi.io",
         costEstimate = "Est. cost: ~\$0.004 per search · 100 free/month",
     ),
-    KEEPA(
-        key = "keepa",
-        displayName = "Keepa",
-        byokBaseUrl = "https://api.keepa.com/",
-        description = "Amazon price history · BYOK only — Pro uses Rainforest instead",
+    SERPER(
+        key = "serper",
+        displayName = "Serper.dev",
+        byokBaseUrl = "https://google.serper.dev/",
+        description =
+            "Recommended for keyword search — a materially cheaper alternative to SearchAPI.io " +
+                "that also returns real shopping price data. Without it (or SearchAPI.io), search " +
+                "falls back to Jina and shows no prices.",
         setupHint =
-            "Subscribe to a Keepa API plan at keepa.com → open your account settings → copy the API key. " +
-                "Paid plans only — the cheapest tier is sufficient for most use.",
-        signupUrl = "https://keepa.com/#!api",
-        costEstimate = "Est. cost: paid Keepa plan required (~\$/month subscription)",
+            "Sign up at serper.dev → open the Dashboard → copy your API key. " +
+                "2,500 free searches, no card required.",
+        signupUrl = "https://serper.dev",
+        costEstimate = "Est. cost: ~\$0.30–1.00 per 1,000 searches · 2,500 free",
     ),
     COUPON(
         key = "coupon",
         displayName = "Couponlayer",
         byokBaseUrl = "https://api.couponlayer.com/",
-        description = "Coupon code discovery by retailer domain · used by Coupon section",
+        description = "Required for the Coupon section — without it, coupon lookups return nothing.",
         setupHint =
             "Create an account at couponlayer.com → open your Dashboard → copy the API Access Key. " +
                 "A free plan is available with limited monthly lookups.",
@@ -77,10 +87,13 @@ enum class PriceDropProvider(
         key = "rainforest",
         displayName = "Rainforest API",
         byokBaseUrl = "https://api.rainforestapi.com/",
-        description = "Amazon product data · ASIN lookup + real-time price",
+        description =
+            "Required for price tracking, price history, and barcode lookup — the app's core " +
+                "watchlist feature. SearchAPI.io/Jina/Serper cannot substitute for this; without a " +
+                "Rainforest key (or Pro), tracked Amazon items never update.",
         setupHint =
             "Sign up at rainforestapi.com → open the Dashboard → copy your API key. " +
-                "Optional — only needed for Amazon ASIN lookups and real-time product prices.",
+                "Needed for Amazon ASIN price checks, price history, and barcode lookups.",
         signupUrl = "https://rainforestapi.com",
         costEstimate = "Est. cost: ~\$0.003 per product / price lookup",
     ),

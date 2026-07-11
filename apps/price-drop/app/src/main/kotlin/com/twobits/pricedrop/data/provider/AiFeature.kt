@@ -22,12 +22,6 @@ private val ASK_MODELS =
         AiModelOption("gpt-5-mini", "GPT-5 mini", "Previous generation · balanced", "~\$0.15/1M"),
     )
 
-private val COUPON_MODELS =
-    listOf(
-        AiModelOption("gpt-5.4-mini", "GPT-5.4 mini", "Assess coupon applicability", "~\$0.10/1M"),
-        AiModelOption("none", "No LLM", "Return raw codes only — no assessment", "Free"),
-    )
-
 /**
  * Feature-oriented view of PriceDrop's AI surface. Each feature maps onto the existing
  * [PriceDropProvider] set (the routing source of truth) plus presentation metadata — call
@@ -49,50 +43,56 @@ enum class AiFeature(
     SEARCH(
         key = "search",
         label = "Product search",
-        description = "Natural language queries, barcode lookup, URL parsing",
-        callEstimate = "1–3 calls per search",
-        callNote = "URL parse = 1 web call · Product match = 1 OpenAI call · Optional: 1 shopping call for non-Amazon",
+        description = "Natural language queries and URL parsing (barcode lookup is a separate provider — see Rainforest)",
+        callEstimate = "1 call for keyword search · 2 calls for URL paste",
+        callNote =
+            "Keyword search = 1 shopping/web call, no OpenAI · Paste a product URL instead = " +
+                "1 web read + 1 OpenAI call to extract the product",
         callWeight = 3,
-        providers = listOf(PriceDropProvider.OPENAI, PriceDropProvider.WEB_SEARCH, PriceDropProvider.SHOPPING),
+        providers = listOf(PriceDropProvider.OPENAI, PriceDropProvider.WEB_SEARCH, PriceDropProvider.SHOPPING, PriceDropProvider.SERPER),
         models = SEARCH_MODELS,
     ),
     PRICE_CHECK(
         key = "pricecheck",
         label = "Price checking",
         description = "Background price polling for watchlist items",
-        callEstimate = "1–2 calls per check",
-        callNote = "Shopping or web for current price · Keepa for history update (1 token) · No LLM needed",
+        callEstimate = "1 call per check",
+        callNote =
+            "Rainforest (BYOK) or Pro for current price, 1 call per item per check · price history " +
+                "is backfilled from Rainforest once when a product is added · no LLM involved",
         callWeight = 2,
-        providers = listOf(PriceDropProvider.SHOPPING, PriceDropProvider.KEEPA, PriceDropProvider.WEB_SEARCH, PriceDropProvider.RAINFOREST),
+        providers = listOf(PriceDropProvider.RAINFOREST),
         models = emptyList(),
     ),
     COUPON(
         key = "coupon",
         label = "Coupon discovery",
-        description = "Find and assess coupon codes per retailer",
-        callEstimate = "1–2 calls per product check",
-        callNote = "Coupon lookup (1 req/product) + optional OpenAI to assess which code applies to the item",
+        description = "Find coupon codes per retailer",
+        callEstimate = "1 call per product check",
+        callNote = "Coupon lookup, 1 request per product — raw codes only, no AI assessment",
         callWeight = 2,
-        providers = listOf(PriceDropProvider.COUPON, PriceDropProvider.OPENAI),
-        models = COUPON_MODELS,
+        providers = listOf(PriceDropProvider.COUPON),
+        models = emptyList(),
     ),
     DROPS(
         key = "drops",
         label = "Drop detection",
-        description = "Community deal alerts + price threshold crossing",
-        callEstimate = "0–2 calls per watchlist check",
-        callNote = "Deal feed read (1 call) · OpenAI to match deal to watchlist item (1 call) · Only fires when new deals are found",
+        description = "Price threshold and drop alerts computed from your own tracked history",
+        callEstimate = "0 calls",
+        callNote = "Computed entirely on-device from already-polled price history — no network calls, no provider needed",
         callWeight = 1,
-        providers = listOf(PriceDropProvider.WEB_SEARCH, PriceDropProvider.OPENAI),
+        providers = emptyList(),
         models = emptyList(),
     ),
     ASK(
         key = "ask",
         label = "Ask assistant",
         description = "AI shopping assistant — natural language Q&A",
-        callEstimate = "2–4 calls per conversation turn",
-        callNote = "Search grounding = 1–2 web calls · Answer generation = 1 OpenAI call · Optional: 1 tool call for structured product lookup",
-        callWeight = 4,
+        callEstimate = "1–2 calls per conversation turn",
+        callNote =
+            "Answer generation = 1 OpenAI call · optional grounding = 1 Jina search, but only when " +
+                "Web search is set to BYOK — Pro-tier Ask does not ground its answers in live search results",
+        callWeight = 2,
         providers = listOf(PriceDropProvider.OPENAI, PriceDropProvider.WEB_SEARCH),
         models = ASK_MODELS,
     ),

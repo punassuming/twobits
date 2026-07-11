@@ -56,6 +56,7 @@ import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AiSourceSegment
 import com.twobits.design.components.CollapsibleProviderRow
+import com.twobits.design.components.CredentialRequirement
 import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
@@ -288,9 +289,10 @@ fun AIConfigScreen(
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            "SearchAPI.io is the primary search (it returns real marketplace listings); Jina AI " +
-                                "opens those pages to read prices and is a search fallback; Brave adds a second " +
-                                "index. Enter the keys under Credentials above.",
+                            "SearchAPI.io and Serper.dev both return real marketplace listings and honor " +
+                                "site: filters (Serper is the cheaper of the two); Jina AI opens those pages " +
+                                "to read prices and is also a search fallback; Brave adds a second index. " +
+                                "Enter the keys under Credentials above.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -298,6 +300,11 @@ fun AIConfigScreen(
                             title = "SearchAPI.io",
                             enabled = uiState.searchapiSearchEnabled,
                             onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
+                        )
+                        WebSearchToggleRow(
+                            title = "Serper.dev",
+                            enabled = uiState.serperSearchEnabled,
+                            onEnabledChange = viewModel::onSerperSearchEnabledChange,
                         )
                         WebSearchToggleRow(
                             title = stringResource(R.string.jina_api_key_label),
@@ -389,7 +396,10 @@ private fun CredentialsSection(
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
             title = "OpenAI",
-            description = "Vision + listing generation + market research",
+            description =
+                "Required for every AI feature — vision item ID, listing generation, and market " +
+                    "research synthesis all fail without it. The search providers below only affect " +
+                    "how well-grounded market research is; they can't substitute for this key.",
             maskedKey = maskKey(uiState.savedApiKey),
             isKeyValid = uiState.isKeyVerified,
             isValidating = uiState.isVerifyingKey,
@@ -407,12 +417,17 @@ private fun CredentialsSection(
             onTest = viewModel::testApiKey,
             onClear = viewModel::clearApiKey,
             signupUrl = "https://platform.openai.com/api-keys",
+            requirement = CredentialRequirement.REQUIRED,
         )
 
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
             title = "SearchAPI.io",
-            description = "Marketplace search — honors site: filters (recommended)",
+            description =
+                "Recommended for market research — the only engine here that honors site: filters, " +
+                    "so eBay/Mercari/OfferUp \"sold\" queries return real marketplace listings instead " +
+                    "of generic web results. Without it (or Serper), research still runs on the other " +
+                    "providers or the model's own knowledge, just with weaker marketplace evidence.",
             maskedKey = maskKey(uiState.savedSearchapiApiKey),
             isKeyValid = uiState.searchapiTestResult,
             isValidating = uiState.isSearchapiTesting,
@@ -423,12 +438,37 @@ private fun CredentialsSection(
             onTest = viewModel::testSearchapiKey,
             onClear = viewModel::clearSearchapiKey,
             signupUrl = "https://www.searchapi.io",
+            requirement = CredentialRequirement.RECOMMENDED,
+        )
+
+        CollapsibleProviderRow(
+            icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            title = "Serper.dev",
+            description =
+                "Recommended — a materially cheaper alternative to SearchAPI.io that also honors " +
+                    "site: filters for real marketplace listings. Has no dedicated eBay engine, so " +
+                    "eBay-targeted results are plain-Google quality rather than structured sold listings.",
+            maskedKey = maskKey(uiState.savedSerperApiKey),
+            isKeyValid = uiState.serperTestResult,
+            isValidating = uiState.isSerperTesting,
+            validationMessage = uiState.serperTestMessage,
+            apiKey = uiState.editSerperApiKey,
+            onApiKeyChange = viewModel::onSerperApiKeyChange,
+            onSave = viewModel::saveSerperKey,
+            onTest = viewModel::testSerperKey,
+            onClear = viewModel::clearSerperKey,
+            signupUrl = "https://serper.dev",
+            requirement = CredentialRequirement.RECOMMENDED,
         )
 
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
             title = "Jina AI",
-            description = "Page reading + web search fallback",
+            description =
+                "Recommended — this key does two things: it's a search fallback when SearchAPI.io/" +
+                    "Serper aren't configured, AND it's the only way any search result's full page gets " +
+                    "read (price, condition, sold status), even when a different engine found the result. " +
+                    "Adding this key improves research quality no matter which search provider is primary.",
             maskedKey = maskKey(uiState.savedJinaApiKey),
             isKeyValid = uiState.jinaTestResult,
             isValidating = uiState.isJinaTesting,
@@ -439,12 +479,13 @@ private fun CredentialsSection(
             onTest = viewModel::testJinaKey,
             onClear = viewModel::clearJinaKey,
             signupUrl = "https://jina.ai",
+            requirement = CredentialRequirement.RECOMMENDED,
         )
 
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
             title = "Brave Search",
-            description = "Supplemental web-search index",
+            description = "Optional — a second search index with no unique capability. Safe to skip.",
             maskedKey = maskKey(uiState.savedBraveApiKey),
             isKeyValid = uiState.braveTestResult,
             isValidating = uiState.isBraveTesting,
@@ -455,6 +496,7 @@ private fun CredentialsSection(
             onTest = viewModel::testBraveKey,
             onClear = viewModel::clearBraveKey,
             signupUrl = "https://brave.com/search/api/",
+            requirement = CredentialRequirement.OPTIONAL,
         )
     }
 }

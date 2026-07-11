@@ -15,6 +15,7 @@ class WebSearchResolver
         private val brave: BraveSearchService,
         private val jina: JinaAiSearchService,
         private val searchapi: SearchApiService,
+        private val serper: SerperSearchService,
     ) {
         /** Returns the service for [provider], or null when web search is disabled. */
         fun resolve(provider: SearchProvider): WebSearchService? =
@@ -23,5 +24,6 @@ class WebSearchResolver
                 SearchProvider.BRAVE -> brave
                 SearchProvider.JINA -> jina
                 SearchProvider.SEARCHAPI -> searchapi
+                SearchProvider.SERPER -> serper
             }
     }

@@ -5,8 +5,10 @@ import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,7 +36,7 @@ class ProviderKeyValidator
                         PriceDropProvider.OPENAI -> testOpenAi(trimmed)
                         PriceDropProvider.WEB_SEARCH -> testJina(trimmed)
                         PriceDropProvider.SHOPPING -> testSearchApi(trimmed)
-                        PriceDropProvider.KEEPA -> testKeepa(trimmed)
+                        PriceDropProvider.SERPER -> testSerper(trimmed)
                         PriceDropProvider.COUPON -> testCouponlayer(trimmed)
                         PriceDropProvider.RAINFOREST -> testRainforest(trimmed)
                     }
@@ -116,30 +118,29 @@ class ProviderKeyValidator
             }
         }
 
-        private fun testKeepa(key: String): String {
-            val url =
-                "https://api.keepa.com/token"
-                    .toHttpUrl()
-                    .newBuilder()
-                    .addQueryParameter("key", key)
-                    .build()
+        private fun testSerper(key: String): String {
+            // Serper has no free account-ping endpoint, so verify with a minimal
+            // 1-result search (consumes one search credit per Test).
+            val body =
+                JsonObject()
+                    .apply {
+                        addProperty("q", "ping")
+                        addProperty("num", 1)
+                    }.toString()
+                    .toRequestBody("application/json; charset=utf-8".toMediaType())
             val request =
                 Request
                     .Builder()
-                    .url(url)
-                    .get()
+                    .url("https://google.serper.dev/search")
+                    .header("X-API-KEY", key)
+                    .post(body)
                     .build()
             okHttpClient.newCall(request).execute().use { response ->
-                val text = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    throw IllegalStateException("Keepa rejected this key (HTTP ${response.code})")
-                }
-                val json = runCatching { gson.fromJson(text, JsonObject::class.java) }.getOrNull()
-                val tokensLeft = json?.get("tokensLeft")?.asLong
-                return if (tokensLeft != null) {
-                    "Connected to Keepa — $tokensLeft tokens remaining"
-                } else {
-                    "Connected to Keepa"
+                return when {
+                    response.isSuccessful -> "Connected to Serper.dev"
+                    response.code == 401 || response.code == 403 ->
+                        throw IllegalStateException("Serper.dev rejected this key")
+                    else -> throw IllegalStateException("Serper.dev returned HTTP ${response.code}")
                 }
             }
         }

@@ -16,7 +16,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.OPENAI -> providerStore.getKey(PriceDropProvider.OPENAI).takeIf { it.isNotBlank() }
                 SharedCredentialId.JINA -> providerStore.getKey(PriceDropProvider.WEB_SEARCH).takeIf { it.isNotBlank() }
                 SharedCredentialId.SEARCHAPI -> providerStore.getKey(PriceDropProvider.SHOPPING).takeIf { it.isNotBlank() }
-                SharedCredentialId.KEEPA -> providerStore.getKey(PriceDropProvider.KEEPA).takeIf { it.isNotBlank() }
+                SharedCredentialId.SERPER -> providerStore.getKey(PriceDropProvider.SERPER).takeIf { it.isNotBlank() }
                 SharedCredentialId.COUPON -> providerStore.getKey(PriceDropProvider.COUPON).takeIf { it.isNotBlank() }
                 SharedCredentialId.RAINFOREST -> providerStore.getKey(PriceDropProvider.RAINFOREST).takeIf { it.isNotBlank() }
                 else -> null
@@ -30,7 +30,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.OPENAI -> providerStore.setKey(PriceDropProvider.OPENAI, value)
                 SharedCredentialId.JINA -> providerStore.setKey(PriceDropProvider.WEB_SEARCH, value)
                 SharedCredentialId.SEARCHAPI -> providerStore.setKey(PriceDropProvider.SHOPPING, value)
-                SharedCredentialId.KEEPA -> providerStore.setKey(PriceDropProvider.KEEPA, value)
+                SharedCredentialId.SERPER -> providerStore.setKey(PriceDropProvider.SERPER, value)
                 SharedCredentialId.COUPON -> providerStore.setKey(PriceDropProvider.COUPON, value)
                 SharedCredentialId.RAINFOREST -> providerStore.setKey(PriceDropProvider.RAINFOREST, value)
                 else -> Unit
@@ -42,7 +42,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.OPENAI -> providerStore.clearKey(PriceDropProvider.OPENAI)
                 SharedCredentialId.JINA -> providerStore.clearKey(PriceDropProvider.WEB_SEARCH)
                 SharedCredentialId.SEARCHAPI -> providerStore.clearKey(PriceDropProvider.SHOPPING)
-                SharedCredentialId.KEEPA -> providerStore.clearKey(PriceDropProvider.KEEPA)
+                SharedCredentialId.SERPER -> providerStore.clearKey(PriceDropProvider.SERPER)
                 SharedCredentialId.COUPON -> providerStore.clearKey(PriceDropProvider.COUPON)
                 SharedCredentialId.RAINFOREST -> providerStore.clearKey(PriceDropProvider.RAINFOREST)
                 else -> Unit

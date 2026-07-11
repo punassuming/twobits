@@ -16,6 +16,7 @@ class ShelfSnapCredentialBridge
                 SharedCredentialId.JINA -> repository.getJinaApiKey().takeIf { it.isNotBlank() }
                 SharedCredentialId.BRAVE -> repository.getBraveApiKey().takeIf { it.isNotBlank() }
                 SharedCredentialId.SEARCHAPI -> repository.getSearchapiApiKey().takeIf { it.isNotBlank() }
+                SharedCredentialId.SERPER -> repository.getSerperApiKey().takeIf { it.isNotBlank() }
                 else -> null
             }
 
@@ -28,6 +29,7 @@ class ShelfSnapCredentialBridge
                 SharedCredentialId.JINA -> repository.saveJinaApiKey(value)
                 SharedCredentialId.BRAVE -> repository.saveBraveApiKey(value)
                 SharedCredentialId.SEARCHAPI -> repository.saveSearchapiApiKey(value)
+                SharedCredentialId.SERPER -> repository.saveSerperApiKey(value)
                 else -> Unit
             }
         }
@@ -38,6 +40,7 @@ class ShelfSnapCredentialBridge
                 SharedCredentialId.JINA -> repository.saveJinaApiKey("")
                 SharedCredentialId.BRAVE -> repository.saveBraveApiKey("")
                 SharedCredentialId.SEARCHAPI -> repository.saveSearchapiApiKey("")
+                SharedCredentialId.SERPER -> repository.saveSerperApiKey("")
                 else -> Unit
             }
         }

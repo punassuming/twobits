@@ -9,7 +9,22 @@
 **Settings & AI configuration card style** — the Settings screen's "Tracking" and "Privacy" cards and the AI configuration screen's "Credentials" card now use the same shared card components Scrybe and Shelf Snap use — Settings cards gain the correct rounded corners (they were missing an explicit shape before), and the Credentials card switches from a flat card to the same elevated-card style as the rest of AI configuration in all three apps, a visible but intentional style change
 **Internal: shared empty-state component** — the empty watchlist state now uses a shared `AppEmptyState` component instead of a private implementation, matching Scrybe's task-list empty state
 
+**BYOK clarity** — AI configuration now shows what's required vs optional:
+* credential rows tag each key Required, Recommended, or Optional
+* provider and feature descriptions rewritten to match real behavior
+
+**Serper.dev search** — a cheaper alternative to SearchAPI.io:
+* new BYOK shopping search provider with real price data
+* keyword search now tries SearchAPI.io, then Serper, then Jina
+
 ### Fixes
+
+**Price history** — now works, backed by Rainforest instead of Keepa:
+* dropped the Keepa BYOK option; Rainforest covers history in both modes
+* new watchlist items backfill their price history automatically
+
+**BYOK with no key** — a clear message instead of a raw failure:
+* switching a provider to BYOK without a saved key now explains what to do
 
 **What's New — bold formatting** — item titles in the full What's New screen (Settings → What's New) now render bold, matching the automatic popup — previously only the popup applied bold weight to item titles, so the two "unified" surfaces looked inconsistent
 **Internal: What's New last-seen key** — standardized on the same DataStore key name/type Scrybe and Shelf Snap use, with a one-time migration from the old key so existing users don't see a spurious re-prompt of the popup
