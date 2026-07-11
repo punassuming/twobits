@@ -26,13 +26,13 @@
     margin-top: 40px; flex-wrap: wrap;
   }
   .products-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
   }
-  @media (max-width: 768px) { .products-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .products-grid { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; } }
   .product-card {
     background: var(--s1); border: 1px solid var(--border);
-    border-radius: var(--r-xl); padding: 40px 36px;
-    display: flex; flex-direction: column; gap: 20px;
+    border-radius: var(--r-xl); padding: 32px 28px;
+    display: flex; flex-direction: column; gap: 18px;
     position: relative; overflow: hidden;
     transition: border-color 0.3s, transform 0.3s;
   }
@@ -44,18 +44,19 @@
   }
   .product-card.scrybe::after { background: var(--signal); }
   .product-card.snap::after { background: var(--ember); }
+  .product-card.price::after { background: var(--glow); }
   .product-icon-wrap {
     width: 56px; height: 56px; border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
   }
-  .product-name { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
-  .product-tagline { font-size: 15px; color: var(--t2); line-height: 1.6; }
+  .product-name { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .product-tagline { font-size: 14px; color: var(--t2); line-height: 1.6; }
   .product-features { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
   .product-feat {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 14px; color: var(--t2);
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 13px; color: var(--t2); line-height: 1.45;
   }
-  .product-feat .material-icons-round { font-size: 17px; }
+  .product-feat .material-icons-round { font-size: 17px; flex-shrink: 0; }
   .product-link {
     display: inline-flex; align-items: center; gap: 6px;
     font-size: 15px; font-weight: 600; margin-top: auto;
@@ -97,6 +98,7 @@
     <div class="site-nav-links">
       <a href="scrybe.html">Scrybe</a>
       <a href="shelf-snap.html">Shelf-Snap</a>
+      <a href="price-drop.html">PriceDrop</a>
       <a href="privacy.html">Privacy</a>
     </div>
   </div>
@@ -112,6 +114,7 @@
     <div class="hero-ctas">
       <a href="scrybe.html" class="btn btn-signal">Meet Scrybe</a>
       <a href="shelf-snap.html" class="btn btn-ember">Meet Shelf-Snap</a>
+      <a href="price-drop.html" class="btn" style="background: var(--glow); color: var(--glow-dim); box-shadow: 0 4px 24px rgba(136,215,168,0.18);">Meet PriceDrop</a>
     </div>
   </div>
 </section>
@@ -126,12 +129,12 @@
         </div>
         <div class="product-name text-signal">Scrybe</div>
         <p class="product-tagline">
-          Voice-to-document pipeline that lives on your phone. Record a conversation, get back a clean transcript, summary, and action items — powered by AI you control.
+          Voice-to-document pipeline that lives on your phone. Record a conversation, get back a clean transcript, summary, and action items.
         </p>
         <div class="product-features">
           <div class="product-feat">
             <span class="material-icons-round text-signal">mic</span>
-            Seven recording modes — Meeting, Idea, Tasks, Journal, and more
+            Seven recording modes — Meeting, Idea, Tasks, and more
           </div>
           <div class="product-feat">
             <span class="material-icons-round text-signal">record_voice_over</span>
@@ -140,10 +143,6 @@
           <div class="product-feat">
             <span class="material-icons-round text-signal">smartphone</span>
             On-device Whisper + Gemma — no internet required
-          </div>
-          <div class="product-feat">
-            <span class="material-icons-round text-signal">vpn_key</span>
-            BYOK or subscribe to Pro ($1.99/mo) for managed access
           </div>
         </div>
         <a href="scrybe.html" class="product-link text-signal">
@@ -157,7 +156,7 @@
         </div>
         <div class="product-name text-ember">Shelf-Snap</div>
         <p class="product-tagline">
-          Document, value, and list your stuff. Snap a photo of any item — AI identifies it, estimates its value, researches market prices, and helps you list or donate it.
+          What you have, what you give. Snap a photo of any item — AI identifies it, estimates its value, and helps you list or donate it.
         </p>
         <div class="product-features">
           <div class="product-feat">
@@ -165,19 +164,42 @@
             Photo → AI draft: category, condition, estimated value
           </div>
           <div class="product-feat">
-            <span class="material-icons-round text-ember">price_change</span>
-            Market research with real sold-price citations
-          </div>
-          <div class="product-feat">
             <span class="material-icons-round text-ember">storefront</span>
-            Cross-list to eBay, Mercari, OfferUp, FB Marketplace
+            Cross-list to eBay, Mercari, OfferUp, and more
           </div>
           <div class="product-feat">
             <span class="material-icons-round text-ember">volunteer_activism</span>
-            Donation summary with CSV export
+            Donation summary with one-tap CSV export
           </div>
         </div>
         <a href="shelf-snap.html" class="product-link text-ember">
+          Learn more <span class="material-icons-round">arrow_forward</span>
+        </a>
+      </div>
+
+      <div class="product-card price reveal">
+        <div class="product-icon-wrap" style="background: var(--glow-dim);">
+          <span class="material-icons-round" style="font-size: 28px; color: var(--glow);">trending_down</span>
+        </div>
+        <div class="product-name text-glow">PriceDrop</div>
+        <p class="product-tagline">
+          Track the price of anything. PriceDrop watches your products in the background, finds coupons, and alerts you the moment it's worth buying.
+        </p>
+        <div class="product-features">
+          <div class="product-feat">
+            <span class="material-icons-round text-glow">notifications_active</span>
+            Target-hit and big-drop alerts with quiet hours
+          </div>
+          <div class="product-feat">
+            <span class="material-icons-round text-glow">show_chart</span>
+            Price-history chart with effective price and target line
+          </div>
+          <div class="product-feat">
+            <span class="material-icons-round text-glow">confirmation_number</span>
+            Verified coupons and multi-seller offer comparison
+          </div>
+        </div>
+        <a href="price-drop.html" class="product-link text-glow">
           Learn more <span class="material-icons-round">arrow_forward</span>
         </a>
       </div>
@@ -197,14 +219,14 @@
           <span class="material-icons-round" style="color: var(--brand-soft); font-size: 20px;">vpn_key</span>
         </div>
         <h4>Bring your own key</h4>
-        <p>AI processing uses your API key, billed directly to your provider. Or subscribe to Pro and we handle the key — routed through our Cloudflare proxy so it never touches your device.</p>
+        <p>AI processing uses your API key, billed directly to your provider. Or subscribe to Pro and we handle it — routed through the TwoBits Worker so the key never touches your device.</p>
       </div>
       <div class="privacy-pillar">
         <div class="privacy-pillar-icon">
           <span class="material-icons-round" style="color: var(--brand-soft); font-size: 20px;">smartphone</span>
         </div>
-        <h4>On-device AI</h4>
-        <p>Scrybe runs Whisper and Gemma locally on your phone. Shelf-Snap stores everything in a local Room database. No cloud backend, no sync service.</p>
+        <h4>Local-first storage</h4>
+        <p>Scrybe runs Whisper and Gemma on-device. Shelf-Snap and PriceDrop keep everything in a local Room database. No cloud backend, no sync service, no accounts.</p>
       </div>
       <div class="privacy-pillar">
         <div class="privacy-pillar-icon">
@@ -232,12 +254,12 @@
       </div>
       <div>
         <p class="t-label mb-16">About twobits</p>
-        <h2 class="t-h2 mb-16">A small workshop.<br>Two good tools.</h2>
+        <h2 class="t-h2 mb-16">A small workshop.<br>Three good tools.</h2>
         <p class="t-body" style="max-width: 480px;">
-          twobits is an independent software studio. Both apps live in a single monorepo, share a design system (DM Sans, Material 3 tokens), billing infrastructure (RevenueCat), and a Cloudflare worker proxy for Pro subscribers — but are independently buildable and independently useful.
+          twobits is an independent software studio. All three apps live in a single monorepo and share a design system (DM Sans, Material 3 tokens), a billing module (RevenueCat), and the TwoBits Worker proxy for Pro subscribers — but each is independently buildable and independently useful.
         </p>
         <p class="t-body mt-16" style="max-width: 480px;">
-          Kotlin, Jetpack Compose, Hilt, Room. minSdk 26, targetSdk 35. MIT licensed. You can read every line of code and verify every network call.
+          Kotlin, Jetpack Compose, Hilt, Room. minSdk 26, targetSdk 35. GPLv3 licensed. You can read every line of code and verify every network call.
         </p>
       </div>
     </div>
@@ -254,6 +276,7 @@
       <h5>Products</h5>
       <a href="scrybe.html">Scrybe</a>
       <a href="shelf-snap.html">Shelf-Snap</a>
+      <a href="price-drop.html">PriceDrop</a>
     </div>
     <div class="footer-col">
       <h5>Company</h5>

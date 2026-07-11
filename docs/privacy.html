@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Privacy Overview — twobits</title>
-<meta name="description" content="twobits products are tools, not platforms. No cloud services, no user accounts, no data collection. Full data handling details for Scrybe and Shelf-Snap.">
+<meta name="description" content="twobits products are tools, not platforms. No cloud services, no user accounts, no data collection. Here's exactly how each product handles your information.">
 <link rel="stylesheet" href="site.css">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <style>
@@ -123,6 +123,7 @@
     <div class="site-nav-links">
       <a href="scrybe.html">Scrybe</a>
       <a href="shelf-snap.html">Shelf-Snap</a>
+      <a href="price-drop.html">PriceDrop</a>
       <a href="privacy.html" class="active">Privacy</a>
     </div>
   </div>
@@ -158,7 +159,7 @@
           <span class="material-icons-round" style="color: var(--brand-soft); font-size: 22px;">workspace_premium</span>
         </div>
         <h3>Pro managed key</h3>
-        <p>Scrybe Pro ($1.99/mo via Google Play) routes AI calls through our Cloudflare worker proxy (api.twobits.app). The worker validates your RevenueCat subscription, then forwards to OpenAI. The OpenAI key stays server-side — never on your device.</p>
+        <p>Pro subscriptions (Scrybe Pro at $1.99/mo, plus Shelf-Snap Pro and PriceDrop Pro) route calls through the TwoBits Worker (api.twobits.app). The worker validates your RevenueCat entitlement, then forwards to the upstream provider. The provider key stays server-side — never on your device.</p>
       </div>
       <div class="principle">
         <div class="principle-icon" style="background: var(--glow-dim);">
@@ -172,7 +173,7 @@
           <span class="material-icons-round" style="color: var(--signal); font-size: 22px;">storage</span>
         </div>
         <h3>Local-first storage</h3>
-        <p>All user data — recordings, photos, transcripts, inventory — is stored on-device in Room databases and app-private file storage. We have no cloud backend, no sync service, no user database.</p>
+        <p>All user data — recordings, photos, transcripts, inventory, and your price watchlist — is stored on-device in Room databases and app-private file storage. We have no cloud backend, no sync service, no user database.</p>
       </div>
       <div class="principle">
         <div class="principle-icon" style="background: var(--ember-dim);">
@@ -199,7 +200,7 @@
     <h2 class="t-h2 mb-24">How managed API access works</h2>
     <div class="arch-diagram reveal">
       <p class="t-body-sm" style="max-width: 560px;">
-        Scrybe Pro subscribers don't need their own OpenAI API key. Instead, AI calls route through a Cloudflare Worker at api.twobits.app. The worker validates the subscription via RevenueCat, then proxies the request to OpenAI using a server-side key. Your audio or text goes directly to OpenAI — we don't log, store, or inspect it.
+        Pro subscribers across all three apps don't need their own provider keys. Instead, calls route through the TwoBits Worker at api.twobits.app. The worker validates the subscription via RevenueCat, then proxies the request to the upstream provider (OpenAI, search, shopping data) using a server-side key. Your content goes directly to that provider — the worker does not log, store, or inspect it.
       </p>
       <div class="arch-row">
         <div class="arch-box">
@@ -225,11 +226,11 @@
         </div>
         <div style="font-size: 12px; color: var(--t3); display: flex; align-items: center; gap: 5px;">
           <span class="material-icons-round" style="font-size: 14px;">check</span>
-          OpenAI key never leaves Cloudflare
+          Provider keys never leave the Worker
         </div>
         <div style="font-size: 12px; color: var(--t3); display: flex; align-items: center; gap: 5px;">
           <span class="material-icons-round" style="font-size: 14px;">check</span>
-          No request logging or data retention
+          Scrybe Pro enforces a monthly spend cap server-side
         </div>
       </div>
     </div>
@@ -327,23 +328,76 @@
           </tr>
           <tr>
             <td>Photos sent to AI</td>
-            <td><span class="badge badge-cloud">OpenAI Vision</span> Photos sent via HTTPS to GPT-4o using your API key. Returns structured JSON (category, description, condition, value, confidence).</td>
+            <td><span class="badge badge-cloud">OpenAI Vision</span> Photos sent via HTTPS to OpenAI using your API key (BYOK) or via the TwoBits Worker (Pro). Returns structured JSON (category, description, condition, value, confidence).</td>
             <td>Per OpenAI's data retention policy.</td>
           </tr>
           <tr>
             <td>Market research</td>
-            <td><span class="badge badge-cloud">OpenAI + search</span> Item attributes and web snippets sent to gpt-4o-mini. Web search queries sent to Brave or DuckDuckGo (your choice).</td>
-            <td>Per each provider's policy. DuckDuckGo: no logging.</td>
+            <td><span class="badge badge-cloud">OpenAI + search</span> Item attributes sent to a fast OpenAI model. Web search queries sent to your chosen provider — Jina AI, Brave Search, SearchAPI.io, or Serper.dev.</td>
+            <td>Per each provider's policy.</td>
           </tr>
           <tr>
             <td>API keys</td>
-            <td><span class="badge badge-local">On-device</span> OpenAI key and optional Brave Search key stored in Android DataStore.</td>
+            <td><span class="badge badge-local">On-device</span> OpenAI key (required for BYOK) and optional search-provider keys stored in Android DataStore. Pro subscribers send a RevenueCat App User ID instead.</td>
             <td>Until you remove them or uninstall.</td>
           </tr>
           <tr>
             <td>Exported CSVs</td>
             <td><span class="badge badge-none">Your choice</span> CSV files saved to app-scoped external storage. Shared via system chooser — we have no visibility.</td>
             <td>Per the destination app.</td>
+          </tr>
+          <tr>
+            <td>Crash reports</td>
+            <td><span class="badge badge-none">Play Console</span> Anonymous stack traces only.</td>
+            <td>Per Google Play Console retention.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PriceDrop privacy -->
+    <div class="product-privacy reveal">
+      <div class="product-privacy-header">
+        <div class="product-privacy-icon" style="background: var(--glow-dim);">
+          <span class="material-icons-round" style="font-size: 24px; color: var(--glow);">trending_down</span>
+        </div>
+        <div>
+          <h3 class="text-glow">PriceDrop</h3>
+          <p class="sub">Price Tracker — data handling details</p>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Data type</th><th>Where it goes</th><th>Retention</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Watchlist &amp; price history</td>
+            <td><span class="badge badge-local">On-device</span> Watched products, price events, offers, coupons, and activity stored in a local Room database.</td>
+            <td>Until you remove the product or uninstall.</td>
+          </tr>
+          <tr>
+            <td>Product lookups</td>
+            <td><span class="badge badge-cloud">TwoBits Worker</span> Search terms, URLs, and scanned barcodes sent to api.twobits.app, which calls shopping search (SearchAPI.io / Serper.dev) and Rainforest for product data, price history, and barcode resolution.</td>
+            <td>Per each provider's policy. Worker: no request logging.</td>
+          </tr>
+          <tr>
+            <td>Background price checks</td>
+            <td><span class="badge badge-cloud">TwoBits Worker</span> A scheduled WorkManager job refreshes price and coupons for active products (every 24 hours by default). Honors Wi-Fi-only, charging-only, frequency, and quiet-hours settings.</td>
+            <td>Results stored on-device; no off-device history kept.</td>
+          </tr>
+          <tr>
+            <td>Ask assistant</td>
+            <td><span class="badge badge-cloud">OpenAI</span> Shopping questions sent to a shopping-scoped chat proxy (Pro) or directly to OpenAI (BYOK). No watchlist is uploaded unless referenced in your question.</td>
+            <td>Per OpenAI's data retention policy.</td>
+          </tr>
+          <tr>
+            <td>Provider keys</td>
+            <td><span class="badge badge-local">On-device</span> Per-provider BYOK keys (OpenAI, search, shopping, Rainforest, coupons) held in local storage. Pro mode uses a RevenueCat user id instead.</td>
+            <td>Until you remove them or uninstall.</td>
+          </tr>
+          <tr>
+            <td>Notifications</td>
+            <td><span class="badge badge-local">On-device</span> Drop, coupon, and provider-issue alerts generated locally. Requires the Android 13+ notification permission.</td>
+            <td>Dismissable; not sent anywhere.</td>
           </tr>
           <tr>
             <td>Crash reports</td>
@@ -364,18 +418,23 @@
     <div class="third-party-grid reveal">
       <div class="third-party">
         <h4>OpenAI (Whisper / GPT / Vision)</h4>
-        <p>Transcription (Scrybe), AI transforms (Scrybe), item analysis (Shelf-Snap), and price research (Shelf-Snap). Audio, text, or images sent directly from your device using your key — or via api.twobits.app for Pro users.</p>
-        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> Only when you trigger transcription, transform, analysis, or price research</div>
+        <p>Transcription and transforms (Scrybe), item analysis and price research (Shelf-Snap), and the shopping assistant (PriceDrop). Audio, text, or images sent directly using your key — or via api.twobits.app for Pro users.</p>
+        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> Only when you trigger an AI action</div>
       </div>
       <div class="third-party">
         <h4>RevenueCat</h4>
-        <p>Manages Scrybe Pro subscriptions. The app sends an anonymous App User ID to verify entitlement. RevenueCat does not receive any recording, transcript, or item data.</p>
+        <p>Manages Pro subscriptions across all three apps. The app sends an anonymous App User ID to verify entitlement (e.g. pricedrop_pro). RevenueCat receives no recording, transcript, inventory, or watchlist data.</p>
         <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> On app launch (subscription check) and when purchasing Pro</div>
       </div>
       <div class="third-party">
-        <h4>Brave Search / DuckDuckGo</h4>
-        <p>Optional web search for Shelf-Snap market research. Search queries based on item attributes are sent to your chosen provider. DuckDuckGo works without a key; Brave requires one.</p>
-        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> Only when you tap "Research price" in Shelf-Snap Market tab</div>
+        <h4>Jina AI, Brave Search, SearchAPI.io &amp; Serper.dev</h4>
+        <p>Web and shopping search for Shelf-Snap market research and PriceDrop offer discovery. Text queries based on item or product attributes are sent to your chosen provider — either directly (BYOK) or via the TwoBits Worker (Pro).</p>
+        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> Only when you research a price or refresh a watched product</div>
+      </div>
+      <div class="third-party">
+        <h4>Rainforest &amp; Couponlayer</h4>
+        <p>PriceDrop only. Rainforest supplies product data, competing-seller offers, price-history backfill, and barcode resolution. Couponlayer discovers and verifies coupon codes. Both are reached through the TwoBits Worker (Pro) or your own keys (BYOK).</p>
+        <div class="when"><span class="material-icons-round" style="font-size: 14px;">schedule</span> When you add a product or a background check runs</div>
       </div>
       <div class="third-party">
         <h4>Google Play Console</h4>
@@ -400,10 +459,10 @@
       </div>
       <div class="faq-item">
         <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
-          How does Scrybe Pro work without my own API key?
+          How does Pro work without my own API key?
           <span class="material-icons-round">expand_more</span>
         </div>
-        <div class="faq-a">Pro subscribers' AI calls route through a Cloudflare Worker at api.twobits.app. The worker validates your subscription via RevenueCat, then proxies the request to OpenAI using a server-side API key. Your audio or text goes to OpenAI — we proxy it without logging or storing any content. The OpenAI key never touches your device.</div>
+        <div class="faq-a">Pro subscribers' AI calls route through a Cloudflare Worker at api.twobits.app. The worker validates your subscription via RevenueCat, then proxies the request to the upstream provider using a server-side API key. Your audio, photos, or text go to that provider — we proxy it without logging or storing any content. The provider key never touches your device. Scrybe Pro also enforces a monthly spend cap server-side.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
@@ -417,14 +476,14 @@
           Does OpenAI keep my data?
           <span class="material-icons-round">expand_more</span>
         </div>
-        <div class="faq-a">OpenAI retains API data for 30 days by default, but you can opt out in your OpenAI account settings. When using Scrybe Pro, the same OpenAI retention policy applies to the server-side key. We recommend reviewing OpenAI's data usage policy for API users.</div>
+        <div class="faq-a">OpenAI retains API data for 30 days by default, but you can opt out in your OpenAI account settings. When using Pro tiers, the same OpenAI retention policy applies to the server-side key. We recommend reviewing OpenAI's data usage policy for API users.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
           What does Shelf-Snap send to web search providers?
           <span class="material-icons-round">expand_more</span>
         </div>
-        <div class="faq-a">When you tap "Research price," Shelf-Snap sends a search query based on the item's category, brand, and description to your chosen search provider (Brave Search or DuckDuckGo). The search results are then sent to OpenAI (gpt-4o-mini) for pricing analysis. No photos are sent to search providers — only text queries.</div>
+        <div class="faq-a">When you tap "Research price," Shelf-Snap sends a search query based on the item's category, brand, and description to your chosen search provider (Jina AI, Brave Search, SearchAPI.io, or Serper.dev). The search results are then sent to OpenAI for pricing analysis. No photos are sent to search providers — only text queries.</div>
       </div>
       <div class="faq-item">
         <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
@@ -442,10 +501,17 @@
       </div>
       <div class="faq-item">
         <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          What does PriceDrop send off my device?
+          <span class="material-icons-round">expand_more</span>
+        </div>
+        <div class="faq-a">Only what's needed to look up a product: search terms, URLs, or scanned barcodes go to the TwoBits Worker, which fetches product and offer data, price history, and barcode resolution from Rainforest, and coupons from Couponlayer. Your watchlist itself stays in a local database on your phone — it is never uploaded. Background price checks respect your Wi-Fi-only, charging-only, frequency, and quiet-hours settings.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
           Is the code open source?
           <span class="material-icons-round">expand_more</span>
         </div>
-        <div class="faq-a">The codebase lives at github.com/punassuming/twobits. Both apps are MIT licensed. You can read every line of code, verify every network call, and build from source. The monorepo includes both Android apps, shared modules, and the Cloudflare worker proxy.</div>
+        <div class="faq-a">The apps live at github.com/punassuming/twobits, GPLv3 licensed — you can read every line of code and verify every network call. The monorepo includes all three Android apps and shared modules (billing, network, design). The TwoBits Worker that powers Pro subscriptions lives in a separate repository, github.com/punassuming/twobits-worker.</div>
       </div>
     </div>
   </div>
@@ -457,7 +523,7 @@
       Questions about privacy? Reach out at
       <a href="mailto:privacy@twobits.dev" style="color: var(--brand-soft); font-weight: 500;">privacy@twobits.dev</a>
     </p>
-    <p class="t-caption mt-16">Last updated: June 2, 2026</p>
+    <p class="t-caption mt-16">Last updated: July 11, 2026</p>
   </div>
 </section>
 
@@ -467,7 +533,7 @@
       <a class="site-logo" href="index.html"><span class="dot"></span> twobits</a>
       <span class="t-caption" style="margin-top: 4px;">AI tools that respect your intelligence.</span>
     </div>
-    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a></div>
+    <div class="footer-col"><h5>Products</h5><a href="scrybe.html">Scrybe</a><a href="shelf-snap.html">Shelf-Snap</a><a href="price-drop.html">PriceDrop</a></div>
     <div class="footer-col"><h5>Company</h5><a href="privacy.html">Privacy</a><a href="https://github.com/punassuming/twobits">GitHub</a></div>
   </div>
   <div class="footer-bottom">© 2026 twobits. All rights reserved.</div>
