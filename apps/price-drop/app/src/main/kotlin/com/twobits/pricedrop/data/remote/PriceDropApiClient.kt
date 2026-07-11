@@ -56,10 +56,13 @@ class PriceDropApiClient
             maxResults: Int = 10,
         ): SearchResponseDto {
             if (isByok(PriceDropProvider.SHOPPING)) {
-                return searchDirect(query, maxResults, providerSettings.getKey(PriceDropProvider.SHOPPING))
+                return searchDirect(query, maxResults, byokKey(PriceDropProvider.SHOPPING))
+            }
+            if (isByok(PriceDropProvider.SERPER)) {
+                return searchDirectSerper(query, maxResults, byokKey(PriceDropProvider.SERPER))
             }
             if (isByok(PriceDropProvider.WEB_SEARCH)) {
-                return searchDirectJina(query, maxResults, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
+                return searchDirectJina(query, maxResults, byokKey(PriceDropProvider.WEB_SEARCH))
             }
             val body =
                 JsonObject().apply {
@@ -76,7 +79,7 @@ class PriceDropApiClient
             // Price and barcode lookups always use Rainforest API (Amazon product data).
             // SearchAPI.io (SHOPPING) is for search only; it has no equivalent price endpoint.
             if (isByok(PriceDropProvider.RAINFOREST)) {
-                return priceDirect(asin, upc, providerSettings.getKey(PriceDropProvider.RAINFOREST))
+                return priceDirect(asin, upc, byokKey(PriceDropProvider.RAINFOREST))
             }
             val body =
                 JsonObject().apply {
@@ -87,8 +90,10 @@ class PriceDropApiClient
         }
 
         suspend fun history(asin: String): HistoryResponseDto {
-            if (isByok(PriceDropProvider.KEEPA)) {
-                return historyDirect(asin, providerSettings.getKey(PriceDropProvider.KEEPA))
+            // Rainforest backs history in both modes now (Keepa removed) — same provider
+            // priceDirect()/priceDrop() already use, so BYOK history needs no separate key.
+            if (isByok(PriceDropProvider.RAINFOREST)) {
+                return historyDirect(asin, byokKey(PriceDropProvider.RAINFOREST))
             }
             val body = JsonObject().apply { addProperty("asin", asin) }
             return workerPost("/v1/pricedrop/history", body, HistoryResponseDto::class.java)
@@ -99,7 +104,7 @@ class PriceDropApiClient
             domain: String? = null,
         ): CouponsResponseDto {
             if (isByok(PriceDropProvider.COUPON)) {
-                return couponsDirect(query, domain, providerSettings.getKey(PriceDropProvider.COUPON))
+                return couponsDirect(query, domain, byokKey(PriceDropProvider.COUPON))
             }
             val body =
                 JsonObject().apply {
@@ -111,7 +116,7 @@ class PriceDropApiClient
 
         suspend fun barcode(upc: String): BarcodeResponseDto {
             if (isByok(PriceDropProvider.RAINFOREST)) {
-                return barcodeDirect(upc, providerSettings.getKey(PriceDropProvider.RAINFOREST))
+                return barcodeDirect(upc, byokKey(PriceDropProvider.RAINFOREST))
             }
             val body = JsonObject().apply { addProperty("upc", upc) }
             return workerPost("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java)
@@ -138,7 +143,7 @@ class PriceDropApiClient
                 if (isProMode) {
                     "Bearer ${subscriptionRepository.getAppUserId()}"
                 } else {
-                    "Bearer ${providerSettings.getKey(PriceDropProvider.OPENAI)}"
+                    "Bearer ${byokKey(PriceDropProvider.OPENAI)}"
                 }
             val selectedModel = providerSettings.getFeatureModel(AiFeature.ASK)
             val model = selectedModel.ifBlank { if (isProMode) PRO_CHAT_MODEL else BYOK_CHAT_MODEL }
@@ -250,6 +255,48 @@ class PriceDropApiClient
                 }
             }
 
+        // Serper's dedicated /shopping endpoint (not /search) — mirrors SearchAPI's
+        // google_shopping engine so Serper is a real substitute (structured price data),
+        // not a repeat of the Jina fallback's price = null gap.
+        private suspend fun searchDirectSerper(
+            query: String,
+            maxResults: Int,
+            apiKey: String,
+        ): SearchResponseDto =
+            withContext(Dispatchers.IO) {
+                val requestBody =
+                    JsonObject()
+                        .apply { addProperty("q", query) }
+                        .toString()
+                        .toRequestBody("application/json; charset=utf-8".toMediaType())
+                val request =
+                    Request
+                        .Builder()
+                        .url("https://google.serper.dev/shopping")
+                        .addHeader("X-API-KEY", apiKey.trim())
+                        .post(requestBody)
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val text = response.body?.string().orEmpty()
+                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
+                    val data = gson.fromJson(text, JsonObject::class.java)
+                    val items = data.getAsJsonArray("shopping") ?: JsonArray()
+                    val results =
+                        items.take(maxResults).map { item ->
+                            val r = item.asJsonObject
+
+                            fun field(vararg keys: String): String? = keys.firstNotNullOfOrNull { k -> r[k]?.takeIf { it.isJsonPrimitive }?.asString }
+                            SearchResultDto(
+                                title = field("title"),
+                                price = field("price"),
+                                source = field("source"),
+                                url = field("link"),
+                            )
+                        }
+                    SearchResponseDto(results)
+                }
+            }
+
         private suspend fun priceDirect(
             asin: String?,
             upc: String?,
@@ -334,20 +381,21 @@ class PriceDropApiClient
                 }
             }
 
+        // Mirrors the worker's pdHistory: Rainforest already provides Amazon price history
+        // alongside product data, eliminating the need for a separate Keepa subscription.
         private suspend fun historyDirect(
             asin: String,
             apiKey: String,
         ): HistoryResponseDto =
             withContext(Dispatchers.IO) {
                 val url =
-                    "https://api.keepa.com/product"
+                    "https://api.rainforestapi.com/request"
                         .toHttpUrl()
                         .newBuilder()
-                        .addQueryParameter("key", apiKey)
-                        .addQueryParameter("domain", "1")
+                        .addQueryParameter("api_key", apiKey)
+                        .addQueryParameter("type", "product")
                         .addQueryParameter("asin", asin)
-                        .addQueryParameter("history", "1")
-                        .addQueryParameter("stats", "180")
+                        .addQueryParameter("include_fields", "product.price_history")
                         .build()
                 val request =
                     Request
@@ -359,36 +407,27 @@ class PriceDropApiClient
                     val text = response.body?.string().orEmpty()
                     if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
                     val data = gson.fromJson(text, JsonObject::class.java)
-                    val product =
-                        data["products"]?.asJsonArray?.firstOrNull()?.asJsonObject
-                            ?: return@use HistoryResponseDto()
+                    val product = data["product"]?.asJsonObject ?: return@use HistoryResponseDto()
 
-                    // CSV index 0 = Amazon price (in cents / 100); -1 = unavailable.
-                    val csv = product["csv"]?.asJsonArray?.firstOrNull()?.asJsonArray
-                    val history = mutableListOf<HistoryPointDto>()
-                    csv?.let { arr ->
-                        var i = 0
-                        while (i + 1 < arr.size()) {
-                            val priceRaw = runCatching { arr[i + 1].asInt }.getOrNull() ?: -1
-                            if (priceRaw != -1) {
-                                val keepaMin = runCatching { arr[i].asLong }.getOrNull() ?: 0L
-                                history.add(HistoryPointDto(ts = KEEPA_EPOCH_MS + keepaMin * 60_000L, price = priceRaw / 100.0))
-                            }
-                            i += 2
+                    val rawHistory = product["price_history"]?.asJsonArray ?: JsonArray()
+                    val history =
+                        rawHistory.mapNotNull { entry ->
+                            val e = entry.asJsonObject
+                            val price = e["price"]?.let { runCatching { it.asDouble }.getOrNull() } ?: return@mapNotNull null
+                            val ts = e["date"]?.asString?.let { parseRainforestDate(it) } ?: return@mapNotNull null
+                            HistoryPointDto(ts = ts, price = price)
                         }
-                    }
-                    val lowestPrice =
-                        product["stats"]
-                            ?.asJsonObject
-                            ?.get("min")
-                            ?.asJsonArray
-                            ?.firstOrNull()
-                            ?.let { runCatching { it.asInt }.getOrNull() }
-                            ?.takeIf { it != -1 }
-                            ?.let { it / 100.0 }
+                    val lowestPrice = history.minOfOrNull { it.price }
                     HistoryResponseDto(history = history, lowestPrice = lowestPrice)
                 }
             }
+
+        // Rainforest's price_history dates have been observed as ISO-8601 ("2024-01-15" or
+        // full instants); try both and skip entries that don't parse rather than guessing.
+        private fun parseRainforestDate(raw: String): Long? =
+            runCatching { java.time.Instant.parse(raw).toEpochMilli() }
+                .recoverCatching { java.time.LocalDate.parse(raw).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() }
+                .getOrNull()
 
         private suspend fun couponsDirect(
             query: String,
@@ -570,7 +609,7 @@ class PriceDropApiClient
                 if (isProMode) {
                     "Bearer ${subscriptionRepository.getAppUserId()}"
                 } else {
-                    "Bearer ${providerSettings.getKey(PriceDropProvider.OPENAI)}"
+                    "Bearer ${byokKey(PriceDropProvider.OPENAI)}"
                 }
             return runCatching {
                 val body =
@@ -621,6 +660,20 @@ class PriceDropApiClient
         // ---------------------------------------------------------------------------
 
         private suspend fun isByok(provider: PriceDropProvider): Boolean = providerSettings.getMode(provider) == ProviderMode.BYOK
+
+        /**
+         * The stored key for [provider], required to be non-blank. Call only after [isByok] is
+         * true for the same provider — a user can flip a provider's mode to BYOK without saving a
+         * key yet, and without this guard that reaches the upstream provider with an empty key,
+         * surfacing as a confusing raw HTTP error instead of a clear "add your key" message.
+         */
+        private suspend fun byokKey(provider: PriceDropProvider): String {
+            val key = providerSettings.getKey(provider)
+            if (key.isBlank()) {
+                throw IOException("Add your ${provider.displayName} key in Settings, or switch it back to Pro.")
+            }
+            return key
+        }
 
         /** Pro-mode Worker call. Auth is always the RevenueCat App User ID. */
         private suspend fun <T> workerPost(
@@ -674,6 +727,5 @@ class PriceDropApiClient
             const val PRO_BASE_URL = "https://api.twobits.app"
             private const val PRO_CHAT_MODEL = "gpt-5-mini"
             private const val BYOK_CHAT_MODEL = "gpt-4o-mini"
-            private const val KEEPA_EPOCH_MS = 1_293_840_000_000L // 2011-01-01 00:00 UTC
         }
     }

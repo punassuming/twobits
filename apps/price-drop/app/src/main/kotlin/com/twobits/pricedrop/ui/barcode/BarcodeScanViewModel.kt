@@ -89,21 +89,22 @@ class BarcodeScanViewModel
             imageUrl: String = "",
             onAdded: (Long) -> Unit,
         ) {
+            val product =
+                WatchedProduct(
+                    title = title,
+                    currentPrice = price ?: 0.0,
+                    upc = barcode,
+                    asin = asin,
+                    productUrl = url,
+                    imageUrl = imageUrl,
+                )
             viewModelScope.launch {
-                when (
-                    val result =
-                        watchlistRepo.add(
-                            WatchedProduct(
-                                title = title,
-                                currentPrice = price ?: 0.0,
-                                upc = barcode,
-                                asin = asin,
-                                productUrl = url,
-                                imageUrl = imageUrl,
-                            ),
-                        )
-                ) {
-                    is AddResult.Added -> onAdded(result.id)
+                when (val result = watchlistRepo.add(product)) {
+                    is AddResult.Added -> {
+                        onAdded(result.id)
+                        // Fire-and-forget: don't gate onAdded on a slow history fetch.
+                        launch { watchlistRepo.backfillHistoryIfNeeded(result.id, product.asin) }
+                    }
                     AddResult.LimitReached ->
                         uiState.value =
                             BarcodeUiState.Error(

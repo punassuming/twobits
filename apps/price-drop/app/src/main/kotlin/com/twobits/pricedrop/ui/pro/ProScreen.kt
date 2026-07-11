@@ -445,7 +445,7 @@ private fun WhyProSection() {
             ),
             WhyRow(
                 Icons.Default.TrendingDown,
-                "Amazon price history via Keepa — see whether the current price is actually a deal.",
+                "Amazon price history included — see whether the current price is actually a deal.",
             ),
             WhyRow(
                 Icons.Default.AutoAwesome,

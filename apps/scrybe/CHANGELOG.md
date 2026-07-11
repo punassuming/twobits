@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* internal: `shared/design`'s `CollapsibleProviderRow` gained an optional requirement tag and `shared/secure-store`'s `SharedCredentialId` gained a `SERPER` entry for Shelf Snap/PriceDrop's BYOK work — no Scrybe-visible change
+
 ### Fixes
 
 ## 1.38.0 (2026-07-10)

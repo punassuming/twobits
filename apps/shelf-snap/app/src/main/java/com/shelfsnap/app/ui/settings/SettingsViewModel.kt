@@ -14,6 +14,7 @@ import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.BraveSearchService
 import com.shelfsnap.app.data.remote.search.JinaAiSearchService
 import com.shelfsnap.app.data.remote.search.SearchApiService
+import com.shelfsnap.app.data.remote.search.SerperSearchService
 import com.shelfsnap.app.data.repository.ItemRepository
 import com.shelfsnap.app.util.ApiKeyValidator
 import com.twobits.billing.BillingManager
@@ -71,6 +72,12 @@ data class SettingsUiState(
     val isSearchapiTesting: Boolean = false,
     val searchapiTestResult: Boolean? = null,
     val searchapiTestMessage: String? = null,
+    val serperSearchEnabled: Boolean = false,
+    val savedSerperApiKey: String = "",
+    val editSerperApiKey: String = "",
+    val isSerperTesting: Boolean = false,
+    val serperTestResult: Boolean? = null,
+    val serperTestMessage: String? = null,
     val visionModel: VisionModel = VisionModel.default,
     val reasoningModel: ReasoningModel = ReasoningModel.default,
     val visionSource: String = "byok",
@@ -102,6 +109,7 @@ class SettingsViewModel
         private val jinaSearchService: JinaAiSearchService,
         private val braveSearchService: BraveSearchService,
         private val searchapiService: SearchApiService,
+        private val serperService: SerperSearchService,
         @ApplicationContext private val context: Context,
         private val credentialClient: SharedCredentialClient,
     ) : ViewModel() {
@@ -124,6 +132,10 @@ class SettingsViewModel
         private val _isSearchapiTesting = MutableStateFlow(false)
         private val _searchapiTestResult = MutableStateFlow<Boolean?>(null)
         private val _searchapiTestMessage = MutableStateFlow<String?>(null)
+        private val _editSerperKey = MutableStateFlow("")
+        private val _isSerperTesting = MutableStateFlow(false)
+        private val _serperTestResult = MutableStateFlow<Boolean?>(null)
+        private val _serperTestMessage = MutableStateFlow<String?>(null)
         private val _storage = MutableStateFlow(StorageInfo())
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
 
@@ -149,6 +161,11 @@ class SettingsViewModel
                 if (repository.getSearchapiApiKey().isBlank()) {
                     credentialClient.readThrough(SharedCredentialId.SEARCHAPI)?.let { sibling ->
                         repository.saveSearchapiApiKey(sibling)
+                    }
+                }
+                if (repository.getSerperApiKey().isBlank()) {
+                    credentialClient.readThrough(SharedCredentialId.SERPER)?.let { sibling ->
+                        repository.saveSerperApiKey(sibling)
                     }
                 }
             }
@@ -195,6 +212,24 @@ class SettingsViewModel
                 searchapiTestFlow,
             ) { enabled, saved, edit, test -> SearchApiGroup(enabled, saved, edit, test) }
 
+        private val serperTestFlow =
+            combine(_isSerperTesting, _serperTestResult, _serperTestMessage) { testing, result, message ->
+                SearchTestState(testing, result, message)
+            }
+
+        private val serperGroupFlow =
+            combine(
+                repository.observeSerperSearchEnabled(),
+                repository.observeSerperApiKey(),
+                _editSerperKey,
+                serperTestFlow,
+            ) { enabled, saved, edit, test -> SearchApiGroup(enabled, saved, edit, test) }
+
+        // combine() tops out at 5 flows directly — searchapi + serper are nested into one pair
+        // so the outer combine below stays within that limit.
+        private val extraProvidersFlow =
+            combine(searchapiGroupFlow, serperGroupFlow) { sapi, serper -> sapi to serper }
+
         private val searchFlow =
             combine(
                 combine(
@@ -204,8 +239,8 @@ class SettingsViewModel
                 combine(repository.observeJinaApiKey(), _editJinaKey) { saved, edit -> saved to edit },
                 combine(repository.observeBraveApiKey(), _editBraveKey) { saved, edit -> saved to edit },
                 combine(_isSearchSaved, jinaTestFlow, braveTestFlow) { saved, jina, brave -> Triple(saved, jina, brave) },
-                searchapiGroupFlow,
-            ) { (jinaEnabled, braveEnabled), (savedJina, editJina), (savedBrave, editBrave), (saved, jinaTest, braveTest), sapi ->
+                extraProvidersFlow,
+            ) { (jinaEnabled, braveEnabled), (savedJina, editJina), (savedBrave, editBrave), (saved, jinaTest, braveTest), (sapi, serper) ->
                 SearchState(
                     jinaEnabled,
                     braveEnabled,
@@ -220,6 +255,10 @@ class SettingsViewModel
                     sapi.savedKey,
                     sapi.editKey,
                     sapi.test,
+                    serper.enabled,
+                    serper.savedKey,
+                    serper.editKey,
+                    serper.test,
                 )
             }
 
@@ -297,6 +336,12 @@ class SettingsViewModel
                     isSearchapiTesting = search.searchapiTest.isTesting,
                     searchapiTestResult = search.searchapiTest.result,
                     searchapiTestMessage = search.searchapiTest.message,
+                    serperSearchEnabled = search.serperEnabled,
+                    savedSerperApiKey = search.savedSerperKey,
+                    editSerperApiKey = search.editSerperKey.ifBlank { search.savedSerperKey },
+                    isSerperTesting = search.serperTest.isTesting,
+                    serperTestResult = search.serperTest.result,
+                    serperTestMessage = search.serperTest.message,
                     visionModel = models.visionModel,
                     reasoningModel = models.reasoningModel,
                     visionSource = models.visionSource,
@@ -533,6 +578,61 @@ class SettingsViewModel
             }
         }
 
+        fun onSerperSearchEnabledChange(enabled: Boolean) {
+            viewModelScope.launch { repository.saveSerperSearchEnabled(enabled) }
+        }
+
+        fun onSerperApiKeyChange(value: String) {
+            _editSerperKey.update { value }
+            _isSearchSaved.update { false }
+            _serperTestResult.update { null }
+            _serperTestMessage.update { null }
+        }
+
+        fun saveSerperKey() {
+            val key = _editSerperKey.value.ifBlank { uiState.value.savedSerperApiKey }.trim()
+            if (key.isBlank()) return
+            viewModelScope.launch {
+                repository.saveSerperApiKey(key)
+                credentialClient.mirror(SharedCredentialId.SERPER, key)
+                _isSearchSaved.update { true }
+            }
+            validateSerperKey(key)
+        }
+
+        fun clearSerperKey() {
+            viewModelScope.launch {
+                repository.saveSerperApiKey("")
+                _editSerperKey.update { "" }
+                _isSearchSaved.update { false }
+                _serperTestResult.update { null }
+                _serperTestMessage.update { null }
+            }
+        }
+
+        fun testSerperKey() {
+            val key = _editSerperKey.value.ifBlank { uiState.value.savedSerperApiKey }.trim()
+            if (key.isBlank()) return
+            validateSerperKey(key)
+        }
+
+        private fun validateSerperKey(key: String) {
+            viewModelScope.launch {
+                _isSerperTesting.update { true }
+                _serperTestResult.update { null }
+                _serperTestMessage.update { "Checking connection…" }
+                val result = runCatching { serperService.search("used electronics price", key, 1) }
+                _isSerperTesting.update { false }
+                if (result.isSuccess) {
+                    _serperTestResult.update { true }
+                    _serperTestMessage.update { "Connected to Serper.dev" }
+                } else {
+                    _serperTestResult.update { false }
+                    _serperTestMessage.update { result.exceptionOrNull()?.message ?: "Connection failed" }
+                }
+            }
+        }
+
         fun onSearchSavedShown() {
             _isSearchSaved.update { false }
         }
@@ -694,6 +794,10 @@ class SettingsViewModel
             val savedSearchapiKey: String = "",
             val editSearchapiKey: String = "",
             val searchapiTest: SearchTestState = SearchTestState(false, null, null),
+            val serperEnabled: Boolean = false,
+            val savedSerperKey: String = "",
+            val editSerperKey: String = "",
+            val serperTest: SearchTestState = SearchTestState(false, null, null),
         )
 
         private data class LocalModelsState(

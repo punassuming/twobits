@@ -50,9 +50,11 @@ class ItemRepository
             private val KEY_JINA_API_KEY = stringPreferencesKey("jina_search_api_key")
             private val KEY_BRAVE_API_KEY = stringPreferencesKey("brave_search_api_key")
             private val KEY_SEARCHAPI_API_KEY = stringPreferencesKey("searchapi_search_api_key")
+            private val KEY_SERPER_API_KEY = stringPreferencesKey("serper_search_api_key")
             private val KEY_JINA_SEARCH_ENABLED = booleanPreferencesKey("jina_search_enabled")
             private val KEY_BRAVE_SEARCH_ENABLED = booleanPreferencesKey("brave_search_enabled")
             private val KEY_SEARCHAPI_SEARCH_ENABLED = booleanPreferencesKey("searchapi_search_enabled")
+            private val KEY_SERPER_SEARCH_ENABLED = booleanPreferencesKey("serper_search_enabled")
             private val KEY_AUTO_ANALYZE = booleanPreferencesKey("auto_analyze")
             private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
             private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
@@ -127,7 +129,8 @@ class ItemRepository
 
             when (mode) {
                 ExecutionMode.BYOK -> {
-                    val hasSearchProvider = getSearchapiSearchEnabled() || getJinaSearchEnabled() || getBraveSearchEnabled()
+                    val hasSearchProvider =
+                        getSearchapiSearchEnabled() || getJinaSearchEnabled() || getBraveSearchEnabled() || getSerperSearchEnabled()
                     if (getApiKey().isBlank() || !hasSearchProvider) {
                         return PriceResearchResult(
                             error = "Add an OpenAI key and enable at least one search provider in AI configuration.",
@@ -162,6 +165,7 @@ class ItemRepository
                 ExecutionMode.BYOK, ExecutionMode.OFF -> {
                     val jinaKey = if (getJinaSearchEnabled()) getJinaApiKey() else ""
                     val searchapiKey = if (getSearchapiSearchEnabled()) getSearchapiApiKey() else ""
+                    val serperKey = if (getSerperSearchEnabled()) getSerperApiKey() else ""
                     priceResearchService.research(
                         item = item,
                         openAiKey = getApiKey(),
@@ -170,6 +174,7 @@ class ItemRepository
                                 // SearchAPI.io first — it honors site: and returns real links
                                 // where Jina returns eBay error pages.
                                 if (searchapiKey.isNotBlank()) add(SearchProvider.SEARCHAPI to searchapiKey)
+                                if (serperKey.isNotBlank()) add(SearchProvider.SERPER to serperKey)
                                 if (jinaKey.isNotBlank()) add(SearchProvider.JINA to jinaKey)
                                 if (getBraveSearchEnabled()) add(SearchProvider.BRAVE to getBraveApiKey())
                             },
@@ -309,11 +314,33 @@ class ItemRepository
             dataStore.edit { it[KEY_SEARCHAPI_SEARCH_ENABLED] = enabled }
         }
 
+        fun observeSerperApiKey(): Flow<String> = dataStore.data.map { crypto.tryDecryptOrPassthrough(it[KEY_SERPER_API_KEY] ?: "") }
+
+        suspend fun getSerperApiKey(): String {
+            val raw = dataStore.data.firstOrNull()?.get(KEY_SERPER_API_KEY) ?: ""
+            return crypto.tryDecryptOrPassthrough(raw)
+        }
+
+        suspend fun saveSerperApiKey(key: String) {
+            dataStore.edit { it[KEY_SERPER_API_KEY] = crypto.encrypt(key) }
+        }
+
+        // Off by default, like Brave — a fourth provider defaulting on would silently multiply
+        // every research run's search-call fan-out.
+        fun observeSerperSearchEnabled(): Flow<Boolean> = dataStore.data.map { it[KEY_SERPER_SEARCH_ENABLED] ?: false }
+
+        suspend fun getSerperSearchEnabled(): Boolean = dataStore.data.firstOrNull()?.get(KEY_SERPER_SEARCH_ENABLED) ?: false
+
+        suspend fun saveSerperSearchEnabled(enabled: Boolean) {
+            dataStore.edit { it[KEY_SERPER_SEARCH_ENABLED] = enabled }
+        }
+
         suspend fun getSearchApiKey(): String =
             when (getSearchProvider()) {
                 SearchProvider.BRAVE -> getBraveApiKey()
                 SearchProvider.JINA -> getJinaApiKey()
                 SearchProvider.SEARCHAPI -> getSearchapiApiKey()
+                SearchProvider.SERPER -> getSerperApiKey()
                 SearchProvider.NONE -> ""
             }
 

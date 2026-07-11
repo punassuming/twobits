@@ -6,7 +6,7 @@ enum class SharedCredentialId(val wireId: String) {
     JINA("jina"),
     BRAVE("brave"),
     SEARCHAPI("searchapi"),
-    KEEPA("keepa"),
+    SERPER("serper"),
     COUPON("coupon"),
     RAINFOREST("rainforest"),
     ;

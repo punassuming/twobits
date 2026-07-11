@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.PriceCheck
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -66,6 +65,7 @@ import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AppSectionLabel
 import com.twobits.design.components.CollapsibleProviderRow
+import com.twobits.design.components.CredentialRequirement
 import com.twobits.design.components.ModelRadioList
 import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.provider.AiFeature
@@ -100,9 +100,23 @@ private fun PriceDropProvider.icon(): ImageVector =
         PriceDropProvider.OPENAI -> Icons.Filled.AutoAwesome
         PriceDropProvider.WEB_SEARCH -> Icons.Filled.Search
         PriceDropProvider.SHOPPING -> Icons.Filled.ShoppingCart
-        PriceDropProvider.KEEPA -> Icons.Filled.TrendingUp
+        PriceDropProvider.SERPER -> Icons.Filled.ShoppingCart
         PriceDropProvider.COUPON -> Icons.Filled.ConfirmationNumber
         PriceDropProvider.RAINFOREST -> Icons.Filled.Park
+    }
+
+/**
+ * Overall importance of this provider's key across the whole app (not one feature) — see each
+ * provider's [PriceDropProvider.description] for exactly what breaks vs degrades without it.
+ */
+private fun PriceDropProvider.requirement(): CredentialRequirement =
+    when (this) {
+        PriceDropProvider.OPENAI -> CredentialRequirement.REQUIRED
+        PriceDropProvider.RAINFOREST -> CredentialRequirement.REQUIRED
+        PriceDropProvider.COUPON -> CredentialRequirement.REQUIRED
+        PriceDropProvider.WEB_SEARCH -> CredentialRequirement.RECOMMENDED
+        PriceDropProvider.SHOPPING -> CredentialRequirement.RECOMMENDED
+        PriceDropProvider.SERPER -> CredentialRequirement.RECOMMENDED
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -803,5 +817,6 @@ private fun ProviderCredentialItem(
         setupHint = provider.setupHint,
         signupUrl = provider.signupUrl,
         costEstimate = provider.costEstimate,
+        requirement = provider.requirement(),
     )
 }

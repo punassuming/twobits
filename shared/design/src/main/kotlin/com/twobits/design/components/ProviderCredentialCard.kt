@@ -53,6 +53,45 @@ data class CredentialModeOption(
 )
 
 /**
+ * How much a [CollapsibleProviderRow]'s provider matters to the feature(s) it backs — shown as a
+ * small tag next to the title so a user assembling a partial BYOK setup knows, before they hit a
+ * dead feature, whether skipping this key breaks something outright or just degrades quality.
+ * The caller decides the value per screen (it depends on which features reference the provider),
+ * not this shared component.
+ */
+enum class CredentialRequirement(
+    val label: String,
+) {
+    /** Without this key the feature(s) it backs don't work at all — error, not degraded output. */
+    REQUIRED("Required"),
+
+    /** Works without it, but quality/coverage is noticeably worse (e.g. no `site:` support). */
+    RECOMMENDED("Recommended"),
+
+    /** Purely additive — safe to skip with no loss other than one fewer data source. */
+    OPTIONAL("Optional"),
+}
+
+@Composable
+private fun RequirementTag(requirement: CredentialRequirement) {
+    val (container, content) =
+        when (requirement) {
+            CredentialRequirement.REQUIRED -> MaterialTheme.colorScheme.error.copy(alpha = 0.14f) to MaterialTheme.colorScheme.error
+            CredentialRequirement.RECOMMENDED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) to MaterialTheme.colorScheme.primary
+            CredentialRequirement.OPTIONAL ->
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f) to MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    Surface(shape = RoundedCornerShape(6.dp), color = container) {
+        Text(
+            text = requirement.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = content,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+        )
+    }
+}
+
+/**
  * Generic per-provider credential card: a title, an optional mode segment (any set of modes —
  * Off/BYOK/Pro, Pro/BYOK/Local, etc.), and — when the key-bearing mode is selected — an API-key
  * field with Save / Test / Clear actions and colored validation feedback.
@@ -218,6 +257,7 @@ fun CollapsibleProviderRow(
     setupHint: String = "",
     signupUrl: String = "",
     costEstimate: String = "",
+    requirement: CredentialRequirement? = null,
 ) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     val connected = !maskedKey.isNullOrBlank()
@@ -231,7 +271,10 @@ fun CollapsibleProviderRow(
             icon()
             if (connected && !expanded) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        requirement?.let { RequirementTag(it) }
+                    }
                     Text(
                         text = maskedKey!!,
                         style = MaterialTheme.typography.labelSmall,
@@ -241,7 +284,10 @@ fun CollapsibleProviderRow(
                 ConnectedBadge()
             } else if (!expanded) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        requirement?.let { RequirementTag(it) }
+                    }
                     Text(
                         text = description,
                         style = MaterialTheme.typography.labelSmall,
@@ -251,6 +297,7 @@ fun CollapsibleProviderRow(
                 NotConfiguredBadge()
             } else {
                 Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                requirement?.let { RequirementTag(it) }
             }
             IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(28.dp)) {
                 Icon(

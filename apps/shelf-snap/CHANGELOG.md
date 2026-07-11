@@ -8,6 +8,14 @@
 
 **Internal: shared section-card components** — Settings and AI configuration screens now use shared `AppLabeledSectionCard`/`AiSectionCard`/`AppEmptyState` components instead of a private near-duplicate implementation, matching Scrybe and PriceDrop's card styling exactly
 
+**BYOK clarity** — AI configuration now shows what's required vs optional:
+* credential rows tag each key Required, Recommended, or Optional
+* descriptions explain what breaks vs just degrades without each key
+
+**Serper.dev search** — a cheaper alternative to SearchAPI.io:
+* new BYOK search provider, off by default like Brave
+* honors site: filters but has no dedicated eBay engine
+
 ### Fixes
 
 **What's New — bold formatting** — item titles in the full What's New screen (Settings → What's New) now render bold, matching the automatic popup — previously only the popup applied bold weight to item titles, so the two "unified" surfaces looked inconsistent

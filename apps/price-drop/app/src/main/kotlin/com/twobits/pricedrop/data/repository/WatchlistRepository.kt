@@ -67,6 +67,21 @@ class WatchlistRepository
             return AddResult.Added(id)
         }
 
+        /**
+         * Best-effort: backfill pre-tracking price history for Amazon items so the chart isn't
+         * empty until enough scheduled checks accumulate their own points. A failure here (no
+         * Rainforest key/not Pro, or an upstream error) is swallowed — never surfaced to the
+         * caller. This is a network call, so callers should launch it rather than await it
+         * alongside [add] so a slow history fetch doesn't make the add flow look stuck.
+         */
+        suspend fun backfillHistoryIfNeeded(
+            productId: Long,
+            asin: String,
+        ) {
+            if (asin.isBlank()) return
+            runCatching { fetchHistory(productId, asin) }
+        }
+
         suspend fun update(product: WatchedProduct) = watchedProductDao.update(product)
 
         suspend fun remove(id: Long) = watchedProductDao.deactivate(id)
@@ -163,7 +178,7 @@ class WatchlistRepository
             }
         }
 
-        /** Backfill historical price points (Keepa) as observed price events. */
+        /** Backfill historical price points (Rainforest) as observed price events. */
         suspend fun fetchHistory(
             productId: Long,
             asin: String,

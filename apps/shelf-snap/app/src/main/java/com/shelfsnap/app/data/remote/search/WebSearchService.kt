@@ -17,6 +17,7 @@ enum class SearchProvider(
     BRAVE("brave", "Brave Search"),
     JINA("jina", "Jina AI Search"),
     SEARCHAPI("searchapi", "SearchAPI.io"),
+    SERPER("serper", "Serper.dev"),
     ;
 
     companion object {

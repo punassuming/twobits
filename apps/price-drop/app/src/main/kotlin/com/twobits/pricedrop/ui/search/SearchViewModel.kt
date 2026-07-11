@@ -90,20 +90,21 @@ class SearchViewModel
             alertType: String = "below_target",
             onAdded: (Long) -> Unit,
         ) {
+            val product =
+                WatchedProduct(
+                    title = result.title,
+                    currentPrice = result.price ?: 0.0,
+                    targetPrice = targetPrice,
+                    alertType = alertType,
+                    productUrl = result.url,
+                )
             viewModelScope.launch {
-                when (
-                    val result0 =
-                        watchlistRepo.add(
-                            WatchedProduct(
-                                title = result.title,
-                                currentPrice = result.price ?: 0.0,
-                                targetPrice = targetPrice,
-                                alertType = alertType,
-                                productUrl = result.url,
-                            ),
-                        )
-                ) {
-                    is AddResult.Added -> onAdded(result0.id)
+                when (val result0 = watchlistRepo.add(product)) {
+                    is AddResult.Added -> {
+                        onAdded(result0.id)
+                        // Fire-and-forget: don't gate onAdded on a slow history fetch.
+                        launch { watchlistRepo.backfillHistoryIfNeeded(result0.id, product.asin) }
+                    }
                     AddResult.LimitReached -> uiState.value = SearchUiState.Error(LIMIT_MESSAGE)
                 }
             }
@@ -117,20 +118,21 @@ class SearchViewModel
             alertType: String = "below_target",
             onAdded: (Long) -> Unit,
         ) {
+            val product =
+                WatchedProduct(
+                    title = title,
+                    currentPrice = price ?: 0.0,
+                    targetPrice = targetPrice,
+                    alertType = alertType,
+                    productUrl = url,
+                )
             viewModelScope.launch {
-                when (
-                    val result0 =
-                        watchlistRepo.add(
-                            WatchedProduct(
-                                title = title,
-                                currentPrice = price ?: 0.0,
-                                targetPrice = targetPrice,
-                                alertType = alertType,
-                                productUrl = url,
-                            ),
-                        )
-                ) {
-                    is AddResult.Added -> onAdded(result0.id)
+                when (val result0 = watchlistRepo.add(product)) {
+                    is AddResult.Added -> {
+                        onAdded(result0.id)
+                        // Fire-and-forget: don't gate onAdded on a slow history fetch.
+                        launch { watchlistRepo.backfillHistoryIfNeeded(result0.id, product.asin) }
+                    }
                     AddResult.LimitReached -> uiState.value = SearchUiState.Error(LIMIT_MESSAGE)
                 }
             }
