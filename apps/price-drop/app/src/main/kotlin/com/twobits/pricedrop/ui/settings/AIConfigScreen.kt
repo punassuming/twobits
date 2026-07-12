@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.components.AiProManagedCard
@@ -266,6 +267,7 @@ private fun FeatureListContent(
                             feature = feature,
                             source = source,
                             modelName = modelName,
+                            providerStates = providerStates,
                             onClick = { onSelectFeature(feature) },
                         )
                     }
@@ -284,8 +286,16 @@ private fun FeatureRow(
     feature: AiFeature,
     source: ProviderMode,
     modelName: String?,
+    providerStates: Map<PriceDropProvider, ProviderState>,
     onClick: () -> Unit,
 ) {
+    // Best-effort signal only: "at least one of this feature's providers has a saved key",
+    // not a precise per-sub-path check (e.g. SEARCH lists OPENAI, which alone only unlocks
+    // URL-paste, not keyword search) — see FeatureRow's doc for the full caveat.
+    val needsKey =
+        source == ProviderMode.BYOK &&
+            feature.providers.isNotEmpty() &&
+            feature.providers.none { providerStates[it]?.key?.isNotBlank() == true }
     Row(
         modifier =
             Modifier
@@ -321,6 +331,9 @@ private fun FeatureRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        if (needsKey) {
+            NeedsKeyChip()
+        }
         SourceBadge(source)
         Icon(
             Icons.Filled.ChevronRight,
@@ -328,6 +341,34 @@ private fun FeatureRow(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
+    }
+}
+
+/** Flags a BYOK feature whose providers have no saved key — it will error, not just degrade. */
+@Composable
+private fun NeedsKeyChip() {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.error.copy(alpha = 0.18f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error),
+            )
+            Text(
+                text = "No key",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 
@@ -711,9 +752,11 @@ private fun ProviderToggleRow(
                 }
             }
             Text(
-                text = provider.description,
+                text = provider.summary,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Switch(checked = enabled, onCheckedChange = { onToggle() })
@@ -802,6 +845,7 @@ private fun ProviderCredentialItem(
         },
         title = provider.displayName,
         description = provider.description,
+        summary = provider.summary,
         maskedKey = maskedKey,
         isKeyValid = state.isKeyValid,
         isValidating = state.isValidating,

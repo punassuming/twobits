@@ -8,6 +8,12 @@
 
 ### Fixes
 
+**AI configuration** — fixed a layout bug, decluttered provider rows, added missing-key warnings:
+* fixed the Recommended/Required tag wrapping into vertical letters
+* provider rows show a compact colored dot instead of a text tag
+* full descriptions, setup steps, and signup links moved to an info sheet (tap ⓘ)
+* the feature list now flags BYOK features that have no saved key
+
 ## 0.12.0 (2026-07-11)
 
 ### Features

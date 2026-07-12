@@ -10,6 +10,9 @@ enum class PriceDropProvider(
     val displayName: String,
     /** Direct base URL used in BYOK mode. Pro mode always routes through api.twobits.app. */
     val byokBaseUrl: String,
+    /** Short (~6-10 word) subtitle for compact rows — the credentials list, per-feature provider
+     *  toggles. [description] is the long explanation shown only in the expanded detail view. */
+    val summary: String,
     val description: String,
     /** Step-by-step guide shown in the credential row when no key is configured. */
     val setupHint: String,
@@ -22,6 +25,7 @@ enum class PriceDropProvider(
         key = "openai",
         displayName = "OpenAI",
         byokBaseUrl = "https://api.openai.com/",
+        summary = "Required for Ask and turning a pasted URL into a product",
         description =
             "Required for the Ask assistant and for turning a pasted product URL into a " +
                 "watchlist item — both fail without it. Keyword search and price tracking don't need it.",
@@ -35,6 +39,7 @@ enum class PriceDropProvider(
         key = "web_search",
         displayName = "Jina AI",
         byokBaseUrl = "https://s.jina.ai/",
+        summary = "Required for URL-paste; fallback for keyword search",
         description =
             "Required to turn a pasted product URL into a watchlist item (paired with OpenAI). " +
                 "Also works as a keyword-search fallback when SearchAPI.io/Serper aren't configured, " +
@@ -49,6 +54,7 @@ enum class PriceDropProvider(
         key = "shopping",
         displayName = "SearchAPI.io",
         byokBaseUrl = "https://www.searchapi.io/",
+        summary = "Recommended — keyword search with real prices",
         description =
             "Recommended for keyword search — the only BYOK search path with real shopping " +
                 "price data. Without it (or Serper), search falls back to Jina and shows no prices.",
@@ -62,6 +68,7 @@ enum class PriceDropProvider(
         key = "serper",
         displayName = "Serper.dev",
         byokBaseUrl = "https://google.serper.dev/",
+        summary = "Recommended — cheaper alternative to SearchAPI.io",
         description =
             "Recommended for keyword search — a materially cheaper alternative to SearchAPI.io " +
                 "that also returns real shopping price data. Without it (or SearchAPI.io), search " +
@@ -76,6 +83,7 @@ enum class PriceDropProvider(
         key = "coupon",
         displayName = "Couponlayer",
         byokBaseUrl = "https://api.couponlayer.com/",
+        summary = "Required for the Coupon section",
         description = "Required for the Coupon section — without it, coupon lookups return nothing.",
         setupHint =
             "Create an account at couponlayer.com → open your Dashboard → copy the API Access Key. " +
@@ -87,6 +95,7 @@ enum class PriceDropProvider(
         key = "rainforest",
         displayName = "Rainforest API",
         byokBaseUrl = "https://api.rainforestapi.com/",
+        summary = "Required — price, history, and barcode lookup",
         description =
             "Required for price tracking, price history, and barcode lookup — the app's core " +
                 "watchlist feature. SearchAPI.io/Jina/Serper cannot substitute for this; without a " +

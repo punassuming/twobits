@@ -8,6 +8,12 @@
 
 ### Fixes
 
+**AI configuration** — fixed a layout bug, decluttered credential rows, added missing-key warnings:
+* fixed the Recommended tag wrapping into vertical letters
+* credential rows show a compact colored dot instead of a text tag
+* full descriptions, setup steps, and signup links moved to an info sheet (tap ⓘ)
+* a search provider toggled on with no saved key now shows an inline warning
+
 ## 1.21.1 (2026-07-11)
 
 ### Features
