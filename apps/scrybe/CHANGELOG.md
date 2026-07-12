@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* internal: `shared/design`'s `CollapsibleProviderRow` gained a `summary` param, a compact requirement-dot indicator, and a new `ProviderInfoSheet` companion component — no Scrybe-visible change (Scrybe doesn't use this component's requirement indicator)
+
 ### Fixes
 
 ## 1.39.0 (2026-07-11)

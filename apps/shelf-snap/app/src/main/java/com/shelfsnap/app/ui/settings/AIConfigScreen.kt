@@ -299,21 +299,25 @@ fun AIConfigScreen(
                         WebSearchToggleRow(
                             title = "SearchAPI.io",
                             enabled = uiState.searchapiSearchEnabled,
+                            hasKey = uiState.savedSearchapiApiKey.isNotBlank(),
                             onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
                         )
                         WebSearchToggleRow(
                             title = "Serper.dev",
                             enabled = uiState.serperSearchEnabled,
+                            hasKey = uiState.savedSerperApiKey.isNotBlank(),
                             onEnabledChange = viewModel::onSerperSearchEnabledChange,
                         )
                         WebSearchToggleRow(
                             title = stringResource(R.string.jina_api_key_label),
                             enabled = uiState.jinaSearchEnabled,
+                            hasKey = uiState.savedJinaApiKey.isNotBlank(),
                             onEnabledChange = viewModel::onJinaSearchEnabledChange,
                         )
                         WebSearchToggleRow(
                             title = stringResource(R.string.brave_api_key_label),
                             enabled = uiState.braveSearchEnabled,
+                            hasKey = uiState.savedBraveApiKey.isNotBlank(),
                             onEnabledChange = viewModel::onBraveSearchEnabledChange,
                         )
                     }
@@ -396,6 +400,7 @@ private fun CredentialsSection(
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
             title = "OpenAI",
+            summary = "Required for vision, listing, and market research",
             description =
                 "Required for every AI feature — vision item ID, listing generation, and market " +
                     "research synthesis all fail without it. The search providers below only affect " +
@@ -423,6 +428,7 @@ private fun CredentialsSection(
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
             title = "SearchAPI.io",
+            summary = "Recommended — best marketplace search evidence",
             description =
                 "Recommended for market research — the only engine here that honors site: filters, " +
                     "so eBay/Mercari/OfferUp \"sold\" queries return real marketplace listings instead " +
@@ -444,6 +450,7 @@ private fun CredentialsSection(
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
             title = "Serper.dev",
+            summary = "Recommended — cheaper alternative to SearchAPI.io",
             description =
                 "Recommended — a materially cheaper alternative to SearchAPI.io that also honors " +
                     "site: filters for real marketplace listings. Has no dedicated eBay engine, so " +
@@ -464,6 +471,7 @@ private fun CredentialsSection(
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
             title = "Jina AI",
+            summary = "Recommended — page reading + search fallback",
             description =
                 "Recommended — this key does two things: it's a search fallback when SearchAPI.io/" +
                     "Serper aren't configured, AND it's the only way any search result's full page gets " +
@@ -512,15 +520,25 @@ private fun maskKey(key: String): String? =
 private fun WebSearchToggleRow(
     title: String,
     enabled: Boolean,
+    hasKey: Boolean,
     onEnabledChange: (Boolean) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(title, style = MaterialTheme.typography.titleSmall)
-        Switch(checked = enabled, onCheckedChange = onEnabledChange)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
+        if (enabled && !hasKey) {
+            Text(
+                text = "On, but no key saved below — this provider won't be used until you add one.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 
