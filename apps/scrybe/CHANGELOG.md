@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Codex and Claude now share deterministic local emulator navigation and visual regression tooling (no visual change)
+
 ### Fixes
 
 ## 1.40.0 (2026-07-12)

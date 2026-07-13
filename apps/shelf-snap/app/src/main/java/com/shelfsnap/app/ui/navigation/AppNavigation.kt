@@ -1,5 +1,9 @@
 package com.shelfsnap.app.ui.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,16 +28,27 @@ import com.shelfsnap.app.ui.whatsnew.WhatsNewViewModel
 import com.twobits.design.components.AppWhatsNewDialog
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    startDestination: String = Screen.Inventory.route,
+    suppressWhatsNew: Boolean = false,
+) {
     val navController = rememberNavController()
     val whatsNewViewModel: WhatsNewViewModel = hiltViewModel()
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
+    val slideEnter = slideInHorizontally { it } + fadeIn()
+    val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
+    val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
+    val popSlideExit = slideOutHorizontally { it } + fadeOut()
 
     Box {
         NavHost(
             navController = navController,
-            startDestination = Screen.Inventory.route,
+            startDestination = startDestination,
             modifier = Modifier,
+            enterTransition = { slideEnter },
+            exitTransition = { slideExit },
+            popEnterTransition = { popSlideEnter },
+            popExitTransition = { popSlideExit },
         ) {
             composable(Screen.Inventory.route) {
                 InventoryScreen(
@@ -145,7 +160,7 @@ fun AppNavigation() {
                 )
             }
         }
-        if (whatsNewState.isVisible) {
+        if (whatsNewState.isVisible && !suppressWhatsNew) {
             AppWhatsNewDialog(
                 title = whatsNewState.title,
                 categories = whatsNewState.categories,

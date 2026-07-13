@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import com.twobits.pricedrop.BuildConfig
 import com.twobits.pricedrop.data.local.ActivityDao
 import com.twobits.pricedrop.data.local.ChatMessageDao
 import com.twobits.pricedrop.data.local.CouponDao
@@ -32,6 +33,7 @@ object AppModule {
     ): PriceDropDatabase =
         Room
             .databaseBuilder(ctx, PriceDropDatabase::class.java, "pricedrop.db")
+            .apply { if (BuildConfig.DEBUG) enableMultiInstanceInvalidation() }
             // Pre-release: schema additions (Offer/Coupon/Activity, new columns) reset local data.
             .fallbackToDestructiveMigration()
             .build()

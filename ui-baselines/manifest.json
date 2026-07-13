@@ -1,0 +1,29 @@
+{
+  "device": {
+    "avd": "scrybe-api35",
+    "api": 35,
+    "width": 1080,
+    "height": 2400,
+    "density": 420,
+    "locale": "en-US",
+    "fontScale": 1.0
+  },
+  "comparison": {
+    "colorFuzzPercent": 2,
+    "maximumChangedPixelPercent": 0.25
+  },
+  "masks": [
+    {
+      "pattern": "*/*/*.png",
+      "rectangles": [[0, 0, 1080, 96]]
+    },
+    {
+      "pattern": "shelf-snap/*/camera.png",
+      "rectangles": [[0, 96, 1080, 2140]]
+    },
+    {
+      "pattern": "price-drop/*/barcode.png",
+      "rectangles": [[0, 96, 1080, 2140]]
+    }
+  ]
+}

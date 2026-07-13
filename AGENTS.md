@@ -3,6 +3,8 @@
 This file is the authoritative instruction source for AI coding agents working in this repository. It supersedes any older per-app instruction files.
 
 > **Claude Code users:** also read [`CLAUDE.md`](CLAUDE.md) for Claude-specific session setup and active hooks.
+>
+> **Local Codex users:** also read [`CODEX.md`](CODEX.md) for Windows, ADB, emulator, hooks, and visual testing setup. Claude and Codex support are additive; do not remove either integration when changing the other.
 
 ---
 

@@ -56,7 +56,10 @@ sealed class Screen(
 }
 
 @Composable
-fun ScrybeNavHost(navController: NavHostController) {
+fun ScrybeNavHost(
+    navController: NavHostController,
+    startDestination: String = Screen.Capture.route,
+) {
     val recordingCompletionViewModel: RecordingCompletionViewModel = hiltViewModel()
 
     LaunchedEffect(recordingCompletionViewModel) {
@@ -86,7 +89,7 @@ fun ScrybeNavHost(navController: NavHostController) {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Capture.route,
+        startDestination = startDestination,
         enterTransition = { slideEnter },
         exitTransition = { slideExit },
         popEnterTransition = { popSlideEnter },

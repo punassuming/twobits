@@ -37,12 +37,16 @@ class MainActivity : ComponentActivity() {
                 .takeIf { it != -1L }
                 ?.let { pendingProductId.value = it }
         }
+        val uiTestRoute = intent.getStringExtra(EXTRA_UI_TEST_ROUTE).takeIf { BuildConfig.DEBUG }
+        val suppressUiTestDialogs = BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_UI_TEST_SUPPRESS_DIALOGS, false)
         setContent {
             val notificationProductId by pendingProductId.collectAsState()
             PriceDropTheme {
                 AppNavigation(
                     notificationProductId = notificationProductId,
                     onNotificationProductConsumed = { pendingProductId.value = null },
+                    uiTestStartDestination = uiTestRoute,
+                    suppressWhatsNew = suppressUiTestDialogs,
                 )
             }
         }
@@ -63,5 +67,10 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
         if (!granted) requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    companion object {
+        const val EXTRA_UI_TEST_ROUTE = "twobits.ui_test.route"
+        const val EXTRA_UI_TEST_SUPPRESS_DIALOGS = "twobits.ui_test.suppress_dialogs"
     }
 }

@@ -19,11 +19,9 @@ MANIFEST_FILENAME = "AndroidManifest.xml"
 
 def find_manifests(root_dir: str) -> list[str]:
     paths = []
-    for dirpath, _, filenames in os.walk(root_dir):
-        # Skip hidden dirs and build output
-        dirpath_parts = dirpath.replace("\\", "/").split("/")
-        if any(p.startswith(".") or p == "build" for p in dirpath_parts):
-            continue
+    for dirpath, dirnames, filenames in os.walk(root_dir):
+        # Prune hidden dirs and build output before os.walk descends into them.
+        dirnames[:] = [name for name in dirnames if not name.startswith(".") and name != "build"]
         for filename in filenames:
             if filename == MANIFEST_FILENAME:
                 paths.append(os.path.join(dirpath, filename))

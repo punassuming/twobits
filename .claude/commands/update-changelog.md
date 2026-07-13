@@ -51,4 +51,5 @@ Wrong (looks almost identical, parses as a flat untitled bullet):
 ```bash
 python3 scripts/manage-changelog.py validate --changelog apps/scrybe/CHANGELOG.md
 python3 scripts/manage-changelog.py validate --changelog apps/shelf-snap/CHANGELOG.md
+python3 scripts/manage-changelog.py validate --changelog apps/price-drop/CHANGELOG.md
 ```
