@@ -6,6 +6,10 @@
 
 ### Improvements
 
+**Screen transitions** — navigation now matches Scrybe's directional slide motion:
+* forward screens slide in from the right
+* back navigation returns toward the left
+
 * Codex and Claude now share deterministic local emulator navigation and visual regression tooling (no visual change)
 
 ### Fixes

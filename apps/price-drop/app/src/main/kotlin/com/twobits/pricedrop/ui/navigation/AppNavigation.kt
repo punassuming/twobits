@@ -1,5 +1,9 @@
 package com.twobits.pricedrop.ui.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,8 +68,19 @@ fun AppNavigation(
     val startDestination =
         uiTestStartDestination
             ?: if (onboardingComplete == true) Screen.Watch.route else Screen.Onboarding.route
+    val slideEnter = slideInHorizontally { it } + fadeIn()
+    val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
+    val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
+    val popSlideExit = slideOutHorizontally { it } + fadeOut()
     Box {
-        NavHost(navController = navController, startDestination = startDestination) {
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            enterTransition = { slideEnter },
+            exitTransition = { slideExit },
+            popEnterTransition = { popSlideEnter },
+            popExitTransition = { popSlideExit },
+        ) {
             composable(Screen.Watch.route) {
                 WatchScreen(
                     onNavigateToProduct = { id -> navController.navigate(Screen.ProductDetail.createRoute(id)) },
