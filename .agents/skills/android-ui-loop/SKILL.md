@@ -14,6 +14,6 @@ Use the repository PowerShell entrypoints; do not recreate their ADB selection l
 5. Use Claude Design only when the user explicitly requests external design review. Never send screenshots, UI dumps, logs, or other files merely because the MCP server is configured.
 6. Make the smallest interface change, recapture the affected app, and compare again.
 7. Accept intentional changes only with the explicit `./scripts/ui-test.ps1 accept -RunId <id>` command.
-8. Finish with `./scripts/android.ps1 verify -App <app|all>` and the changelog/manifest checks required by `AGENTS.md`.
+8. Use `$update-changelog` for every affected app, then finish with `./scripts/android.ps1 verify -App <app|all>` and the manifest checks required by `AGENTS.md`.
 
 Always pass `-Serial` when more than one emulator is connected. Never use a physical or Wi-Fi device for golden baselines.

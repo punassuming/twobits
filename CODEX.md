@@ -25,3 +25,8 @@ pwsh -File .\scripts\ui-test.ps1 compare -RunId local-review
 ```
 
 The canonical visual baseline is `scrybe-api35` at 1080×2400, API 35. Physical and Wi-Fi devices are valid for manual smoke testing but never for baseline acceptance.
+
+## Repository skills
+
+- `$android-ui-loop` runs the shared emulator capture and comparison workflow.
+- `$update-changelog` applies the same changelog parser rules as Claude's `/project:update-changelog` command.

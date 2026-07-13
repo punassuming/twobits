@@ -6,7 +6,7 @@
 
 ### Improvements
 
-* local agent tooling now provides deterministic emulator navigation and visual regression captures (no visual change)
+* Codex and Claude now share deterministic local emulator navigation and visual regression tooling (no visual change)
 
 ### Fixes
 
