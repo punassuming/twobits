@@ -9,8 +9,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import com.twobits.pricedrop.notifications.PriceDropNotifier
 import com.twobits.pricedrop.ui.navigation.AppNavigation
@@ -42,12 +46,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             val notificationProductId by pendingProductId.collectAsState()
             PriceDropTheme {
-                AppNavigation(
-                    notificationProductId = notificationProductId,
-                    onNotificationProductConsumed = { pendingProductId.value = null },
-                    uiTestStartDestination = uiTestRoute,
-                    suppressWhatsNew = suppressUiTestDialogs,
-                )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    AppNavigation(
+                        notificationProductId = notificationProductId,
+                        onNotificationProductConsumed = { pendingProductId.value = null },
+                        uiTestStartDestination = uiTestRoute,
+                        suppressWhatsNew = suppressUiTestDialogs,
+                    )
+                }
             }
         }
     }

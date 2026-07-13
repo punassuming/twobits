@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**Screen transitions** — fixed a white flash on the edges during navigation:
+* backgrounds now stay themed throughout the slide animation
+* most noticeable previously in dark mode
+
 ## 0.12.2 (2026-07-13)
 
 ### Features
