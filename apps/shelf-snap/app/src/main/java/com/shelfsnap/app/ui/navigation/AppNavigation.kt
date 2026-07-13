@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,11 +41,11 @@ fun AppNavigation(
     val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
     val popSlideExit = slideOutHorizontally { it } + fadeOut()
 
-    Box {
+    Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier,
+            modifier = Modifier.fillMaxSize(),
             enterTransition = { slideEnter },
             exitTransition = { slideExit },
             popEnterTransition = { popSlideEnter },

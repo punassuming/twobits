@@ -72,10 +72,11 @@ fun AppNavigation(
     val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
     val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
     val popSlideExit = slideOutHorizontally { it } + fadeOut()
-    Box {
+    Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = startDestination,
+            modifier = Modifier.fillMaxSize(),
             enterTransition = { slideEnter },
             exitTransition = { slideExit },
             popEnterTransition = { popSlideEnter },
