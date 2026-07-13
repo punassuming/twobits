@@ -107,13 +107,32 @@ function Invoke-AppGradle {
     if ($LASTEXITCODE -ne 0) { throw "Gradle failed for $AppName with exit code $LASTEXITCODE." }
 }
 
+function Wait-ForAndroidBoot {
+    param(
+        [string]$DeviceSerial,
+        [datetime]$Deadline
+    )
+    do {
+        $booted = (& $script:Adb -s $DeviceSerial shell getprop sys.boot_completed 2>$null).Trim()
+        if ($booted -eq '1') { return $true }
+        Start-Sleep -Seconds 2
+    } while ((Get-Date) -lt $Deadline)
+    return $false
+}
+
 function Start-CanonicalEmulator {
     Initialize-Toolchain
     if (-not (Test-Path $script:Emulator)) { throw "Android Emulator is missing: $script:Emulator" }
     $existing = @(Get-AdbDevices | Where-Object { $_.State -eq 'device' -and $_.Serial -like 'emulator-*' })
     foreach ($device in $existing) {
         $name = (& $script:Adb -s $device.Serial emu avd name 2>$null | Select-Object -First 1).Trim()
-        if ($name -eq $Avd) { Write-Output $device.Serial; return }
+        if ($name -eq $Avd) {
+            if (Wait-ForAndroidBoot -DeviceSerial $device.Serial -Deadline (Get-Date).AddMinutes(4)) {
+                Write-Output $device.Serial
+                return
+            }
+            throw "AVD '$Avd' did not finish booting within four minutes."
+        }
     }
     $before = @($existing | ForEach-Object { $_.Serial })
     Start-Process -FilePath $script:Emulator -ArgumentList @('-avd', $Avd, '-no-boot-anim') | Out-Null
@@ -122,8 +141,11 @@ function Start-CanonicalEmulator {
         Start-Sleep -Seconds 2
         $candidate = Get-AdbDevices | Where-Object { $_.State -eq 'device' -and $_.Serial -like 'emulator-*' -and $_.Serial -notin $before } | Select-Object -First 1
         if ($candidate) {
-            $booted = (& $script:Adb -s $candidate.Serial shell getprop sys.boot_completed 2>$null).Trim()
-            if ($booted -eq '1') { Write-Output $candidate.Serial; return }
+            if (Wait-ForAndroidBoot -DeviceSerial $candidate.Serial -Deadline $deadline) {
+                Write-Output $candidate.Serial
+                return
+            }
+            break
         }
     } while ((Get-Date) -lt $deadline)
     throw "AVD '$Avd' did not finish booting within four minutes."

@@ -126,20 +126,24 @@ function Compare-Matrix {
     $results = @()
     foreach ($appName in RequestedApps) {
         $appActualRoot = Join-Path $ArtifactRoot "$appName\actual"
-        if (-not (Test-Path $appActualRoot)) { continue }
-        foreach ($file in Get-ChildItem $appActualRoot -Recurse -Filter '*.png') {
-            $afterActual = $file.FullName.Substring($appActualRoot.Length + 1)
-            $relative = "$appName/$($afterActual -replace '\\','/')"
-            $baseline = Join-Path $BaselineRoot "$appName\$BaselineApi\$afterActual"
-            if (-not (Test-Path $baseline)) {
-                $results += [pscustomobject]@{ Image = $relative; Status = 'missing-baseline'; ChangedPixels = $null; Limit = $null }
+        $appBaselineRoot = Join-Path $BaselineRoot "$appName\$BaselineApi"
+        if (-not (Test-Path $appBaselineRoot)) {
+            $results += [pscustomobject]@{ Image = "$appName/*"; Status = 'missing-baseline'; ChangedPixels = $null; Limit = $null }
+            continue
+        }
+        foreach ($baseline in Get-ChildItem $appBaselineRoot -Recurse -Filter '*.png') {
+            $afterBaseline = $baseline.FullName.Substring($appBaselineRoot.Length + 1)
+            $relative = "$appName/$($afterBaseline -replace '\\','/')"
+            $actual = Join-Path $appActualRoot $afterBaseline
+            if (-not (Test-Path $actual)) {
+                $results += [pscustomobject]@{ Image = $relative; Status = 'missing-actual'; ChangedPixels = $null; Limit = $null }
                 continue
             }
             $maskedActual = Join-Path $ArtifactRoot "masked\actual\$relative"
             $maskedBaseline = Join-Path $ArtifactRoot "masked\baseline\$relative"
             $diff = Join-Path $ArtifactRoot "diff\$relative"
-            New-MaskedImage $file.FullName $maskedActual $relative
-            New-MaskedImage $baseline $maskedBaseline $relative
+            New-MaskedImage $actual $maskedActual $relative
+            New-MaskedImage $baseline.FullName $maskedBaseline $relative
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $diff) | Out-Null
             $dimensions = (& magick identify -format '%w %h' $maskedActual).Trim() -split ' '
             $baselineDimensions = (& magick identify -format '%w %h' $maskedBaseline).Trim() -split ' '
@@ -153,13 +157,23 @@ function Compare-Matrix {
             $status = if ($changed -le $limit) { 'pass' } else { 'fail' }
             $results += [pscustomobject]@{ Image = $relative; Status = $status; ChangedPixels = $changed; Limit = $limit }
         }
+        if (Test-Path $appActualRoot) {
+            foreach ($actual in Get-ChildItem $appActualRoot -Recurse -Filter '*.png') {
+                $afterActual = $actual.FullName.Substring($appActualRoot.Length + 1)
+                $baseline = Join-Path $appBaselineRoot $afterActual
+                if (-not (Test-Path $baseline)) {
+                    $relative = "$appName/$($afterActual -replace '\\','/')"
+                    $results += [pscustomobject]@{ Image = $relative; Status = 'missing-baseline'; ChangedPixels = $null; Limit = $null }
+                }
+            }
+        }
     }
     $results | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 (Join-Path $ArtifactRoot 'report.json')
     @('# TwoBits UI comparison', '', '| Image | Status | Changed pixels | Limit |', '|---|---:|---:|---:|') +
         @($results | ForEach-Object { "| $($_.Image) | $($_.Status) | $($_.ChangedPixels) | $($_.Limit) |" }) |
         Set-Content -Encoding utf8 (Join-Path $ArtifactRoot 'report.md')
     $results | Format-Table -AutoSize
-    if ($results.Status -contains 'fail' -or $results.Status -contains 'missing-baseline' -or $results.Status -contains 'dimension-mismatch') {
+    if ($results.Status -contains 'fail' -or $results.Status -contains 'missing-actual' -or $results.Status -contains 'missing-baseline' -or $results.Status -contains 'dimension-mismatch') {
         throw "UI comparison failed. See $(Join-Path $ArtifactRoot 'report.md')."
     }
 }
