@@ -29,6 +29,8 @@ class ProviderSettingsStore
         @ApplicationContext private val context: Context,
         private val crypto: CredentialCrypto,
     ) {
+        private val couponProviderSchemaKey = stringPreferencesKey("schema_coupon_provider")
+
         private fun modeKey(p: PriceDropProvider) = stringPreferencesKey("mode_${p.key}")
 
         private fun apiKeyKey(p: PriceDropProvider) = stringPreferencesKey("key_${p.key}")
@@ -80,6 +82,25 @@ class ProviderSettingsStore
             valid: Boolean,
         ) {
             context.providerStore.edit { it[validatedKey(p)] = valid }
+        }
+
+        /**
+         * Couponlayer never exposed the API contract the app had implemented. Clear that
+         * incompatible credential and routing choice once before enabling LinkMyDeals.
+         */
+        suspend fun migrateCouponProvider(): Boolean {
+            var migrated = false
+            context.providerStore.edit { prefs ->
+                if (prefs[couponProviderSchemaKey] == COUPON_PROVIDER_SCHEMA) return@edit
+                val provider = PriceDropProvider.COUPON
+                prefs.remove(apiKeyKey(provider))
+                prefs.remove(validatedKey(provider))
+                prefs[modeKey(provider)] = ProviderMode.OFF.value
+                prefs[featureSourceKey(AiFeature.COUPON)] = ProviderMode.OFF.value
+                prefs[couponProviderSchemaKey] = COUPON_PROVIDER_SCHEMA
+                migrated = true
+            }
+            return migrated
         }
 
         // ── Feature-level config (presentation layer; routing still uses per-provider mode/key) ──
@@ -138,5 +159,9 @@ class ProviderSettingsStore
             providerKeys: Set<String>,
         ) {
             context.providerStore.edit { it[featureProvidersKey(f)] = providerKeys.joinToString(",") }
+        }
+
+        private companion object {
+            const val COUPON_PROVIDER_SCHEMA = "linkmydeals_v1"
         }
     }

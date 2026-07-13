@@ -81,15 +81,15 @@ enum class PriceDropProvider(
     ),
     COUPON(
         key = "coupon",
-        displayName = "Couponlayer",
-        byokBaseUrl = "https://api.couponlayer.com/",
+        displayName = "LinkMyDeals",
+        byokBaseUrl = "https://feed.linkmydeals.com/",
         summary = "Required for the Coupon section",
         description = "Required for the Coupon section — without it, coupon lookups return nothing.",
         setupHint =
-            "Create an account at couponlayer.com → open your Dashboard → copy the API Access Key. " +
-                "A free plan is available with limited monthly lookups.",
-        signupUrl = "https://couponlayer.com",
-        costEstimate = "Est. cost: free tier with limited monthly lookups",
+            "Create a publisher account at linkmydeals.com → open Development → copy your API key. " +
+                "Plans include a limited free-store option and paid complete feeds.",
+        signupUrl = "https://linkmydeals.com/pricing/",
+        costEstimate = "Est. cost: limited free stores; paid plans unlock complete feeds",
     ),
     RAINFOREST(
         key = "rainforest",

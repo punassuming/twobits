@@ -37,7 +37,7 @@ class ProviderKeyValidator
                         PriceDropProvider.WEB_SEARCH -> testJina(trimmed)
                         PriceDropProvider.SHOPPING -> testSearchApi(trimmed)
                         PriceDropProvider.SERPER -> testSerper(trimmed)
-                        PriceDropProvider.COUPON -> testCouponlayer(trimmed)
+                        PriceDropProvider.COUPON -> testLinkMyDeals(trimmed)
                         PriceDropProvider.RAINFOREST -> testRainforest(trimmed)
                     }
                 }
@@ -145,14 +145,14 @@ class ProviderKeyValidator
             }
         }
 
-        private fun testCouponlayer(key: String): String {
+        private fun testLinkMyDeals(key: String): String {
             val url =
-                "https://api.couponlayer.com/coupons"
+                "https://feed.linkmydeals.com/getOffers/"
                     .toHttpUrl()
                     .newBuilder()
-                    .addQueryParameter("access_key", key)
-                    .addQueryParameter("retailer", "amazon.com")
-                    .addQueryParameter("search", "test")
+                    .addQueryParameter("API_KEY", key)
+                    .addQueryParameter("format", "json")
+                    .addQueryParameter("off_record", "1")
                     .build()
             val request =
                 Request
@@ -163,31 +163,15 @@ class ProviderKeyValidator
             okHttpClient.newCall(request).execute().use { response ->
                 val text = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    throw IllegalStateException("Couponlayer returned HTTP ${response.code}")
+                    throw IllegalStateException("LinkMyDeals returned HTTP ${response.code}")
                 }
                 val json = runCatching { gson.fromJson(text, JsonObject::class.java) }.getOrNull()
-                if (json?.get("success")?.asBoolean != true) {
-                    val code =
-                        json
-                            ?.get("error")
-                            ?.asJsonObject
-                            ?.get("code")
-                            ?.asInt
-                    val info =
-                        json
-                            ?.get("error")
-                            ?.asJsonObject
-                            ?.get("info")
-                            ?.asString
-                    throw IllegalStateException(
-                        when (code) {
-                            101 -> "Couponlayer rejected this key — invalid access key"
-                            102 -> "Couponlayer key is inactive or has no remaining requests"
-                            else -> info ?: "Couponlayer validation failed"
-                        },
-                    )
+                val accepted = json?.get("result")?.asString?.lowercase() in setOf("1", "true")
+                if (!accepted) {
+                    val info = json?.get("message")?.asString
+                    throw IllegalStateException(info ?: "LinkMyDeals rejected this API key")
                 }
-                return "Connected to Couponlayer"
+                return "Connected to LinkMyDeals"
             }
         }
 

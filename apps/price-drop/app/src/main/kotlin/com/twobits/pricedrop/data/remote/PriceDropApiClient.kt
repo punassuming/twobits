@@ -10,7 +10,6 @@ import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.remote.dto.BarcodeResponseDto
 import com.twobits.pricedrop.data.remote.dto.ChatResponseDto
-import com.twobits.pricedrop.data.remote.dto.CouponDto
 import com.twobits.pricedrop.data.remote.dto.CouponsResponseDto
 import com.twobits.pricedrop.data.remote.dto.HistoryPointDto
 import com.twobits.pricedrop.data.remote.dto.HistoryResponseDto
@@ -436,12 +435,12 @@ class PriceDropApiClient
         ): CouponsResponseDto =
             withContext(Dispatchers.IO) {
                 val urlBuilder =
-                    "https://api.couponlayer.com/coupons"
+                    "https://feed.linkmydeals.com/getOffers/"
                         .toHttpUrl()
                         .newBuilder()
-                        .addQueryParameter("access_key", apiKey)
-                        .addQueryParameter("search", query)
-                domain?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("category", it) }
+                        .addQueryParameter("API_KEY", apiKey)
+                        .addQueryParameter("format", "json")
+                        .addQueryParameter("off_record", "1")
 
                 val request =
                     Request
@@ -453,24 +452,8 @@ class PriceDropApiClient
                     val text = response.body?.string().orEmpty()
                     if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
                     val data = gson.fromJson(text, JsonObject::class.java)
-                    if (data["success"]?.asBoolean != true) {
-                        throw IOException(data["error"]?.asJsonObject?.get("info")?.asString ?: "CouponLayer error")
-                    }
-                    val coupons =
-                        (data["data"]?.asJsonArray ?: JsonArray())
-                            .take(10)
-                            .map { item ->
-                                val c = item.asJsonObject
-                                CouponDto(
-                                    code = c["coupon_code"]?.asString,
-                                    description = c["coupon_description"]?.asString,
-                                    discount = c["coupon_discount"]?.asString,
-                                    type = c["coupon_type"]?.asString,
-                                    expires = c["coupon_expiry_date"]?.asString,
-                                    store = c["merchant_name"]?.asString,
-                                )
-                            }
-                    CouponsResponseDto(coupons)
+                    runCatching { LinkMyDealsCouponMapper.map(data, query, domain) }
+                        .getOrElse { throw IOException(it.message ?: "LinkMyDeals error", it) }
                 }
             }
 

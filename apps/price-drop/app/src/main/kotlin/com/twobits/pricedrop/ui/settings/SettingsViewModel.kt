@@ -92,6 +92,9 @@ class SettingsViewModel
 
         init {
             viewModelScope.launch {
+                if (providerStore.migrateCouponProvider()) {
+                    credentialClient.mirror(SharedCredentialId.COUPON, "")
+                }
                 val readThroughPairs =
                     listOf(
                         PriceDropProvider.OPENAI to SharedCredentialId.OPENAI,

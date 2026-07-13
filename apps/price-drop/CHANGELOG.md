@@ -8,6 +8,11 @@
 
 ### Fixes
 
+**Coupon discovery** — replaced the unavailable coupon provider with a documented feed:
+* BYOK calls LinkMyDeals directly with your publisher key
+* Pro uses the same normalized feed through the managed proxy
+* incompatible Couponlayer credentials reset once during migration
+
 ## 0.12.3 (2026-07-13)
 
 ### Features

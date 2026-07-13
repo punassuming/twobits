@@ -12,7 +12,7 @@ data class CredentialCheckResult(
  * Pure, offline validation of a BYOK key for a given provider. Kept free of Android/coroutine
  * dependencies so it is directly unit-testable. OpenAI keys are checked against the shared
  * [ApiKeyValidator] (`sk-` prefix, min length); other providers accept any reasonably-sized key
- * since their formats vary (Jina, SearchAPI.io, Serper, Rainforest, CouponLayer).
+ * since their formats vary (Jina, SearchAPI.io, Serper, Rainforest, LinkMyDeals).
  */
 object CredentialCheck {
     private const val MIN_GENERIC_LENGTH = 8

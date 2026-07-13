@@ -1,0 +1,45 @@
+{
+  "result": true,
+  "offers": [
+    {
+      "LMD ID": "200",
+      "Type": "Coupon Code",
+      "Coupon Code": "SAVE10",
+      "Title": "Save on wireless headphones",
+      "Description": "Ten percent off selected audio",
+      "Offer": "Percentage Off",
+      "Offer Value": "10%",
+      "Store": "Amazon",
+      "Merchant Homepage": "https://www.amazon.com/",
+      "End Date": "2030-12-31"
+    },
+    {
+      "LMD ID": "100",
+      "Type": "Coupon Code",
+      "Coupon Code": "AUDIO5",
+      "Title": "Audio accessories offer",
+      "Description": "Five dollars off accessories",
+      "Offer": "Price Off",
+      "Offer Value": "$5",
+      "Store": "Amazon",
+      "Merchant Homepage": "https://amazon.com/audio",
+      "End Date": "2030-10-01"
+    },
+    {
+      "LMD ID": "300",
+      "Type": "Deal",
+      "Coupon Code": "",
+      "Title": "Wireless headphones sale",
+      "Store": "Amazon",
+      "Merchant Homepage": "https://amazon.com/"
+    },
+    {
+      "LMD ID": "400",
+      "Type": "Coupon Code",
+      "Coupon Code": "SHOES20",
+      "Title": "Running shoes",
+      "Store": "Example Sports",
+      "Merchant Homepage": "https://sports.example/"
+    }
+  ]
+}

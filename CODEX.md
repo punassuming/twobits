@@ -26,6 +26,30 @@ pwsh -File .\scripts\ui-test.ps1 compare -RunId local-review
 
 The canonical visual baseline is `scrybe-api35` at 1080×2400, API 35. Physical and Wi-Fi devices are valid for manual smoke testing but never for baseline acceptance.
 
+## Worker workspace
+
+The managed Pro proxy remains an independent repository. Codex treats the Android and Worker checkouts as sibling workspace roots; the Worker is not a submodule, subtree, or nested checkout.
+
+```text
+C:\drive\source\android\twobits
+C:\drive\source\android\twobits-worker
+```
+
+From the Android repository, use the tracked helper to locate and manage the sibling checkout:
+
+```powershell
+pwsh -File .\scripts\worker.ps1 doctor
+pwsh -File .\scripts\worker.ps1 setup
+pwsh -File .\scripts\worker.ps1 status
+pwsh -File .\scripts\worker.ps1 sync
+pwsh -File .\scripts\worker.ps1 test
+pwsh -File .\scripts\worker.ps1 dev
+```
+
+Pass `-WorkerRoot D:\path\to\twobits-worker` when the sibling lives elsewhere. Add both folders as Codex workspace roots locally. Do not add the Worker checkout to this repository or change Claude's existing shared-root setup.
+
+Coupon BYOK and Pro work must be coordinated across the two repositories. BYOK calls LinkMyDeals directly; Pro calls `/v1/pricedrop/coupons`, which uses the same upstream feed and normalization contract. Deploy the Worker change before releasing the Android change.
+
 ## Repository skills
 
 - `$android-ui-loop` runs the shared emulator capture and comparison workflow.

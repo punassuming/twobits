@@ -15,11 +15,11 @@ An Android app that monitors product prices, fires drop alerts when your target 
 | **Watchlist** | Track products by name, URL, or barcode scan. Each product shows current price, target, and a trend delta vs. historical high. |
 | **Price tracking** | Periodic background checks via WorkManager. Price events are stored locally — full history available in the price chart. |
 | **Drop alerts** | Push notifications when a product hits your target price, crosses a big-drop threshold, or a coupon is discovered. Notification includes old/new price and coupon code with one-tap copy. |
-| **Background checks** | PriceCheckWorker runs on a configurable schedule (default 6 h) with Wi-Fi-preferred constraints. Batched notifications group multiple simultaneous drops. |
+| **Background checks** | PriceCheckWorker runs on a configurable schedule (default 24 h) with optional Wi-Fi and charging constraints. Batched notifications group multiple simultaneous drops. |
 | **Coupons** | Coupon codes are tested and validated; state (valid / expired / restricted) is shown per-code with discount amount. |
 | **Barcode scan** | Point camera at any product barcode or QR code. ML Kit Barcode Scanning extracts the UPC/EAN; the app looks up the product title and current price automatically. |
 | **AI shopping assistant** | Chat-based interface for price questions, deal hunting, and product comparisons. Supports BYOK (OpenAI key) and Pro managed API. Conversation history persists across restarts; full multi-turn context is sent with each message. |
-| **Multi-provider support** | OpenAI for AI chat; Keepa / SerpAPI for price lookup; Jina AI for web search; CouponLayer for coupon discovery. All configurable per-provider. |
+| **Multi-provider support** | OpenAI, Jina AI, SearchAPI.io, Serper.dev, Rainforest API, and LinkMyDeals are configurable per provider. |
 | **Onboarding** | Three-page first-run walkthrough. No account required — watchlist and history live only on the device. |
 
 ---
@@ -67,7 +67,7 @@ WatchScreen
        └─ WatchlistRepository.observeAll()
             └─ WatchedProductDao (Room)
 
-PriceCheckWorker (WorkManager, ~6h)
+PriceCheckWorker (WorkManager, 24h by default)
   ├─ PriceDropApiClient → api.twobits.app (Pro) or direct provider
   ├─ WatchlistRepository.updatePrice()
   ├─ DropsRepository.insert(drop) when threshold crossed
@@ -99,12 +99,13 @@ PriceCheckWorker (WorkManager, ~6h)
 | Provider | BYOK | Pro | Off |
 |----------|------|-----|-----|
 | **OpenAI** (AI chat) | Paste own key in Settings → AI Config — **fully functional** | Managed via `api.twobits.app` | Chat unavailable |
-| **SerpAPI** (price search) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Price search unavailable |
-| **Keepa** (Amazon history) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Amazon history unavailable |
-| **Jina AI** (web search) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Web context unavailable |
-| **CouponLayer** (coupons) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Coupon discovery unavailable |
+| **Jina AI** (web search) | Direct with your key | Managed | URL reading and fallback web search unavailable |
+| **SearchAPI.io** (shopping search) | Direct with your key | Managed | Search falls through to another configured provider |
+| **Serper.dev** (shopping search) | Direct with your key | Managed | Search falls through to another configured provider |
+| **Rainforest API** (price/history/barcode) | Direct with your key | Managed | Tracking data lookup unavailable |
+| **LinkMyDeals** (coupons) | Direct feed with your publisher key | Same feed through managed proxy | Coupon discovery unavailable |
 
-**BYOK today:** Only OpenAI (AI chat) works in BYOK mode. The other providers accept key input in the UI but route through the Pro proxy until per-provider request/response adapters are implemented (`PriceDropApiClient` has the routing stub; set `ProviderMode.BYOK` to enable when adapters land).
+**BYOK today:** Each provider above has a direct adapter. BYOK requests go from the device to that provider and never consume the managed Pro allowance. LinkMyDeals BYOK and Pro normalize the same feed into the same coupon response; Pro adds entitlement checks and caching at the Worker.
 
 Pro routes all requests through `api.twobits.app` (Cloudflare Worker). The entitlement ID is `pricedrop_pro`. A per-user monthly spend cap is enforced server-side via a Durable Object.
 
