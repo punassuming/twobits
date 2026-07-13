@@ -7,10 +7,14 @@ apps/scrybe/.gradle-user-home-ci/
 
 **/build/
 **/.gradle/
+**/.kotlin/
 .gci/
 .gci2/
 .gd89/
 .guh/
 .gradle-project-cache/
+.gradle-user-home/
+.android-user-home/
+.artifacts/
 local.properties
 .claude/worktrees/

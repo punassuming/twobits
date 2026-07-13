@@ -24,7 +24,10 @@ import com.shelfsnap.app.ui.whatsnew.WhatsNewViewModel
 import com.twobits.design.components.AppWhatsNewDialog
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    startDestination: String = Screen.Inventory.route,
+    suppressWhatsNew: Boolean = false,
+) {
     val navController = rememberNavController()
     val whatsNewViewModel: WhatsNewViewModel = hiltViewModel()
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
@@ -32,7 +35,7 @@ fun AppNavigation() {
     Box {
         NavHost(
             navController = navController,
-            startDestination = Screen.Inventory.route,
+            startDestination = startDestination,
             modifier = Modifier,
         ) {
             composable(Screen.Inventory.route) {
@@ -145,7 +148,7 @@ fun AppNavigation() {
                 )
             }
         }
-        if (whatsNewState.isVisible) {
+        if (whatsNewState.isVisible && !suppressWhatsNew) {
             AppWhatsNewDialog(
                 title = whatsNewState.title,
                 categories = whatsNewState.categories,

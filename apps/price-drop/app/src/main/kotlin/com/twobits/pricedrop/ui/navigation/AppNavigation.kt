@@ -37,9 +37,11 @@ fun AppNavigation(
     onboardingViewModel: OnboardingViewModel = hiltViewModel(),
     notificationProductId: Long? = null,
     onNotificationProductConsumed: () -> Unit = {},
+    uiTestStartDestination: String? = null,
+    suppressWhatsNew: Boolean = false,
 ) {
     val onboardingComplete by onboardingViewModel.completed.collectAsState()
-    if (onboardingComplete == null) {
+    if (onboardingComplete == null && uiTestStartDestination == null) {
         // Hold the start destination until the first-run flag has loaded.
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
@@ -59,7 +61,9 @@ fun AppNavigation(
     val whatsNewViewModel: WhatsNewPopupViewModel = hiltViewModel()
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
 
-    val startDestination = if (onboardingComplete == true) Screen.Watch.route else Screen.Onboarding.route
+    val startDestination =
+        uiTestStartDestination
+            ?: if (onboardingComplete == true) Screen.Watch.route else Screen.Onboarding.route
     Box {
         NavHost(navController = navController, startDestination = startDestination) {
             composable(Screen.Watch.route) {
@@ -134,7 +138,7 @@ fun AppNavigation(
                 )
             }
         }
-        if (onboardingComplete == true && whatsNewState.isVisible) {
+        if (onboardingComplete == true && whatsNewState.isVisible && !suppressWhatsNew) {
             AppWhatsNewDialog(
                 title = whatsNewState.title,
                 categories = whatsNewState.categories,

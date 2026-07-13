@@ -30,6 +30,7 @@ The `multiline-expression-wrapping` rule cannot be auto-fixed. See AGENTS.md §"
 | Command | What it does |
 |---|---|
 | `/project:update-changelog` | Inline instructions for updating the `## Unreleased` section with the correct format |
+| `/project:android-ui` | Runs the shared emulator capture, comparison, and design-review workflow |
 
 ---
 

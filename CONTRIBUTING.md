@@ -153,19 +153,19 @@ All commands are run from `apps/scrybe/`.
 For Windows and other shells where you want the Android toolchain paths pinned explicitly, dot-source the repo bootstrap script and then run `gradlew.bat` directly:
 
 ```powershell
-cd C:\drive\dev\android\scrybe
-. .\apps\scrybe\scripts\android-env.ps1
+cd C:\drive\source\android\twobits
+pwsh -File .\scripts\android.ps1 doctor
 ```
 
-Recommended direct commands:
+Recommended local commands:
 
-| Task | Direct command |
+| Task | Command |
 |------|----------------|
-| Help / sync sanity check | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" help --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info` |
-| Build debug APK | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" assembleDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
-| Unit tests | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" testDebugUnitTest --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
-| Android Lint | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" lint --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
-| Recording service lint only | `& "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" :service:recording:lintDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info` |
+| Help / sync sanity check | `.\scripts\android.ps1 gradle -App scrybe help` |
+| Build debug APK | `.\scripts\android.ps1 build -App scrybe` |
+| Unit tests | `.\scripts\android.ps1 test -App scrybe` |
+| Android Lint | `.\scripts\android.ps1 gradle -App scrybe lint` |
+| Recording service lint only | `.\scripts\android.ps1 gradle -App scrybe :service:recording:lintDebug` |
 
 ### Repo helper commands
 
@@ -190,7 +190,7 @@ If you want one command surface for the common local tasks, use the repo-root he
 | Filtered app/runtime logcat | `.\scripts\android.ps1 logcat` |
 | Raw Gradle passthrough | `.\scripts\android.ps1 gradle assembleDebug --stacktrace` |
 
-The helper wraps `apps/scrybe/scripts/android-env.ps1`, uses the checked-in Gradle wrapper, and forces `--console=plain --info` so long-running Gradle work stays visible in the terminal.
+The helper resolves the local JDK 17 and Android SDK, uses each app's checked-in Gradle wrapper, and keeps Gradle state in ignored repository-local directories so user-profile cache ACLs do not block local agents.
 
 ### Build troubleshooting
 
@@ -204,12 +204,12 @@ Recommended order of operations:
 
 1. Reset the shell environment and run Gradle directly:
    ```powershell
-   . .\apps\scrybe\scripts\android-env.ps1
-   & "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" help --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --console=plain --info
+   .\scripts\android.ps1 doctor
+   .\scripts\android.ps1 gradle -App scrybe help
    ```
 2. If only the recording service lint is failing, isolate it:
    ```powershell
-   & "$env:SCRYBE_ANDROID_GRADLEW" -p "$env:SCRYBE_ANDROID_PROJECT_ROOT" :service:recording:lintDebug --project-cache-dir "$env:SCRYBE_GRADLE_PROJECT_CACHE" --no-configuration-cache --no-daemon --console=plain --info
+   .\scripts\android.ps1 gradle -App scrybe :service:recording:lintDebug
    ```
 3. If you still suspect a stuck lock, confirm no lingering `java` / `gradle` processes are using that Gradle home before deleting the lock file manually.
 

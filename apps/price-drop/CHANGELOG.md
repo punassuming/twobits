@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* local agent tooling now provides deterministic emulator navigation and visual regression captures (no visual change)
+
 ### Fixes
 
 ## 0.12.1 (2026-07-12)

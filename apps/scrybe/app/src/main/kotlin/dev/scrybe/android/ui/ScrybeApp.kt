@@ -37,22 +37,31 @@ import dev.scrybe.feature.capture.OnboardingScreen
 import dev.scrybe.feature.capture.OnboardingViewModel
 
 @Composable
-fun ScrybeApp() {
+fun ScrybeApp(
+    uiTestRoute: String? = null,
+    suppressUiTestDialogs: Boolean = false,
+) {
     val onboardingViewModel: OnboardingViewModel = hiltViewModel()
     val hasSeenOnboarding by onboardingViewModel.hasSeenOnboarding.collectAsState()
     if (hasSeenOnboarding == null) return
-    if (hasSeenOnboarding == false) {
+    if (hasSeenOnboarding == false && uiTestRoute == null) {
         OnboardingScreen(
             onComplete = onboardingViewModel::completeOnboarding,
             onSaveApiKey = onboardingViewModel::saveApiKey,
         )
         return
     }
-    ScrybeMainContent()
+    ScrybeMainContent(
+        startDestination = uiTestRoute ?: Screen.Capture.route,
+        suppressWhatsNew = suppressUiTestDialogs,
+    )
 }
 
 @Composable
-private fun ScrybeMainContent() {
+private fun ScrybeMainContent(
+    startDestination: String,
+    suppressWhatsNew: Boolean,
+) {
     val navController = rememberNavController()
     val whatsNewViewModel: WhatsNewViewModel = hiltViewModel()
     val activeRecordingViewModel: ActiveRecordingViewModel = hiltViewModel()
@@ -61,9 +70,10 @@ private fun ScrybeMainContent() {
     MainContentBox(
         navController = navController,
         activeRecordingState = activeRecordingState,
+        startDestination = startDestination,
         modifier = Modifier.fillMaxSize(),
     )
-    if (whatsNewState.isVisible) {
+    if (whatsNewState.isVisible && !suppressWhatsNew) {
         AppWhatsNewDialog(
             title = whatsNewState.title,
             categories = whatsNewState.categories,
@@ -83,10 +93,11 @@ private fun ScrybeMainContent() {
 private fun MainContentBox(
     navController: NavHostController,
     activeRecordingState: ActiveRecordingUiState,
+    startDestination: String,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
-        ScrybeNavHost(navController = navController)
+        ScrybeNavHost(navController = navController, startDestination = startDestination)
 
         AnimatedVisibility(
             visible = activeRecordingState.isRecording,

@@ -13,10 +13,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val uiTestRoute = intent.getStringExtra(EXTRA_UI_TEST_ROUTE).takeIf { BuildConfig.DEBUG }
+        val suppressUiTestDialogs = BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_UI_TEST_SUPPRESS_DIALOGS, false)
         setContent {
             ShelfSnapTheme {
-                AppNavigation()
+                AppNavigation(
+                    startDestination = uiTestRoute ?: com.shelfsnap.app.ui.navigation.Screen.Inventory.route,
+                    suppressWhatsNew = suppressUiTestDialogs,
+                )
             }
         }
+    }
+
+    companion object {
+        const val EXTRA_UI_TEST_ROUTE = "twobits.ui_test.route"
+        const val EXTRA_UI_TEST_SUPPRESS_DIALOGS = "twobits.ui_test.suppress_dialogs"
     }
 }
