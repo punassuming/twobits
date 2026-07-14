@@ -100,6 +100,7 @@
     <!-- v2: market research -->
     <string name="price_analysis">Price analysis</string>
     <string name="price_analysis_subtitle">Based on %1$d comparable listing(s) across %2$d platform(s)</string>
+    <string name="price_analysis_no_comps">No verified sold listings were available for this estimate.</string>
     <string name="avg_sold_price">Avg sold price</string>
     <string name="price_range">Price range</string>
     <string name="suggested_price_by_platform">Suggested price by platform</string>
@@ -116,6 +117,10 @@
     <string name="apply_suggested_price">Apply</string>
     <string name="research_failed">Price research failed: %1$s</string>
     <string name="confidence_short">Confidence: %1$d%%</string>
+    <string name="search_results_verified">Based on %1$d web results via %2$s</string>
+    <string name="search_results_no_comps">%1$d web results via %2$s contained no verified sold prices.</string>
+    <string name="search_failed_ai_only">Web search failed — AI estimate only. %1$s</string>
+    <string name="search_no_results_ai_only">%1$s returned no results — AI estimate only.</string>
 
     <!-- v2: cross-listing -->
     <string name="active_listings">Active listings</string>

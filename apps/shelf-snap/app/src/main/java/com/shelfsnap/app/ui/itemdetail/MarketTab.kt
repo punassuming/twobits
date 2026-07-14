@@ -135,26 +135,32 @@ fun MarketTab(
                 )
                 Text(
                     text =
-                        stringResource(
-                            R.string.price_analysis_subtitle,
-                            research.comps.size,
-                            platformCount,
-                        ),
+                        if (research.comps.isEmpty()) {
+                            stringResource(R.string.price_analysis_no_comps)
+                        } else {
+                            stringResource(
+                                R.string.price_analysis_subtitle,
+                                research.comps.size,
+                                platformCount,
+                            )
+                        },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile(
-                        modifier = Modifier.weight(1f),
-                        value = "$" + "%.0f".format(research.averageSoldPrice),
-                        label = stringResource(R.string.avg_sold_price),
-                        emphasize = true,
-                    )
-                    StatTile(
-                        modifier = Modifier.weight(1f),
-                        value = "$" + "%.0f".format(research.lowPrice) + "–$" + "%.0f".format(research.highPrice),
-                        label = stringResource(R.string.price_range),
-                    )
+                if (research.averageSoldPrice > 0.0 || research.highPrice > 0.0) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        StatTile(
+                            modifier = Modifier.weight(1f),
+                            value = "$" + "%.0f".format(research.averageSoldPrice),
+                            label = stringResource(R.string.avg_sold_price),
+                            emphasize = true,
+                        )
+                        StatTile(
+                            modifier = Modifier.weight(1f),
+                            value = "$" + "%.0f".format(research.lowPrice) + "–$" + "%.0f".format(research.highPrice),
+                            label = stringResource(R.string.price_range),
+                        )
+                    }
                 }
                 if (research.highPrice > research.lowPrice) {
                     PriceRangeBar(
@@ -312,8 +318,8 @@ private fun SourceAttributionRow(research: MarketResearch) {
                 }
             }?.distinct() ?: emptyList()
     val sources = (platformNames + queryPlatforms).distinct().joinToString(", ")
-    val provider = SearchProvider.fromKey(research.searchProviderKey)
-    if (sources.isBlank() && provider == SearchProvider.NONE) return
+    val providerNames = successfulProviderNames(research)
+    if (sources.isBlank() && providerNames.isEmpty()) return
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -324,9 +330,9 @@ private fun SourceAttributionRow(research: MarketResearch) {
             text =
                 buildString {
                     if (sources.isNotBlank()) append("Sources: $sources")
-                    if (provider != SearchProvider.NONE) {
+                    if (providerNames.isNotEmpty()) {
                         if (isNotEmpty()) append(" · ")
-                        append("Retrieved via ${provider.displayName}")
+                        append("Retrieved via ${providerNames.joinToString(", ")}")
                     }
                 },
             style = MaterialTheme.typography.labelSmall,
@@ -388,6 +394,7 @@ private fun QueriesExpander(queries: List<MarketQuery>) {
 
 @Composable
 private fun QueryRow(query: MarketQuery) {
+    val failed = !query.error.isNullOrBlank()
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) {
@@ -399,9 +406,9 @@ private fun QueryRow(query: MarketQuery) {
                 )
             }
             Text(
-                text = "${query.resultCount} results",
+                text = if (failed) "Failed" else "${query.resultCount} results",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Text(
@@ -409,6 +416,13 @@ private fun QueryRow(query: MarketQuery) {
             style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        query.error?.takeIf { it.isNotBlank() }?.let { error ->
+            Text(
+                text = error,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
     }
 }
 
@@ -610,24 +624,37 @@ private fun FactorRow(
  */
 @Composable
 private fun SearchStatusBanner(research: MarketResearch) {
-    val provider = SearchProvider.fromKey(research.searchProviderKey)
+    val providerNames = successfulProviderNames(research)
+    val attemptedProviderNames = attemptedProviderNames(research)
+    val providerLabel =
+        providerNames
+            .ifEmpty { attemptedProviderNames }
+            .ifEmpty { listOf(SearchProvider.fromKey(research.searchProviderKey).displayName) }
+            .joinToString(", ")
     val (icon, text, container, content) =
         when {
-            research.searchResultCount > 0 ->
+            research.searchResultCount > 0 && research.comps.isNotEmpty() ->
                 SearchStatusStyle(
                     icon = Icons.Default.Search,
-                    text = "Based on ${research.searchResultCount} web results via ${provider.displayName}",
+                    text = stringResource(R.string.search_results_verified, research.searchResultCount, providerLabel),
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            research.searchResultCount > 0 ->
+                SearchStatusStyle(
+                    icon = Icons.Default.Warning,
+                    text = stringResource(R.string.search_results_no_comps, research.searchResultCount, providerLabel),
+                    container = MaterialTheme.colorScheme.tertiaryContainer,
+                    content = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
             research.searchError != null ->
                 SearchStatusStyle(
                     icon = Icons.Default.Info,
-                    text = "Web search failed — AI estimate only. ${research.searchError}",
+                    text = stringResource(R.string.search_failed_ai_only, research.searchError),
                     container = MaterialTheme.colorScheme.errorContainer,
                     content = MaterialTheme.colorScheme.onErrorContainer,
                 )
-            provider == SearchProvider.NONE ->
+            attemptedProviderNames.isEmpty() && SearchProvider.fromKey(research.searchProviderKey) == SearchProvider.NONE ->
                 SearchStatusStyle(
                     icon = Icons.Default.Info,
                     text =
@@ -639,7 +666,7 @@ private fun SearchStatusBanner(research: MarketResearch) {
             else ->
                 SearchStatusStyle(
                     icon = Icons.Default.Info,
-                    text = "${provider.displayName} returned no results — AI estimate only",
+                    text = stringResource(R.string.search_no_results_ai_only, providerLabel),
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
@@ -658,6 +685,28 @@ private fun SearchStatusBanner(research: MarketResearch) {
         }
     }
 }
+
+private fun successfulProviderNames(research: MarketResearch): List<String> {
+    val queries = research.debug?.queries
+    if (queries != null) {
+        return queries
+            .filter { it.resultCount > 0 && it.error.isNullOrBlank() }
+            .map { it.label }
+            .distinct()
+    }
+    return SearchProvider
+        .fromKey(research.searchProviderKey)
+        .takeUnless { it == SearchProvider.NONE }
+        ?.let { listOf(it.displayName) }
+        .orEmpty()
+}
+
+private fun attemptedProviderNames(research: MarketResearch): List<String> =
+    research.debug
+        ?.queries
+        ?.map { it.label }
+        ?.distinct()
+        .orEmpty()
 
 private data class SearchStatusStyle(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
