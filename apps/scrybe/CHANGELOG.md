@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Shared: Codex now validates the sibling Worker workspace and PriceDrop discovery contracts (no visual change)
+
 ### Fixes
 
 ## 1.41.0 (2026-07-13)
