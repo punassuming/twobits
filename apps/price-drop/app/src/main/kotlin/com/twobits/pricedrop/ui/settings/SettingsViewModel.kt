@@ -92,13 +92,15 @@ class SettingsViewModel
 
         init {
             viewModelScope.launch {
+                if (providerStore.migrateCouponProvider()) {
+                    credentialClient.mirror(SharedCredentialId.COUPON, "")
+                }
                 val readThroughPairs =
                     listOf(
                         PriceDropProvider.OPENAI to SharedCredentialId.OPENAI,
                         PriceDropProvider.WEB_SEARCH to SharedCredentialId.JINA,
                         PriceDropProvider.SHOPPING to SharedCredentialId.SEARCHAPI,
                         PriceDropProvider.SERPER to SharedCredentialId.SERPER,
-                        PriceDropProvider.COUPON to SharedCredentialId.COUPON,
                         PriceDropProvider.RAINFOREST to SharedCredentialId.RAINFOREST,
                     )
                 readThroughPairs.forEach { (provider, credId) ->
@@ -254,7 +256,6 @@ class SettingsViewModel
                     PriceDropProvider.WEB_SEARCH -> credentialClient.mirror(SharedCredentialId.JINA, key)
                     PriceDropProvider.SHOPPING -> credentialClient.mirror(SharedCredentialId.SEARCHAPI, key)
                     PriceDropProvider.SERPER -> credentialClient.mirror(SharedCredentialId.SERPER, key)
-                    PriceDropProvider.COUPON -> credentialClient.mirror(SharedCredentialId.COUPON, key)
                     PriceDropProvider.RAINFOREST -> credentialClient.mirror(SharedCredentialId.RAINFOREST, key)
                 }
                 val formatCheck = CredentialCheck.check(p, key)

@@ -1,5 +1,6 @@
 package com.twobits.pricedrop.data.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -15,6 +16,11 @@ data class WatchedProduct(
     val alertThresholdPct: Int = 10,
     val imageUrl: String = "",
     val productUrl: String = "",
+    @ColumnInfo(defaultValue = "''") val canonicalProductId: String = "",
+    @ColumnInfo(defaultValue = "''") val model: String = "",
+    @ColumnInfo(defaultValue = "''") val manufacturerPartNumber: String = "",
+    @ColumnInfo(defaultValue = "''") val gtin: String = "",
+    @ColumnInfo(defaultValue = "''") val ean: String = "",
     val asin: String = "",
     val upc: String = "",
     val retailers: String = "",

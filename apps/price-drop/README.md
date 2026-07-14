@@ -4,7 +4,7 @@
 [![Min SDK](https://img.shields.io/badge/min%20sdk-26%20(Android%208.0)-brightgreen.svg)](https://developer.android.com/about/versions/oreo)
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
-An Android app that monitors product prices, fires drop alerts when your target is hit, surfaces coupons, and answers shopping questions through an AI assistant.
+An Android app that aggregates product offers, records local price observations, fires target alerts, and answers shopping questions through an AI assistant.
 
 ---
 
@@ -15,11 +15,11 @@ An Android app that monitors product prices, fires drop alerts when your target 
 | **Watchlist** | Track products by name, URL, or barcode scan. Each product shows current price, target, and a trend delta vs. historical high. |
 | **Price tracking** | Periodic background checks via WorkManager. Price events are stored locally — full history available in the price chart. |
 | **Drop alerts** | Push notifications when a product hits your target price, crosses a big-drop threshold, or a coupon is discovered. Notification includes old/new price and coupon code with one-tap copy. |
-| **Background checks** | PriceCheckWorker runs on a configurable schedule (default 6 h) with Wi-Fi-preferred constraints. Batched notifications group multiple simultaneous drops. |
-| **Coupons** | Coupon codes are tested and validated; state (valid / expired / restricted) is shown per-code with discount amount. |
+| **Background checks** | PriceCheckWorker runs on a configurable schedule (default 24 h) with optional Wi-Fi and charging constraints. Batched notifications group multiple simultaneous drops. |
+| **Promotions** | Offer metadata and manual codes retain applicability and confidence; uncertain savings never change effective price. |
 | **Barcode scan** | Point camera at any product barcode or QR code. ML Kit Barcode Scanning extracts the UPC/EAN; the app looks up the product title and current price automatically. |
 | **AI shopping assistant** | Chat-based interface for price questions, deal hunting, and product comparisons. Supports BYOK (OpenAI key) and Pro managed API. Conversation history persists across restarts; full multi-turn context is sent with each message. |
-| **Multi-provider support** | OpenAI for AI chat; Keepa / SerpAPI for price lookup; Jina AI for web search; CouponLayer for coupon discovery. All configurable per-provider. |
+| **Multi-provider support** | Serper and SearchAPI run concurrently; Jina is fallback discovery and Rainforest is optional Amazon enrichment. |
 | **Onboarding** | Three-page first-run walkthrough. No account required — watchlist and history live only on the device. |
 
 ---
@@ -29,17 +29,15 @@ An Android app that monitors product prices, fires drop alerts when your target 
 ```
 com.twobits.pricedrop
 ├── data/
-│   ├── local/        Room database (PriceDropDatabase, WatchedProductDao, DropDao,
-│   │                 CouponDao, PriceEventDao, OfferDao, ActivityDao, ChatMessageDao)
+│   ├── local/        Room database, including append-only PriceObservation storage
 │   ├── model/        Domain models (WatchedProduct, Drop, Coupon, PriceEvent,
 │   │                 Offer, Activity, AlertType, ChatMessageEntity)
-│   ├── remote/       PriceDropApiClient (Worker proxy), PriceDropDtos, PriceParser,
-│   │                 SearchHit
-│   ├── repository/   WatchlistRepository, DropsRepository — single sources of truth
-│   ├── provider/     PriceDropProvider, ProviderSettingsStore
+│   ├── remote/       Legacy enrichment and AI transport only
+│   ├── repository/   Watchlist, observations, and drops — single sources of truth
+│   ├── provider/     Contracts, registry, and Serper/SearchAPI/Jina/Rainforest/Pro adapters
 │   └── settings/     SettingsPrefs (DataStore-backed)
 ├── di/               Hilt injection modules (AppModule, NetworkModule, BillingModule)
-├── domain/           EffectivePrice — price + shipping + fees − coupon calculation
+├── domain/           Canonical products/offers, aggregation, matching, and effective price
 ├── notifications/    PriceDropNotifier, CouponCopyReceiver
 ├── ui/
 │   ├── ask/          AI chat (AskScreen, AskViewModel, ChatMessage)
@@ -67,8 +65,10 @@ WatchScreen
        └─ WatchlistRepository.observeAll()
             └─ WatchedProductDao (Room)
 
-PriceCheckWorker (WorkManager, ~6h)
-  ├─ PriceDropApiClient → api.twobits.app (Pro) or direct provider
+PriceCheckWorker (WorkManager, 24h by default)
+  ├─ ProductDiscoveryCoordinator → all enabled BYOK adapters or the Pro v2 gateway
+  ├─ ProductResolver → evidence, conflicts, and compatible offer clusters
+  ├─ PriceObservationRepository → append-only local authority
   ├─ WatchlistRepository.updatePrice()
   ├─ DropsRepository.insert(drop) when threshold crossed
   └─ PriceDropNotifier → NotificationManager
@@ -82,6 +82,7 @@ PriceCheckWorker (WorkManager, ~6h)
 |--------|-----------|
 | `WatchedProduct` | `id`, `title`, `currentPrice`, `targetPrice`, `alertType`, `alertThresholdPct`, `productUrl`, `asin`, `upc`, `imageUrl`, `trackedHigh`, `trackedLow`, `trackedAvg`, `lastCheckedAt`, `isActive` |
 | `PriceEvent` | `id`, `productId`, `price`, `effectivePrice`, `retailer`, `recordedAt` |
+| `PriceObservation` | canonical product, merchant/listing, minor-unit prices, currency, availability, provider, provenance, observed time |
 | `Drop` | `id`, `productId`, `type` (`below_target` · `coupon` · `big_drop` · `historical_low`), `oldPrice`, `newPrice`, `couponCode`, `couponDiscount`, `detectedAt`, `isDismissed` |
 | `Coupon` | `id`, `productId`, `code`, `description`, `discountType`, `discountValue`, `state` (`UNVERIFIED` · `TESTED_VALID` · `EXPIRED` · `RESTRICTED`), `source`, `store`, `expiresAt` |
 | `Offer` | `id`, `productId`, `seller`, `sellerRating`, `price`, `shipping`, `fees`, `condition`, `availability` |
@@ -99,12 +100,12 @@ PriceCheckWorker (WorkManager, ~6h)
 | Provider | BYOK | Pro | Off |
 |----------|------|-----|-----|
 | **OpenAI** (AI chat) | Paste own key in Settings → AI Config — **fully functional** | Managed via `api.twobits.app` | Chat unavailable |
-| **SerpAPI** (price search) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Price search unavailable |
-| **Keepa** (Amazon history) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Amazon history unavailable |
-| **Jina AI** (web search) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Web context unavailable |
-| **CouponLayer** (coupons) | Routes to Pro (per-provider BYOK adapter not yet built) | Managed | Coupon discovery unavailable |
+| **Jina AI** (web search) | Direct with your key | Managed | URL reading and fallback web search unavailable |
+| **Serper.dev** (primary shopping search) | Direct with your key | Managed v2 discovery | Other enabled providers may still return results |
+| **SearchAPI.io** (secondary shopping search) | Direct with your key | Managed v2 discovery | Other enabled providers may still return results |
+| **Rainforest API** (Amazon enrichment) | Direct with your key | Managed | Amazon-specific detail/history/barcode enrichment unavailable |
 
-**BYOK today:** Only OpenAI (AI chat) works in BYOK mode. The other providers accept key input in the UI but route through the Pro proxy until per-provider request/response adapters are implemented (`PriceDropApiClient` has the routing stub; set `ProviderMode.BYOK` to enable when adapters land).
+BYOK discovery calls each enabled provider directly and never contacts `api.twobits.app`. Pro uses `POST /v2/products/discover`; provider secrets stay in the Worker and the app receives only the versioned canonical envelope. Shared schemas and golden fixtures live under `shared/contracts/price-drop/v2/`.
 
 Pro routes all requests through `api.twobits.app` (Cloudflare Worker). The entitlement ID is `pricedrop_pro`. A per-user monthly spend cap is enforced server-side via a Durable Object.
 

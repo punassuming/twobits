@@ -10,8 +10,6 @@ import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.remote.dto.BarcodeResponseDto
 import com.twobits.pricedrop.data.remote.dto.ChatResponseDto
-import com.twobits.pricedrop.data.remote.dto.CouponDto
-import com.twobits.pricedrop.data.remote.dto.CouponsResponseDto
 import com.twobits.pricedrop.data.remote.dto.HistoryPointDto
 import com.twobits.pricedrop.data.remote.dto.HistoryResponseDto
 import com.twobits.pricedrop.data.remote.dto.OfferDto
@@ -51,75 +49,44 @@ class PriceDropApiClient
         // Public API
         // ---------------------------------------------------------------------------
 
-        suspend fun search(
-            query: String,
-            maxResults: Int = 10,
-        ): SearchResponseDto {
-            if (isByok(PriceDropProvider.SHOPPING)) {
-                return searchDirect(query, maxResults, byokKey(PriceDropProvider.SHOPPING))
-            }
-            if (isByok(PriceDropProvider.SERPER)) {
-                return searchDirectSerper(query, maxResults, byokKey(PriceDropProvider.SERPER))
-            }
-            if (isByok(PriceDropProvider.WEB_SEARCH)) {
-                return searchDirectJina(query, maxResults, byokKey(PriceDropProvider.WEB_SEARCH))
-            }
-            val body =
-                JsonObject().apply {
-                    addProperty("query", query)
-                    addProperty("maxResults", maxResults)
-                }
-            return workerPost("/v1/pricedrop/search", body, SearchResponseDto::class.java)
-        }
-
         suspend fun price(
             asin: String? = null,
             upc: String? = null,
         ): PriceResponseDto {
-            // Price and barcode lookups always use Rainforest API (Amazon product data).
-            // SearchAPI.io (SHOPPING) is for search only; it has no equivalent price endpoint.
-            if (isByok(PriceDropProvider.RAINFOREST)) {
-                return priceDirect(asin, upc, byokKey(PriceDropProvider.RAINFOREST))
-            }
-            val body =
-                JsonObject().apply {
-                    asin?.takeIf { it.isNotBlank() }?.let { addProperty("asin", it) }
-                    upc?.takeIf { it.isNotBlank() }?.let { addProperty("upc", it) }
+            return when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
+                ProviderMode.BYOK -> priceDirect(asin, upc, byokKey(PriceDropProvider.RAINFOREST))
+                ProviderMode.PRO -> {
+                    val body =
+                        JsonObject().apply {
+                            asin?.takeIf { it.isNotBlank() }?.let { addProperty("asin", it) }
+                            upc?.takeIf { it.isNotBlank() }?.let { addProperty("upc", it) }
+                        }
+                    workerPost("/v1/pricedrop/price", body, PriceResponseDto::class.java)
                 }
-            return workerPost("/v1/pricedrop/price", body, PriceResponseDto::class.java)
+                ProviderMode.OFF -> PriceResponseDto(found = false)
+            }
         }
 
         suspend fun history(asin: String): HistoryResponseDto {
-            // Rainforest backs history in both modes now (Keepa removed) — same provider
-            // priceDirect()/priceDrop() already use, so BYOK history needs no separate key.
-            if (isByok(PriceDropProvider.RAINFOREST)) {
-                return historyDirect(asin, byokKey(PriceDropProvider.RAINFOREST))
-            }
-            val body = JsonObject().apply { addProperty("asin", asin) }
-            return workerPost("/v1/pricedrop/history", body, HistoryResponseDto::class.java)
-        }
-
-        suspend fun coupons(
-            query: String,
-            domain: String? = null,
-        ): CouponsResponseDto {
-            if (isByok(PriceDropProvider.COUPON)) {
-                return couponsDirect(query, domain, byokKey(PriceDropProvider.COUPON))
-            }
-            val body =
-                JsonObject().apply {
-                    addProperty("query", query)
-                    domain?.takeIf { it.isNotBlank() }?.let { addProperty("domain", it) }
+            return when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
+                ProviderMode.BYOK -> historyDirect(asin, byokKey(PriceDropProvider.RAINFOREST))
+                ProviderMode.PRO -> {
+                    val body = JsonObject().apply { addProperty("asin", asin) }
+                    workerPost("/v1/pricedrop/history", body, HistoryResponseDto::class.java)
                 }
-            return workerPost("/v1/pricedrop/coupons", body, CouponsResponseDto::class.java)
+                ProviderMode.OFF -> HistoryResponseDto()
+            }
         }
 
         suspend fun barcode(upc: String): BarcodeResponseDto {
-            if (isByok(PriceDropProvider.RAINFOREST)) {
-                return barcodeDirect(upc, byokKey(PriceDropProvider.RAINFOREST))
+            return when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
+                ProviderMode.BYOK -> barcodeDirect(upc, byokKey(PriceDropProvider.RAINFOREST))
+                ProviderMode.PRO -> {
+                    val body = JsonObject().apply { addProperty("upc", upc) }
+                    workerPost("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java)
+                }
+                ProviderMode.OFF -> BarcodeResponseDto(found = false)
             }
-            val body = JsonObject().apply { addProperty("upc", upc) }
-            return workerPost("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java)
         }
 
         /**
@@ -206,96 +173,6 @@ class PriceDropApiClient
         // ---------------------------------------------------------------------------
         // BYOK — direct provider calls
         // ---------------------------------------------------------------------------
-
-        private suspend fun searchDirect(
-            query: String,
-            maxResults: Int,
-            apiKey: String,
-        ): SearchResponseDto =
-            withContext(Dispatchers.IO) {
-                val url =
-                    "https://www.searchapi.io/api/v1/search"
-                        .toHttpUrl()
-                        .newBuilder()
-                        .addQueryParameter("engine", "google_shopping")
-                        .addQueryParameter("q", query)
-                        .addQueryParameter("api_key", apiKey)
-                        .addQueryParameter("num", maxResults.toString())
-                        .build()
-                val request =
-                    Request
-                        .Builder()
-                        .url(url)
-                        .get()
-                        .build()
-                client.newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
-                    val data = gson.fromJson(text, JsonObject::class.java)
-                    // SearchAPI.io Google Shopping spreads results across shopping_results
-                    // and popular_products, and uses seller / product_link (not source / link).
-                    val items =
-                        listOfNotNull(
-                            data.getAsJsonArray("shopping_results"),
-                            data.getAsJsonArray("popular_products"),
-                        ).flatten()
-                    val results =
-                        items.take(maxResults).map { item ->
-                            val r = item.asJsonObject
-
-                            fun field(vararg keys: String): String? = keys.firstNotNullOfOrNull { k -> r[k]?.takeIf { it.isJsonPrimitive }?.asString }
-                            SearchResultDto(
-                                title = field("title"),
-                                price = field("price"),
-                                source = field("seller", "source"),
-                                url = field("product_link", "link"),
-                            )
-                        }
-                    SearchResponseDto(results)
-                }
-            }
-
-        // Serper's dedicated /shopping endpoint (not /search) — mirrors SearchAPI's
-        // google_shopping engine so Serper is a real substitute (structured price data),
-        // not a repeat of the Jina fallback's price = null gap.
-        private suspend fun searchDirectSerper(
-            query: String,
-            maxResults: Int,
-            apiKey: String,
-        ): SearchResponseDto =
-            withContext(Dispatchers.IO) {
-                val requestBody =
-                    JsonObject()
-                        .apply { addProperty("q", query) }
-                        .toString()
-                        .toRequestBody("application/json; charset=utf-8".toMediaType())
-                val request =
-                    Request
-                        .Builder()
-                        .url("https://google.serper.dev/shopping")
-                        .addHeader("X-API-KEY", apiKey.trim())
-                        .post(requestBody)
-                        .build()
-                client.newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
-                    val data = gson.fromJson(text, JsonObject::class.java)
-                    val items = data.getAsJsonArray("shopping") ?: JsonArray()
-                    val results =
-                        items.take(maxResults).map { item ->
-                            val r = item.asJsonObject
-
-                            fun field(vararg keys: String): String? = keys.firstNotNullOfOrNull { k -> r[k]?.takeIf { it.isJsonPrimitive }?.asString }
-                            SearchResultDto(
-                                title = field("title"),
-                                price = field("price"),
-                                source = field("source"),
-                                url = field("link"),
-                            )
-                        }
-                    SearchResponseDto(results)
-                }
-            }
 
         private suspend fun priceDirect(
             asin: String?,
@@ -428,51 +305,6 @@ class PriceDropApiClient
             runCatching { java.time.Instant.parse(raw).toEpochMilli() }
                 .recoverCatching { java.time.LocalDate.parse(raw).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() }
                 .getOrNull()
-
-        private suspend fun couponsDirect(
-            query: String,
-            domain: String?,
-            apiKey: String,
-        ): CouponsResponseDto =
-            withContext(Dispatchers.IO) {
-                val urlBuilder =
-                    "https://api.couponlayer.com/coupons"
-                        .toHttpUrl()
-                        .newBuilder()
-                        .addQueryParameter("access_key", apiKey)
-                        .addQueryParameter("search", query)
-                domain?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("category", it) }
-
-                val request =
-                    Request
-                        .Builder()
-                        .url(urlBuilder.build())
-                        .get()
-                        .build()
-                client.newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
-                    val data = gson.fromJson(text, JsonObject::class.java)
-                    if (data["success"]?.asBoolean != true) {
-                        throw IOException(data["error"]?.asJsonObject?.get("info")?.asString ?: "CouponLayer error")
-                    }
-                    val coupons =
-                        (data["data"]?.asJsonArray ?: JsonArray())
-                            .take(10)
-                            .map { item ->
-                                val c = item.asJsonObject
-                                CouponDto(
-                                    code = c["coupon_code"]?.asString,
-                                    description = c["coupon_description"]?.asString,
-                                    discount = c["coupon_discount"]?.asString,
-                                    type = c["coupon_type"]?.asString,
-                                    expires = c["coupon_expiry_date"]?.asString,
-                                    store = c["merchant_name"]?.asString,
-                                )
-                            }
-                    CouponsResponseDto(coupons)
-                }
-            }
 
         private suspend fun barcodeDirect(
             upc: String,

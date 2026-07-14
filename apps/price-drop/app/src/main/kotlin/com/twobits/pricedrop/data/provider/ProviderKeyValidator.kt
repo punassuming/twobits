@@ -1,6 +1,5 @@
 package com.twobits.pricedrop.data.provider
 
-import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,7 +21,6 @@ class ProviderKeyValidator
     @Inject
     constructor(
         private val okHttpClient: OkHttpClient,
-        private val gson: Gson,
     ) {
         suspend fun validate(
             provider: PriceDropProvider,
@@ -37,7 +35,6 @@ class ProviderKeyValidator
                         PriceDropProvider.WEB_SEARCH -> testJina(trimmed)
                         PriceDropProvider.SHOPPING -> testSearchApi(trimmed)
                         PriceDropProvider.SERPER -> testSerper(trimmed)
-                        PriceDropProvider.COUPON -> testCouponlayer(trimmed)
                         PriceDropProvider.RAINFOREST -> testRainforest(trimmed)
                     }
                 }
@@ -142,52 +139,6 @@ class ProviderKeyValidator
                         throw IllegalStateException("Serper.dev rejected this key")
                     else -> throw IllegalStateException("Serper.dev returned HTTP ${response.code}")
                 }
-            }
-        }
-
-        private fun testCouponlayer(key: String): String {
-            val url =
-                "https://api.couponlayer.com/coupons"
-                    .toHttpUrl()
-                    .newBuilder()
-                    .addQueryParameter("access_key", key)
-                    .addQueryParameter("retailer", "amazon.com")
-                    .addQueryParameter("search", "test")
-                    .build()
-            val request =
-                Request
-                    .Builder()
-                    .url(url)
-                    .get()
-                    .build()
-            okHttpClient.newCall(request).execute().use { response ->
-                val text = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    throw IllegalStateException("Couponlayer returned HTTP ${response.code}")
-                }
-                val json = runCatching { gson.fromJson(text, JsonObject::class.java) }.getOrNull()
-                if (json?.get("success")?.asBoolean != true) {
-                    val code =
-                        json
-                            ?.get("error")
-                            ?.asJsonObject
-                            ?.get("code")
-                            ?.asInt
-                    val info =
-                        json
-                            ?.get("error")
-                            ?.asJsonObject
-                            ?.get("info")
-                            ?.asString
-                    throw IllegalStateException(
-                        when (code) {
-                            101 -> "Couponlayer rejected this key — invalid access key"
-                            102 -> "Couponlayer key is inactive or has no remaining requests"
-                            else -> info ?: "Couponlayer validation failed"
-                        },
-                    )
-                }
-                return "Connected to Couponlayer"
             }
         }
 

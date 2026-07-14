@@ -86,6 +86,9 @@ android {
     sourceSets.getByName("main").assets.srcDir(
         layout.buildDirectory.dir("generated/assets/changelog"),
     )
+    sourceSets.getByName("test").resources.srcDir(
+        rootProject.file("../../shared/contracts/price-drop/v2/fixtures"),
+    )
 
     lint {
         abortOnError = false

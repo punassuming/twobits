@@ -20,4 +20,7 @@ interface CouponDao {
 
     @Query("DELETE FROM coupons WHERE productId = :productId")
     suspend fun deleteForProduct(productId: Long)
+
+    @Query("DELETE FROM coupons WHERE productId = :productId AND source != 'manual'")
+    suspend fun deleteProviderPromotions(productId: Long)
 }

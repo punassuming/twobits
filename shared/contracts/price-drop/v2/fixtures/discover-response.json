@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "requestId": "fixture-request-001",
+  "target": {
+    "brand": "Sony",
+    "model": "WH-1000XM6",
+    "manufacturerPartNumber": "WH1000XM6/B",
+    "gtin": null,
+    "upc": "027242930124",
+    "ean": null,
+    "isbn": null,
+    "asin": "B0F3JT6K2C"
+  },
+  "products": [
+    {
+      "canonicalProductId": "pd_fixture_sony_xm6_black",
+      "title": "Sony WH-1000XM6 Wireless Headphones - Black",
+      "identity": {
+        "brand": "Sony",
+        "model": "WH-1000XM6",
+        "manufacturerPartNumber": "WH1000XM6/B",
+        "gtin": null,
+        "upc": "027242930124",
+        "ean": null,
+        "isbn": null,
+        "asin": "B0F3JT6K2C"
+      },
+      "imageUrls": ["https://example.test/sony-xm6.png"],
+      "sourceUrl": "https://store.example.test/sony-xm6",
+      "provider": { "id": "serper", "executionMode": "PRO" },
+      "offers": [
+        {
+          "merchant": { "id": "example-store", "name": "Example Store" },
+          "listingId": "listing-100",
+          "seller": "Example Store",
+          "itemPrice": { "amountMinor": 44800, "currency": "USD" },
+          "shippingPrice": { "amountMinor": 0, "currency": "USD" },
+          "totalPrice": { "amountMinor": 44800, "currency": "USD" },
+          "availability": "IN_STOCK",
+          "condition": "NEW",
+          "productUrl": "https://store.example.test/sony-xm6",
+          "observedAt": "2026-07-13T12:00:00Z",
+          "promotions": [],
+          "provider": { "id": "serper", "executionMode": "PRO" }
+        }
+      ],
+      "matchAssessment": {
+        "score": 1.0,
+        "classification": "EXACT",
+        "evidence": [{ "signal": "upc", "score": 1.0, "detail": "Exact UPC match" }],
+        "conflicts": []
+      }
+    }
+  ],
+  "providerDiagnostics": [
+    { "provider": "serper", "status": "SUCCESS", "latencyMs": 120, "resultCount": 1 },
+    { "provider": "searchapi", "status": "SUCCESS", "latencyMs": 180, "resultCount": 1 }
+  ]
+}

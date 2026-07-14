@@ -2,8 +2,7 @@ package com.twobits.pricedrop.data.remote.dto
 
 import com.google.gson.annotations.SerializedName
 
-// Worker response shapes — these mirror /home/user/twobits-worker/worker.js handlers exactly.
-// Keep field names in sync with pdSearch/pdPrice/pdHistory/pdCoupons/pdBarcode.
+// Legacy v1 enrichment DTOs. Application search consumes the provider-neutral v2 domain model.
 
 data class SearchResponseDto(
     @SerializedName("results") val results: List<SearchResultDto> = emptyList(),
@@ -44,19 +43,6 @@ data class HistoryResponseDto(
 data class HistoryPointDto(
     @SerializedName("ts") val ts: Long = 0L,
     @SerializedName("price") val price: Double = 0.0,
-)
-
-data class CouponsResponseDto(
-    @SerializedName("coupons") val coupons: List<CouponDto> = emptyList(),
-)
-
-data class CouponDto(
-    @SerializedName("code") val code: String? = null,
-    @SerializedName("description") val description: String? = null,
-    @SerializedName("discount") val discount: String? = null,
-    @SerializedName("type") val type: String? = null,
-    @SerializedName("expires") val expires: String? = null,
-    @SerializedName("store") val store: String? = null,
 )
 
 data class BarcodeResponseDto(

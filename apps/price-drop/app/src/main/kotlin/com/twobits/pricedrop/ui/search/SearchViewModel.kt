@@ -6,6 +6,8 @@ import com.twobits.pricedrop.data.model.WatchedProduct
 import com.twobits.pricedrop.data.remote.PriceDropApiClient
 import com.twobits.pricedrop.data.repository.AddResult
 import com.twobits.pricedrop.data.repository.WatchlistRepository
+import com.twobits.pricedrop.domain.product.ProductIdentity
+import com.twobits.pricedrop.domain.product.ProductOffer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -36,6 +38,11 @@ data class SearchResult(
     val price: Double?,
     val source: String,
     val url: String,
+    val canonicalProductId: String = "",
+    val identity: ProductIdentity = ProductIdentity(),
+    val imageUrl: String = "",
+    val confidence: Int = 0,
+    val offers: List<ProductOffer> = emptyList(),
 )
 
 @HiltViewModel
@@ -76,7 +83,19 @@ class SearchViewModel
                     .onSuccess { hits ->
                         uiState.value =
                             SearchUiState.Results(
-                                hits.map { SearchResult(it.title, it.price, it.source, it.url) },
+                                hits.map {
+                                    SearchResult(
+                                        title = it.title,
+                                        price = it.price,
+                                        source = it.source,
+                                        url = it.url,
+                                        canonicalProductId = it.canonicalProductId,
+                                        identity = it.identity,
+                                        imageUrl = it.imageUrl,
+                                        confidence = it.confidence,
+                                        offers = it.offers,
+                                    )
+                                },
                             )
                     }.onFailure { e ->
                         uiState.value = SearchUiState.Error(e.message ?: "Search failed. Please try again.")
@@ -96,11 +115,28 @@ class SearchViewModel
                     currentPrice = result.price ?: 0.0,
                     targetPrice = targetPrice,
                     alertType = alertType,
+                    brand = result.identity.brand.orEmpty(),
+                    model = result.identity.model.orEmpty(),
+                    manufacturerPartNumber = result.identity.manufacturerPartNumber.orEmpty(),
+                    gtin = result.identity.gtin.orEmpty(),
+                    upc = result.identity.upc.orEmpty(),
+                    ean = result.identity.ean.orEmpty(),
+                    asin = result.identity.asin.orEmpty(),
+                    imageUrl = result.imageUrl,
                     productUrl = result.url,
+                    canonicalProductId = result.canonicalProductId,
+                    source = result.source,
+                    confidence = result.confidence,
                 )
             viewModelScope.launch {
                 when (val result0 = watchlistRepo.add(product)) {
                     is AddResult.Added -> {
+                        watchlistRepo.recordDiscoveredOffers(
+                            result0.id,
+                            result.canonicalProductId,
+                            result.offers,
+                            result.confidence,
+                        )
                         onAdded(result0.id)
                         // Fire-and-forget: don't gate onAdded on a slow history fetch.
                         launch { watchlistRepo.backfillHistoryIfNeeded(result0.id, product.asin) }

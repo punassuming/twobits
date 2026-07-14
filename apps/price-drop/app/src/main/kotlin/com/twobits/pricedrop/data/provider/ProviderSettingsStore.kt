@@ -29,6 +29,8 @@ class ProviderSettingsStore
         @ApplicationContext private val context: Context,
         private val crypto: CredentialCrypto,
     ) {
+        private val couponProviderSchemaKey = stringPreferencesKey("schema_coupon_provider")
+
         private fun modeKey(p: PriceDropProvider) = stringPreferencesKey("mode_${p.key}")
 
         private fun apiKeyKey(p: PriceDropProvider) = stringPreferencesKey("key_${p.key}")
@@ -82,6 +84,21 @@ class ProviderSettingsStore
             context.providerStore.edit { it[validatedKey(p)] = valid }
         }
 
+        /** Clears legacy coupon-provider routing. Promotions now come from offers or manual codes. */
+        suspend fun migrateCouponProvider(): Boolean {
+            var migrated = false
+            context.providerStore.edit { prefs ->
+                if (prefs[couponProviderSchemaKey] == COUPON_PROVIDER_SCHEMA) return@edit
+                prefs.remove(stringPreferencesKey("key_coupon"))
+                prefs.remove(booleanPreferencesKey("valid_coupon"))
+                prefs[stringPreferencesKey("mode_coupon")] = ProviderMode.OFF.value
+                prefs[stringPreferencesKey("feature_source_coupon")] = ProviderMode.OFF.value
+                prefs[couponProviderSchemaKey] = COUPON_PROVIDER_SCHEMA
+                migrated = true
+            }
+            return migrated
+        }
+
         // ── Feature-level config (presentation layer; routing still uses per-provider mode/key) ──
 
         private fun featureSourceKey(f: AiFeature) = stringPreferencesKey("feature_source_${f.key}")
@@ -133,10 +150,19 @@ class ProviderSettingsStore
                 }
             }
 
+        suspend fun getFeatureProviders(f: AiFeature): Set<String> {
+            val stored = context.providerStore.data.first()[featureProvidersKey(f)]
+            return stored?.split(',')?.filter { it.isNotBlank() }?.toSet() ?: defaultFeatureProviders(f)
+        }
+
         suspend fun setFeatureProviders(
             f: AiFeature,
             providerKeys: Set<String>,
         ) {
             context.providerStore.edit { it[featureProvidersKey(f)] = providerKeys.joinToString(",") }
+        }
+
+        private companion object {
+            const val COUPON_PROVIDER_SCHEMA = "embedded_promotions_v2"
         }
     }

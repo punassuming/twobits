@@ -4,9 +4,29 @@
 
 ### Features
 
+**Product discovery** — searches now combine structured offers from enabled providers:
+* Serper is the primary broad Google Shopping source
+* SearchAPI can run alongside Serper for additional coverage
+* matches include identifiers, confidence evidence, and variant conflicts
+
+**Promotion codes** — product details now accept manually entered savings codes:
+* embedded offer promotions show their applicability confidence
+* unverified codes never reduce the displayed effective price
+
 ### Improvements
 
+**Price history** — tracked observations are now provider-neutral and append-only:
+* local observations remain authoritative across refreshes
+* imported Amazon history retains explicit external provenance
+* existing watchlists and price events migrate without data loss
+
+**Provider setup** — search credentials now reflect their actual roles and costs:
+* Rainforest is optional Amazon enrichment, not a core requirement
+* broad coupon aggregation remains experimental and is not advertised
+
 ### Fixes
+
+* Removed obsolete Couponlayer and LinkMyDeals credential routing
 
 ## 0.12.3 (2026-07-13)
 
