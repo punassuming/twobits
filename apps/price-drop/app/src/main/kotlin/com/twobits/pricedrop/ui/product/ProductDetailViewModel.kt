@@ -82,7 +82,7 @@ class ProductDetailViewModel
                 _uiState.value = _uiState.value.copy(isRefreshing = true, refreshError = null)
                 val product = watchlistRepo.getById(productId)
                 runCatching {
-                    watchlistRepo.refreshPrice(productId)
+                    watchlistRepo.refreshPrice(productId, force = true)
                     watchlistRepo.refreshOffers(productId)
                     val query = product?.title.orEmpty().ifBlank { product?.brand.orEmpty() }
                     if (query.isNotBlank()) watchlistRepo.fetchCoupons(productId, query)
@@ -95,6 +95,14 @@ class ProductDetailViewModel
 
         fun clearRefreshError() {
             _uiState.value = _uiState.value.copy(refreshError = null)
+        }
+
+        fun addManualCoupon(
+            productId: Long,
+            code: String,
+            description: String,
+        ) {
+            viewModelScope.launch { watchlistRepo.addManualCoupon(productId, code, description) }
         }
 
         fun updateTargetPrice(

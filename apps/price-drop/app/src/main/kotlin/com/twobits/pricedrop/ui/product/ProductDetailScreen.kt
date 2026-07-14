@@ -95,6 +95,7 @@ fun ProductDetailScreen(
 
     val fmt = NumberFormat.getCurrencyInstance(Locale.US)
     var showTargetEditor by remember { mutableStateOf(false) }
+    var showCouponEditor by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.refreshError) {
@@ -187,8 +188,17 @@ fun ProductDetailScreen(
                     )
                 }
             }
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SectionHeader("Promotions")
+                    TextButton(onClick = { showCouponEditor = true }) { Text("Add code") }
+                }
+            }
             if (uiState.coupons.isNotEmpty()) {
-                item { SectionHeader("Coupons") }
                 items(uiState.coupons, key = { "coupon-${it.id}" }) { coupon ->
                     CouponCard(coupon = coupon)
                 }
@@ -243,6 +253,41 @@ fun ProductDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showTargetEditor = false }) { Text("Cancel") }
+            },
+        )
+    }
+    if (showCouponEditor) {
+        var code by remember { mutableStateOf("") }
+        var description by remember { mutableStateOf("") }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showCouponEditor = false },
+            title = { Text("Add promotion code") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = code,
+                        onValueChange = { code = it },
+                        label = { Text("Code") },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Description (optional)") },
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.addManualCoupon(productId, code, description)
+                        showCouponEditor = false
+                    },
+                    enabled = code.isNotBlank(),
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCouponEditor = false }) { Text("Cancel") }
             },
         )
     }
@@ -526,9 +571,17 @@ private fun CouponCard(coupon: Coupon) {
                 Text(coupon.description, style = MaterialTheme.typography.bodySmall)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(coupon.code, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                IconButton(onClick = { clipboard.setText(AnnotatedString(coupon.code)) }) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copy code", modifier = Modifier.height(18.dp))
+                if (coupon.code.isNotBlank()) {
+                    Text(coupon.code, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { clipboard.setText(AnnotatedString(coupon.code)) }) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = "Copy code", modifier = Modifier.height(18.dp))
+                    }
+                } else {
+                    Text(
+                        coupon.applicability.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

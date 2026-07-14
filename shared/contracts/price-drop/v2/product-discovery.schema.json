@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twobits.app/contracts/price-drop/v2/product-discovery.schema.json",
+  "title": "Product discovery response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "target", "products", "providerDiagnostics"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "requestId": { "type": "string", "minLength": 1 },
+    "target": { "$ref": "#/$defs/identity" },
+    "products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["canonicalProductId", "title", "identity", "imageUrls", "sourceUrl", "provider", "offers", "matchAssessment"],
+        "properties": {
+          "canonicalProductId": { "type": "string" },
+          "title": { "type": "string" },
+          "identity": { "$ref": "#/$defs/identity" },
+          "imageUrls": { "type": "array", "items": { "type": "string", "format": "uri" } },
+          "sourceUrl": { "type": "string", "format": "uri" },
+          "provider": { "$ref": "product-offer.schema.json#/$defs/providerRef" },
+          "offers": { "type": "array", "items": { "$ref": "product-offer.schema.json" } },
+          "matchAssessment": { "$ref": "#/$defs/matchAssessment" }
+        }
+      }
+    },
+    "providerDiagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "status", "latencyMs", "resultCount"],
+        "properties": {
+          "provider": { "type": "string" },
+          "status": { "enum": ["SUCCESS", "PARTIAL", "TIMEOUT", "ERROR"] },
+          "latencyMs": { "type": "integer", "minimum": 0 },
+          "resultCount": { "type": "integer", "minimum": 0 },
+          "message": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "brand": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "manufacturerPartNumber": { "type": ["string", "null"] },
+        "gtin": { "type": ["string", "null"] },
+        "upc": { "type": ["string", "null"] },
+        "ean": { "type": ["string", "null"] },
+        "isbn": { "type": ["string", "null"] },
+        "asin": { "type": ["string", "null"] }
+      }
+    },
+    "matchAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "classification", "evidence", "conflicts"],
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "classification": { "enum": ["EXACT", "HIGH_CONFIDENCE", "POSSIBLE_VARIANT", "UNRELATED"] },
+        "evidence": { "type": "array" },
+        "conflicts": { "type": "array" }
+      }
+    }
+  }
+}

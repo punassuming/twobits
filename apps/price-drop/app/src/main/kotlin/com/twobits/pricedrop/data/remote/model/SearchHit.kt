@@ -1,5 +1,8 @@
 package com.twobits.pricedrop.data.remote.model
 
+import com.twobits.pricedrop.domain.product.ProductIdentity
+import com.twobits.pricedrop.domain.product.ProductOffer
+
 /** A normalized product search result surfaced to the Search UI. */
 data class SearchHit(
     val title: String,
@@ -7,6 +10,10 @@ data class SearchHit(
     val source: String,
     val url: String,
     val confidence: Int = 0,
+    val canonicalProductId: String = "",
+    val identity: ProductIdentity = ProductIdentity(),
+    val imageUrl: String = "",
+    val offers: List<ProductOffer> = emptyList(),
 )
 
 /** A barcode → product resolution result. */

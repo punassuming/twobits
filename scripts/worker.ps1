@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('doctor', 'setup', 'path', 'status', 'sync', 'test', 'dev')]
+    [ValidateSet('doctor', 'setup', 'path', 'status', 'sync', 'test', 'contract', 'dev')]
     [string]$Command = 'doctor',
     [string]$WorkerRoot = (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'twobits-worker'),
     [string]$Remote = 'https://github.com/punassuming/twobits-worker.git',
@@ -93,6 +93,20 @@ switch ($Command) {
         Assert-WorkerCheckout
         Assert-Command 'npm'
         Invoke-Native 'npm' (@('--prefix', $script:WorkerRoot, 'test') + $WorkerArgs)
+    }
+    'contract' {
+        Assert-WorkerCheckout
+        $androidFixture = Join-Path (Split-Path -Parent $PSScriptRoot) 'shared\contracts\price-drop\v2\fixtures\discover-response.json'
+        $workerFixture = Join-Path $script:WorkerRoot 'test\fixtures\discover-response.json'
+        foreach ($fixture in @($androidFixture, $workerFixture)) {
+            if (-not (Test-Path $fixture)) { throw "Product discovery fixture is missing: $fixture" }
+        }
+        $androidHash = (Get-FileHash -Algorithm SHA256 -Path $androidFixture).Hash
+        $workerHash = (Get-FileHash -Algorithm SHA256 -Path $workerFixture).Hash
+        if ($androidHash -ne $workerHash) {
+            throw "Product discovery fixtures differ. Update both repositories in the same coordinated change."
+        }
+        Write-Output "PriceDrop v2 fixtures match ($androidHash)."
     }
     'dev' {
         Assert-WorkerCheckout

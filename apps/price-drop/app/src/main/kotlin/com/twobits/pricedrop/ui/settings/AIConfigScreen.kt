@@ -102,7 +102,6 @@ private fun PriceDropProvider.icon(): ImageVector =
         PriceDropProvider.WEB_SEARCH -> Icons.Filled.Search
         PriceDropProvider.SHOPPING -> Icons.Filled.ShoppingCart
         PriceDropProvider.SERPER -> Icons.Filled.ShoppingCart
-        PriceDropProvider.COUPON -> Icons.Filled.ConfirmationNumber
         PriceDropProvider.RAINFOREST -> Icons.Filled.Park
     }
 
@@ -113,8 +112,7 @@ private fun PriceDropProvider.icon(): ImageVector =
 private fun PriceDropProvider.requirement(): CredentialRequirement =
     when (this) {
         PriceDropProvider.OPENAI -> CredentialRequirement.REQUIRED
-        PriceDropProvider.RAINFOREST -> CredentialRequirement.REQUIRED
-        PriceDropProvider.COUPON -> CredentialRequirement.REQUIRED
+        PriceDropProvider.RAINFOREST -> CredentialRequirement.RECOMMENDED
         PriceDropProvider.WEB_SEARCH -> CredentialRequirement.RECOMMENDED
         PriceDropProvider.SHOPPING -> CredentialRequirement.RECOMMENDED
         PriceDropProvider.SERPER -> CredentialRequirement.RECOMMENDED

@@ -1,8 +1,10 @@
 package com.twobits.pricedrop.data.provider
 
+import com.twobits.pricedrop.data.provider.contracts.ProviderCapability
+
 /**
  * Providers PriceDrop can talk to. Kept local to the app (rather than extending the shared
- * `com.twobits.apikeys.ProviderType` enum) so that adding shopping/search/coupon providers does
+ * `com.twobits.apikeys.ProviderType` enum) so that adding shopping/search providers does
  * not ripple into Scrybe/Shelf Snap's exhaustive `when (ProviderType)` sites.
  */
 enum class PriceDropProvider(
@@ -20,6 +22,7 @@ enum class PriceDropProvider(
     val signupUrl: String,
     /** Short BYOK cost-transparency note shown under the key field in AI Config. */
     val costEstimate: String,
+    val capabilities: Set<ProviderCapability> = emptySet(),
 ) {
     OPENAI(
         key = "openai",
@@ -49,62 +52,52 @@ enum class PriceDropProvider(
                 "Free tier includes 1 million tokens — enough for hundreds of price searches.",
         signupUrl = "https://jina.ai",
         costEstimate = "Est. cost: free tier covers hundreds of searches/month",
+        capabilities = setOf(ProviderCapability.SEARCH),
     ),
     SHOPPING(
         key = "shopping",
         displayName = "SearchAPI.io",
         byokBaseUrl = "https://www.searchapi.io/",
-        summary = "Recommended — keyword search with real prices",
+        summary = "Secondary — additional shopping coverage and testing",
         description =
-            "Recommended for keyword search — the only BYOK search path with real shopping " +
-                "price data. Without it (or Serper), search falls back to Jina and shows no prices.",
+            "Optional secondary Google Shopping provider. When enabled with Serper, both run " +
+                "and their structured offers are matched, merged, and deduplicated.",
         setupHint =
             "Sign up at searchapi.io → open the Dashboard → copy your API key. " +
                 "Developer plan includes 100 free searches per month.",
         signupUrl = "https://www.searchapi.io",
-        costEstimate = "Est. cost: ~\$0.004 per search · 100 free/month",
+        costEstimate = "Current entry plan: \$40/month for 10,000 searches",
+        capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS, ProviderCapability.PROMOTIONS),
     ),
     SERPER(
         key = "serper",
         displayName = "Serper.dev",
         byokBaseUrl = "https://google.serper.dev/",
-        summary = "Recommended — cheaper alternative to SearchAPI.io",
+        summary = "Primary — broad Google Shopping offer discovery",
         description =
-            "Recommended for keyword search — a materially cheaper alternative to SearchAPI.io " +
-                "that also returns real shopping price data. Without it (or SearchAPI.io), search " +
-                "falls back to Jina and shows no prices.",
+            "Default broad-coverage offer discovery for BYOK and Pro. Results are treated as " +
+                "candidate listings and matched before offers are compared.",
         setupHint =
             "Sign up at serper.dev → open the Dashboard → copy your API key. " +
                 "2,500 free searches, no card required.",
         signupUrl = "https://serper.dev",
         costEstimate = "Est. cost: ~\$0.30–1.00 per 1,000 searches · 2,500 free",
-    ),
-    COUPON(
-        key = "coupon",
-        displayName = "LinkMyDeals",
-        byokBaseUrl = "https://feed.linkmydeals.com/",
-        summary = "Required for the Coupon section",
-        description = "Required for the Coupon section — without it, coupon lookups return nothing.",
-        setupHint =
-            "Create a publisher account at linkmydeals.com → open Development → copy your API key. " +
-                "Plans include a limited free-store option and paid complete feeds.",
-        signupUrl = "https://linkmydeals.com/pricing/",
-        costEstimate = "Est. cost: limited free stores; paid plans unlock complete feeds",
+        capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS, ProviderCapability.PROMOTIONS),
     ),
     RAINFOREST(
         key = "rainforest",
         displayName = "Rainforest API",
         byokBaseUrl = "https://api.rainforestapi.com/",
-        summary = "Required — price, history, and barcode lookup",
+        summary = "Optional — Amazon-specific enrichment",
         description =
-            "Required for price tracking, price history, and barcode lookup — the app's core " +
-                "watchlist feature. SearchAPI.io/Jina/Serper cannot substitute for this; without a " +
-                "Rainforest key (or Pro), tracked Amazon items never update.",
+            "Optional Amazon enrichment for ASIN details, sellers, historical data, coupons, and " +
+                "barcode lookup. Broad product tracking does not require it.",
         setupHint =
             "Sign up at rainforestapi.com → open the Dashboard → copy your API key. " +
                 "Needed for Amazon ASIN price checks, price history, and barcode lookups.",
         signupUrl = "https://rainforestapi.com",
-        costEstimate = "Est. cost: ~\$0.003 per product / price lookup",
+        costEstimate = "Current Hobbyist plan: \$23/month annually for 500 credits",
+        capabilities = setOf(ProviderCapability.DETAILS, ProviderCapability.OFFERS),
     ),
     ;
 

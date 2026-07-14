@@ -84,19 +84,15 @@ class ProviderSettingsStore
             context.providerStore.edit { it[validatedKey(p)] = valid }
         }
 
-        /**
-         * Couponlayer never exposed the API contract the app had implemented. Clear that
-         * incompatible credential and routing choice once before enabling LinkMyDeals.
-         */
+        /** Clears legacy coupon-provider routing. Promotions now come from offers or manual codes. */
         suspend fun migrateCouponProvider(): Boolean {
             var migrated = false
             context.providerStore.edit { prefs ->
                 if (prefs[couponProviderSchemaKey] == COUPON_PROVIDER_SCHEMA) return@edit
-                val provider = PriceDropProvider.COUPON
-                prefs.remove(apiKeyKey(provider))
-                prefs.remove(validatedKey(provider))
-                prefs[modeKey(provider)] = ProviderMode.OFF.value
-                prefs[featureSourceKey(AiFeature.COUPON)] = ProviderMode.OFF.value
+                prefs.remove(stringPreferencesKey("key_coupon"))
+                prefs.remove(booleanPreferencesKey("valid_coupon"))
+                prefs[stringPreferencesKey("mode_coupon")] = ProviderMode.OFF.value
+                prefs[stringPreferencesKey("feature_source_coupon")] = ProviderMode.OFF.value
                 prefs[couponProviderSchemaKey] = COUPON_PROVIDER_SCHEMA
                 migrated = true
             }
@@ -154,6 +150,11 @@ class ProviderSettingsStore
                 }
             }
 
+        suspend fun getFeatureProviders(f: AiFeature): Set<String> {
+            val stored = context.providerStore.data.first()[featureProvidersKey(f)]
+            return stored?.split(',')?.filter { it.isNotBlank() }?.toSet() ?: defaultFeatureProviders(f)
+        }
+
         suspend fun setFeatureProviders(
             f: AiFeature,
             providerKeys: Set<String>,
@@ -162,6 +163,6 @@ class ProviderSettingsStore
         }
 
         private companion object {
-            const val COUPON_PROVIDER_SCHEMA = "linkmydeals_v1"
+            const val COUPON_PROVIDER_SCHEMA = "embedded_promotions_v2"
         }
     }

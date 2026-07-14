@@ -43,10 +43,10 @@ enum class AiFeature(
     SEARCH(
         key = "search",
         label = "Product search",
-        description = "Natural language queries and URL parsing (barcode lookup is a separate provider — see Rainforest)",
-        callEstimate = "1 call for keyword search · 2 calls for URL paste",
+        description = "Aggregated shopping offers with explainable product matching",
+        callEstimate = "1 call per enabled provider · 2 calls for URL paste",
         callNote =
-            "Keyword search = 1 shopping/web call, no OpenAI · Paste a product URL instead = " +
+            "Keyword search queries every enabled shopping provider · Paste a product URL = " +
                 "1 web read + 1 OpenAI call to extract the product",
         callWeight = 3,
         providers = listOf(PriceDropProvider.OPENAI, PriceDropProvider.WEB_SEARCH, PriceDropProvider.SHOPPING, PriceDropProvider.SERPER),
@@ -66,12 +66,12 @@ enum class AiFeature(
     ),
     COUPON(
         key = "coupon",
-        label = "Coupon discovery",
-        description = "Find coupon codes per retailer",
-        callEstimate = "1 call per product check",
-        callNote = "Coupon lookup, 1 request per product — raw codes only, no AI assessment",
-        callWeight = 2,
-        providers = listOf(PriceDropProvider.COUPON),
+        label = "Promotions",
+        description = "Offer promotions and manually entered coupon codes",
+        callEstimate = "0 dedicated calls",
+        callNote = "Uses provider offer metadata; broad coupon aggregation remains experimental",
+        callWeight = 1,
+        providers = emptyList(),
         models = emptyList(),
     ),
     DROPS(

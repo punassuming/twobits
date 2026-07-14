@@ -43,12 +43,13 @@ pwsh -File .\scripts\worker.ps1 setup
 pwsh -File .\scripts\worker.ps1 status
 pwsh -File .\scripts\worker.ps1 sync
 pwsh -File .\scripts\worker.ps1 test
+pwsh -File .\scripts\worker.ps1 contract
 pwsh -File .\scripts\worker.ps1 dev
 ```
 
 Pass `-WorkerRoot D:\path\to\twobits-worker` when the sibling lives elsewhere. Add both folders as Codex workspace roots locally. Do not add the Worker checkout to this repository or change Claude's existing shared-root setup.
 
-Coupon BYOK and Pro work must be coordinated across the two repositories. BYOK calls LinkMyDeals directly; Pro calls `/v1/pricedrop/coupons`, which uses the same upstream feed and normalization contract. Deploy the Worker change before releasing the Android change.
+PriceDrop discovery work must be coordinated across both repositories. BYOK calls provider adapters directly; Pro calls `/v2/products/discover`. Update the v2 schema and golden fixture in both test suites whenever the canonical contract changes. Deploy the Worker route before releasing the matching Android client.
 
 ## Repository skills
 

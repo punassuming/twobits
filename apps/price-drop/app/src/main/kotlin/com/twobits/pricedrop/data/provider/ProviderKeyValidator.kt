@@ -1,6 +1,5 @@
 package com.twobits.pricedrop.data.provider
 
-import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,7 +21,6 @@ class ProviderKeyValidator
     @Inject
     constructor(
         private val okHttpClient: OkHttpClient,
-        private val gson: Gson,
     ) {
         suspend fun validate(
             provider: PriceDropProvider,
@@ -37,7 +35,6 @@ class ProviderKeyValidator
                         PriceDropProvider.WEB_SEARCH -> testJina(trimmed)
                         PriceDropProvider.SHOPPING -> testSearchApi(trimmed)
                         PriceDropProvider.SERPER -> testSerper(trimmed)
-                        PriceDropProvider.COUPON -> testLinkMyDeals(trimmed)
                         PriceDropProvider.RAINFOREST -> testRainforest(trimmed)
                     }
                 }
@@ -142,36 +139,6 @@ class ProviderKeyValidator
                         throw IllegalStateException("Serper.dev rejected this key")
                     else -> throw IllegalStateException("Serper.dev returned HTTP ${response.code}")
                 }
-            }
-        }
-
-        private fun testLinkMyDeals(key: String): String {
-            val url =
-                "https://feed.linkmydeals.com/getOffers/"
-                    .toHttpUrl()
-                    .newBuilder()
-                    .addQueryParameter("API_KEY", key)
-                    .addQueryParameter("format", "json")
-                    .addQueryParameter("off_record", "1")
-                    .build()
-            val request =
-                Request
-                    .Builder()
-                    .url(url)
-                    .get()
-                    .build()
-            okHttpClient.newCall(request).execute().use { response ->
-                val text = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    throw IllegalStateException("LinkMyDeals returned HTTP ${response.code}")
-                }
-                val json = runCatching { gson.fromJson(text, JsonObject::class.java) }.getOrNull()
-                val accepted = json?.get("result")?.asString?.lowercase() in setOf("1", "true")
-                if (!accepted) {
-                    val info = json?.get("message")?.asString
-                    throw IllegalStateException(info ?: "LinkMyDeals rejected this API key")
-                }
-                return "Connected to LinkMyDeals"
             }
         }
 

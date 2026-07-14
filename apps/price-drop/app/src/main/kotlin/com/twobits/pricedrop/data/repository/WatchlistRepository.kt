@@ -11,16 +11,18 @@ import com.twobits.pricedrop.data.model.Activity
 import com.twobits.pricedrop.data.model.ActivityType
 import com.twobits.pricedrop.data.model.Coupon
 import com.twobits.pricedrop.data.model.CouponState
-import com.twobits.pricedrop.data.model.DiscountType
 import com.twobits.pricedrop.data.model.Offer
 import com.twobits.pricedrop.data.model.PriceEvent
 import com.twobits.pricedrop.data.model.WatchedProduct
+import com.twobits.pricedrop.data.provider.contracts.ProductSearchRequest
 import com.twobits.pricedrop.data.remote.PriceDropApiClient
-import com.twobits.pricedrop.data.remote.PriceParser
 import com.twobits.pricedrop.data.remote.model.BarcodeMatch
 import com.twobits.pricedrop.data.remote.model.SearchHit
 import com.twobits.pricedrop.domain.EffectivePrice
+import com.twobits.pricedrop.domain.aggregation.ProductDiscoveryCoordinator
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,8 +47,13 @@ class WatchlistRepository
         private val activityDao: ActivityDao,
         private val offerDao: OfferDao,
         private val api: PriceDropApiClient,
+        private val discoveryCoordinator: ProductDiscoveryCoordinator,
+        private val observationRepository: PriceObservationRepository,
         private val subscriptionRepository: SubscriptionRepository,
     ) {
+        private val discoveryRefreshMutex = Mutex()
+        private val discoveryRefreshes = mutableMapOf<String, Long>()
+
         fun observeAll(): Flow<List<WatchedProduct>> = watchedProductDao.observeAll()
 
         suspend fun getById(id: Long): WatchedProduct? = watchedProductDao.getById(id)
@@ -90,6 +97,33 @@ class WatchlistRepository
 
         fun observeCoupons(productId: Long): Flow<List<Coupon>> = couponDao.observeForProduct(productId)
 
+        suspend fun addManualCoupon(
+            productId: Long,
+            code: String,
+            description: String,
+        ) {
+            val normalizedCode = code.trim().uppercase()
+            if (normalizedCode.isBlank()) return
+            couponDao.insertAll(
+                listOf(
+                    Coupon(
+                        productId = productId,
+                        code = normalizedCode,
+                        description = description.trim(),
+                        state = CouponState.UNVERIFIED.value,
+                        source = "manual",
+                    ),
+                ),
+            )
+            activityDao.insert(
+                Activity(
+                    productId = productId,
+                    type = ActivityType.COUPON_FOUND.value,
+                    detail = normalizedCode,
+                ),
+            )
+        }
+
         fun observeActivity(productId: Long): Flow<List<Activity>> = activityDao.observeForProduct(productId)
 
         fun observeOffers(productId: Long): Flow<List<Offer>> = offerDao.observeForProduct(productId)
@@ -130,16 +164,36 @@ class WatchlistRepository
             price: Double,
             retailer: String,
             effectivePrice: Double = price,
+            recordObservation: Boolean = true,
         ) {
+            val product = watchedProductDao.getById(productId) ?: return
+            val observedAt = System.currentTimeMillis()
+            if (recordObservation) {
+                observationRepository.recordLegacyPrice(
+                    product = product,
+                    price = price,
+                    effectivePrice = effectivePrice,
+                    retailer = retailer,
+                    observedAt = observedAt,
+                    provider = product.source.ifBlank { "price_refresh" },
+                    provenance = "local_observation",
+                )
+            }
             priceEventDao.insert(
-                PriceEvent(productId = productId, price = price, effectivePrice = effectivePrice, retailer = retailer),
+                PriceEvent(
+                    productId = productId,
+                    price = price,
+                    effectivePrice = effectivePrice,
+                    retailer = retailer,
+                    recordedAt = observedAt,
+                ),
             )
             watchedProductDao.updatePrice(productId, price, System.currentTimeMillis())
-            val product = watchedProductDao.getById(productId) ?: return
+            val updatedProduct = watchedProductDao.getById(productId) ?: return
             val events = priceEventDao.getForProduct(productId)
             val prices = events.map { it.price }
             watchedProductDao.update(
-                product.copy(
+                updatedProduct.copy(
                     trackedLow = prices.minOrNull() ?: price,
                     trackedHigh = prices.maxOrNull() ?: price,
                     trackedAvg = if (prices.isNotEmpty()) prices.average() else price,
@@ -149,21 +203,121 @@ class WatchlistRepository
 
         // ── Remote ────────────────────────────────────────────────────────────────
 
-        /** Natural-language / keyword product search via the Worker. */
+        /** Aggregated product search through every enabled provider for the selected mode. */
         suspend fun searchProducts(query: String): List<SearchHit> =
-            api.search(query).results.mapNotNull { r ->
-                val title = r.title ?: return@mapNotNull null
+            discoveryCoordinator.discover(ProductSearchRequest(query)).products.map { product ->
+                val candidate = product.candidate
+                val bestOffer = product.offers.firstOrNull() ?: candidate.offer
                 SearchHit(
-                    title = title,
-                    price = PriceParser.parse(r.price),
-                    source = r.source.orEmpty(),
-                    url = r.url.orEmpty(),
+                    title = candidate.title,
+                    price = bestOffer?.totalPrice?.amountMinor?.div(100.0),
+                    source = product.offers.map { it.provider.id }.distinct().joinToString().ifBlank { candidate.provider.id },
+                    url = bestOffer?.productUrl ?: candidate.sourceUrl,
+                    confidence = (product.assessment.score * 100).toInt(),
+                    canonicalProductId = product.canonicalProductId,
+                    identity = candidate.identity,
+                    imageUrl = candidate.imageUrls.firstOrNull().orEmpty(),
+                    offers = product.offers,
                 )
             }
 
+        suspend fun recordDiscoveredOffers(
+            productId: Long,
+            canonicalProductId: String,
+            offers: List<com.twobits.pricedrop.domain.product.ProductOffer>,
+            confidence: Int,
+        ) {
+            if (offers.isEmpty()) return
+            offerDao.deleteForProduct(productId)
+            offerDao.insertAll(
+                offers.map { offer ->
+                    Offer(
+                        productId = productId,
+                        retailer = offer.merchant.name,
+                        seller = offer.seller.orEmpty(),
+                        basePrice = offer.itemPrice.amountMinor / 100.0,
+                        shipping = (offer.shippingPrice?.amountMinor ?: 0L) / 100.0,
+                        effectivePrice = offer.totalPrice.amountMinor / 100.0,
+                        availability = offer.availability.name.lowercase(),
+                        confidence = confidence,
+                        url = offer.productUrl,
+                        source = offer.provider.id,
+                        lastCheckedAt = offer.observedAt.toEpochMilli(),
+                    )
+                },
+            )
+            offers.forEach { offer ->
+                observationRepository.recordOffer(productId, canonicalProductId, offer)
+            }
+            val promotions = offers.flatMap { it.promotions }.distinctBy { listOf(it.code, it.description, it.source.id) }
+            couponDao.deleteProviderPromotions(productId)
+            if (promotions.isNotEmpty()) {
+                couponDao.insertAll(
+                    promotions.map { promotion ->
+                        Coupon(
+                            productId = productId,
+                            code = promotion.code.orEmpty(),
+                            description = promotion.description,
+                            state = CouponState.UNVERIFIED.value,
+                            source = promotion.source.id,
+                            applicability = promotion.applicability.name,
+                            confidence = promotion.confidence,
+                        )
+                    },
+                )
+            }
+        }
+
         /** Refresh the current price for a product keyed by ASIN/UPC; no-op for manual items. */
-        suspend fun refreshPrice(productId: Long) {
+        suspend fun refreshPrice(
+            productId: Long,
+            force: Boolean = false,
+        ) {
             val product = watchedProductDao.getById(productId) ?: return
+            val now = System.currentTimeMillis()
+            if (!force && now - product.lastCheckedAt < DISCOVERY_FRESHNESS_MS) return
+            val refreshKey = product.canonicalProductId.ifBlank { product.title.lowercase() }
+            val shouldRefresh =
+                discoveryRefreshMutex.withLock {
+                    val lastRefresh = discoveryRefreshes[refreshKey] ?: 0L
+                    if (!force && now - lastRefresh < DISCOVERY_FRESHNESS_MS) {
+                        false
+                    } else {
+                        discoveryRefreshes[refreshKey] = now
+                        true
+                    }
+                }
+            if (!shouldRefresh) return
+            val discovery =
+                discoveryCoordinator.discover(
+                    ProductSearchRequest(
+                        query = product.title,
+                        identifiers =
+                            com.twobits.pricedrop.domain.product.ProductIdentity(
+                                brand = product.brand.ifBlank { null },
+                                model = product.model.ifBlank { null },
+                                manufacturerPartNumber = product.manufacturerPartNumber.ifBlank { null },
+                                gtin = product.gtin.ifBlank { null },
+                                upc = product.upc.ifBlank { null },
+                                ean = product.ean.ifBlank { null },
+                                asin = product.asin.ifBlank { null },
+                            ),
+                    ),
+                )
+            val resolved =
+                discovery.products.firstOrNull { it.canonicalProductId == product.canonicalProductId }
+                    ?: discovery.products.firstOrNull()
+            val offer = resolved?.offers?.firstOrNull()
+            if (resolved != null && offer != null) {
+                val confidence = (resolved.assessment.score * 100).toInt()
+                recordDiscoveredOffers(productId, resolved.canonicalProductId, resolved.offers, confidence)
+                val total = offer.totalPrice.amountMinor / 100.0
+                recordPrice(productId, total, offer.merchant.id, total, recordObservation = false)
+                activityDao.insert(
+                    Activity(productId = productId, type = ActivityType.CHECKED.value, detail = formatUsd(total)),
+                )
+                return
+            }
             val resp =
                 when {
                     product.asin.isNotBlank() -> api.price(asin = product.asin)
@@ -175,63 +329,49 @@ class WatchlistRepository
                 activityDao.insert(
                     Activity(productId = productId, type = ActivityType.CHECKED.value, detail = formatUsd(resp.price)),
                 )
+            } else {
+                discoveryRefreshMutex.withLock { discoveryRefreshes.remove(refreshKey) }
             }
         }
 
-        /** Backfill historical price points (Rainforest) as observed price events. */
+        /** Import Rainforest history as external observations without replacing local history. */
         suspend fun fetchHistory(
             productId: Long,
             asin: String,
         ) {
             val resp = api.history(asin)
             if (resp.history.isEmpty()) return
-            priceEventDao.deleteForProduct(productId)
+            val product = watchedProductDao.getById(productId) ?: return
             resp.history.forEach { pt ->
-                priceEventDao.insert(
-                    PriceEvent(
-                        productId = productId,
+                val inserted =
+                    observationRepository.recordLegacyPrice(
+                        product = product,
                         price = pt.price,
                         effectivePrice = pt.price,
-                        recordedAt = pt.ts,
-                    ),
-                )
+                        retailer = "amazon.com",
+                        observedAt = pt.ts,
+                        provider = "rainforest",
+                        provenance = "external_history",
+                    )
+                if (inserted != -1L) {
+                    priceEventDao.insert(
+                        PriceEvent(
+                            productId = productId,
+                            price = pt.price,
+                            effectivePrice = pt.price,
+                            retailer = "amazon.com",
+                            recordedAt = pt.ts,
+                        ),
+                    )
+                }
             }
         }
 
-        /** Replace the coupon set for a product with the latest from the provider. */
+        /** Return embedded or manually entered promotions; no broad coupon API is assumed. */
         suspend fun fetchCoupons(
             productId: Long,
             query: String,
-        ): List<Coupon> {
-            val resp = api.coupons(query)
-            val coupons =
-                resp.coupons.mapNotNull { c ->
-                    val code = c.code ?: return@mapNotNull null
-                    Coupon(
-                        productId = productId,
-                        code = code,
-                        description = c.description.orEmpty(),
-                        discountType = DiscountType.fromValue(c.type).value,
-                        discountValue = PriceParser.parse(c.discount) ?: 0.0,
-                        state = CouponState.UNVERIFIED.value,
-                        source = "coupon",
-                        store = c.store.orEmpty(),
-                        expiresAt = c.expires.orEmpty(),
-                    )
-                }
-            couponDao.deleteForProduct(productId)
-            couponDao.insertAll(coupons)
-            if (coupons.isNotEmpty()) {
-                activityDao.insert(
-                    Activity(
-                        productId = productId,
-                        type = ActivityType.COUPON_FOUND.value,
-                        detail = coupons.first().code,
-                    ),
-                )
-            }
-            return coupons
-        }
+        ): List<Coupon> = couponDao.getForProduct(productId)
 
         /** Stamp the last coupon-check time for a product (used by the background worker to throttle). */
         suspend fun updateCouponCheckedAt(
@@ -268,5 +408,6 @@ class WatchlistRepository
         companion object {
             /** Maximum simultaneously-tracked products on the free plan. Pro is unlimited. */
             const val FREE_ACTIVE_LIMIT = 3
+            const val DISCOVERY_FRESHNESS_MS = 6 * 60 * 60 * 1_000L
         }
     }

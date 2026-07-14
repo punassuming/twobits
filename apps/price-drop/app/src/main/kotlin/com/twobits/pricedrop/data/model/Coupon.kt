@@ -1,5 +1,6 @@
 package com.twobits.pricedrop.data.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -44,5 +45,7 @@ data class Coupon(
     val source: String = "",
     val store: String = "",
     val expiresAt: String = "",
+    @ColumnInfo(defaultValue = "'UNKNOWN'") val applicability: String = "UNKNOWN",
+    @ColumnInfo(defaultValue = "0.0") val confidence: Double = 0.0,
     val lastCheckedAt: Long = System.currentTimeMillis(),
 )

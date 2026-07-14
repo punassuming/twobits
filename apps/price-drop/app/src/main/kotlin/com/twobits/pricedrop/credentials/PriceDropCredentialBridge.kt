@@ -17,7 +17,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.JINA -> providerStore.getKey(PriceDropProvider.WEB_SEARCH).takeIf { it.isNotBlank() }
                 SharedCredentialId.SEARCHAPI -> providerStore.getKey(PriceDropProvider.SHOPPING).takeIf { it.isNotBlank() }
                 SharedCredentialId.SERPER -> providerStore.getKey(PriceDropProvider.SERPER).takeIf { it.isNotBlank() }
-                SharedCredentialId.COUPON -> providerStore.getKey(PriceDropProvider.COUPON).takeIf { it.isNotBlank() }
+                SharedCredentialId.COUPON -> null
                 SharedCredentialId.RAINFOREST -> providerStore.getKey(PriceDropProvider.RAINFOREST).takeIf { it.isNotBlank() }
                 else -> null
             }
@@ -31,7 +31,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.JINA -> providerStore.setKey(PriceDropProvider.WEB_SEARCH, value)
                 SharedCredentialId.SEARCHAPI -> providerStore.setKey(PriceDropProvider.SHOPPING, value)
                 SharedCredentialId.SERPER -> providerStore.setKey(PriceDropProvider.SERPER, value)
-                SharedCredentialId.COUPON -> providerStore.setKey(PriceDropProvider.COUPON, value)
+                SharedCredentialId.COUPON -> Unit
                 SharedCredentialId.RAINFOREST -> providerStore.setKey(PriceDropProvider.RAINFOREST, value)
                 else -> Unit
             }
@@ -43,7 +43,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.JINA -> providerStore.clearKey(PriceDropProvider.WEB_SEARCH)
                 SharedCredentialId.SEARCHAPI -> providerStore.clearKey(PriceDropProvider.SHOPPING)
                 SharedCredentialId.SERPER -> providerStore.clearKey(PriceDropProvider.SERPER)
-                SharedCredentialId.COUPON -> providerStore.clearKey(PriceDropProvider.COUPON)
+                SharedCredentialId.COUPON -> Unit
                 SharedCredentialId.RAINFOREST -> providerStore.clearKey(PriceDropProvider.RAINFOREST)
                 else -> Unit
             }

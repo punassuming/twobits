@@ -73,7 +73,7 @@ Highest-value shared candidates:
 
 | Screen | Artifacts | Discrepancy or opportunity | Priority / likely owner |
 |---|---|---|---|
-| AI Config | [light](ui-baselines/price-drop/api35/light/ai-config.png) · [dark](ui-baselines/price-drop/api35/dark/ai-config.png) | Couponlayer was nonexistent; recapture LinkMyDeals copy and simplify feature/provider dependencies. | P0 implemented provider correction; P1 shared credentials |
+| AI Config | [light](ui-baselines/price-drop/api35/light/ai-config.png) · [dark](ui-baselines/price-drop/api35/dark/ai-config.png) | Recapture the Serper-primary, SearchAPI-secondary, optional-Rainforest copy and validate multi-select comprehension. | P0 provider correction; P1 shared credentials |
 | Ask | [light](ui-baselines/price-drop/api35/light/ask.png) · [dark](ui-baselines/price-drop/api35/dark/ask.png) | Suggestion chips clip/crowd; explain live-data limits and preserve input priority at large font sizes. | P1 local screen; shared chip flow |
 | Barcode | [light](ui-baselines/price-drop/api35/light/barcode.png) · [dark](ui-baselines/price-drop/api35/dark/barcode.png) | Raw black camera shell needs permission, unavailable-camera, manual-entry, and framing guidance states. | P1 shared camera shell; local barcode behavior |
 | Drops | [light](ui-baselines/price-drop/api35/light/drops.png) · [dark](ui-baselines/price-drop/api35/dark/drops.png) | The light baseline is stale: a fresh capture has the correct empty state and hides “Mark all done.” Review and explicitly re-accept it. | P0 baseline maintenance; retain local action-gating test |
@@ -121,20 +121,13 @@ Keep app-specific walkthrough content, but implement the mechanics once.
 - Offer URL/keyword entry when camera permission is denied.
 - Finish at Watch empty with one dominant Add product action; defer What's New.
 
-## Coupon provider and proxy decision
+## Product discovery and promotion decision
 
-Couponlayer is removed because the implemented API does not exist. PickaLink remains worth reevaluating, but its public material does not document authentication or a response schema, so it did not pass the implementation qualification gate.
+Serper Google Shopping is the primary broad offer-discovery source. SearchAPI is a concurrent secondary source. Jina remains fallback web discovery and URL reading. Rainforest is optional Amazon enrichment rather than a core dependency.
 
-The current implementation uses LinkMyDeals' documented JSON feed:
+No general coupon provider is selected. Promotions come from shopping or retailer metadata and manually entered codes. Applicability stays explicit, and uncertain promotions do not reduce effective price. A future coupon adapter remains experimental until measured against a representative product corpus.
 
-- BYOK calls the upstream feed directly with the user's key.
-- Pro calls the independently deployed Worker route `/v1/pricedrop/coupons`.
-- Both paths apply the same domain/query ranking and return the existing `CouponDto` contract.
-- The Worker may add entitlement checks and caching, but not different coupon content logic.
-- Existing Couponlayer keys/modes are cleared once because credentials are incompatible.
-- Worker must deploy first; Android release follows after the route contract test passes.
-
-Before production enablement, obtain publisher credentials, confirm HTTPS support and plan limits, run the shared fixture plus a live sandbox smoke test, and document feed redistribution/affiliate requirements.
+BYOK executes enabled adapters directly. Pro calls the independently deployed Worker route `/v2/products/discover`; both paths normalize into the shared schema under `shared/contracts/price-drop/v2/`. The Worker must deploy before the Android client switches to the route.
 
 ## Delivery slices
 
