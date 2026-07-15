@@ -55,6 +55,8 @@ data class MarketQuery(
     val label: String,
     val query: String,
     val resultCount: Int = 0,
+    /** Provider-specific failure for this attempt; null for successful empty results. */
+    val error: String? = null,
 )
 
 /**

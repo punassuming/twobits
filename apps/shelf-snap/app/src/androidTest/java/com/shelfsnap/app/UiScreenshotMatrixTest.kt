@@ -10,7 +10,12 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.shelfsnap.app.data.local.AppDatabase
 import com.shelfsnap.app.data.local.ItemEntity
+import com.shelfsnap.app.data.model.Citation
 import com.shelfsnap.app.data.model.Condition
+import com.shelfsnap.app.data.model.MarketComp
+import com.shelfsnap.app.data.model.MarketQuery
+import com.shelfsnap.app.data.model.MarketResearch
+import com.shelfsnap.app.data.model.MarketResearchDebug
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
@@ -81,11 +86,59 @@ class UiScreenshotMatrixTest {
                     createdAt = FIXED_TIME,
                     updatedAt = FIXED_TIME,
                     title = "Kanto YU4 speakers",
+                    marketResearch = fixtureMarketResearch(),
                 ),
             )
         }
         database.close()
     }
+
+    private fun fixtureMarketResearch(): MarketResearch =
+        MarketResearch(
+            comps =
+                listOf(
+                    MarketComp(
+                        platformKey = "ebay",
+                        title = "Kanto YU4 powered speakers - walnut",
+                        price = 184.0,
+                        sold = true,
+                        date = "Completed sale",
+                        sourceUrl = "https://www.ebay.com/itm/fixture-184",
+                    ),
+                    MarketComp(
+                        platformKey = "ebay",
+                        title = "Kanto YU4 bookshelf speakers with stands",
+                        price = 212.0,
+                        sold = true,
+                        date = "Completed sale",
+                        sourceUrl = "https://www.ebay.com/itm/fixture-212",
+                    ),
+                ),
+            suggestedPrices = mapOf("ebay" to 205.0, "mercari" to 198.0),
+            averageSoldPrice = 198.0,
+            lowPrice = 184.0,
+            highPrice = 212.0,
+            confidencePercent = 58,
+            citations =
+                listOf(
+                    Citation("Kanto YU4 powered speakers", "https://www.ebay.com/itm/fixture-184"),
+                    Citation("Kanto YU4 speakers with stands", "https://www.ebay.com/itm/fixture-212"),
+                ),
+            retrievedAt = FIXED_TIME,
+            searchProviderKey = "serper",
+            searchResultCount = 12,
+            debug =
+                MarketResearchDebug(
+                    queries =
+                        listOf(
+                            MarketQuery("Serper.dev", "Kanto YU4 used speakers price", 8),
+                            MarketQuery("SearchAPI.io", "Kanto YU4 site:ebay.com/itm sold", 8),
+                        ),
+                    searchMs = 840,
+                    synthesisMs = 1_120,
+                    totalMs = 1_960,
+                ),
+        )
 
     private fun capture(
         route: String,

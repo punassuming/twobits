@@ -8,6 +8,12 @@
 
 ### Fixes
 
+**Market research** — verified sold listings now produce reliable price comparisons:
+* SearchAPI uses completed sales and preserves structured sold prices
+* provider failures appear beside the exact query that failed
+* unverified AI listings no longer appear as comparable evidence
+* empty evidence no longer displays a misleading zero-price card
+
 ## 1.22.0 (2026-07-14)
 
 ### Features

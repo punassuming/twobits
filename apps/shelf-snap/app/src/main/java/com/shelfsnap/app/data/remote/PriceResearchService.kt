@@ -58,6 +58,13 @@ data class SearchEvidence(
     val readMs: Long = 0L,
 )
 
+private data class SearchAttempt(
+    val provider: SearchProvider,
+    val query: String,
+    val results: List<WebSearchResult> = emptyList(),
+    val error: String? = null,
+)
+
 /**
  * Produces resale price guidance for an item.
  *
@@ -201,9 +208,8 @@ class PriceResearchService
 
             // Phase 1 — fire all (query × provider) pairs concurrently and merge.
             // Parallel execution cuts wall-clock time from (N×P×latency) to max(latency).
-            // Each quadruple: (providerLabel, query, results, errorMessage-or-null)
             val searchStart = System.currentTimeMillis()
-            val allAttempts: List<Triple<String, String, List<WebSearchResult>>> =
+            val allAttempts: List<SearchAttempt> =
                 coroutineScope {
                     queries
                         .flatMap { query ->
@@ -212,25 +218,38 @@ class PriceResearchService
                                     runCatching { service.search(query, key) }
                                         .fold(
                                             onSuccess = { results ->
-                                                Triple(service.provider.displayName, query, results)
+                                                SearchAttempt(provider = service.provider, query = query, results = results)
                                             },
                                             onFailure = { e ->
                                                 Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
-                                                Triple(service.provider.displayName, query, emptyList<WebSearchResult>())
+                                                SearchAttempt(
+                                                    provider = service.provider,
+                                                    query = query,
+                                                    error = e.message ?: e.javaClass.simpleName,
+                                                )
                                             },
                                         )
                                 }
                             }
                         }.map { it.await() }
                 }
-            for ((label, query, results) in allAttempts) {
-                queryLog.add(MarketQuery(label = label, query = query, resultCount = results.size))
-                results.forEach { r ->
+            for (attempt in allAttempts) {
+                queryLog.add(
+                    MarketQuery(
+                        label = attempt.provider.displayName,
+                        query = attempt.query,
+                        resultCount = attempt.results.size,
+                        error = attempt.error,
+                    ),
+                )
+                attempt.results.forEach { r ->
                     if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
                 }
             }
             if (merged.isEmpty()) {
-                lastError = queryLog.firstOrNull { it.resultCount == 0 }?.let { "No results from ${it.label}" }
+                lastError =
+                    allAttempts.firstNotNullOfOrNull { it.error }
+                        ?: queryLog.firstOrNull()?.let { "No results from ${it.label}" }
             }
             val searchMs = System.currentTimeMillis() - searchStart
 
@@ -308,6 +327,10 @@ class PriceResearchService
                                 title = r.get("title")?.asString ?: "",
                                 url = r.get("url")?.asString ?: "",
                                 snippet = r.get("description")?.asString ?: "",
+                                platformKey = r.get("platform")?.asString,
+                                price = r.get("price")?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asDouble }.getOrNull() },
+                                sold = r.get("sold")?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asBoolean }.getOrNull() },
+                                date = r.get("date")?.asString ?: "",
                             )
                         } ?: emptyList()
                     }
@@ -321,7 +344,14 @@ class PriceResearchService
                     onFailure = {
                         Log.w(TAG, "Worker search failed for query '$query': ${it.message}")
                         lastError = it.message ?: it.javaClass.simpleName
-                        queryLog.add(MarketQuery(label = "Managed search", query = query, resultCount = 0))
+                        queryLog.add(
+                            MarketQuery(
+                                label = "Managed search",
+                                query = query,
+                                resultCount = 0,
+                                error = lastError,
+                            ),
+                        )
                     },
                 )
                 if (merged.size >= MIN_RESULTS_EARLY_STOP) break
@@ -366,8 +396,9 @@ class PriceResearchService
 
             // Always add platform-targeted queries so generic items (no brand/model) still get
             // real sold-listing evidence rather than bare text searches.
+            // One eBay query is enough: SearchAPI maps it to the dedicated completed-sales
+            // engine, while the other providers honor the site: operator directly.
             queries.add("$descriptor site:ebay.com/itm sold".trim())
-            queries.add("$descriptor site:ebay.com sold".trim())
             queries.add("$descriptor mercari.com sold".trim())
             queries.add("$descriptor offerup.com sold".trim())
 
@@ -456,6 +487,10 @@ class PriceResearchService
                                         addProperty("title", r.title)
                                         addProperty("url", r.url)
                                         addProperty("snippet", r.snippet)
+                                        r.platformKey?.let { addProperty("platform", it) }
+                                        r.price?.let { addProperty("price", it) }
+                                        r.sold?.let { addProperty("sold", it) }
+                                        if (r.date.isNotBlank()) addProperty("date", r.date)
                                     },
                                 )
                             }
@@ -520,7 +555,7 @@ class PriceResearchService
 
                 val obj = JsonParser.parseString(content).asJsonObject
 
-                val comps =
+                val modelComps =
                     obj.getAsJsonArray("comps")?.mapNotNull { el ->
                         val c = el.asJsonObject
                         val platformKey = c.get("platform")?.asString ?: return@mapNotNull null
@@ -534,6 +569,8 @@ class PriceResearchService
                             sourceUrl = c.get("url")?.asString ?: "",
                         )
                     } ?: emptyList()
+                val comps = mergeVerifiedComparableListings(modelComps, evidence)
+                val comparableStats = comparableStats(comps)
 
                 val suggestedPrices =
                     obj
@@ -560,10 +597,10 @@ class PriceResearchService
                     MarketResearch(
                         comps = comps,
                         suggestedPrices = suggestedPrices,
-                        averageSoldPrice = obj.get("averageSoldPrice")?.asDouble ?: 0.0,
-                        lowPrice = obj.get("lowPrice")?.asDouble ?: 0.0,
-                        highPrice = obj.get("highPrice")?.asDouble ?: 0.0,
-                        confidencePercent = obj.get("confidencePercent")?.asInt ?: 0,
+                        averageSoldPrice = comparableStats?.average ?: obj.get("averageSoldPrice")?.asDouble ?: 0.0,
+                        lowPrice = comparableStats?.low ?: obj.get("lowPrice")?.asDouble ?: 0.0,
+                        highPrice = comparableStats?.high ?: obj.get("highPrice")?.asDouble ?: 0.0,
+                        confidencePercent = confidenceFromComps(comps, obj.get("confidencePercent")?.asInt ?: 0),
                         citations = citations,
                         retrievedAt = System.currentTimeMillis(),
                         searchProviderKey = evidence.providerKey,
@@ -579,6 +616,32 @@ class PriceResearchService
                 Log.w(TAG, "Failed to parse pricing response: ${it.javaClass.simpleName}")
                 PriceResearchResult(error = ERROR_PARSE)
             }
+
+        private fun comparableStats(comps: List<MarketComp>): ComparableStats? {
+            val prices =
+                comps
+                    .filter { it.sold }
+                    .map { it.price }
+                    .ifEmpty { comps.map { it.price } }
+            if (prices.isEmpty()) return null
+            return ComparableStats(
+                average = prices.average(),
+                low = prices.min(),
+                high = prices.max(),
+            )
+        }
+
+        private fun confidenceFromComps(
+            comps: List<MarketComp>,
+            modelConfidence: Int,
+        ): Int {
+            if (comps.isEmpty()) return modelConfidence.coerceIn(0, MAX_AI_ONLY_CONFIDENCE)
+            val soldCount = comps.count { it.sold }
+            val platformCount = comps.map { it.platformKey }.distinct().size
+            val confidenceFloor = (15 + soldCount.coerceAtMost(5) * 8 + platformCount.coerceAtMost(3) * 5).coerceAtMost(70)
+            val confidenceCeiling = (30 + soldCount.coerceAtMost(5) * 9 + platformCount.coerceAtMost(3) * 5).coerceAtMost(85)
+            return modelConfidence.coerceAtLeast(confidenceFloor).coerceAtMost(confidenceCeiling)
+        }
 
         /**
          * Pulls the assistant text out of a Responses API payload. The `output` array
@@ -613,6 +676,7 @@ class PriceResearchService
             private const val MAX_CITATIONS = 8
             private const val MAX_SEARCH_RESULTS = 12
             private const val MIN_RESULTS_EARLY_STOP = 5
+            private const val MAX_AI_ONLY_CONFIDENCE = 30
 
             /** Cap on how many result pages the Jina Reader opens per research run. */
             private const val MAX_PAGES_READ = 4
@@ -653,3 +717,39 @@ class PriceResearchService
                 }
         }
     }
+
+private data class ComparableStats(
+    val average: Double,
+    val low: Double,
+    val high: Double,
+)
+
+internal fun mergeVerifiedComparableListings(
+    modelComps: List<MarketComp>,
+    evidence: SearchEvidence,
+): List<MarketComp> {
+    val evidenceUrls = evidence.results.map { it.url }.filter { it.isNotBlank() }.toSet()
+    val verifiedModelComps =
+        modelComps.filter { comp ->
+            comp.price.isFinite() && comp.price > 0.0 && comp.sourceUrl in evidenceUrls
+        }
+    val structuredComps =
+        evidence.results.mapNotNull { result ->
+            val platformKey = result.platformKey ?: return@mapNotNull null
+            if (Platform.fromKey(platformKey) == null || result.sold != true) return@mapNotNull null
+            val price = result.price?.takeIf { it.isFinite() && it > 0.0 } ?: return@mapNotNull null
+            MarketComp(
+                platformKey = platformKey,
+                title = result.title,
+                price = price,
+                sold = true,
+                date = result.date.ifBlank { "Completed sale" },
+                sourceUrl = result.url,
+            )
+        }
+    return (structuredComps + verifiedModelComps)
+        .distinctBy { it.sourceUrl }
+        .take(MAX_COMPARABLES)
+}
+
+private const val MAX_COMPARABLES = 12

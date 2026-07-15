@@ -5,6 +5,14 @@ data class WebSearchResult(
     val title: String,
     val url: String,
     val snippet: String,
+    /** Marketplace key when the upstream returned a structured listing. */
+    val platformKey: String? = null,
+    /** Parsed listing price supplied by the upstream, not inferred by the model. */
+    val price: Double? = null,
+    /** Completed-sale state supplied by the upstream; null when it is unknown. */
+    val sold: Boolean? = null,
+    /** Upstream recency/completion label when available. */
+    val date: String = "",
 )
 
 /** Which web-search backend to use for market research. */

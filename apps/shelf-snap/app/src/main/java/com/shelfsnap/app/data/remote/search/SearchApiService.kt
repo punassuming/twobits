@@ -1,9 +1,11 @@
 package com.shelfsnap.app.data.remote.search
 
 import android.util.Log
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -42,33 +44,14 @@ class SearchApiService
                     throw IOException("SearchAPI.io requires an API key — add one in Settings")
                 }
 
-                val isEbay = query.lowercase().contains("ebay.com")
-                val ebayQuery =
-                    query
-                        .replace(Regex("site:\\S+", RegexOption.IGNORE_CASE), "")
-                        .replace(Regex("\\bsold\\b", RegexOption.IGNORE_CASE), "")
-                        .replace(Regex("\\s+"), " ")
-                        .trim()
-
-                val builder =
-                    "https://www.searchapi.io/api/v1/search"
-                        .toHttpUrl()
-                        .newBuilder()
-                if (isEbay) {
-                    builder.addQueryParameter("engine", "ebay")
-                    builder.addQueryParameter("q", ebayQuery.ifBlank { query })
-                } else {
-                    builder.addQueryParameter("engine", "google")
-                    builder.addQueryParameter("q", query)
-                    builder.addQueryParameter("num", limit.coerceIn(1, 20).toString())
-                }
-                builder.addQueryParameter("api_key", apiKey.trim())
+                val isEbay = isEbaySearchQuery(query)
 
                 val request =
                     Request
                         .Builder()
-                        .url(builder.build())
+                        .url(buildSearchApiUrl(query, limit))
                         .addHeader("Accept", "application/json")
+                        .addHeader("Authorization", "Bearer ${apiKey.trim()}")
                         .get()
                         .build()
 
@@ -77,43 +60,123 @@ class SearchApiService
                         Log.w(TAG, "SearchAPI.io search failed: HTTP ${response.code}")
                         throw IOException("SearchAPI.io search failed: HTTP ${response.code}")
                     }
-                    parse(response.body?.string().orEmpty(), limit)
+                    parseSearchApiResponse(response.body?.string().orEmpty(), limit, soldOnly = isEbay)
                 }
-            }
-
-        private fun parse(
-            json: String,
-            limit: Int,
-        ): List<WebSearchResult> =
-            runCatching {
-                val root = JsonParser.parseString(json).asJsonObject
-                val results =
-                    root.getAsJsonArray("organic_results")
-                        ?: root.getAsJsonArray("shopping_results")
-                        ?: return emptyList()
-                results.take(limit).mapNotNull { el ->
-                    val obj = el.asJsonObject
-                    val title = obj.get("title")?.asString ?: return@mapNotNull null
-                    val resultUrl =
-                        (obj.get("link") ?: obj.get("product_link"))
-                            ?.takeIf { it.isJsonPrimitive }
-                            ?.asString ?: return@mapNotNull null
-                    val snippet =
-                        obj.get("snippet")?.takeIf { it.isJsonPrimitive }?.asString
-                            ?: obj
-                                .get("price")
-                                ?.takeIf { it.isJsonPrimitive }
-                                ?.asString
-                                ?.let { "Price: $it" }
-                            ?: ""
-                    WebSearchResult(title = title, url = resultUrl, snippet = snippet)
-                }
-            }.getOrElse {
-                Log.w(TAG, "Failed to parse SearchAPI.io response: ${it.javaClass.simpleName}")
-                emptyList()
             }
 
         private companion object {
             const val TAG = "SearchApiService"
         }
     }
+
+internal fun buildSearchApiUrl(
+    query: String,
+    limit: Int,
+): HttpUrl {
+    val builder =
+        "https://www.searchapi.io/api/v1/search"
+            .toHttpUrl()
+            .newBuilder()
+    if (isEbaySearchQuery(query)) {
+        val ebayQuery =
+            query
+                .replace(Regex("site:\\S+", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("\\bsold\\b", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+        builder.addQueryParameter("engine", "ebay_search")
+        builder.addQueryParameter("q", ebayQuery.ifBlank { query })
+        builder.addQueryParameter("filters", "sold_listings")
+    } else {
+        builder.addQueryParameter("engine", "google")
+        builder.addQueryParameter("q", query)
+        builder.addQueryParameter("num", limit.coerceIn(1, 20).toString())
+    }
+    return builder.build()
+}
+
+internal fun parseSearchApiResponse(
+    json: String,
+    limit: Int,
+    soldOnly: Boolean,
+): List<WebSearchResult> =
+    runCatching {
+        val root = JsonParser.parseString(json).asJsonObject
+        val results =
+            root.getAsJsonArray("organic_results")
+                ?: root.getAsJsonArray("shopping_results")
+                ?: root.getAsJsonArray("inline_shopping")
+                ?: return emptyList()
+        results.take(limit).mapNotNull { element ->
+            val result = element.asJsonObject
+            val title = result.string("title") ?: return@mapNotNull null
+            val resultUrl =
+                result.string("link")
+                    ?: result.string("product_link")
+                    ?: result.string("url")
+                    ?: return@mapNotNull null
+            val priceText = result.string("price")
+            val price =
+                result.number("extracted_price")
+                    ?: result
+                        .getAsJsonObject("extracted_price_range")
+                        ?.number("from")
+                    ?: priceText?.let(::parsePrice)
+            val rawSnippet = result.string("snippet") ?: result.string("description")
+            val sold =
+                when {
+                    soldOnly -> true
+                    price != null && listOf(title, rawSnippet, result.string("items_sold")).any(::containsSoldWord) -> true
+                    else -> null
+                }
+            val snippet =
+                listOfNotNull(
+                    rawSnippet,
+                    priceText?.let { "Price: $it" },
+                    result.string("condition")?.let { "Condition: $it" },
+                    if (soldOnly) "Completed/sold listing" else result.string("items_sold"),
+                ).distinct().joinToString(" · ")
+            WebSearchResult(
+                title = title,
+                url = resultUrl,
+                snippet = snippet,
+                platformKey = if (soldOnly) "ebay" else marketplaceKey(resultUrl),
+                price = price,
+                sold = sold,
+                date = result.string("date") ?: result.string("ended") ?: "",
+            )
+        }
+    }.getOrElse {
+        Log.w("SearchApiService", "Failed to parse SearchAPI.io response: ${it.javaClass.simpleName}")
+        emptyList()
+    }
+
+private fun isEbaySearchQuery(query: String): Boolean = query.contains("ebay.com", ignoreCase = true)
+
+private fun JsonObject.string(name: String): String? = get(name)?.takeIf { it.isJsonPrimitive }?.asString
+
+private fun JsonObject.number(name: String): Double? =
+    get(name)
+        ?.takeIf { it.isJsonPrimitive }
+        ?.let { runCatching { it.asDouble }.getOrNull() }
+
+private fun parsePrice(text: String): Double? =
+    PRICE_PATTERN
+        .find(text.replace(",", ""))
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toDoubleOrNull()
+
+private fun containsSoldWord(text: String?): Boolean = text?.contains(SOLD_PATTERN) == true
+
+private fun marketplaceKey(url: String): String? =
+    when {
+        url.contains("ebay.", ignoreCase = true) -> "ebay"
+        url.contains("mercari.", ignoreCase = true) -> "mercari"
+        url.contains("offerup.", ignoreCase = true) -> "offerup"
+        url.contains("facebook.", ignoreCase = true) -> "facebook"
+        else -> null
+    }
+
+private val PRICE_PATTERN = Regex("(?:US\\s*)?[$]\\s*([0-9]+(?:\\.[0-9]{1,2})?)")
+private val SOLD_PATTERN = Regex("\\b(sold|completed)\\b", RegexOption.IGNORE_CASE)
