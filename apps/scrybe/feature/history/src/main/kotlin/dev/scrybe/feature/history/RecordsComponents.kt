@@ -119,6 +119,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import com.twobits.design.components.AppChipRow
 import dev.scrybe.core.common.buildWaveformEnvelopePath
 import dev.scrybe.core.common.customTypeIcon
 import dev.scrybe.core.common.shapeWaveformEnvelope
@@ -320,7 +321,9 @@ private fun RecordRowContent(
             }
         }
     }
-    HistoryMiniWaveform(samples = item.session.waveformSamples, accentColor = accentColor, modifier = Modifier.fillMaxWidth())
+    if (item.session.waveformSamples.isNotEmpty()) {
+        HistoryMiniWaveform(samples = item.session.waveformSamples, accentColor = accentColor, modifier = Modifier.fillMaxWidth())
+    }
     RecordRowFooter(item = item)
     item.transcriptPreview?.takeIf { it.isNotBlank() }?.let { preview ->
         Text(preview, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -516,11 +519,7 @@ internal fun HistoryModeFilterRow(
     selected: RecordingMode?,
     onSelect: (RecordingMode?) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    AppChipRow(horizontalPadding = 0.dp) {
         FilterChip(selected = selected == null, onClick = { onSelect(null) }, label = { Text("All") })
         RecordingMode.entries.forEach { mode ->
             val accentColor = modeAccentColor(mode, MaterialTheme.colorScheme)

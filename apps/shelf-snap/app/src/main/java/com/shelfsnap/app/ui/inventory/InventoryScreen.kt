@@ -2,7 +2,6 @@ package com.shelfsnap.app.ui.inventory
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -80,6 +78,7 @@ import com.shelfsnap.app.ui.theme.ConditionFair
 import com.shelfsnap.app.ui.theme.ConditionGood
 import com.shelfsnap.app.ui.theme.ConditionPoor
 import com.shelfsnap.app.ui.theme.LocalEstimateLabel
+import com.twobits.design.components.AppChipRow
 import com.twobits.design.components.AppEmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -377,7 +376,7 @@ private fun InventoryItemCard(
                         )
                         if (item.confidencePercent > 0) {
                             Text(
-                                text = "${item.confidencePercent}% conf.",
+                                text = stringResource(R.string.confidence_percent, item.confidencePercent),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -426,14 +425,7 @@ private fun InventoryFilterRow(
             InventoryFilter.LISTED to stringResource(R.string.filter_listed, listedCount),
             InventoryFilter.SOLD to stringResource(R.string.filter_sold, soldCount),
         )
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    AppChipRow(verticalPadding = 4.dp) {
         chips.forEach { (mode, label) ->
             FilterChip(
                 selected = selected == mode,
@@ -586,15 +578,17 @@ private fun SummaryBanner(
 internal fun ConditionBadge(condition: Condition) {
     val color = conditionColor(condition)
     val label = condition.name.lowercase().replaceFirstChar { it.uppercase() }
+    // The condition hue tints the container only; the label uses onSurface so it stays readable
+    // in light theme too (the pastel condition colors are tuned for dark surfaces).
     Surface(
         shape = RoundedCornerShape(50),
-        color = color.copy(alpha = 0.15f),
+        color = color.copy(alpha = 0.25f),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium,
-            color = color,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
         )
     }

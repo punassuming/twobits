@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -153,13 +154,20 @@ fun ProductDetailScreen(
             }
             if (product.productUrl.isNotBlank()) {
                 item {
-                    Button(
-                        onClick = {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(product.productUrl)))
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Buy now")
+                    val aboveTarget =
+                        product.targetPrice?.let { product.currentPrice > 0 && product.currentPrice > it } == true
+                    val openProduct = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(product.productUrl)))
+                    }
+                    if (aboveTarget) {
+                        // Demoted while the price hasn't met the user's own target.
+                        OutlinedButton(onClick = openProduct, modifier = Modifier.fillMaxWidth()) {
+                            Text("Buy now — still above target")
+                        }
+                    } else {
+                        Button(onClick = openProduct, modifier = Modifier.fillMaxWidth()) {
+                            Text("Buy now")
+                        }
                     }
                 }
             }
@@ -315,6 +323,21 @@ private fun PriceOverviewCard(
                 Text(
                     "Effective ${fmt.format(effective)} incl. ${fmt.format(extras)} shipping & fees",
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+            if (targetPrice != null && currentPrice > 0) {
+                val diff = currentPrice - targetPrice
+                val verdict =
+                    when {
+                        diff > 0 -> "${fmt.format(diff)} above your target"
+                        diff < 0 -> "${fmt.format(-diff)} below your target"
+                        else -> "Right at your target"
+                    }
+                Text(
+                    verdict,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }

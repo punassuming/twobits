@@ -636,7 +636,8 @@ class SessionDetailViewModel
         }
 
         fun saveTags(tags: List<String>) {
-            val normalizedTags = tags.map(String::trim).filter(String::isNotBlank).distinct()
+            // normalizeInput also splits on comma/semicolon so a pasted "a, b" draft becomes two tags.
+            val normalizedTags = tags.flatMap(TagsCodec::normalizeInput).distinct()
             viewModelScope.launch {
                 val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
                 sessionDao.updateSession(

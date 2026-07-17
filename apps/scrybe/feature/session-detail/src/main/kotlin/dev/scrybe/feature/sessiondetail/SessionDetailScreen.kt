@@ -402,6 +402,7 @@ fun SessionDetailScreen(
                                     onSuggestTags = viewModel::suggestTags,
                                     onSaveTags = viewModel::saveTags,
                                     onClearTagSuggestions = viewModel::clearTagSuggestionState,
+                                    onTranscribe = viewModel::transcribe,
                                 )
                             1 ->
                                 TasksTabContent(
@@ -708,9 +709,15 @@ private fun OutputTabContent(
     onSuggestTags: () -> Unit,
     onSaveTags: (List<String>) -> Unit,
     onClearTagSuggestions: () -> Unit,
+    onTranscribe: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing)) {
-        TransformedOutputCard(state.transcripts)
+        TransformedOutputCard(
+            transcripts = state.transcripts,
+            hasTranscript = state.currentTranscript != null,
+            isTranscribing = state.isTranscribing,
+            onTranscribe = onTranscribe,
+        )
         if (state.currentTranscript != null) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (state.profiles.isNotEmpty()) {
@@ -745,7 +752,12 @@ private fun OutputTabContent(
 }
 
 @Composable
-private fun TransformedOutputCard(transcripts: List<Transcript>) {
+private fun TransformedOutputCard(
+    transcripts: List<Transcript>,
+    hasTranscript: Boolean,
+    isTranscribing: Boolean,
+    onTranscribe: () -> Unit,
+) {
     val transformedTranscript =
         transcripts
             .filter { it.type == TranscriptType.TRANSFORMED }
@@ -763,10 +775,32 @@ private fun TransformedOutputCard(transcripts: List<Transcript>) {
     } else {
         AppSectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
             Text(
-                text = "No output yet — transcribe and post-process to see AI summaries here.",
+                text =
+                    if (hasTranscript) {
+                        "No output yet — run Post-process below to generate an AI summary."
+                    } else {
+                        "No output yet — transcribe this recording to get started."
+                    },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (!hasTranscript) {
+                Button(onClick = onTranscribe, enabled = !isTranscribing) {
+                    if (isTranscribing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Transcribing…")
+                    } else {
+                        Icon(Icons.Filled.GraphicEq, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Transcribe recording")
+                    }
+                }
+            }
         }
     }
 }

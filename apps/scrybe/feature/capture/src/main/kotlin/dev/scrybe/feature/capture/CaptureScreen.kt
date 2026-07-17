@@ -18,7 +18,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,6 +110,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.twobits.design.components.AppChipRow
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
 import dev.scrybe.core.common.CustomTypeIcon
@@ -1639,14 +1639,7 @@ private fun ModeFilterRow(
     selected: RecordingMode?,
     onSelect: (RecordingMode?) -> Unit,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    AppChipRow(horizontalPadding = 0.dp) {
         FilterChip(
             selected = selected == null,
             onClick = { onSelect(null) },

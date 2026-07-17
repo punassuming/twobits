@@ -16,7 +16,16 @@
 * the welcome popup no longer covers the walkthrough
 * the empty listing summary now jumps back to the List tab
 
+**Market research** — the screen now reports its own status:
+* a "Last researched" line shows when results were fetched
+* research errors now appear on this screen, not just elsewhere
+
 ### Fixes
+
+**Inventory cards** — readable status at a glance:
+* condition badges are legible in light theme, not washed out
+* "92% conf." is now "92% confidence"
+* inventory filter chips fade at the edges instead of clipping
 
 ## 1.22.1 (2026-07-15)
 

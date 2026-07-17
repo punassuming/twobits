@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppChipRow
 import com.twobits.design.components.AppEmptyState
 import dev.scrybe.core.common.ModeBadge
 
@@ -230,7 +231,11 @@ private fun FilterChipRow(
     onSelect: (TaskFilter) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    AppChipRow(
+        modifier = modifier,
+        horizontalPadding = 0.dp,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         TaskFilterChip("Open", counts.open, filter == TaskFilter.OPEN) { onSelect(TaskFilter.OPEN) }
         TaskFilterChip("Today", counts.today, filter == TaskFilter.TODAY) { onSelect(TaskFilter.TODAY) }
         TaskFilterChip("Week", counts.week, filter == TaskFilter.WEEK) { onSelect(TaskFilter.WEEK) }

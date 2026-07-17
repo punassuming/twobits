@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -70,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppChipRow
 import com.twobits.design.components.AppEmptyState
 import com.twobits.pricedrop.data.model.WatchedProduct
 import java.text.NumberFormat
@@ -133,11 +133,8 @@ fun WatchScreen(
         Column(Modifier.padding(padding).fillMaxSize()) {
             if (totalCount > 0) {
                 val filters = listOf("All", "Below target", "Coupons", "Needs check", "Paused")
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(filters) { chip ->
+                AppChipRow(verticalPadding = 8.dp) {
+                    filters.forEach { chip ->
                         FilterChip(
                             selected = filter == chip,
                             onClick = { viewModel.setFilter(chip) },
@@ -353,15 +350,17 @@ private fun LastCheckedRow(
     val now = System.currentTimeMillis()
     val lastCheckedLabel =
         when {
-            product.lastCheckedAt == 0L -> "Never checked"
+            product.lastCheckedAt == 0L -> "Not checked yet — tap to check now"
             else -> {
                 val diffMs = now - product.lastCheckedAt
-                when {
-                    diffMs < TimeUnit.MINUTES.toMillis(2) -> "Just now"
-                    diffMs < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diffMs)}m ago"
-                    diffMs < TimeUnit.DAYS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toHours(diffMs)}h ago"
-                    else -> "${TimeUnit.MILLISECONDS.toDays(diffMs)}d ago"
-                }
+                val relative =
+                    when {
+                        diffMs < TimeUnit.MINUTES.toMillis(2) -> "just now"
+                        diffMs < TimeUnit.HOURS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toMinutes(diffMs)}m ago"
+                        diffMs < TimeUnit.DAYS.toMillis(1) -> "${TimeUnit.MILLISECONDS.toHours(diffMs)}h ago"
+                        else -> "${TimeUnit.MILLISECONDS.toDays(diffMs)}d ago"
+                    }
+                "Last checked $relative"
             }
         }
 
@@ -378,7 +377,7 @@ private fun LastCheckedRow(
             }
         }
         Text(
-            "Last checked: $lastCheckedLabel",
+            lastCheckedLabel,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

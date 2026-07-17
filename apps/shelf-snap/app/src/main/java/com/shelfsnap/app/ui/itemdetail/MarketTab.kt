@@ -61,6 +61,7 @@ import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.ui.components.PlatformBadge
 import com.shelfsnap.app.ui.components.brandColor
+import com.twobits.design.components.ErrorCard
 import java.text.DateFormat
 import java.util.Date
 
@@ -100,6 +101,23 @@ fun MarketTab(
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.research_price))
             }
+        }
+
+        if (research.retrievedAt > 0) {
+            Text(
+                text =
+                    stringResource(
+                        R.string.last_researched,
+                        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                            .format(Date(research.retrievedAt)),
+                    ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (!uiState.isResearching) {
+            uiState.error?.let { ErrorCard(message = it) }
         }
 
         if (hasData) {
