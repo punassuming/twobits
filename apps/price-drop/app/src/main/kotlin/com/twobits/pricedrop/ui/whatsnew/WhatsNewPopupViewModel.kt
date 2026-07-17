@@ -1,8 +1,6 @@
 package com.twobits.pricedrop.ui.whatsnew
 
 import android.content.Context
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -10,8 +8,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.twobits.design.components.WhatsNewCategory
-import com.twobits.design.components.WhatsNewItem
 import com.twobits.design.components.WhatsNewPopupCoordinator
 import com.twobits.design.components.WhatsNewPopupState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,8 +34,6 @@ class WhatsNewPopupViewModel
 
         private val coordinator =
             WhatsNewPopupCoordinator(
-                welcomeTitle = "Welcome to PriceDrop",
-                firstRunCategory = firstRunCategory(),
                 loadChangelogText = { loadChangelogText() },
                 readLastSeenVersionCode = {
                     dataStore.data
@@ -80,28 +74,6 @@ class WhatsNewPopupViewModel
                     .bufferedReader()
                     .use { it.readText() }
             }.getOrNull()
-
-        private fun firstRunCategory(): WhatsNewCategory =
-            WhatsNewCategory(
-                id = "getting_started",
-                label = "Getting started",
-                icon = Icons.Filled.RocketLaunch,
-                items =
-                    listOf(
-                        "Add products from the Watch screen — paste a link, scan a barcode, or search by name.",
-                        "PriceDrop checks prices in the background and notifies you when they drop.",
-                        "Ask AI answers quick shopping questions about any tracked product.",
-                        "AI configuration (Settings → AI) lets you use your own provider keys or PriceDrop Pro.",
-                        "PriceDrop Pro unlocks managed AI and faster background checks — no personal API key needed.",
-                    ).mapIndexed { index, text ->
-                        WhatsNewItem(
-                            id = "welcome_$index",
-                            icon = Icons.Filled.RocketLaunch,
-                            title = text,
-                            description = "",
-                        )
-                    },
-            )
 
         private companion object {
             val LAST_SEEN_KEY = longPreferencesKey("whats_new_last_seen_version_code")

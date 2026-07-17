@@ -88,7 +88,7 @@ data class SettingsUiState(
     val enableSpeakerIdentification: Boolean = false,
     val enableInsightAnalysis: Boolean = false,
     val debugDiarization: Boolean = false,
-    val locationRecordingEnabled: Boolean = true,
+    val locationRecordingEnabled: Boolean = false,
     val obsidianVaultUri: String = "",
 )
 
@@ -859,7 +859,7 @@ class SettingsViewModel
             val taskForgeEnabled: Boolean = false,
             val taskForgePackageName: String = "",
             val taskForgeAction: String = "android.intent.action.SEND",
-            val locationRecordingEnabled: Boolean = true,
+            val locationRecordingEnabled: Boolean = false,
             val obsidianVaultUri: String = "",
             val versionName: String = "",
             val versionCode: Long = 0L,
@@ -925,7 +925,7 @@ class SettingsViewModel
         )
 
         private data class IntegrationsPreferences(
-            val locationRecordingEnabled: Boolean = true,
+            val locationRecordingEnabled: Boolean = false,
             val obsidianVaultUri: String = "",
         )
 

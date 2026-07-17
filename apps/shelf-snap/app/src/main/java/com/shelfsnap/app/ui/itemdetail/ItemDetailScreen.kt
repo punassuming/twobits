@@ -97,12 +97,20 @@ fun ItemDetailScreen(
     onAddPhoto: () -> Unit = {},
     onNavigateToMarketResearch: () -> Unit = {},
     onNavigateToListingSummary: () -> Unit = {},
+    openListTabRequested: Boolean = false,
+    onOpenListTabConsumed: () -> Unit = {},
     viewModel: ItemDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(itemId) { viewModel.load(itemId) }
     LaunchedEffect(uiState.isDeleted) { if (uiState.isDeleted) onDeleted() }
+    LaunchedEffect(openListTabRequested) {
+        if (openListTabRequested) {
+            viewModel.selectTab(DetailTab.LIST)
+            onOpenListTabConsumed()
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(uiState.error) {

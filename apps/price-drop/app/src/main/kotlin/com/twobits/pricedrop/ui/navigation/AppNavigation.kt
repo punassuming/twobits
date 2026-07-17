@@ -160,12 +160,7 @@ fun AppNavigation(
                 categories = whatsNewState.categories,
                 confirmLabel = whatsNewState.confirmLabel,
                 onDismiss = whatsNewViewModel::dismiss,
-                onViewHistory =
-                    if (!whatsNewState.isFirstRun) {
-                        { navController.navigate(Screen.WhatsNew.route) }
-                    } else {
-                        null
-                    },
+                onViewHistory = { navController.navigate(Screen.WhatsNew.route) },
             )
         }
     } // Box

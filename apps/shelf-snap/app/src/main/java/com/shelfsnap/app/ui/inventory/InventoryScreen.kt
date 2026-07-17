@@ -33,7 +33,9 @@ import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Summarize
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -46,6 +48,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -126,8 +129,18 @@ fun InventoryScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddItem) {
-                Icon(Icons.Default.AddAPhoto, contentDescription = stringResource(R.string.add_item))
+            val showEmptyWalkthrough =
+                !uiState.isLoading && uiState.items.isEmpty() && uiState.searchQuery.isBlank()
+            if (showEmptyWalkthrough) {
+                ExtendedFloatingActionButton(
+                    onClick = onAddItem,
+                    icon = { Icon(Icons.Default.AddAPhoto, contentDescription = null) },
+                    text = { Text(stringResource(R.string.fab_snap_item)) },
+                )
+            } else {
+                FloatingActionButton(onClick = onAddItem) {
+                    Icon(Icons.Default.AddAPhoto, contentDescription = stringResource(R.string.add_item))
+                }
             }
         },
     ) { padding ->
@@ -204,7 +217,10 @@ fun InventoryScreen(
                         )
                     } else {
                         Box(Modifier.fillMaxSize(), Alignment.Center) {
-                            InventoryWalkthrough(onSettingsClick = onSettingsClick)
+                            InventoryWalkthrough(
+                                onAddItem = onAddItem,
+                                onSettingsClick = onSettingsClick,
+                            )
                         }
                     }
 
@@ -226,7 +242,10 @@ fun InventoryScreen(
 }
 
 @Composable
-private fun InventoryWalkthrough(onSettingsClick: () -> Unit) {
+private fun InventoryWalkthrough(
+    onAddItem: () -> Unit,
+    onSettingsClick: () -> Unit,
+) {
     val steps =
         listOf(
             Triple(Icons.Default.PhotoCamera, R.string.walkthrough_step1_title, R.string.walkthrough_step1_body),
@@ -282,10 +301,18 @@ private fun InventoryWalkthrough(onSettingsClick: () -> Unit) {
                 }
             }
         }
-        androidx.compose.material3.FilledTonalButton(onClick = onSettingsClick) {
-            Icon(Icons.Default.Settings, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.go_to_settings))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Button(onClick = onAddItem) {
+                Icon(Icons.Default.AddAPhoto, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.walkthrough_snap_first_item))
+            }
+            TextButton(onClick = onSettingsClick) {
+                Text(stringResource(R.string.go_to_settings))
+            }
         }
     }
 }

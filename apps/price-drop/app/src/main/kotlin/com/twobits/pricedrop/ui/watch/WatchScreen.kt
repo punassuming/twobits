@@ -1,7 +1,12 @@
 package com.twobits.pricedrop.ui.watch
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +57,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.components.AppEmptyState
 import com.twobits.pricedrop.data.model.WatchedProduct
@@ -81,10 +88,23 @@ fun WatchScreen(
     viewModel: WatchViewModel = hiltViewModel(),
 ) {
     val watchlist by viewModel.watchlist.collectAsState()
+    val totalCount by viewModel.totalCount.collectAsState()
     val dropCount by viewModel.activeDropCount.collectAsState()
     val filter by viewModel.activeFilter.collectAsState()
     val refreshingId by viewModel.refreshingId.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val notificationsLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -111,25 +131,40 @@ fun WatchScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            val filters = listOf("All", "Below target", "Coupons", "Needs check", "Paused")
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(filters) { chip ->
-                    FilterChip(
-                        selected = filter == chip,
-                        onClick = { viewModel.setFilter(chip) },
-                        label = { Text(chip) },
-                    )
+            if (totalCount > 0) {
+                val filters = listOf("All", "Below target", "Coupons", "Needs check", "Paused")
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(filters) { chip ->
+                        FilterChip(
+                            selected = filter == chip,
+                            onClick = { viewModel.setFilter(chip) },
+                            label = { Text(chip) },
+                        )
+                    }
                 }
             }
             if (watchlist.isEmpty()) {
-                AppEmptyState(
-                    icon = Icons.Filled.Bookmark,
-                    title = "No watched products",
-                    subtitle = "Tap 'Add or ask' to start tracking prices",
-                )
+                if (totalCount == 0) {
+                    AppEmptyState(
+                        icon = Icons.Filled.Bookmark,
+                        title = "Watch your first product",
+                        subtitle =
+                            "Search by name or URL, scan a barcode, or ask AI — " +
+                                "PriceDrop alerts you when the price falls.",
+                        primaryActionLabel = "Add your first product",
+                        onPrimaryAction = { showAddSheet = true },
+                    )
+                } else {
+                    AppEmptyState(
+                        icon = Icons.Filled.Search,
+                        title = "No products match this filter",
+                        primaryActionLabel = "Show all",
+                        onPrimaryAction = { viewModel.setFilter("All") },
+                    )
+                }
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

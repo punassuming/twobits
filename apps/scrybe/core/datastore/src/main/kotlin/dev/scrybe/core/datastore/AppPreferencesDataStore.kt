@@ -269,7 +269,7 @@ class AppPreferencesDataStore
 
         val locationRecordingEnabled: Flow<Boolean> =
             context.dataStore.data.map { prefs ->
-                prefs[Keys.LOCATION_RECORDING_ENABLED] ?: true
+                prefs[Keys.LOCATION_RECORDING_ENABLED] ?: false
             }
 
         val obsidianVaultUri: Flow<String> =

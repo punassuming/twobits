@@ -6,6 +6,15 @@
 
 ### Improvements
 
+**Calmer first run** — permissions and popups now wait their turn:
+* notification permission is asked on the watchlist, not at app start
+* the welcome popup no longer appears right after onboarding
+
+**Watchlist** — a clearer start and no dead filters:
+* empty watchlist gains an "Add your first product" button
+* filter chips are hidden until something is watched
+* a filter with no matches offers a "Show all" reset
+
 ### Fixes
 
 ## 0.13.0 (2026-07-14)

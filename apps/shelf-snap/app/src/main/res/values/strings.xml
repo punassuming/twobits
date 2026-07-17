@@ -190,7 +190,22 @@
     <string name="walkthrough_step2_body">AI identifies the item, estimates its value, and fills in the details automatically.</string>
     <string name="walkthrough_step3_title">Track &amp; sell</string>
     <string name="walkthrough_step3_body">Research market prices and cross-list across eBay, Mercari, Facebook Marketplace, and more.</string>
+    <string name="walkthrough_snap_first_item">Snap your first item</string>
     <string name="go_to_settings">Open Settings</string>
+    <string name="fab_snap_item">Snap item</string>
+
+    <!-- First-run onboarding -->
+    <string name="onboarding_capture_title">Snap anything</string>
+    <string name="onboarding_capture_body">Take photos of items you want to catalog, donate, or resell — one item at a time, as many photos as you like.</string>
+    <string name="onboarding_ai_title">AI fills in the details</string>
+    <string name="onboarding_ai_body">AI identifies each item, estimates its value, and drafts the details. You review and correct anything it gets wrong.</string>
+    <string name="onboarding_sell_title">Research and cross-list</string>
+    <string name="onboarding_sell_body">Check market prices, then generate ready-to-paste listings for eBay, Mercari, Facebook Marketplace, and more.</string>
+    <string name="onboarding_privacy_title">Local-first and private</string>
+    <string name="onboarding_privacy_body">Your inventory stays on this device. When you\'re ready for AI features, add your own key or Pro in Settings — it\'s optional.</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_get_started">Get started</string>
 
     <!-- v2: settings — web search for pricing -->
     <string name="search_section_title">Web search for pricing</string>

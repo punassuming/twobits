@@ -62,7 +62,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -117,18 +116,17 @@ fun SettingsScreen(
                 viewModel.setObsidianVaultUri(uri.toString())
             }
         }
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
     val locationPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (!granted) viewModel.setLocationRecordingEnabled(false)
+            hasLocationPermission = granted
+            viewModel.setLocationRecordingEnabled(granted)
         }
-    LaunchedEffect(uiState.locationRecordingEnabled) {
-        if (uiState.locationRecordingEnabled &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -242,6 +240,26 @@ fun SettingsScreen(
                                 }
                             },
                         )
+                    }
+                    if (uiState.locationRecordingEnabled && !hasLocationPermission) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Location permission needed — recordings won't be tagged",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(
+                                onClick = {
+                                    locationPermissionLauncher.launch(
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    )
+                                },
+                            ) { Text("Grant") }
+                        }
                     }
                     HorizontalDivider()
                     SettingOptionRow(

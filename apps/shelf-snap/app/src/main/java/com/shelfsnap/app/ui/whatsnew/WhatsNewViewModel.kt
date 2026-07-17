@@ -1,8 +1,6 @@
 package com.shelfsnap.app.ui.whatsnew
 
 import android.content.Context
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -10,8 +8,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.twobits.design.components.WhatsNewCategory
-import com.twobits.design.components.WhatsNewItem
 import com.twobits.design.components.WhatsNewPopupCoordinator
 import com.twobits.design.components.WhatsNewPopupState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,8 +34,6 @@ class WhatsNewViewModel
 
         private val coordinator =
             WhatsNewPopupCoordinator(
-                welcomeTitle = "Welcome to Shelf Snap",
-                firstRunCategory = firstRunCategory(),
                 loadChangelogText = { loadChangelogText() },
                 readLastSeenVersionCode = {
                     dataStore.data
@@ -80,29 +74,6 @@ class WhatsNewViewModel
                     .bufferedReader()
                     .use { it.readText() }
             }.getOrNull()
-
-        private fun firstRunCategory(): WhatsNewCategory =
-            WhatsNewCategory(
-                id = "getting_started",
-                label = "Getting started",
-                icon = Icons.Filled.RocketLaunch,
-                items =
-                    listOf(
-                        "Snap a photo of any item — AI identifies it and estimates resale value instantly.",
-                        "The Inventory screen tracks everything: draft, listed, and sold items with estimates.",
-                        "Item Detail shows a market price range and prepares eBay, Mercari, and OfferUp listings.",
-                        "AI configuration (Settings → AI) lets you choose your vision model or use Shelf Snap Pro.",
-                        "The Camera screen guides you to the best framing, then analyses in one tap.",
-                        "Pro subscription unlocks the managed AI — no personal API key needed.",
-                    ).mapIndexed { index, text ->
-                        WhatsNewItem(
-                            id = "welcome_$index",
-                            icon = Icons.Filled.RocketLaunch,
-                            title = text,
-                            description = "",
-                        )
-                    },
-            )
 
         private companion object {
             val LAST_SEEN_KEY = longPreferencesKey("whats_new_last_seen_version_code")

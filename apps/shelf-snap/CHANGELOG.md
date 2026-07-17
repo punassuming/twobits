@@ -4,7 +4,17 @@
 
 ### Features
 
+**Welcome walkthrough** — a four-page intro now runs on first launch:
+* covers capture, AI review, cross-listing, and local-first privacy
+* skippable, and finishes on the inventory capture action
+
 ### Improvements
+
+**Better first steps** — the empty inventory now leads with capture:
+* "Snap your first item" is the primary action; Settings is demoted
+* the capture button shows a text label until the first item exists
+* the welcome popup no longer covers the walkthrough
+* the empty listing summary now jumps back to the List tab
 
 ### Fixes
 

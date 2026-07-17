@@ -6,9 +6,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -21,6 +23,8 @@ import com.shelfsnap.app.ui.inventory.InventoryScreen
 import com.shelfsnap.app.ui.itemdetail.ItemDetailScreen
 import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
 import com.shelfsnap.app.ui.itemdetail.MarketResearchScreen
+import com.shelfsnap.app.ui.onboarding.OnboardingScreen
+import com.shelfsnap.app.ui.onboarding.OnboardingViewModel
 import com.shelfsnap.app.ui.settings.ProScreen
 import com.shelfsnap.app.ui.settings.SettingsScreen
 import com.shelfsnap.app.ui.summary.SummaryScreen
@@ -30,9 +34,20 @@ import com.twobits.design.components.AppWhatsNewDialog
 
 @Composable
 fun AppNavigation(
-    startDestination: String = Screen.Inventory.route,
+    uiTestStartDestination: String? = null,
     suppressWhatsNew: Boolean = false,
+    onboardingViewModel: OnboardingViewModel = hiltViewModel(),
 ) {
+    val onboardingComplete by onboardingViewModel.completed.collectAsState()
+    if (onboardingComplete == null && uiTestStartDestination == null) {
+        // Hold the start destination until the first-run flag has loaded.
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
+
+    val startDestination =
+        uiTestStartDestination
+            ?: if (onboardingComplete == true) Screen.Inventory.route else Screen.Onboarding.route
     val navController = rememberNavController()
     val whatsNewViewModel: WhatsNewViewModel = hiltViewModel()
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
@@ -51,6 +66,17 @@ fun AppNavigation(
             popEnterTransition = { popSlideEnter },
             popExitTransition = { popSlideExit },
         ) {
+            composable(Screen.Onboarding.route) {
+                OnboardingScreen(
+                    onFinish = {
+                        onboardingViewModel.markComplete()
+                        navController.navigate(Screen.Inventory.route) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
+                    },
+                )
+            }
+
             composable(Screen.Inventory.route) {
                 InventoryScreen(
                     onAddItem = { navController.navigate(Screen.Camera.createRoute()) },
@@ -90,6 +116,9 @@ fun AppNavigation(
                 arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
             ) { backStackEntry ->
                 val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
+                val openListTab by backStackEntry.savedStateHandle
+                    .getStateFlow("open_list_tab", false)
+                    .collectAsState()
                 ItemDetailScreen(
                     itemId = itemId,
                     onBack = { navController.popBackStack() },
@@ -105,6 +134,8 @@ fun AppNavigation(
                     onNavigateToListingSummary = {
                         navController.navigate(Screen.ListingSummary.createRoute(itemId))
                     },
+                    openListTabRequested = openListTab,
+                    onOpenListTabConsumed = { backStackEntry.savedStateHandle["open_list_tab"] = false },
                 )
             }
 
@@ -127,6 +158,15 @@ fun AppNavigation(
                 ListingSummaryScreen(
                     itemId = itemId,
                     onBack = { navController.popBackStack() },
+                    onGoToList = {
+                        try {
+                            navController
+                                .getBackStackEntry(Screen.ItemDetail.route)
+                                .savedStateHandle["open_list_tab"] = true
+                        } catch (_: IllegalArgumentException) {
+                        }
+                        navController.popBackStack()
+                    },
                 )
             }
 
@@ -167,12 +207,7 @@ fun AppNavigation(
                 categories = whatsNewState.categories,
                 confirmLabel = whatsNewState.confirmLabel,
                 onDismiss = whatsNewViewModel::dismiss,
-                onViewHistory =
-                    if (!whatsNewState.isFirstRun) {
-                        { navController.navigate(Screen.WhatsNew.route) }
-                    } else {
-                        null
-                    },
+                onViewHistory = { navController.navigate(Screen.WhatsNew.route) },
             )
         }
     } // Box

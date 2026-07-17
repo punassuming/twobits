@@ -6,7 +6,18 @@
 
 ### Improvements
 
+**Calmer first run** — shared first-run behavior tightened across TwoBits apps:
+* the welcome popup is gone; What's New starts with the next release
+* shared empty-state component gains optional action buttons
+
+**Location tagging** — now opt-in:
+* the toggle defaults off for new and untouched installs
+
 ### Fixes
+
+**Settings** — location permission is now requested only from the toggle:
+* opening Settings no longer auto-fires the system location dialog
+* an inline Grant hint appears when tagging is on without permission
 
 ## 1.42.0 (2026-07-14)
 

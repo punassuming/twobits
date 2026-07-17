@@ -3,6 +3,8 @@ package com.shelfsnap.app.ui.navigation
 sealed class Screen(
     val route: String,
 ) {
+    data object Onboarding : Screen("onboarding")
+
     data object Inventory : Screen("inventory")
 
     /** Camera supports an optional [itemId] to append photos to an existing item. */
