@@ -24,12 +24,20 @@
 * condition text now reads New / Used – Like New / Used – Good / Used – Fair
 * title length matches Facebook's real limit, tips cover photos and tags
 
+**Vision analysis** — sharper photos and a real AI-written title:
+* photos are captured and uploaded at much higher quality
+* small text like model and serial numbers reads far more reliably
+* the AI now writes a specific, marketable title directly
+
 ### Fixes
 
 **Inventory cards** — readable status at a glance:
 * condition badges are legible in light theme, not washed out
 * "92% conf." is now "92% confidence"
 * inventory filter chips fade at the edges instead of clipping
+
+**Item title** — re-analyzing an item now actually saves its refreshed title:
+* previously the field updated on screen but reverted on save
 
 ## 1.22.1 (2026-07-15)
 

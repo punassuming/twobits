@@ -43,6 +43,9 @@ data class ItemDetailUiState(
     // True once the user has actually typed into the title field this load, as opposed to it
     // merely being pre-filled with the displayTitle fallback for a blank persisted title.
     val titleEdited: Boolean = false,
+    // True when editTitle holds a value derived from a completed re-analysis (rather than a
+    // stale load-time fallback) and so must be persisted even though the user didn't type it.
+    val titleNeedsPersist: Boolean = false,
     val editCategory: String = "",
     val editBrand: String = "",
     val editModel: String = "",
@@ -92,6 +95,7 @@ class ItemDetailViewModel
                 // false until the user actually types, so an untouched fallback isn't persisted.
                 editTitle = item.displayTitle,
                 titleEdited = false,
+                titleNeedsPersist = false,
                 editCategory = item.category,
                 editBrand = item.brand,
                 editModel = item.model,
@@ -124,13 +128,18 @@ class ItemDetailViewModel
                     it.copy(
                         isAnalysing = false,
                         // A fresh analysis's brand/model/category should refresh the title too,
-                        // unless the user already typed one themselves.
+                        // unless the user already typed one themselves. The refreshed value must
+                        // actually be saved on the next persist() — titleNeedsPersist carries that
+                        // signal since titleEdited is reserved for "the user typed this".
                         editTitle =
                             if (it.titleEdited) {
                                 it.editTitle
                             } else {
-                                displayTitleFallback(result.brand, result.model, result.category)
+                                result.title.ifBlank {
+                                    displayTitleFallback(result.brand, result.model, result.category)
+                                }
                             },
+                        titleNeedsPersist = !it.titleEdited,
                         editCategory = result.category,
                         editBrand = result.brand,
                         editModel = result.model,
@@ -218,11 +227,11 @@ class ItemDetailViewModel
             val state = _uiState.value
             val item = state.item ?: return null
             return item.copy(
-                // Only overwrite the persisted title once the user has actually edited it —
-                // otherwise a blank persisted title (pre-migration rows) would freeze onto
-                // whatever displayTitle fallback happened to be showing at load time, even
-                // when the user only edited an unrelated field.
-                title = if (state.titleEdited) state.editTitle else item.title,
+                // Only overwrite the persisted title once the user has actually edited it, or a
+                // completed re-analysis produced a fresh one — otherwise a blank persisted title
+                // (pre-migration rows) would freeze onto whatever displayTitle fallback happened
+                // to be showing at load time, even when the user only edited an unrelated field.
+                title = if (state.titleEdited || state.titleNeedsPersist) state.editTitle else item.title,
                 category = state.editCategory,
                 brand = state.editBrand,
                 model = state.editModel,

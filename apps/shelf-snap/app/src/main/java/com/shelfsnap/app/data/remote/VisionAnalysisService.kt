@@ -16,7 +16,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
@@ -149,7 +148,7 @@ class VisionAnalysisService
                                     "image_url",
                                     JsonObject().apply {
                                         addProperty("url", "data:image/jpeg;base64,${encodeImageToBase64(path)}")
-                                        addProperty("detail", "auto")
+                                        addProperty("detail", "high")
                                     },
                                 )
                             },
@@ -182,7 +181,7 @@ class VisionAnalysisService
                             JsonObject().apply {
                                 addProperty("type", "input_image")
                                 addProperty("image_url", "data:image/jpeg;base64,${encodeImageToBase64(path)}")
-                                addProperty("detail", "auto")
+                                addProperty("detail", "high")
                             },
                         )
                     }
@@ -244,6 +243,7 @@ class VisionAnalysisService
                     category = obj.get("category")?.asString ?: "Other",
                     brand = obj.get("brand")?.asString ?: "",
                     model = obj.get("model")?.asString ?: "",
+                    title = obj.get("title")?.asString ?: "",
                     description = obj.get("description")?.asString ?: "",
                     tags = obj.getAsJsonArray("tags")?.map { it.asString } ?: emptyList(),
                     condition =
@@ -279,20 +279,25 @@ class VisionAnalysisService
         }
 
         /**
-         * Scales down and base64-encodes a JPEG image file to keep request size reasonable.
+         * Base64-encodes a JPEG image file for the vision request, downscaling only if the
+         * source exceeds [MAX_UPLOAD_DIM]. That cap matches OpenAI's own "high" detail
+         * preprocessing (fit within 2048×2048, then the shortest side is scaled to 768px before
+         * tiling) — sending anything larger just wastes upload bytes the API would downscale
+         * anyway. Model numbers and serial numbers on product labels are small text, which is
+         * exactly what gets lost if the image arrives softer than that: "detail": "low" (or an
+         * image pre-shrunk below its threshold) processes a fixed 512×512 tile and reliably
+         * misses text at that scale.
          */
         private fun encodeImageToBase64(path: String): String {
-            val file = File(path)
             val options =
                 BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
                 }
             BitmapFactory.decodeFile(path, options)
-            val maxDim = 512
             val scale =
                 maxOf(
-                    options.outWidth / maxDim,
-                    options.outHeight / maxDim,
+                    options.outWidth / MAX_UPLOAD_DIM,
+                    options.outHeight / MAX_UPLOAD_DIM,
                     1,
                 )
             val scaled =
@@ -301,7 +306,7 @@ class VisionAnalysisService
                 }
             val bitmap = BitmapFactory.decodeFile(path, scaled)
             val out = ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, UPLOAD_JPEG_QUALITY, out)
             bitmap.recycle()
             return Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
         }
@@ -322,6 +327,13 @@ class VisionAnalysisService
         companion object {
             private const val TAG = "VisionAnalysisService"
 
+            // OpenAI's "high" detail tier fits the image within 2048×2048, then scales its
+            // shortest side to 768px before tiling — matching the upload cap here avoids
+            // shipping bytes the API discards while keeping small text (model/serial numbers)
+            // legible, unlike the previous 512px cap that forced low-detail-equivalent processing.
+            private const val MAX_UPLOAD_DIM = 2048
+            private const val UPLOAD_JPEG_QUALITY = 90
+
             private val SYSTEM_PROMPT =
                 """
                 You are an expert at evaluating household goods for charitable donation.
@@ -329,7 +341,8 @@ class VisionAnalysisService
                 {
                   "category": "<short category, e.g. Clothing, Electronics, Books, Furniture, Toys, Kitchenware, Other>",
                   "brand": "<brand or manufacturer name, or empty string if unknown>",
-                  "model": "<the specific product/style name or model number when identifiable from packaging, labels, or design (e.g. 'Air Force 1 07', 'Instant Pot Duo 6Qt'), not just a generic category restated — this is combined with brand to form the item's display title, so be as specific as the photos allow; empty string if truly unidentifiable>",
+                  "model": "<the specific product/style name or model number when identifiable from packaging, labels, or design (e.g. 'Air Force 1 07', 'Instant Pot Duo 6Qt'), not just a generic category restated — read any visible text on tags, boxes, or engraved/printed labels closely for exact model or serial numbers; empty string if truly unidentifiable>",
+                  "title": "<a specific, marketable resale listing title, in the style an experienced reseller would write. Lead with brand and the specific product/model name, then add the single most distinguishing visible attribute (color, material, or size) if it fits naturally. Do not just restate the category alone. Keep it under 80 characters. Empty string only if brand and model are both unidentifiable.>",
                   "description": "<3–5 sentence marketplace listing description. Cover: overall condition and appearance, notable features or design elements, any visible defects or wear, material/fabric/finish if discernible, and how the item is best used. Write as if posting on eBay — specific, factual, no fluff.>",
                   "tags": ["<6–10 searchable marketplace keywords — include brand name (if present), style/era, material, dominant color, use case, and condition descriptor. All lowercase.>"],
                   "condition": "<one of: EXCELLENT, GOOD, FAIR, POOR>",

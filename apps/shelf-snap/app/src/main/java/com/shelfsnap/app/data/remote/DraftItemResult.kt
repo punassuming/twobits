@@ -7,6 +7,8 @@ data class DraftItemResult(
     val category: String = "",
     val brand: String = "",
     val model: String = "",
+    /** AI-composed marketable listing title; empty when brand/model couldn't be identified. */
+    val title: String = "",
     val description: String = "",
     val tags: List<String> = emptyList(),
     val condition: Condition = Condition.GOOD,
