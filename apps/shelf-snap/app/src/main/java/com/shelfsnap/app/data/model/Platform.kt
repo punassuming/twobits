@@ -47,8 +47,9 @@ enum class Platform(
         "FB Marketplace",
         "facebook marketplace",
         "https://www.facebook.com/marketplace/create/item/",
-        "Put price at top of description — browsers skim · Conversational tone, no hashtags · Reply quickly: first 30 min drive most sales",
-        200,
+        "Fill every field for search ranking · Condition: New, Used – Like New, Used – Good, or Used – Fair · " +
+            "5–10 clear photos, multiple angles · Reply within 30 min — conversational tone wins",
+        100,
     ),
     CRAIGSLIST(
         "craigslist",
@@ -108,10 +109,11 @@ fun Platform.formatListingText(item: Item): String {
         Platform.FB_MARKETPLACE ->
             buildString {
                 appendLine("\$${" %.2f".format(price).trim()} — $fullTitle")
-                appendLine("Condition: $condLabel")
+                appendLine("Condition: ${item.condition.toFacebookCondition()}")
                 if (item.description.isNotBlank()) appendLine(item.description)
                 if (item.size.isNotBlank()) appendLine("Size: ${item.size}")
                 if (item.color.isNotBlank()) appendLine("Color: ${item.color}")
+                if (item.tags.isNotEmpty()) appendLine("Tags: ${item.tags.take(3).joinToString(", ")}")
                 append("Comment or message to claim!")
             }
         Platform.OFFERUP ->
@@ -143,3 +145,16 @@ fun Platform.formatListingText(item: Item): String {
             }
     }
 }
+
+/**
+ * Maps to Facebook's own fixed condition dropdown (New / Used – Like New / Used – Good /
+ * Used – Fair) — the app's generic condition label doesn't match what buyers see in FB's
+ * listing form. There is no FB tier below Fair, so [Condition.POOR] falls back to it.
+ */
+private fun Condition.toFacebookCondition(): String =
+    when (this) {
+        Condition.EXCELLENT -> "Used – Like New"
+        Condition.GOOD -> "Used – Good"
+        Condition.FAIR -> "Used – Fair"
+        Condition.POOR -> "Used – Fair"
+    }

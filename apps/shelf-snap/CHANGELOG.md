@@ -20,6 +20,10 @@
 * a "Last researched" line shows when results were fetched
 * research errors now appear on this screen, not just elsewhere
 
+**Cross-listing** — FB Marketplace copy now matches Facebook's own listing form:
+* condition text now reads New / Used – Like New / Used – Good / Used – Fair
+* title length matches Facebook's real limit, tips cover photos and tags
+
 ### Fixes
 
 **Inventory cards** — readable status at a glance:
