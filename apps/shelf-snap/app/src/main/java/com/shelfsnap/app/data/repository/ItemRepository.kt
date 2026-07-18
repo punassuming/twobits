@@ -88,20 +88,31 @@ class ItemRepository
         // ── AI Analysis ───────────────────────────────────────────────────────────
 
         /**
-         * Sends [photoPaths] to the vision service for analysis.
+         * Sends [photoPaths] to the vision service for analysis. When multi-photo analysis is
+         * off (Settings → AI), only [primaryPhotoIndex] is sent — cheaper and faster for the
+         * common case of one clear photo, at the cost of identification quality when the
+         * distinguishing detail (a label on the back, a tag inside a collar) is only visible in
+         * a different shot.
          * Returns a [DraftItemResult]; caller must check [DraftItemResult.error].
          */
         suspend fun analysePhotos(
             photoPaths: List<String>,
             modelOverride: VisionModel? = null,
+            primaryPhotoIndex: Int = 0,
         ): DraftItemResult {
+            val effectivePaths =
+                if (observeMultiPhotoAnalysis().firstOrNull() == true) {
+                    photoPaths
+                } else {
+                    listOfNotNull(photoPaths.getOrNull(primaryPhotoIndex) ?: photoPaths.firstOrNull())
+                }
             val model = (modelOverride ?: getVisionModel()).apiName
             val sourceKey = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok"
             return when (executionModeFromSourceKey(sourceKey)) {
                 ExecutionMode.PRO -> {
                     val appUserId = subscriptionRepository.getAppUserId()
                     visionService.analyse(
-                        photoPaths = photoPaths,
+                        photoPaths = effectivePaths,
                         apiKey = appUserId,
                         model = model,
                         baseUrl = WORKER_BASE,
@@ -109,7 +120,7 @@ class ItemRepository
                     )
                 }
                 ExecutionMode.LOCAL -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
-                ExecutionMode.BYOK, ExecutionMode.OFF -> visionService.analyse(photoPaths, getApiKey(), model)
+                ExecutionMode.BYOK, ExecutionMode.OFF -> visionService.analyse(effectivePaths, getApiKey(), model)
             }
         }
 

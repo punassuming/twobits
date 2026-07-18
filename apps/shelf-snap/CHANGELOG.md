@@ -39,6 +39,10 @@
 **Item title** — re-analyzing an item now actually saves its refreshed title:
 * previously the field updated on screen but reverted on save
 
+**Multi-photo analysis toggle** — Settings → AI now does what it says:
+* off sends only the primary photo; on sends every captured photo
+* previously every photo was always sent regardless of this toggle
+
 ## 1.22.1 (2026-07-15)
 
 ### Features

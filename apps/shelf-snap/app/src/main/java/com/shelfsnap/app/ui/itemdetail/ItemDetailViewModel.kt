@@ -119,7 +119,7 @@ class ItemDetailViewModel
             val modelOverride = _uiState.value.overrideVisionModel
             viewModelScope.launch {
                 _uiState.update { it.copy(isAnalysing = true, error = null) }
-                val result = repository.analysePhotos(item.photoPaths, modelOverride)
+                val result = repository.analysePhotos(item.photoPaths, modelOverride, item.primaryPhotoIndex)
                 if (result.error != null) {
                     _uiState.update { it.copy(isAnalysing = false, error = result.error) }
                     return@launch
