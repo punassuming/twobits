@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
@@ -37,6 +38,12 @@ class WatchViewModel
         val activeDropCount: StateFlow<Int> =
             dropsRepo
                 .observeActiveCount()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+        /** Unfiltered watchlist size, to distinguish a truly empty list from a filtered-empty one. */
+        val totalCount: StateFlow<Int> =
+            allProducts
+                .map { it.size }
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
         val activeFilter = MutableStateFlow("All")

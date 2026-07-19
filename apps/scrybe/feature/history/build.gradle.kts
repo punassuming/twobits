@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core:transcription"))
     implementation(project(":core:transforms"))
     implementation(project(":service:recording"))
+    implementation("com.twobits.core:design")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

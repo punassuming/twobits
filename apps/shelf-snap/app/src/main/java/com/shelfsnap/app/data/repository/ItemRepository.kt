@@ -9,6 +9,7 @@ import com.shelfsnap.app.data.listing.ListingCopy
 import com.shelfsnap.app.data.local.ItemDao
 import com.shelfsnap.app.data.local.toDomain
 import com.shelfsnap.app.data.local.toEntity
+import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.ReasoningModel
@@ -56,7 +57,6 @@ class ItemRepository
             private val KEY_SEARCHAPI_SEARCH_ENABLED = booleanPreferencesKey("searchapi_search_enabled")
             private val KEY_SERPER_SEARCH_ENABLED = booleanPreferencesKey("serper_search_enabled")
             private val KEY_AUTO_ANALYZE = booleanPreferencesKey("auto_analyze")
-            private val KEY_KEEP_PHOTOS = booleanPreferencesKey("keep_original_photos")
             private val KEY_VISION_MODEL = stringPreferencesKey("vision_model")
             private val KEY_REASONING_MODEL = stringPreferencesKey("reasoning_model")
             private val KEY_VISION_SOURCE = stringPreferencesKey("vision_source")
@@ -88,29 +88,49 @@ class ItemRepository
         // ── AI Analysis ───────────────────────────────────────────────────────────
 
         /**
-         * Sends [photoPaths] to the vision service for analysis.
+         * Sends [photoPaths] to the vision service for analysis. When multi-photo analysis is
+         * off (Settings → AI), only [primaryPhotoIndex] is sent — cheaper and faster for the
+         * common case of one clear photo, at the cost of identification quality when the
+         * distinguishing detail (a label on the back, a tag inside a collar) is only visible in
+         * a different shot. Condition and price-estimate fields are stripped from the result
+         * (back to their manual-entry defaults) when their respective Settings → AI toggle is
+         * off — the model is still asked for them in the same call (no separate request to
+         * suppress), the values are just discarded so they don't override the user's own input.
          * Returns a [DraftItemResult]; caller must check [DraftItemResult.error].
          */
         suspend fun analysePhotos(
             photoPaths: List<String>,
             modelOverride: VisionModel? = null,
+            primaryPhotoIndex: Int = 0,
         ): DraftItemResult {
+            val effectivePaths =
+                if (observeMultiPhotoAnalysis().firstOrNull() == true) {
+                    photoPaths
+                } else {
+                    listOfNotNull(photoPaths.getOrNull(primaryPhotoIndex) ?: photoPaths.firstOrNull())
+                }
             val model = (modelOverride ?: getVisionModel()).apiName
             val sourceKey = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok"
-            return when (executionModeFromSourceKey(sourceKey)) {
-                ExecutionMode.PRO -> {
-                    val appUserId = subscriptionRepository.getAppUserId()
-                    visionService.analyse(
-                        photoPaths = photoPaths,
-                        apiKey = appUserId,
-                        model = model,
-                        baseUrl = WORKER_BASE,
-                        authHeader = "Bearer $appUserId",
-                    )
+            val result =
+                when (executionModeFromSourceKey(sourceKey)) {
+                    ExecutionMode.PRO -> {
+                        val appUserId = subscriptionRepository.getAppUserId()
+                        visionService.analyse(
+                            photoPaths = effectivePaths,
+                            apiKey = appUserId,
+                            model = model,
+                            baseUrl = WORKER_BASE,
+                            authHeader = "Bearer $appUserId",
+                        )
+                    }
+                    ExecutionMode.LOCAL -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
+                    ExecutionMode.BYOK, ExecutionMode.OFF -> visionService.analyse(effectivePaths, getApiKey(), model)
                 }
-                ExecutionMode.LOCAL -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
-                ExecutionMode.BYOK, ExecutionMode.OFF -> visionService.analyse(photoPaths, getApiKey(), model)
-            }
+            if (result.error != null) return result
+            return result.copy(
+                condition = if (getAiConditionDetection()) result.condition else Condition.GOOD,
+                estimatedValue = if (getAutoPriceEstimate()) result.estimatedValue else 0.0,
+            )
         }
 
         // ── Price research ──────────────────────────────────────────────────────────
@@ -360,13 +380,6 @@ class ItemRepository
             dataStore.edit { it[KEY_AUTO_ANALYZE] = enabled }
         }
 
-        /** Whether the original full-resolution photos are kept on device (default on). */
-        fun observeKeepPhotos(): Flow<Boolean> = dataStore.data.map { it[KEY_KEEP_PHOTOS] ?: true }
-
-        suspend fun saveKeepPhotos(enabled: Boolean) {
-            dataStore.edit { it[KEY_KEEP_PHOTOS] = enabled }
-        }
-
         // ── Settings: vision model for BYOK users ───────────────────────────────────
 
         fun observeVisionModel(): Flow<VisionModel> = dataStore.data.map { VisionModel.fromApiName(it[KEY_VISION_MODEL]) }
@@ -405,11 +418,15 @@ class ItemRepository
 
         fun observeAiConditionDetection(): Flow<Boolean> = dataStore.data.map { it[KEY_AI_CONDITION_DETECTION] ?: true }
 
+        suspend fun getAiConditionDetection(): Boolean = dataStore.data.firstOrNull()?.get(KEY_AI_CONDITION_DETECTION) ?: true
+
         suspend fun saveAiConditionDetection(enabled: Boolean) {
             dataStore.edit { it[KEY_AI_CONDITION_DETECTION] = enabled }
         }
 
         fun observeAutoPriceEstimate(): Flow<Boolean> = dataStore.data.map { it[KEY_AUTO_PRICE_ESTIMATE] ?: true }
+
+        suspend fun getAutoPriceEstimate(): Boolean = dataStore.data.firstOrNull()?.get(KEY_AUTO_PRICE_ESTIMATE) ?: true
 
         suspend fun saveAutoPriceEstimate(enabled: Boolean) {
             dataStore.edit { it[KEY_AUTO_PRICE_ESTIMATE] = enabled }

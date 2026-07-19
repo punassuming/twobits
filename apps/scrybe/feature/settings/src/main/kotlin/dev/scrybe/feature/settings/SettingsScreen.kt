@@ -27,11 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.IosShare
@@ -62,7 +58,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -117,18 +112,17 @@ fun SettingsScreen(
                 viewModel.setObsidianVaultUri(uri.toString())
             }
         }
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
     val locationPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (!granted) viewModel.setLocationRecordingEnabled(false)
+            hasLocationPermission = granted
+            viewModel.setLocationRecordingEnabled(granted)
         }
-    LaunchedEffect(uiState.locationRecordingEnabled) {
-        if (uiState.locationRecordingEnabled &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-    }
 
     Scaffold(
         topBar = {
@@ -242,6 +236,26 @@ fun SettingsScreen(
                                 }
                             },
                         )
+                    }
+                    if (uiState.locationRecordingEnabled && !hasLocationPermission) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                "Location permission needed — recordings won't be tagged",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(
+                                onClick = {
+                                    locationPermissionLauncher.launch(
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    )
+                                },
+                            ) { Text("Grant") }
+                        }
                     }
                     HorizontalDivider()
                     SettingOptionRow(
@@ -439,11 +453,6 @@ fun SettingsScreen(
                             Text(if (uiState.obsidianVaultUri.isBlank()) "Choose vault" else "Change")
                         }
                     }
-                    HorizontalDivider()
-                    IntegrationRow(Icons.Filled.CalendarToday, "Calendar", "Suggest title from active event", Color(0xFF4285F4))
-                    IntegrationRow(Icons.Filled.Chat, "Slack", "Post summaries to channels", Color(0xFFE01E5A))
-                    IntegrationRow(Icons.Filled.Article, "Notion", "Export sessions as pages", MaterialTheme.colorScheme.onSurface, isLast = true)
-                    AddIntegrationRow()
                     HorizontalDivider()
                     SettingsSubsectionHeader(icon = Icons.Filled.IosShare, label = "Send to app")
                     Text(
@@ -721,45 +730,6 @@ fun SettingsScreen(
                 TextButton(onClick = { showFormatPicker = false }) { Text("Cancel") }
             },
         )
-    }
-}
-
-@Composable
-private fun AddIntegrationRow() {
-    HorizontalDivider(Modifier.padding(start = 34.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-        Text("Add integration", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text("Browse", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-    }
-}
-
-@Composable
-private fun IntegrationRow(
-    icon: ImageVector,
-    label: String,
-    sub: String,
-    color: Color,
-    isLast: Boolean = false,
-) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.bodyMedium)
-                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text("Connect", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        if (!isLast) HorizontalDivider(Modifier.padding(start = 34.dp))
     }
 }
 

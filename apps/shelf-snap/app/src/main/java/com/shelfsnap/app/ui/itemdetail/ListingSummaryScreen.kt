@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,6 +59,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.data.model.ListingStatus
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
+import com.twobits.design.components.AppEmptyState
 import com.twobits.design.components.AppSectionLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +67,7 @@ import com.twobits.design.components.AppSectionLabel
 fun ListingSummaryScreen(
     itemId: Long,
     onBack: () -> Unit,
+    onGoToList: () -> Unit,
     viewModel: ItemDetailViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(itemId) { viewModel.load(itemId) }
@@ -112,13 +115,14 @@ fun ListingSummaryScreen(
         },
     ) { padding ->
         if (listings.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No listings yet. Go to the List tab to cross-list this item.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            AppEmptyState(
+                icon = Icons.Filled.Storefront,
+                title = "No listings yet",
+                subtitle = "Generate platform-ready listing copy from the item's List tab.",
+                primaryActionLabel = "Cross-list this item",
+                onPrimaryAction = onGoToList,
+                modifier = Modifier.fillMaxSize().padding(padding),
+            )
             return@Scaffold
         }
 

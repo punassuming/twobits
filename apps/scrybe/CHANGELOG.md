@@ -6,7 +6,38 @@
 
 ### Improvements
 
+**Calmer first run** — shared first-run behavior tightened across TwoBits apps:
+* the welcome popup is gone; What's New starts with the next release
+* shared empty-state component gains optional action buttons
+
+**Location tagging** — now opt-in:
+* the toggle defaults off for new and untouched installs
+
+**Filter chips** — rows now fade at the edges instead of clipping:
+* home, history, and task filters share one scrolling chip row
+* the fade signals more options are offscreen
+
+**Session detail** — the AI Notes tab now offers the next step:
+* a Transcribe button appears when there is no transcript yet
+* the hint names Post-process once a transcript exists
+
+**Export files** — now actually exports to Obsidian when a vault is set:
+* previously choosing a vault saved the link but nothing ever used it
+
 ### Fixes
+
+**Settings** — removed non-functional Calendar/Slack/Notion rows:
+* these were static text with nothing behind them, not real buttons
+
+**Settings** — location permission is now requested only from the toggle:
+* opening Settings no longer auto-fires the system location dialog
+* an inline Grant hint appears when tagging is on without permission
+
+**Tags** — comma-separated tags no longer stick together:
+* "research,roadmap" now loads as two tags, not one chip
+* pasted comma or semicolon lists split when saving
+
+* History cards no longer show a flat placeholder waveform line
 
 ## 1.42.0 (2026-07-14)
 

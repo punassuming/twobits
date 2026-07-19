@@ -4,9 +4,52 @@
 
 ### Features
 
+**Welcome walkthrough** — a four-page intro now runs on first launch:
+* covers capture, AI review, cross-listing, and local-first privacy
+* skippable, and finishes on the inventory capture action
+
 ### Improvements
 
+**Better first steps** — the empty inventory now leads with capture:
+* "Snap your first item" is the primary action; Settings is demoted
+* the capture button shows a text label until the first item exists
+* the welcome popup no longer covers the walkthrough
+* the empty listing summary now jumps back to the List tab
+
+**Market research** — the screen now reports its own status:
+* a "Last researched" line shows when results were fetched
+* research errors now appear on this screen, not just elsewhere
+
+**Cross-listing** — FB Marketplace copy now matches Facebook's own listing form:
+* condition text now reads New / Used – Like New / Used – Good / Used – Fair
+* title length matches Facebook's real limit, tips cover photos and tags
+
+**Vision analysis** — sharper photos and a real AI-written title:
+* photos are captured and uploaded at much higher quality
+* small text like model and serial numbers reads far more reliably
+* the AI now writes a specific, marketable title directly
+
 ### Fixes
+
+**Inventory cards** — readable status at a glance:
+* condition badges are legible in light theme, not washed out
+* "92% conf." is now "92% confidence"
+* inventory filter chips fade at the edges instead of clipping
+
+**Item title** — re-analyzing an item now actually saves its refreshed title:
+* previously the field updated on screen but reverted on save
+
+**Multi-photo analysis toggle** — Settings → AI now does what it says:
+* off sends only the primary photo; on sends every captured photo
+* previously every photo was always sent regardless of this toggle
+
+**AI analysis toggles** — three more Settings controls now do what they say:
+* condition detection off keeps condition manual, instead of always AI-set
+* price estimate off leaves value blank, instead of always AI-filled
+* auto-analyze now actually skips the manual Analyse tap on the first photo
+
+**Removed "Keep original photos"** — it never affected app behavior:
+* no compression or deletion path existed for it to control
 
 ## 1.22.1 (2026-07-15)
 

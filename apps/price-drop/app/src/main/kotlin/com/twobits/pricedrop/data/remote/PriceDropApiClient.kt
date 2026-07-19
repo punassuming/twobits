@@ -99,7 +99,11 @@ class PriceDropApiClient
             systemPrompt: String,
             history: List<com.twobits.pricedrop.ui.ask.ChatMessage>,
         ): String {
-            val isProMode = !isByok(PriceDropProvider.OPENAI)
+            val openAiMode = providerSettings.getMode(PriceDropProvider.OPENAI)
+            if (openAiMode == ProviderMode.OFF) {
+                throw IOException("Ask assistant is turned off. Enable it with a BYOK key or Pro in Settings.")
+            }
+            val isProMode = openAiMode == ProviderMode.PRO
             val baseUrl =
                 if (isProMode) {
                     PRO_BASE_URL
@@ -114,8 +118,9 @@ class PriceDropApiClient
                 }
             val selectedModel = providerSettings.getFeatureModel(AiFeature.ASK)
             val model = selectedModel.ifBlank { if (isProMode) PRO_CHAT_MODEL else BYOK_CHAT_MODEL }
+            val webSearchEnabledForAsk = PriceDropProvider.WEB_SEARCH.key in providerSettings.getFeatureProviders(AiFeature.ASK)
             val groundingContext =
-                if (isByok(PriceDropProvider.WEB_SEARCH)) {
+                if (isByok(PriceDropProvider.WEB_SEARCH) && webSearchEnabledForAsk) {
                     val userQuery = history.lastOrNull { it.role == "user" }?.content.orEmpty()
                     if (userQuery.isNotBlank()) {
                         runCatching {
@@ -443,10 +448,12 @@ class PriceDropApiClient
                 } else {
                     "Bearer ${byokKey(PriceDropProvider.OPENAI)}"
                 }
+            val selectedModel = providerSettings.getFeatureModel(AiFeature.SEARCH)
+            val model = selectedModel.ifBlank { if (isProMode) PRO_CHAT_MODEL else BYOK_CHAT_MODEL }
             return runCatching {
                 val body =
                     JsonObject().apply {
-                        addProperty("model", if (isProMode) PRO_CHAT_MODEL else BYOK_CHAT_MODEL)
+                        addProperty("model", model)
                         add(
                             "messages",
                             JsonArray().apply {

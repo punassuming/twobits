@@ -551,85 +551,104 @@ private fun FeatureDetailContent(
             )
         }
 
-        item {
-            AppSectionLabel("Source")
-        }
-        item {
-            SourceSegment(
-                selected = source,
-                hasPro = hasPro,
-                onChange = { viewModel.setFeatureSource(feature, it) },
-            )
-        }
+        if (feature.providers.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        ),
+                ) {
+                    Text(
+                        text = "This feature doesn't call an external provider — nothing to configure here.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(14.dp),
+                    )
+                }
+            }
+        } else {
+            item {
+                AppSectionLabel("Source")
+            }
+            item {
+                SourceSegment(
+                    selected = source,
+                    hasPro = hasPro,
+                    onChange = { viewModel.setFeatureSource(feature, it) },
+                )
+            }
 
-        when (source) {
-            ProviderMode.PRO ->
-                item {
-                    AiProManagedCard(description = managedProDescription(feature))
-                }
-            ProviderMode.OFF ->
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            ),
-                    ) {
-                        Text(
-                            text = "This feature is disabled. Enable it with BYOK keys or a Pro subscription.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(14.dp),
-                        )
+            when (source) {
+                ProviderMode.PRO ->
+                    item {
+                        AiProManagedCard(description = managedProDescription(feature))
                     }
-                }
-            ProviderMode.BYOK -> {
-                item {
-                    AppSectionLabel("Providers")
-                }
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            ),
-                    ) {
-                        Column {
-                            feature.providers.forEach { provider ->
-                                val hasKey = providerStates[provider]?.isKeyValid == true
-                                ProviderToggleRow(
-                                    provider = provider,
-                                    enabled = provider.key in enabledProviders,
-                                    hasKey = hasKey,
-                                    onToggle = { viewModel.toggleFeatureProvider(feature, provider.key) },
-                                )
+                ProviderMode.OFF ->
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                ),
+                        ) {
+                            Text(
+                                text = "This feature is disabled. Enable it with BYOK keys or a Pro subscription.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(14.dp),
+                            )
+                        }
+                    }
+                ProviderMode.BYOK -> {
+                    item {
+                        AppSectionLabel("Providers")
+                    }
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                ),
+                        ) {
+                            Column {
+                                feature.providers.forEach { provider ->
+                                    val hasKey = providerStates[provider]?.isKeyValid == true
+                                    ProviderToggleRow(
+                                        provider = provider,
+                                        enabled = provider.key in enabledProviders,
+                                        hasKey = hasKey,
+                                        onToggle = { viewModel.toggleFeatureProvider(feature, provider.key) },
+                                    )
+                                }
                             }
                         }
                     }
-                }
-                item {
-                    Text(
-                        text = "Manage keys for each provider in the Credentials section.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                if (feature.models.isNotEmpty() && selectedModelId != null) {
                     item {
-                        AppSectionLabel("Model")
-                    }
-                    item {
-                        ModelRadioList(
-                            models = feature.models,
-                            selected = feature.models.first { it.id == selectedModelId },
-                            onSelect = { viewModel.setFeatureModel(feature, it.id) },
-                            name = AiModelOption::name,
-                            subtitle = AiModelOption::sub,
-                            costLabel = { it.cost },
+                        Text(
+                            text = "Manage keys for each provider in the Credentials section.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+
+                    if (feature.models.isNotEmpty() && selectedModelId != null) {
+                        item {
+                            AppSectionLabel("Model")
+                        }
+                        item {
+                            ModelRadioList(
+                                models = feature.models,
+                                selected = feature.models.first { it.id == selectedModelId },
+                                onSelect = { viewModel.setFeatureModel(feature, it.id) },
+                                name = AiModelOption::name,
+                                subtitle = AiModelOption::sub,
+                                costLabel = { it.cost },
+                            )
+                        }
                     }
                 }
             }

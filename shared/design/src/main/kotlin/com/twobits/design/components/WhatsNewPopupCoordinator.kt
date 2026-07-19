@@ -5,7 +5,6 @@ import com.twobits.common.ReleaseNotesParser
 /** State for [AppWhatsNewDialog], produced by [WhatsNewPopupCoordinator]. */
 data class WhatsNewPopupState(
     val isVisible: Boolean = false,
-    val isFirstRun: Boolean = false,
     val title: String = "",
     val versionName: String = "",
     val categories: List<WhatsNewCategory> = emptyList(),
@@ -18,10 +17,12 @@ data class WhatsNewPopupState(
  * suitable for a modal — all shared so this isn't reimplemented per app. Each app wraps this in
  * a thin Hilt `ViewModel` that supplies its own DataStore-backed last-seen-version storage and
  * changelog asset reader, since Hilt DI itself is per-app.
+ *
+ * A fresh install never shows the popup: onboarding (or the app's welcome surface) is the
+ * first-run experience, so the current version is marked seen silently and What's New first
+ * appears with the next installed version.
  */
 class WhatsNewPopupCoordinator(
-    private val welcomeTitle: String,
-    private val firstRunCategory: WhatsNewCategory,
     private val loadChangelogText: () -> String?,
     private val readLastSeenVersionCode: suspend () -> Long,
     private val writeLastSeenVersionCode: suspend (Long) -> Unit,
@@ -31,18 +32,11 @@ class WhatsNewPopupCoordinator(
         versionName: String,
     ): WhatsNewPopupState {
         val lastSeen = readLastSeenVersionCode()
-        if (currentVersionCode <= lastSeen) return WhatsNewPopupState()
-
         if (lastSeen == 0L) {
-            return WhatsNewPopupState(
-                isVisible = true,
-                isFirstRun = true,
-                title = welcomeTitle,
-                versionName = versionName,
-                categories = listOf(firstRunCategory),
-                confirmLabel = "Get started",
-            )
+            writeLastSeenVersionCode(currentVersionCode)
+            return WhatsNewPopupState()
         }
+        if (currentVersionCode <= lastSeen) return WhatsNewPopupState()
 
         val categories = loadLatestReleaseCategories()
         if (categories.isEmpty()) return WhatsNewPopupState()

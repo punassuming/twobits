@@ -244,7 +244,10 @@ private fun CameraContent(
                             val capture =
                                 ImageCapture
                                     .Builder()
-                                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                    // Favor sharpness over shutter latency — vision analysis needs to
+                                    // read small text (model/serial numbers) off product labels.
+                                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                                    .setJpegQuality(95)
                                     .build()
                             imageCapture = capture
                             runCatching {

@@ -91,7 +91,6 @@ data class SettingsUiState(
     val autoPriceEstimate: Boolean = true,
     val multiPhotoAnalysis: Boolean = false,
     val autoAnalyze: Boolean = false,
-    val keepPhotos: Boolean = true,
     val storage: StorageInfo = StorageInfo(),
     val subscriptionTier: SubscriptionTier = SubscriptionTier.Free,
     val isPurchasing: Boolean = false,
@@ -289,7 +288,6 @@ class SettingsViewModel
         private val prefsFlow =
             combine(
                 repository.observeAutoAnalyze(),
-                repository.observeKeepPhotos(),
                 combine(
                     repository.observeAiConditionDetection(),
                     repository.observeAutoPriceEstimate(),
@@ -297,8 +295,8 @@ class SettingsViewModel
                 ) { a, b, c -> Triple(a, b, c) },
                 _storage,
                 combine(purchaseDelegate.isPurchasing, purchaseDelegate.purchaseError) { p, e -> p to e },
-            ) { autoAnalyze, keepPhotos, (conditionDetection, priceEstimate, multiPhoto), storage, (purchasing, purchaseError) ->
-                PrefsState(autoAnalyze, keepPhotos, conditionDetection, priceEstimate, multiPhoto, storage, purchasing, purchaseError)
+            ) { autoAnalyze, (conditionDetection, priceEstimate, multiPhoto), storage, (purchasing, purchaseError) ->
+                PrefsState(autoAnalyze, conditionDetection, priceEstimate, multiPhoto, storage, purchasing, purchaseError)
             }
 
         val uiState: StateFlow<SettingsUiState> =
@@ -355,7 +353,6 @@ class SettingsViewModel
                     autoPriceEstimate = prefs.autoPriceEstimate,
                     multiPhotoAnalysis = prefs.multiPhotoAnalysis,
                     autoAnalyze = prefs.autoAnalyze,
-                    keepPhotos = prefs.keepPhotos,
                     storage = prefs.storage,
                     subscriptionTier = core.tier,
                     isPurchasing = prefs.isPurchasing,
@@ -641,10 +638,6 @@ class SettingsViewModel
             viewModelScope.launch { repository.saveAutoAnalyze(enabled) }
         }
 
-        fun onKeepPhotosChange(enabled: Boolean) {
-            viewModelScope.launch { repository.saveKeepPhotos(enabled) }
-        }
-
         fun onVisionSourceChange(source: String) {
             viewModelScope.launch { repository.saveVisionSource(source) }
         }
@@ -818,7 +811,6 @@ class SettingsViewModel
 
         private data class PrefsState(
             val autoAnalyze: Boolean,
-            val keepPhotos: Boolean,
             val aiConditionDetection: Boolean,
             val autoPriceEstimate: Boolean,
             val multiPhotoAnalysis: Boolean,

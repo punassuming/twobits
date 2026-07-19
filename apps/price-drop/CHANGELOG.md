@@ -6,9 +6,35 @@
 
 ### Improvements
 
+**Calmer first run** — permissions and popups now wait their turn:
+* notification permission is asked on the watchlist, not at app start
+* the welcome popup no longer appears right after onboarding
+
+**Watchlist** — a clearer start and no dead filters:
+* empty watchlist gains an "Add your first product" button
+* filter chips are hidden until something is watched
+* a filter with no matches offers a "Show all" reset
+
+**Filter and suggestion chips** — rows fade at the edges instead of clipping:
+* watch filters and Ask AI suggestions signal offscreen options
+
+**Product detail** — the price now states its verdict against your target:
+* a "$X above/below your target" line appears under the price
+* Buy now is demoted to an outline while above target
+
 ### Fixes
 
-## 0.13.0 (2026-07-14)
+**Watch cards** — clearer freshness wording:
+* "Never checked" is now "Not checked yet — tap to check now"
+
+**AI configuration** — Source now controls what actually runs:
+* Price checking and Ask now share their real provider's Off/BYOK/Pro state
+* turning Ask off now actually stops it, instead of quietly still answering
+* Ask's web-search toggle and Product search's model picker now take effect
+* Promotions and Drop detection no longer show a Source picker they don't use
+
+**Background price checks** — Wi-Fi-only and charging-only now apply right away:
+* previously a mid-session change waited for a restart or a frequency edit
 
 ### Features
 

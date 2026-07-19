@@ -8,13 +8,10 @@ object TagsCodec {
             .distinct()
             .joinToString("\n")
 
-    fun decode(value: String): List<String> =
-        value
-            .lineSequence()
-            .map(::normalizeTag)
-            .filter(String::isNotBlank)
-            .distinct()
-            .toList()
+    // Splits on the same separators as [normalizeInput]: commas and semicolons are never part of
+    // a tag (every input path treats them as separators), so stored values that slipped through
+    // un-split — e.g. "research,roadmap" saved as one tag — heal into separate tags on load.
+    fun decode(value: String): List<String> = normalizeInput(value)
 
     fun normalizeInput(value: String): List<String> =
         value

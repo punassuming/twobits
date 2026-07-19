@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background,
                 ) {
                     AppNavigation(
-                        startDestination = uiTestRoute ?: com.shelfsnap.app.ui.navigation.Screen.Inventory.route,
+                        uiTestStartDestination = uiTestRoute,
                         suppressWhatsNew = suppressUiTestDialogs,
                     )
                 }

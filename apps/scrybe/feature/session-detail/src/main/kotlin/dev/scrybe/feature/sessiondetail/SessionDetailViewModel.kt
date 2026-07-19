@@ -29,6 +29,7 @@ import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.export.ExportCoordinator
 import dev.scrybe.core.export.ExportFormat
+import dev.scrybe.core.export.ObsidianExporter
 import dev.scrybe.core.localai.AutoRenameServiceFacade
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.Person
@@ -97,6 +98,7 @@ class SessionDetailViewModel
         private val taskExtractionService: OpenAiTaskExtractionService,
         private val modeSuggestionService: RecordingModeSuggestionService,
         private val exportCoordinator: ExportCoordinator,
+        private val obsidianExporter: ObsidianExporter,
         private val audioPlayer: AudioPlayer,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
@@ -492,11 +494,25 @@ class SessionDetailViewModel
                         exportCoordinator.export(state.session, state.transcripts, ExportFormat.JSON, outputDir),
                     )
 
-                val failure = exports.firstOrNull { it.isFailure }?.exceptionOrNull()
+                val vaultUri = preferencesDataStore.obsidianVaultUri.first()
+                val obsidianExport =
+                    if (vaultUri.isNotBlank()) {
+                        obsidianExporter.export(state.session, state.transcripts, vaultUri)
+                    } else {
+                        null
+                    }
+
+                val failure = (exports + listOfNotNull(obsidianExport)).firstOrNull { it.isFailure }?.exceptionOrNull()
                 if (failure != null) {
                     _events.emit(SessionDetailEvent.Message(failure.message ?: "Export failed"))
                 } else {
-                    _events.emit(SessionDetailEvent.Message("Exported files to ${outputDir.absolutePath}"))
+                    val message =
+                        if (obsidianExport != null) {
+                            "Exported files to ${outputDir.absolutePath} and to your Obsidian vault"
+                        } else {
+                            "Exported files to ${outputDir.absolutePath}"
+                        }
+                    _events.emit(SessionDetailEvent.Message(message))
                 }
             }
         }
@@ -636,7 +652,8 @@ class SessionDetailViewModel
         }
 
         fun saveTags(tags: List<String>) {
-            val normalizedTags = tags.map(String::trim).filter(String::isNotBlank).distinct()
+            // normalizeInput also splits on comma/semicolon so a pasted "a, b" draft becomes two tags.
+            val normalizedTags = tags.flatMap(TagsCodec::normalizeInput).distinct()
             viewModelScope.launch {
                 val session = sessionDao.getSessionByIdOnce(sessionId) ?: return@launch
                 sessionDao.updateSession(
