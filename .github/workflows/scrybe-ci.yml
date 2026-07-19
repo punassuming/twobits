@@ -29,6 +29,7 @@ on:
       - '.github/workflows/scrybe-release.yml'
       - '.github/workflows/reusable-validate.yml'
       - '.github/workflows/reusable-build.yml'
+  workflow_dispatch:
 
 concurrency:
   group: scrybe-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

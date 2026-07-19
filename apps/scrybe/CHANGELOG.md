@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* Internal: CI now supports manual dispatch, matching Shelf Snap/PriceDrop
+
 ## 1.43.0 (2026-07-19)
 
 ### Features
@@ -46,7 +48,6 @@
 * pasted comma or semicolon lists split when saving
 
 * History cards no longer show a flat placeholder waveform line
-
 
 ## 1.42.0 (2026-07-14)
 
