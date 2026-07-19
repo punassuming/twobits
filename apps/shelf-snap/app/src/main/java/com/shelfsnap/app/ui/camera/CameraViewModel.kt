@@ -54,9 +54,19 @@ class CameraViewModel
             _uiState.update { it.copy(flashOn = !it.flashOn) }
         }
 
-        /** Called each time the user successfully captures a photo. */
+        /**
+         * Called each time the user successfully captures a photo. In auto-analyze mode (a
+         * fresh, non-append session), the first photo immediately starts analysis instead of
+         * waiting for a manual tap on the Analyse pill — "the single default action after
+         * capture" the setting promises. A user who wants a multi-photo session for one item
+         * simply leaves this setting off.
+         */
         fun onPhotoCaptured(path: String) {
             _uiState.update { it.copy(capturedPaths = it.capturedPaths + path) }
+            val state = _uiState.value
+            if (state.autoAnalyze && state.appendToItemId == null && state.capturedPaths.size == 1) {
+                analyseAndSave()
+            }
         }
 
         /**

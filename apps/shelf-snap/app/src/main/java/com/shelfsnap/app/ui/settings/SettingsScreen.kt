@@ -105,12 +105,6 @@ fun SettingsScreen(
                     checked = uiState.autoAnalyze,
                     onCheckedChange = viewModel::onAutoAnalyzeChange,
                 )
-                SettingToggle(
-                    title = stringResource(R.string.keep_photos_title),
-                    subtitle = stringResource(R.string.keep_photos_subtitle),
-                    checked = uiState.keepPhotos,
-                    onCheckedChange = viewModel::onKeepPhotosChange,
-                )
                 StorageBreakdownCard(storage = uiState.storage)
             }
 

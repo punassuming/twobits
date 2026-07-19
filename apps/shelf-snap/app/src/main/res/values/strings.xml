@@ -148,8 +148,6 @@
     <string name="capture_storage_section">Capture &amp; storage</string>
     <string name="auto_analyze_title">Auto-analyze on capture</string>
     <string name="auto_analyze_subtitle">Analyze photos immediately after capture</string>
-    <string name="keep_photos_title">Keep original photos</string>
-    <string name="keep_photos_subtitle">Store full-resolution photos on this device</string>
     <string name="storage_usage">Storage usage</string>
     <string name="storage_photos">Photos</string>
     <string name="storage_database">Database</string>

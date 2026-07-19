@@ -43,6 +43,14 @@
 * off sends only the primary photo; on sends every captured photo
 * previously every photo was always sent regardless of this toggle
 
+**AI analysis toggles** — three more Settings controls now do what they say:
+* condition detection off keeps condition manual, instead of always AI-set
+* price estimate off leaves value blank, instead of always AI-filled
+* auto-analyze now actually skips the manual Analyse tap on the first photo
+
+**Removed "Keep original photos"** — it never affected app behavior:
+* no compression or deletion path existed for it to control
+
 ## 1.22.1 (2026-07-15)
 
 ### Features
