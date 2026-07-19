@@ -107,21 +107,43 @@ class ProviderSettingsStore
 
         private fun featureProvidersKey(f: AiFeature) = stringPreferencesKey("feature_providers_${f.key}")
 
-        fun observeFeatureSource(f: AiFeature): Flow<ProviderMode> =
-            context.providerStore.data.map { prefs ->
-                prefs[featureSourceKey(f)]?.let { ProviderMode.fromValue(it) } ?: ProviderMode.BYOK
+        /**
+         * Features with exactly one real provider that already does its own Off/BYOK/Pro
+         * routing (PriceDropApiClient branches directly on this provider's mode) have no
+         * independent "feature source" to track — the AI Config screen's Source picker for
+         * these features IS that provider's mode, not a second, disconnected preference that
+         * would need its own reconciliation. SEARCH multiplexes several providers behind one
+         * Pro-shortcut flag (see ProviderRegistry) and keeps its own stored value.
+         */
+        private fun primaryGatingProvider(f: AiFeature): PriceDropProvider? =
+            when (f) {
+                AiFeature.PRICE_CHECK -> PriceDropProvider.RAINFOREST
+                AiFeature.ASK -> PriceDropProvider.OPENAI
+                else -> null
             }
 
+        fun observeFeatureSource(f: AiFeature): Flow<ProviderMode> =
+            primaryGatingProvider(f)?.let { observeMode(it) }
+                ?: context.providerStore.data.map { prefs ->
+                    prefs[featureSourceKey(f)]?.let { ProviderMode.fromValue(it) } ?: ProviderMode.BYOK
+                }
+
         suspend fun getFeatureSource(f: AiFeature): ProviderMode =
-            context.providerStore.data
-                .first()[featureSourceKey(f)]
-                ?.let { ProviderMode.fromValue(it) } ?: ProviderMode.BYOK
+            primaryGatingProvider(f)?.let { getMode(it) }
+                ?: context.providerStore.data
+                    .first()[featureSourceKey(f)]
+                    ?.let { ProviderMode.fromValue(it) } ?: ProviderMode.BYOK
 
         suspend fun setFeatureSource(
             f: AiFeature,
             mode: ProviderMode,
         ) {
-            context.providerStore.edit { it[featureSourceKey(f)] = mode.value }
+            val primary = primaryGatingProvider(f)
+            if (primary != null) {
+                setMode(primary, mode)
+            } else {
+                context.providerStore.edit { it[featureSourceKey(f)] = mode.value }
+            }
         }
 
         fun observeFeatureModel(f: AiFeature): Flow<String> = context.providerStore.data.map { it[featureModelKey(f)].orEmpty() }

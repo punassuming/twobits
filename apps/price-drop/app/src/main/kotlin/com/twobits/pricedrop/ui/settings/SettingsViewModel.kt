@@ -65,7 +65,6 @@ data class SettingsUiState(
     val wifiOnly: Boolean = false,
     val onlyWhileCharging: Boolean = false,
     val quietHoursEnabled: Boolean = false,
-    val apiBaseUrl: String = "https://api.twobits.app",
     val isPurchasing: Boolean = false,
     val purchaseError: String? = null,
 ) {
@@ -128,7 +127,6 @@ class SettingsViewModel
                     wifiOnly = prefs[SettingsPrefs.WIFI_ONLY] ?: false,
                     onlyWhileCharging = prefs[SettingsPrefs.CHARGING_ONLY] ?: false,
                     quietHoursEnabled = prefs[SettingsPrefs.QUIET_HOURS] ?: false,
-                    apiBaseUrl = prefs[SettingsPrefs.API_URL] ?: "https://api.twobits.app",
                     isPurchasing = purchasing,
                     purchaseError = error,
                 )
@@ -148,11 +146,31 @@ class SettingsViewModel
         }
 
         fun setWifiOnly(enabled: Boolean) {
-            viewModelScope.launch { dataStore.edit { it[SettingsPrefs.WIFI_ONLY] = enabled } }
+            viewModelScope.launch {
+                dataStore.edit { it[SettingsPrefs.WIFI_ONLY] = enabled }
+                rescheduleFromCurrentPrefs()
+            }
         }
 
         fun setChargingOnly(enabled: Boolean) {
-            viewModelScope.launch { dataStore.edit { it[SettingsPrefs.CHARGING_ONLY] = enabled } }
+            viewModelScope.launch {
+                dataStore.edit { it[SettingsPrefs.CHARGING_ONLY] = enabled }
+                rescheduleFromCurrentPrefs()
+            }
+        }
+
+        // Rebuilds the periodic price-check work request so a Wi-Fi/charging constraint change
+        // takes effect immediately instead of waiting for the next app boot or frequency change.
+        private suspend fun rescheduleFromCurrentPrefs() {
+            val prefs = dataStore.data.first()
+            PriceCheckScheduler.schedule(
+                context = context,
+                freqHours =
+                    (prefs[SettingsPrefs.CHECK_FREQ] ?: SettingsPrefs.DEFAULT_CHECK_FREQ_HOURS)
+                        .coerceIn(SettingsPrefs.MIN_CHECK_FREQ_HOURS, SettingsPrefs.MAX_CHECK_FREQ_HOURS),
+                wifiOnly = prefs[SettingsPrefs.WIFI_ONLY] ?: false,
+                chargingOnly = prefs[SettingsPrefs.CHARGING_ONLY] ?: false,
+            )
         }
 
         fun setQuietHours(enabled: Boolean) {

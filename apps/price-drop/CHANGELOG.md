@@ -27,7 +27,14 @@
 **Watch cards** — clearer freshness wording:
 * "Never checked" is now "Not checked yet — tap to check now"
 
-## 0.13.0 (2026-07-14)
+**AI configuration** — Source now controls what actually runs:
+* Price checking and Ask now share their real provider's Off/BYOK/Pro state
+* turning Ask off now actually stops it, instead of quietly still answering
+* Ask's web-search toggle and Product search's model picker now take effect
+* Promotions and Drop detection no longer show a Source picker they don't use
+
+**Background price checks** — Wi-Fi-only and charging-only now apply right away:
+* previously a mid-session change waited for a restart or a frequency edit
 
 ### Features
 
