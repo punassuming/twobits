@@ -8,6 +8,9 @@
 
 ### Fixes
 
+**Ask** — turning it off no longer affects Product search:
+* the two features shared one provider setting; each now has its own
+
 ## 0.14.0 (2026-07-19)
 
 ### Features
@@ -43,6 +46,8 @@
 
 **Background price checks** — Wi-Fi-only and charging-only now apply right away:
 * previously a mid-session change waited for a restart or a frequency edit
+
+## 0.13.0 (2026-07-14)
 
 ### Features
 

@@ -8,6 +8,9 @@
 
 ### Fixes
 
+**Photo upload size** — large captures are now actually downsized:
+* a common 4032px-wide photo previously skipped resizing entirely
+
 ## 1.23.0 (2026-07-19)
 
 ### Features
@@ -58,7 +61,6 @@
 
 **Removed "Keep original photos"** — it never affected app behavior:
 * no compression or deletion path existed for it to control
-
 
 ## 1.22.1 (2026-07-15)
 

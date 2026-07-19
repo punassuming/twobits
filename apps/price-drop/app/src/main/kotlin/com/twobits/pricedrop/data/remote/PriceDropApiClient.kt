@@ -91,19 +91,25 @@ class PriceDropApiClient
 
         /**
          * Shopping-scoped chat. Pro routes through the Worker's OpenAI proxy; BYOK calls
-         * api.openai.com directly. [history] is the full conversation (all user + assistant turns)
-         * including the new user message as the last entry; the system prompt is prepended here.
-         * Model is resolved from the user's AI Config selection for [AiFeature.ASK].
+         * api.openai.com directly, gated on OpenAI's shared provider mode (also used by Product
+         * search's URL-paste extraction) — not on [AiFeature.ASK]'s own Source, which only gates
+         * whether Ask runs at all, kept separate so toggling Ask never changes Search's routing.
+         * [history] is the full conversation (all user + assistant turns) including the new user
+         * message as the last entry; the system prompt is prepended here. Model is resolved from
+         * the user's AI Config selection for [AiFeature.ASK].
          */
         suspend fun chat(
             systemPrompt: String,
             history: List<com.twobits.pricedrop.ui.ask.ChatMessage>,
         ): String {
-            val openAiMode = providerSettings.getMode(PriceDropProvider.OPENAI)
-            if (openAiMode == ProviderMode.OFF) {
+            // Ask's own Source flag gates whether Ask runs at all — independent of OpenAI's
+            // shared provider mode, which extractProductFromPage() (Product search's URL-paste
+            // extraction) also reads; writing/branching on the shared mode here would silently
+            // change Search's routing whenever a user only meant to turn Ask off.
+            if (providerSettings.getFeatureSource(AiFeature.ASK) == ProviderMode.OFF) {
                 throw IOException("Ask assistant is turned off. Enable it with a BYOK key or Pro in Settings.")
             }
-            val isProMode = openAiMode == ProviderMode.PRO
+            val isProMode = !isByok(PriceDropProvider.OPENAI)
             val baseUrl =
                 if (isProMode) {
                     PRO_BASE_URL

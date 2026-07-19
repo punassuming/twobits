@@ -108,17 +108,25 @@ class ProviderSettingsStore
         private fun featureProvidersKey(f: AiFeature) = stringPreferencesKey("feature_providers_${f.key}")
 
         /**
-         * Features with exactly one real provider that already does its own Off/BYOK/Pro
-         * routing (PriceDropApiClient branches directly on this provider's mode) have no
-         * independent "feature source" to track — the AI Config screen's Source picker for
-         * these features IS that provider's mode, not a second, disconnected preference that
-         * would need its own reconciliation. SEARCH multiplexes several providers behind one
-         * Pro-shortcut flag (see ProviderRegistry) and keeps its own stored value.
+         * PRICE_CHECK has exactly one real provider (RAINFOREST) that already does its own
+         * Off/BYOK/Pro routing (PriceDropApiClient branches directly on its mode) and, unlike
+         * OPENAI, isn't shared with any other feature's call path — the registry methods that
+         * would share it (detailProviders/offerProviders) have no caller. So PRICE_CHECK has no
+         * independent "feature source" to track: the AI Config Source picker for it IS
+         * RAINFOREST's mode, not a second, disconnected preference needing reconciliation.
+         *
+         * ASK is NOT included here even though it also has one primary provider (OPENAI) —
+         * OPENAI's mode is shared with Product search's URL-paste extraction
+         * (extractProductFromPage), so aliasing Ask's Source picker onto it would let toggling
+         * Ask silently change Search's routing too. ASK keeps its own independent stored source;
+         * chat() separately checks it to gate whether Ask runs at all (see chat()'s doc comment).
+         *
+         * SEARCH multiplexes several providers behind one Pro-shortcut flag (see
+         * ProviderRegistry) and keeps its own stored value regardless.
          */
         private fun primaryGatingProvider(f: AiFeature): PriceDropProvider? =
             when (f) {
                 AiFeature.PRICE_CHECK -> PriceDropProvider.RAINFOREST
-                AiFeature.ASK -> PriceDropProvider.OPENAI
                 else -> null
             }
 

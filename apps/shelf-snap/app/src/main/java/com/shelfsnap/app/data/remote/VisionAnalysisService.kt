@@ -294,15 +294,18 @@ class VisionAnalysisService
                     inJustDecodeBounds = true
                 }
             BitmapFactory.decodeFile(path, options)
-            val scale =
-                maxOf(
-                    options.outWidth / MAX_UPLOAD_DIM,
-                    options.outHeight / MAX_UPLOAD_DIM,
-                    1,
-                )
+            // inSampleSize must be a power of 2 — BitmapFactory silently rounds any other value
+            // down to the nearest one, so a plain width/MAX_UPLOAD_DIM division (which truncates
+            // toward zero, e.g. a common 4032px-wide capture / 2048 = 1) can decode at full
+            // resolution instead of shrinking it. Doubling until both dimensions fit guarantees
+            // the decoded bitmap is actually at or under the cap.
+            var inSampleSize = 1
+            while (options.outWidth / inSampleSize > MAX_UPLOAD_DIM || options.outHeight / inSampleSize > MAX_UPLOAD_DIM) {
+                inSampleSize *= 2
+            }
             val scaled =
                 BitmapFactory.Options().apply {
-                    inSampleSize = scale
+                    this.inSampleSize = inSampleSize
                 }
             val bitmap = BitmapFactory.decodeFile(path, scaled)
             val out = ByteArrayOutputStream()
