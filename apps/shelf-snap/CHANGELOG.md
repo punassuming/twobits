@@ -11,6 +11,9 @@
 **Photo upload size** — large captures are now actually downsized:
 * a common 4032px-wide photo previously skipped resizing entirely
 
+**Inventory filters** — selecting a filter with no matches no longer hides everything:
+* filter chips and search stay visible; a "Show all items" action appears instead
+
 ## 1.23.0 (2026-07-19)
 
 ### Features

@@ -129,7 +129,7 @@ fun InventoryScreen(
         },
         floatingActionButton = {
             val showEmptyWalkthrough =
-                !uiState.isLoading && uiState.items.isEmpty() && uiState.searchQuery.isBlank()
+                !uiState.isLoading && uiState.totalCount == 0 && uiState.searchQuery.isBlank()
             if (showEmptyWalkthrough) {
                 ExtendedFloatingActionButton(
                     onClick = onAddItem,
@@ -144,7 +144,7 @@ fun InventoryScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            if (uiState.items.isNotEmpty() || uiState.searchQuery.isNotBlank()) {
+            if (uiState.totalCount > 0 || uiState.searchQuery.isNotBlank()) {
                 // Pill-shaped search field — flat, no outline border
                 TextField(
                     value = uiState.searchQuery,
@@ -209,18 +209,28 @@ fun InventoryScreen(
                     }
 
                 uiState.items.isEmpty() ->
-                    if (uiState.searchQuery.isNotBlank()) {
-                        AppEmptyState(
-                            icon = Icons.Filled.Search,
-                            title = stringResource(R.string.no_items_match_search),
-                        )
-                    } else {
-                        Box(Modifier.fillMaxSize(), Alignment.Center) {
-                            InventoryWalkthrough(
-                                onAddItem = onAddItem,
-                                onSettingsClick = onSettingsClick,
+                    when {
+                        uiState.searchQuery.isNotBlank() ->
+                            AppEmptyState(
+                                icon = Icons.Filled.Search,
+                                title = stringResource(R.string.no_items_match_search),
                             )
-                        }
+
+                        uiState.filter != InventoryFilter.ALL ->
+                            AppEmptyState(
+                                icon = Icons.Filled.Search,
+                                title = stringResource(R.string.no_items_match_filter),
+                                primaryActionLabel = stringResource(R.string.show_all_items),
+                                onPrimaryAction = { viewModel.onFilterChange(InventoryFilter.ALL) },
+                            )
+
+                        else ->
+                            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                                InventoryWalkthrough(
+                                    onAddItem = onAddItem,
+                                    onSettingsClick = onSettingsClick,
+                                )
+                            }
                     }
 
                 else ->
