@@ -21,7 +21,13 @@
 * a Transcribe button appears when there is no transcript yet
 * the hint names Post-process once a transcript exists
 
+**Export files** — now actually exports to Obsidian when a vault is set:
+* previously choosing a vault saved the link but nothing ever used it
+
 ### Fixes
+
+**Settings** — removed non-functional Calendar/Slack/Notion rows:
+* these were static text with nothing behind them, not real buttons
 
 **Settings** — location permission is now requested only from the toggle:
 * opening Settings no longer auto-fires the system location dialog

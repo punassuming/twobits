@@ -70,7 +70,6 @@ class AppPreferencesDataStore
             val ENABLE_INSIGHT_ANALYSIS = booleanPreferencesKey("enable_insight_analysis")
             val DEBUG_DIARIZATION = booleanPreferencesKey("debug_diarization")
             val HAS_SEEN_ONBOARDING = booleanPreferencesKey("has_seen_onboarding")
-            val OPENAI_API_KEY = stringPreferencesKey("openai_api_key")
             val LOCATION_RECORDING_ENABLED = booleanPreferencesKey("location_recording_enabled")
             val OBSIDIAN_VAULT_URI = stringPreferencesKey("obsidian_vault_uri")
         }
@@ -262,11 +261,6 @@ class AppPreferencesDataStore
                 prefs[Keys.HAS_SEEN_ONBOARDING] ?: false
             }
 
-        val openAiApiKey: Flow<String> =
-            context.dataStore.data.map { prefs ->
-                prefs[Keys.OPENAI_API_KEY] ?: ""
-            }
-
         val locationRecordingEnabled: Flow<Boolean> =
             context.dataStore.data.map { prefs ->
                 prefs[Keys.LOCATION_RECORDING_ENABLED] ?: false
@@ -414,10 +408,6 @@ class AppPreferencesDataStore
 
         suspend fun setOnboardingSeen() {
             context.dataStore.edit { prefs -> prefs[Keys.HAS_SEEN_ONBOARDING] = true }
-        }
-
-        suspend fun setOpenAiApiKey(key: String) {
-            context.dataStore.edit { prefs -> prefs[Keys.OPENAI_API_KEY] = key }
         }
 
         suspend fun setLocationRecordingEnabled(enabled: Boolean) {
