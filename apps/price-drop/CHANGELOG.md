@@ -8,8 +8,9 @@
 
 ### Fixes
 
-**Ask** — turning it off no longer affects Product search:
+**Ask** — its own Source setting now actually controls it:
 * the two features shared one provider setting; each now has its own
+* choosing BYOK or Pro for Ask now routes its calls accordingly, not Product search's setting
 
 ## 0.14.0 (2026-07-19)
 

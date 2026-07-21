@@ -90,10 +90,13 @@ class PriceDropApiClient
         }
 
         /**
-         * Shopping-scoped chat. Pro routes through the Worker's OpenAI proxy; BYOK calls
-         * api.openai.com directly, gated on OpenAI's shared provider mode (also used by Product
-         * search's URL-paste extraction) — not on [AiFeature.ASK]'s own Source, which only gates
-         * whether Ask runs at all, kept separate so toggling Ask never changes Search's routing.
+         * Shopping-scoped chat. Both whether Ask runs at all AND whether it routes through the
+         * Worker's OpenAI proxy (Pro) or calls api.openai.com directly (BYOK) come from
+         * [AiFeature.ASK]'s own independently-stored Source — never from OpenAI's shared
+         * provider mode, which extractProductFromPage() (Product search's URL-paste extraction)
+         * also reads; branching on the shared mode here would let toggling Ask silently change
+         * Search's routing too. The BYOK API key itself is still the one shared OpenAI
+         * credential — only the on/off/Pro-vs-BYOK decision is Ask-specific.
          * [history] is the full conversation (all user + assistant turns) including the new user
          * message as the last entry; the system prompt is prepended here. Model is resolved from
          * the user's AI Config selection for [AiFeature.ASK].
@@ -102,14 +105,11 @@ class PriceDropApiClient
             systemPrompt: String,
             history: List<com.twobits.pricedrop.ui.ask.ChatMessage>,
         ): String {
-            // Ask's own Source flag gates whether Ask runs at all — independent of OpenAI's
-            // shared provider mode, which extractProductFromPage() (Product search's URL-paste
-            // extraction) also reads; writing/branching on the shared mode here would silently
-            // change Search's routing whenever a user only meant to turn Ask off.
-            if (providerSettings.getFeatureSource(AiFeature.ASK) == ProviderMode.OFF) {
+            val askSource = providerSettings.getFeatureSource(AiFeature.ASK)
+            if (askSource == ProviderMode.OFF) {
                 throw IOException("Ask assistant is turned off. Enable it with a BYOK key or Pro in Settings.")
             }
-            val isProMode = !isByok(PriceDropProvider.OPENAI)
+            val isProMode = askSource == ProviderMode.PRO
             val baseUrl =
                 if (isProMode) {
                     PRO_BASE_URL
