@@ -10,6 +10,7 @@ from pathlib import Path
 UNRELEASED_HEADING = "## Unreleased"
 ZERO_SHA = "0" * 40
 SECTION_PREFIX = "## "
+CANONICAL_SUBHEADINGS = ["### Features", "### Improvements", "### Fixes"]
 
 
 @dataclass(frozen=True)
@@ -163,10 +164,9 @@ def validate_changelog(changelog_path: Path) -> None:
             f"{changelog_path} must keep '{UNRELEASED_HEADING}' as the first changelog section"
         )
 
-    required_headings = ["### Features", "### Improvements", "### Fixes"]
     body = unreleased[0].body
     positions: list[int] = []
-    for heading in required_headings:
+    for heading in CANONICAL_SUBHEADINGS:
         try:
             positions.append(next(i for i, line in enumerate(body) if line.strip() == heading))
         except StopIteration as exc:
@@ -176,6 +176,44 @@ def validate_changelog(changelog_path: Path) -> None:
     if positions != sorted(positions):
         raise ValueError(
             f"{changelog_path} must keep Features, Improvements, and Fixes in order"
+        )
+
+    # Every section — Unreleased and each already-released '## X.Y.Z' — must not
+    # repeat a Features/Improvements/Fixes heading. A duplicate almost always means
+    # two releases' worth of content got merged under one '## ' heading, e.g. a
+    # '## X.Y.Z' boundary line was accidentally deleted during a hand-edit, so a
+    # later `promote-release` stamped both versions' content under a single new
+    # heading. Order is also checked wherever more than one heading is present, so
+    # older sections that legitimately omit a heading (pre-dating the three-heading
+    # convention) aren't flagged.
+    for section in sections:
+        _check_no_duplicate_subheadings(changelog_path, section)
+
+
+def _check_no_duplicate_subheadings(changelog_path: Path, section: Section) -> None:
+    seen_order = [
+        stripped
+        for line in section.body
+        if (stripped := line.strip()) in CANONICAL_SUBHEADINGS
+    ]
+
+    counts: dict[str, int] = {}
+    for heading in seen_order:
+        counts[heading] = counts.get(heading, 0) + 1
+    duplicated = sorted(heading for heading, count in counts.items() if count > 1)
+    if duplicated:
+        raise ValueError(
+            f"{changelog_path} section '{section.heading}' repeats heading(s) "
+            f"{duplicated} — two releases' worth of content were likely merged "
+            "under one version heading. Check for a missing '## X.Y.Z (date)' "
+            "boundary line immediately above or within this section."
+        )
+
+    positions = [CANONICAL_SUBHEADINGS.index(heading) for heading in seen_order]
+    if positions != sorted(positions):
+        raise ValueError(
+            f"{changelog_path} section '{section.heading}' has Features, "
+            "Improvements, and Fixes out of order"
         )
 
 

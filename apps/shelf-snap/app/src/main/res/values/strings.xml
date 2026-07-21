@@ -77,6 +77,8 @@
     <string name="status_listed">Listed</string>
     <string name="status_sold">Sold</string>
     <string name="no_items_match_search">No items match that search.</string>
+    <string name="no_items_match_filter">No items match this filter.</string>
+    <string name="show_all_items">Show all items</string>
 
     <!-- v2: item detail tabs -->
     <string name="tab_details">Details</string>
