@@ -8,6 +8,9 @@
 
 ### Fixes
 
+**Watchlist** — products now show again below the filter chips:
+* the chip row could expand to fill the screen and push the list off-screen
+
 ## 0.14.1 (2026-07-21)
 
 ### Features
@@ -19,7 +22,6 @@
 **Ask** — its own Source setting now actually controls it:
 * the two features shared one provider setting; each now has its own
 * choosing BYOK or Pro for Ask now routes its calls accordingly, not Product search's setting
-
 
 ## 0.14.0 (2026-07-19)
 
