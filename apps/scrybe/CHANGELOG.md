@@ -8,7 +8,16 @@
 
 ### Fixes
 
+## 1.45.0 (2026-07-22)
+
+### Features
+
+### Improvements
+
+### Fixes
+
 * Internal: shared chip row no longer over-expands in bounded parents (no visible change here; Scrybe's chip rows scroll)
+
 
 ## 1.44.0 (2026-07-21)
 
@@ -19,6 +28,7 @@
 ### Fixes
 
 * Internal: CI now supports manual dispatch, matching Shelf Snap/PriceDrop
+
 
 
 ## 1.43.0 (2026-07-19)
@@ -61,6 +71,7 @@
 * History cards no longer show a flat placeholder waveform line
 
 
+
 ## 1.42.0 (2026-07-14)
 
 ### Features
@@ -70,6 +81,7 @@
 * Shared: Codex now validates the sibling Worker workspace and PriceDrop discovery contracts (no visual change)
 
 ### Fixes
+
 
 
 
@@ -88,6 +100,7 @@
 
 
 
+
 ## 1.40.0 (2026-07-12)
 
 ### Features
@@ -97,6 +110,7 @@
 * internal: `shared/design`'s `CollapsibleProviderRow` gained a `summary` param, a compact requirement-dot indicator, and a new `ProviderInfoSheet` companion component — no Scrybe-visible change (Scrybe doesn't use this component's requirement indicator)
 
 ### Fixes
+
 
 
 
@@ -119,6 +133,7 @@
 
 
 
+
 ## 1.38.0 (2026-07-10)
 
 ### Features
@@ -131,6 +146,7 @@
 * Send to app is now part of Integrations; File Manager is now part of Storage
 
 ### Fixes
+
 
 
 
@@ -160,6 +176,7 @@
 
 
 
+
 ## 1.36.0 (2026-07-10)
 
 ### Features
@@ -172,6 +189,7 @@
 * playback keeps speaker colors, progress shading, and tap-to-seek
 
 ### Fixes
+
 
 
 
@@ -230,6 +248,7 @@
 
 
 
+
 ## 1.34.0 (2026-07-09)
 
 ### Features
@@ -256,6 +275,7 @@
 * applies to live transcription and gpt-4o batch transcription
 
 ### Fixes
+
 
 
 
@@ -312,6 +332,7 @@
 
 
 
+
 ## 1.32.0 (2026-07-08)
 
 ### Features
@@ -338,6 +359,7 @@
 
 
 
+
 ## 1.31.0 (2026-07-07)
 
 ### Features
@@ -348,6 +370,7 @@
 
 * internal: fixed the realtime session-configuration message to match OpenAI's current (GA) schema — the Realtime API Beta this was originally built against was retired, and the old flat config shape was being rejected almost immediately after connecting; v1.30.0 shipped with the old (broken) shape, so live streaming didn't work in that release
 * internal: the realtime session-update and audio-append messages were missing their required "type" fields and audio format/VAD config in transit — the shared JSON serializer doesn't encode default-valued properties, so those fields were silently dropped even after the GA schema fix above; every field is now passed explicitly instead of relying on a default
+
 
 
 
@@ -398,6 +421,7 @@
 
 
 
+
 ## 1.29.0 (2026-07-03)
 
 ### Features
@@ -415,6 +439,7 @@
 **Custom recording types** — a recording started from a custom type now shows its real name (mode badge, "Stop — process as …" button, and the live-transcript status line) instead of silently displaying as "Journal"
 **"Stop, save raw transcript only"** — now actually skips the linked transform profile; it previously ran the exact same stop path as the primary "Stop — process as …" button and always applied the transform anyway
 **Live-transcript panel** — now shows how the recording will be processed while it's still active (e.g. which profile it'll auto-transform into) instead of a generic "will appear here" placeholder
+
 
 
 
@@ -466,6 +491,7 @@
 
 
 
+
 ## 1.27.0 (2026-06-28)
 
 ### Features
@@ -479,6 +505,7 @@
 
 * Pro routing now refreshes subscription status on a cold start, so Pro users who haven't opened Settings no longer get "No API key configured" — the request correctly routes through the managed proxy
 * a failed subscription refresh at cold start is now retried on the next request instead of staying on Free for the session, so a transient launch-time network error no longer forces a Pro user onto the BYOK path
+
 
 
 
@@ -538,6 +565,7 @@
 
 
 
+
 ## 1.25.0 (2026-06-25)
 
 ### Features
@@ -549,6 +577,7 @@
 ### Fixes
 
 * **Bulk re-identification — preserve person assignments** — `reIdentifyAll()` and automatic post-transcription diarization now snapshot existing `personId` links before replacing speaker rows and restore them after, so manually assigned speaker identities are not lost when diarization re-runs
+
 
 
 
@@ -615,6 +644,7 @@
 
 
 
+
 ## 1.23.0 (2026-06-24)
 
 ### Features
@@ -628,6 +658,7 @@
 * **Settings build fix** — restored missing `SingleChoiceSegmentedButtonRow` / `SegmentedButton` / `SegmentedButtonDefaults` imports that were accidentally dropped when converting the audio format picker to a dialog; the Appearance / theme-mode segmented row uses them and would not compile
 * **Profile draft error** — if the AI draft call fails, a "Draft failed" bottom sheet now appears with the error message and a Dismiss button; previously the error state was silent and the user was left looking at the profile list with no feedback
 * **Profile review sheet** — added "Edit in full editor" button that opens the `ProfileEditorDialog` pre-populated with the AI draft so users can set the icon, color, mode, and other fields before saving
+
 
 
 
@@ -693,6 +724,7 @@
 
 
 
+
 ## 1.21.0 (2026-06-23)
 
 ### Features
@@ -706,6 +738,7 @@
 * Profiles: profile card name and description text is now smaller (`titleSmall` / `labelSmall`) so all content fits on narrow screens without overflow
 * Profiles: "New Profile" and "AI Draft" buttons no longer truncate their labels (e.g. "New Pro…") on narrow screens — reduced button content padding so the icon + full label fit
 * AI credential rows (shared): status badge no longer wraps to two lines when the provider title is long — the badge stays on one line and the title ellipsizes instead
+
 
 
 
@@ -785,6 +818,7 @@
 
 
 
+
 ## 1.19.0 (2026-06-22)
 
 ### Features
@@ -801,6 +835,7 @@
 * `AudioPlayer.setPlaybackSpeed()` implemented via `MediaPlayer.PlaybackParams` (API 23+, safe on minSdk 26)
 
 ### Fixes
+
 
 
 
@@ -872,6 +907,7 @@
 
 
 
+
 ## 1.17.0 (2026-06-19)
 
 ### Features
@@ -882,6 +918,7 @@
 * release workflow now uses `git rebase --autostash` so the changelog changes written by `promote-release` are preserved across the rebase instead of aborting it
 
 ### Fixes
+
 
 
 
@@ -969,6 +1006,7 @@
 
 
 
+
 ## 1.15.0 (2026-06-17)
 
 ### Features
@@ -1026,6 +1064,7 @@
 
 
 
+
 ## 1.14.0 (2026-06-15)
 
 ### Features
@@ -1045,6 +1084,7 @@
 * location capture now falls back to `PRIORITY_HIGH_ACCURACY` when the balanced-power request returns no fix (e.g. cold start with no cached location)
 * tapping the recording pill while already on the sessions list (minimized recording) now correctly restores the recording controls — previously the `launchSingleTop` navigate was a no-op and the lifecycle effect did not refire
 * start FAB is hidden while a recording is minimized — previously it remained visible and tapping it could send a second ACTION_START to the foreground service while a recording was already in progress
+
 
 
 
@@ -1159,6 +1199,7 @@
 
 
 
+
 ## 1.12.0 (2026-06-11)
 
 ### Features
@@ -1219,6 +1260,7 @@
 
 
 
+
 ## 1.11.0 (2026-06-11)
 
 ### Features
@@ -1242,6 +1284,7 @@
 * transcript tab shows speaker color pills (colored 8 dp squares + labels) above the transcript when multiple speakers are detected
 
 ### Fixes
+
 
 
 
@@ -1334,6 +1377,7 @@
 
 
 
+
 ## 1.9.0 (2026-06-08)
 
 ### Improvements
@@ -1383,11 +1427,13 @@
 
 
 
+
 ## 1.8.3 (2026-06-06)
 
 ### Fixes
 
 * fix R8 release build — add `-dontwarn` rules for commons-compress optional codec back-ends (XZ/LZMA via `org.tukaani.xz`, Zstandard via `com.github.luben.zstd`, Brotli via `org.brotli.dec`) that are absent from the bundled runtime; fix invalid `INSTANCE <fields>;` wildcard in serializer keep rule
+
 
 
 
@@ -1460,6 +1506,7 @@
 
 
 
+
 ## 1.8.1 (2026-06-06)
 
 ### Improvements
@@ -1501,12 +1548,14 @@
 
 
 
+
 ## 1.8.0 (2026-06-06)
 
 ### Improvements
 
 **GitHub Actions** — CI trigger optimization:
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -1587,6 +1636,7 @@
 
 
 
+
 ## 1.6.2 (2026-06-05)
 
 ### Improvements
@@ -1624,12 +1674,14 @@
 
 
 
+
 ## 1.6.1 (2026-06-04)
 
 ### Improvements
 
 **GitHub Actions** — duplicate release prevention:
 * add duplicate release prevention — `has-new-unreleased-since-tag` subcommand in `manage-changelog.py` compares current `## Unreleased` bullets against the last tag; both release workflows use this to skip releases when all bullets are already in a versioned section
+
 
 
 
@@ -1707,6 +1759,7 @@
 
 
 
+
 ## 1.5.0 (2026-06-04)
 
 ### Improvements
@@ -1716,6 +1769,7 @@
 
 **Documentation** — monorepo migration and developer guidelines:
 * unify documentation — merge `CLAUDE.md` into `AGENTS.md` as the single authoritative agent instruction file; update `README.md` to describe the TwoBits monorepo with both apps and the worker; fix stale `android-whispering` path references in `CONTRIBUTING.md`
+
 
 
 
@@ -1792,12 +1846,14 @@
 
 
 
+
 ## 1.3.0 (2026-06-03)
 
 ### Improvements
 
 **Managed API Proxy** — vision pricing documentation:
 * annotate worker vision support — gpt-4o and gpt-4o-mini entries in the Cloudflare Worker pricing table now carry explicit vision notes; image tokens are counted inside prompt_tokens by OpenAI so no separate billing path is needed
+
 
 
 
