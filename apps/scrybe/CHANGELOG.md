@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* Internal: shared chip row no longer over-expands in bounded parents (no visible change here; Scrybe's chip rows scroll)
+
 ## 1.44.0 (2026-07-21)
 
 ### Features

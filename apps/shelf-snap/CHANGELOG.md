@@ -8,6 +8,9 @@
 
 ### Fixes
 
+**Inventory list** — items now show again below the filter chips:
+* the chip row was expanding to fill the screen and pushing the list off-screen
+
 ## 1.23.1 (2026-07-21)
 
 ### Features
@@ -21,7 +24,6 @@
 
 **Inventory filters** — selecting a filter with no matches no longer hides everything:
 * filter chips and search stay visible; a "Show all items" action appears instead
-
 
 ## 1.23.0 (2026-07-19)
 

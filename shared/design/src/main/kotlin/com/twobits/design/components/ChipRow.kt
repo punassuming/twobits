@@ -42,6 +42,12 @@ fun AppChipRow(
 ) {
     val scrollState = rememberScrollState()
     Box(modifier = modifier.fillMaxWidth()) {
+        // The scrolling Row is the ONLY child that drives this Box's height. The fade scrims
+        // sit inside a matchParentSize overlay so their fillMaxHeight() resolves against the
+        // row's height, not the incoming max-height constraint. Filling against the incoming
+        // constraint directly (the scrims as direct Box children) makes the whole chip row grow
+        // to the full available height whenever this sits in a bounded, non-scrolling parent
+        // (e.g. a Column above a list) — starving everything below it to zero height.
         Row(
             modifier =
                 Modifier
@@ -60,24 +66,26 @@ fun AppChipRow(
             targetValue = if (scrollState.canScrollForward) 1f else 0f,
             label = "chip-row-end-fade",
         )
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight()
-                    .width(FADE_WIDTH)
-                    .alpha(startFade)
-                    .background(Brush.horizontalGradient(listOf(fadeColor, fadeColor.copy(alpha = 0f)))),
-        )
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(FADE_WIDTH)
-                    .alpha(endFade)
-                    .background(Brush.horizontalGradient(listOf(fadeColor.copy(alpha = 0f), fadeColor))),
-        )
+        Box(modifier = Modifier.matchParentSize()) {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .width(FADE_WIDTH)
+                        .alpha(startFade)
+                        .background(Brush.horizontalGradient(listOf(fadeColor, fadeColor.copy(alpha = 0f)))),
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .width(FADE_WIDTH)
+                        .alpha(endFade)
+                        .background(Brush.horizontalGradient(listOf(fadeColor.copy(alpha = 0f), fadeColor))),
+            )
+        }
     }
 }
 
