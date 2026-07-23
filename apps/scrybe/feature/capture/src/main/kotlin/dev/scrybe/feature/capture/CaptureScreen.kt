@@ -631,7 +631,7 @@ private fun RecordingActiveView(
             onResume = onResume,
         )
         Card(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -643,7 +643,7 @@ private fun RecordingActiveView(
         LiveTranscriptPanel(
             state = state,
             onDismissResult = onDismissResult,
-            modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 8.dp),
         )
         if (!isStopping || state.liveTranscript == null) {
             RecordingStopButtons(
@@ -880,7 +880,7 @@ private fun RecordingStopButtons(
     onCancel: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Button(
@@ -1822,7 +1822,7 @@ private fun RecentSessionMiniRow(session: RecentCaptureSession) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {

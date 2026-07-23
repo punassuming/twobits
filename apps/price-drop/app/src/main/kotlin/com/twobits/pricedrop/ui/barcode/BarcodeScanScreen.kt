@@ -109,7 +109,7 @@ fun BarcodeScanScreen(
                         }
                     }
                     is BarcodeUiState.Found -> {
-                        Box(Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
+                        Box(Modifier.align(Alignment.BottomCenter).padding(12.dp)) {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -148,7 +148,7 @@ fun BarcodeScanScreen(
                         }
                     }
                     is BarcodeUiState.Error -> {
-                        Box(Modifier.align(Alignment.BottomCenter).padding(16.dp)) {
+                        Box(Modifier.align(Alignment.BottomCenter).padding(12.dp)) {
                             Card {
                                 Text(state.message, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
                             }

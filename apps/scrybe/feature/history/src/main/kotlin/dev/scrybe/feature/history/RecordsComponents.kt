@@ -575,7 +575,7 @@ internal fun FolderNavigationSheet(
         shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
         scrimColor = Color.Black.copy(alpha = 0.62f),
     ) {
-        Text("Browse folders", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        Text("Browse folders", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
         HorizontalDivider()
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
             item {
@@ -742,7 +742,7 @@ internal fun TransformPickerSheet(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 12.dp)
                     .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -861,7 +861,7 @@ internal fun TagBrowserSheet(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 12.dp)
                     .padding(bottom = 32.dp)
                     .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(4.dp),

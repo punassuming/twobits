@@ -7,7 +7,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 object ScrybeLayoutDefaults {
-    val screenHorizontalPadding = 16.dp
+    val screenHorizontalPadding = 12.dp
     val screenVerticalSpacing = 14.dp
     val sectionPadding = 16.dp
     val sectionSpacing = 10.dp

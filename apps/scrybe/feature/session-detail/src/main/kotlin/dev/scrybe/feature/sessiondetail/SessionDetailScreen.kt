@@ -674,7 +674,7 @@ fun SessionDetailScreen(
     }
     if (showSpeakerManageSheet && successForSpeaker != null) {
         ModalBottomSheet(onDismissRequest = { showSpeakerManageSheet = false }) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 32.dp)) {
                 SpeakerSlotsCard(
                     state = successForSpeaker,
                     onAssignPerson = viewModel::assignPersonToSpeaker,
@@ -1025,7 +1025,7 @@ private fun AnalysisSuggestionSheet(
     onDismiss: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp),
+        modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("✨ Analysis", style = MaterialTheme.typography.titleMedium)
@@ -1258,7 +1258,7 @@ private fun MoreMenuSheet(
     val sessionStatus = state.session.status
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(bottom = 16.dp)) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text(state.session.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(state.session.mode.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
@@ -1299,7 +1299,7 @@ private fun EcosystemSheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 32.dp),
+            modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             Text("Send to…", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 12.dp))
@@ -1710,7 +1710,7 @@ private fun TransformSection(
         return
     }
     Column(
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         AppSectionHeader(

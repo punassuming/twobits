@@ -120,7 +120,7 @@ fun AIConfigScreen(
                 Modifier
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                    .padding(horizontal = 12.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             CredentialsSection(
