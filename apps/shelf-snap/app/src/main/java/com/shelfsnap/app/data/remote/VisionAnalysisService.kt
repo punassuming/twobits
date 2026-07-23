@@ -358,6 +358,7 @@ class VisionAnalysisService
             private const val USER_PROMPT =
                 "Please analyse the item in the following photo(s) and return the JSON."
 
+            // Keys must be lowercase because normalizeCategory lowercases model output before lookup.
             private val categoryAliases =
                 mapOf(
                     "apparel" to "Clothing & Accessories",
@@ -371,20 +372,20 @@ class VisionAnalysisService
                 )
 
             private val categories =
-                setOf(
-                    "Baby & Kids",
-                    "Books & Media",
-                    "Clothing & Accessories",
-                    "Collectibles",
-                    "Electronics",
-                    "Furniture",
-                    "Home & Kitchen",
-                    "Other",
-                    "Shoes",
-                    "Sports & Outdoors",
-                    "Tools & Garden",
-                    "Toys & Games",
-                ).associateBy { it.lowercase() }
+                mapOf(
+                    "baby & kids" to "Baby & Kids",
+                    "books & media" to "Books & Media",
+                    "clothing & accessories" to "Clothing & Accessories",
+                    "collectibles" to "Collectibles",
+                    "electronics" to "Electronics",
+                    "furniture" to "Furniture",
+                    "home & kitchen" to "Home & Kitchen",
+                    "other" to "Other",
+                    "shoes" to "Shoes",
+                    "sports & outdoors" to "Sports & Outdoors",
+                    "tools & garden" to "Tools & Garden",
+                    "toys & games" to "Toys & Games",
+                )
 
             internal fun normalizeCategory(category: String?): String {
                 val normalized = category?.trim()?.lowercase().orEmpty()
