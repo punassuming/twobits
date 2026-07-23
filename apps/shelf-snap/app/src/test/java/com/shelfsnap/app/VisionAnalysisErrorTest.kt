@@ -51,4 +51,26 @@ class VisionAnalysisErrorTest {
             VisionAnalysisService.friendlyNetworkError(IllegalStateException("?")),
         )
     }
+
+    @Test
+    fun `category aliases normalize to the standard taxonomy`() {
+        assertEquals(
+            "Clothing & Accessories",
+            VisionAnalysisService.normalizeCategory(" apparel "),
+        )
+        assertEquals(
+            "Home & Kitchen",
+            VisionAnalysisService.normalizeCategory("Kitchenware"),
+        )
+        assertEquals(
+            "Sports & Outdoors",
+            VisionAnalysisService.normalizeCategory("sporting goods"),
+        )
+    }
+
+    @Test
+    fun `unknown or missing categories default to other`() {
+        assertEquals("Other", VisionAnalysisService.normalizeCategory("Appliances"))
+        assertEquals("Other", VisionAnalysisService.normalizeCategory(null))
+    }
 }

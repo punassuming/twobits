@@ -6,6 +6,9 @@
 
 ### Improvements
 
+**AI categories** — analysis now assigns consistent resale-friendly categories:
+* clothing, home goods, media, toys, and other items use a shared taxonomy
+
 ### Fixes
 
 ## 1.23.2 (2026-07-22)

@@ -240,7 +240,7 @@ class VisionAnalysisService
 
                 val obj = JsonParser.parseString(cleaned).asJsonObject
                 DraftItemResult(
-                    category = obj.get("category")?.asString ?: "Other",
+                    category = normalizeCategory(obj.get("category")?.asString),
                     brand = obj.get("brand")?.asString ?: "",
                     model = obj.get("model")?.asString ?: "",
                     title = obj.get("title")?.asString ?: "",
@@ -342,7 +342,7 @@ class VisionAnalysisService
                 You are an expert at evaluating household goods for charitable donation.
                 Given one or more photos of a single item, respond ONLY with valid JSON in this exact schema:
                 {
-                  "category": "<short category, e.g. Clothing, Electronics, Books, Furniture, Toys, Kitchenware, Other>",
+                  "category": "<choose exactly one: Clothing & Accessories, Shoes, Electronics, Books & Media, Furniture, Home & Kitchen, Toys & Games, Sports & Outdoors, Tools & Garden, Collectibles, Baby & Kids, Other>",
                   "brand": "<brand or manufacturer name, or empty string if unknown>",
                   "model": "<the specific product/style name or model number when identifiable from packaging, labels, or design (e.g. 'Air Force 1 07', 'Instant Pot Duo 6Qt'), not just a generic category restated — read any visible text on tags, boxes, or engraved/printed labels closely for exact model or serial numbers; empty string if truly unidentifiable>",
                   "title": "<a specific, marketable resale listing title, in the style an experienced reseller would write. Lead with brand and the specific product/model name, then add the single most distinguishing visible attribute (color, material, or size) if it fits naturally. Do not just restate the category alone. Keep it under 80 characters. Empty string only if brand and model are both unidentifiable.>",
@@ -357,6 +357,41 @@ class VisionAnalysisService
 
             private const val USER_PROMPT =
                 "Please analyse the item in the following photo(s) and return the JSON."
+
+            private val categoryAliases =
+                mapOf(
+                    "apparel" to "Clothing & Accessories",
+                    "books" to "Books & Media",
+                    "clothing" to "Clothing & Accessories",
+                    "electronics" to "Electronics",
+                    "home decor" to "Home & Kitchen",
+                    "kitchenware" to "Home & Kitchen",
+                    "sporting goods" to "Sports & Outdoors",
+                    "toys" to "Toys & Games",
+                )
+
+            private val categories =
+                setOf(
+                    "Baby & Kids",
+                    "Books & Media",
+                    "Clothing & Accessories",
+                    "Collectibles",
+                    "Electronics",
+                    "Furniture",
+                    "Home & Kitchen",
+                    "Other",
+                    "Shoes",
+                    "Sports & Outdoors",
+                    "Tools & Garden",
+                    "Toys & Games",
+                )
+
+            internal fun normalizeCategory(category: String?): String {
+                val normalized = category?.trim().orEmpty()
+                return categoryAliases[normalized.lowercase()] ?: categories.firstOrNull {
+                    it.equals(normalized, ignoreCase = true)
+                } ?: "Other"
+            }
 
             internal const val ERROR_INVALID_KEY =
                 "Invalid or missing OpenAI API key. Check Settings."
