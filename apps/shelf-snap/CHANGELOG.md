@@ -8,7 +8,7 @@
 
 **AI categories** — analysis now assigns consistent resale-friendly categories:
 * clothing, home goods, media, toys, and other items use a shared taxonomy
-* common AI terms such as apparel and kitchenware map reliably to those categories
+* common AI terms such as apparel and kitchenware map consistently to those categories
 * similar labels no longer split matching items across near-duplicate groups
 
 ### Fixes

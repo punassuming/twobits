@@ -359,36 +359,32 @@ class VisionAnalysisService
                 "Please analyse the item in the following photo(s) and return the JSON."
 
             // Keys must be lowercase because normalizeCategory lowercases model output before lookup.
-            private val categoryAliases =
+            private val normalizedCategories =
                 mapOf(
                     "apparel" to "Clothing & Accessories",
-                    "books" to "Books & Media",
-                    "clothing" to "Clothing & Accessories",
-                    "home decor" to "Home & Kitchen",
-                    "kitchenware" to "Home & Kitchen",
-                    "sporting goods" to "Sports & Outdoors",
-                    "toys" to "Toys & Games",
-                )
-
-            private val categories =
-                mapOf(
                     "baby & kids" to "Baby & Kids",
                     "books & media" to "Books & Media",
+                    "books" to "Books & Media",
                     "clothing & accessories" to "Clothing & Accessories",
+                    "clothing" to "Clothing & Accessories",
                     "collectibles" to "Collectibles",
                     "electronics" to "Electronics",
                     "furniture" to "Furniture",
                     "home & kitchen" to "Home & Kitchen",
+                    "home decor" to "Home & Kitchen",
+                    "kitchenware" to "Home & Kitchen",
                     "other" to "Other",
                     "shoes" to "Shoes",
                     "sports & outdoors" to "Sports & Outdoors",
+                    "sporting goods" to "Sports & Outdoors",
                     "tools & garden" to "Tools & Garden",
                     "toys & games" to "Toys & Games",
+                    "toys" to "Toys & Games",
                 )
 
             internal fun normalizeCategory(category: String?): String {
                 val normalized = category?.trim()?.lowercase().orEmpty()
-                return categoryAliases[normalized] ?: categories[normalized] ?: "Other"
+                return normalizedCategories[normalized] ?: "Other"
             }
 
             internal const val ERROR_INVALID_KEY =
