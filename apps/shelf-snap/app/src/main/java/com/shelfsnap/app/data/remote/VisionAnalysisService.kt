@@ -364,7 +364,6 @@ class VisionAnalysisService
                     "apparel" to "Clothing & Accessories",
                     "books" to "Books & Media",
                     "clothing" to "Clothing & Accessories",
-                    "electronics" to "Electronics",
                     "home decor" to "Home & Kitchen",
                     "kitchenware" to "Home & Kitchen",
                     "sporting goods" to "Sports & Outdoors",
