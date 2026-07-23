@@ -384,13 +384,11 @@ class VisionAnalysisService
                     "Sports & Outdoors",
                     "Tools & Garden",
                     "Toys & Games",
-                )
+                ).associateBy { it.lowercase() }
 
             internal fun normalizeCategory(category: String?): String {
-                val normalized = category?.trim().orEmpty()
-                return categoryAliases[normalized.lowercase()] ?: categories.firstOrNull {
-                    it.equals(normalized, ignoreCase = true)
-                } ?: "Other"
+                val normalized = category?.trim()?.lowercase().orEmpty()
+                return categoryAliases[normalized] ?: categories[normalized] ?: "Other"
             }
 
             internal const val ERROR_INVALID_KEY =

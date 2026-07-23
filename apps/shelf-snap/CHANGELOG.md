@@ -8,6 +8,7 @@
 
 **AI categories** — analysis now assigns consistent resale-friendly categories:
 * clothing, home goods, media, toys, and other items use a shared taxonomy
+* common AI terms such as apparel and kitchenware map to those categories
 
 ### Fixes
 
