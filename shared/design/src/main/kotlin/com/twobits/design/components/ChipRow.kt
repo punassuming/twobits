@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 fun AppChipRow(
     modifier: Modifier = Modifier,
     fadeColor: Color = MaterialTheme.colorScheme.background,
-    horizontalPadding: Dp = 16.dp,
+    horizontalPadding: Dp = 12.dp,
     verticalPadding: Dp = 0.dp,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(8.dp),
     content: @Composable RowScope.() -> Unit,

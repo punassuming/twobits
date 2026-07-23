@@ -144,7 +144,7 @@ private fun TaskInboxContent(
 
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item {
-            StatCardsRow(counts = state.counts, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+            StatCardsRow(counts = state.counts, modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp))
         }
         item {
             FilterChipRow(
@@ -184,7 +184,7 @@ private fun TaskGroupHeader(
     count: Int,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -282,7 +282,7 @@ private fun TaskRow(
         }
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

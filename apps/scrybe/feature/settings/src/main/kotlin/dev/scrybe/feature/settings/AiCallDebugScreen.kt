@@ -87,7 +87,7 @@ fun AiCallDebugScreen(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(uiState.entries) { entry ->

@@ -74,7 +74,7 @@ fun SettingsScreen(
                 Modifier
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(horizontal = 12.dp, vertical = 16.dp)
                     .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {

@@ -6,6 +6,9 @@
 
 ### Improvements
 
+**Screen margins** — content now sits closer to the screen edges:
+* the outer margin tightened from 16dp to 12dp across every screen for more usable width
+
 ### Fixes
 
 ## 1.45.0 (2026-07-22)

@@ -152,7 +152,7 @@ fun InventoryScreen(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                     placeholder = { Text(stringResource(R.string.search_items)) },
                     leadingIcon = {
                         Icon(
@@ -235,7 +235,7 @@ fun InventoryScreen(
 
                 else ->
                     LazyColumn(
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 88.dp),
+                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 88.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(uiState.items, key = { it.id }) { item ->
@@ -459,7 +459,7 @@ private fun InventorySortSheet(
                 "Sort by",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
             )
             HorizontalDivider()
             SortOrder.entries.forEach { order ->
@@ -544,7 +544,7 @@ private fun SummaryBanner(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .padding(horizontal = 12.dp, vertical = 4.dp)
                 .clickable(onClick = onSummaryClick),
         color = MaterialTheme.colorScheme.primaryContainer,
         shape = RoundedCornerShape(16.dp),

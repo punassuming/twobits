@@ -100,7 +100,7 @@ private fun MainContentBox(
                 Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
             enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { -it / 2 }) + fadeOut(),
         ) {

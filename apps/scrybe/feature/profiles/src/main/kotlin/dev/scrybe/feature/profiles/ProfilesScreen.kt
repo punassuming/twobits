@@ -684,7 +684,7 @@ private fun ProfileDetailView(
                     .fillMaxWidth()
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                    .padding(horizontal = 12.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PipelineStepFlow(steps = profile.steps)
@@ -912,7 +912,7 @@ private fun ProfileEditorDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(max = maxHeight),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp).heightIn(max = maxHeight),
             shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
         ) {
@@ -1307,7 +1307,7 @@ private fun AiProfileDraftDialog(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 12.dp),
             shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
         ) {

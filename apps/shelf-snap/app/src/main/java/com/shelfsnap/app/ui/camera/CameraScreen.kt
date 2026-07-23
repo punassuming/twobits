@@ -335,7 +335,7 @@ private fun CameraContent(
                     Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF0A0A0A))
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
             ) {
                 // Photo strip
                 if (capturedPaths.isNotEmpty()) {

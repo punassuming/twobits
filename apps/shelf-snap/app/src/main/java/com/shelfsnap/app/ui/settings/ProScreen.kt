@@ -77,7 +77,7 @@ fun ProScreen(
                     .padding(padding)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             ProInfraNote()

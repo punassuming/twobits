@@ -129,7 +129,7 @@ fun SummaryScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -224,7 +224,7 @@ private fun SummaryItemRow(item: Item) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

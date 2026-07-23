@@ -97,7 +97,7 @@ fun SettingsScreen(
                 Modifier
                     .padding(padding)
                     .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {

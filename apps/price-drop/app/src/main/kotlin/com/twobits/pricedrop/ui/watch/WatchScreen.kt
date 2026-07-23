@@ -164,7 +164,7 @@ fun WatchScreen(
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(watchlist, key = { it.id }) { product ->
@@ -394,7 +394,7 @@ private fun AddOrAskSheet(
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
-            Modifier.padding(horizontal = 16.dp),
+            Modifier.padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(

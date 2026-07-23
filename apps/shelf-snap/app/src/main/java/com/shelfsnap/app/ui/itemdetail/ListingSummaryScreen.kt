@@ -135,7 +135,7 @@ fun ListingSummaryScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(listings, key = { it.platformKey }) { listing ->
