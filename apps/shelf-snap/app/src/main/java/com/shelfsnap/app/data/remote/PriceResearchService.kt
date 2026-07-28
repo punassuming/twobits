@@ -224,14 +224,15 @@ class PriceResearchService
                     .first()
                     .first.provider.key
 
-            // Phase 1 — search. SearchAPI, when enabled, is the only provider that maps eBay
-            // onto a real completed-sales engine and honors site: reliably for the rest, so it
-            // alone runs the marketplace-targeted core queries (eBay/Mercari/OfferUp). Generic
-            // providers (Serper/Jina/Brave) would just re-run the identical query for a worse
-            // result, so they skip core when SearchAPI is available and spend their calls on
+            // Phase 1 — search. SearchAPI and Serper both honor site: reliably (SearchAPI
+            // additionally maps eBay onto a real completed-sales engine), so whichever of them
+            // is enabled — either or both — runs the marketplace-targeted core queries
+            // (eBay/Mercari/OfferUp). Jina/Brave would just re-run the identical query for a
+            // worse result (Jina silently drops site: and returns eBay error pages), so they
+            // skip core when a site:-honoring provider is available and spend their calls on
             // the broadening queries instead — genuinely different evidence rather than a
-            // redundant search. Without SearchAPI enabled, every provider runs core itself,
-            // since it's the only evidence source for that marketplace at all.
+            // redundant search. Without SearchAPI or Serper enabled, every provider runs core
+            // itself, since it's the only evidence source for that marketplace at all.
             //
             // Whichever providers run core, all of them keep going through the broadening
             // queries only until they've found enough real marketplace postings. The original
@@ -247,13 +248,14 @@ class PriceResearchService
             // (independent vendors, so wall-clock still collapses to the slowest single
             // provider) but each provider's own queries run in sequence so its quota can
             // short-circuit the broadening tail.
+            val hasSiteFilterProvider = services.any { it.first.provider.honorsSiteFilter }
             val searchStart = System.currentTimeMillis()
             val perProviderAttempts: List<List<SearchAttempt>> =
                 coroutineScope {
                     services
                         .map { (service, key) ->
                             val runsCore =
-                                service.provider.suppliesStructuredListings || !hasStructuredProvider
+                                service.provider.honorsSiteFilter || !hasSiteFilterProvider
                             async {
                                 val attempts = mutableListOf<SearchAttempt>()
                                 var legitPostings = 0
