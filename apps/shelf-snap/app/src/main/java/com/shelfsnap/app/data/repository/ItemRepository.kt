@@ -19,6 +19,7 @@ import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.ListingGenerationService
 import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
+import com.shelfsnap.app.data.remote.ResearchProgress
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionRepository
@@ -143,7 +144,10 @@ class ItemRepository
          * inactive Pro subscription, or the feature being turned off fails immediately with a clear
          * message instead of spinning for several seconds before the underlying call errors out.
          */
-        suspend fun researchPrice(item: Item): PriceResearchResult {
+        suspend fun researchPrice(
+            item: Item,
+            onProgress: (ResearchProgress) -> Unit = {},
+        ): PriceResearchResult {
             val sourceKey = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok"
             val mode = executionModeFromSourceKey(sourceKey)
 
@@ -179,6 +183,7 @@ class ItemRepository
                         openAiAuthHeader = "Bearer $appUserId",
                         workerSearchUrl = "$WORKER_BASE/v1/shelfsnap/search",
                         workerAuthHeader = "Bearer $appUserId",
+                        onProgress = onProgress,
                     )
                 }
                 ExecutionMode.LOCAL -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
@@ -205,6 +210,7 @@ class ItemRepository
                         // and Jina only verifies it. Brave/SearchAPI have no reader endpoint.
                         readerKey = getJinaApiKey().ifBlank { null },
                         model = getReasoningModel().apiName,
+                        onProgress = onProgress,
                     )
                 }
             }

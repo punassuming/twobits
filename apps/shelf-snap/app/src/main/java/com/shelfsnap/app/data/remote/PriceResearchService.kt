@@ -30,6 +30,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -126,6 +127,11 @@ class PriceResearchService
          * @param workerSearchUrl When non-null, web evidence is gathered via the Worker's
          *   managed search endpoint instead of calling Jina/Brave directly.
          * @param workerAuthHeader Auth header for [workerSearchUrl] calls.
+         * @param onProgress Fired as search queries, page reads, and synthesis happen, so the
+         *   UI can show live status instead of an opaque spinner. Purely informational — a slow
+         *   or absent collector never affects the research itself. May be invoked from multiple
+         *   concurrent coroutines (queries and marketplace reads run in parallel); each call
+         *   carries a full snapshot so the collector can just replace its state.
          */
         suspend fun research(
             item: Item,
@@ -137,6 +143,7 @@ class PriceResearchService
             openAiAuthHeader: String = "Bearer $openAiKey",
             workerSearchUrl: String? = null,
             workerAuthHeader: String? = null,
+            onProgress: (ResearchProgress) -> Unit = {},
         ): PriceResearchResult =
             withContext(Dispatchers.IO) {
                 val totalStart = System.currentTimeMillis()
@@ -148,10 +155,20 @@ class PriceResearchService
                 // Step 1 — best-effort web evidence (search, then optionally read pages).
                 val evidence =
                     if (workerSearchUrl != null && workerAuthHeader != null) {
-                        gatherWorkerEvidence(item, workerSearchUrl, workerAuthHeader)
+                        gatherWorkerEvidence(item, workerSearchUrl, workerAuthHeader, onProgress)
                     } else {
-                        gatherEvidence(item, searchProviders, readerKey)
+                        gatherEvidence(item, searchProviders, readerKey, onProgress)
                     }
+
+                onProgress(
+                    ResearchProgress(
+                        phase = ResearchProgress.Phase.SYNTHESIZING,
+                        detail = "Analyzing with AI…",
+                        queriesRun = evidence.queries.size,
+                        resultsFound = evidence.results.count { it.platformKey != null },
+                        pagesConfirmed = evidence.pagesRead,
+                    ),
+                )
 
                 // Step 2 — synthesize via the model.
                 val synthesisStart = System.currentTimeMillis()
@@ -207,6 +224,7 @@ class PriceResearchService
             item: Item,
             providers: List<Pair<SearchProvider, String>>,
             readerKey: String?,
+            onProgress: (ResearchProgress) -> Unit,
         ): SearchEvidence {
             val services =
                 providers.mapNotNull { (provider, key) ->
@@ -261,6 +279,22 @@ class PriceResearchService
             val (braveServices, otherServices) = services.partition { it.first.provider == SearchProvider.BRAVE }
             val immediateServices = if (hasSiteFilterProvider) otherServices else services
             val deferredBraveServices = if (hasSiteFilterProvider) braveServices else emptyList()
+            // Queries run concurrently (within a provider's core queries, and across providers),
+            // so these need to be safe for concurrent increment — plain vars would race.
+            val queriesRun = AtomicInteger(0)
+            val resultsFound = AtomicInteger(0)
+            val onQueryDone: (SearchProvider, String, Int) -> Unit = { provider, query, resultCount ->
+                queriesRun.incrementAndGet()
+                resultsFound.addAndGet(resultCount)
+                onProgress(
+                    ResearchProgress(
+                        phase = ResearchProgress.Phase.SEARCHING,
+                        detail = "${provider.displayName}: $query",
+                        queriesRun = queriesRun.get(),
+                        resultsFound = resultsFound.get(),
+                    ),
+                )
+            }
             val searchStart = System.currentTimeMillis()
             val immediateAttempts: List<List<SearchAttempt>> =
                 coroutineScope {
@@ -273,6 +307,7 @@ class PriceResearchService
                                     key = key,
                                     core = if (runsCore) queryPlan.core else emptyList(),
                                     broadening = queryPlan.broadening,
+                                    onQueryDone = onQueryDone,
                                 )
                             }
                         }.map { it.await() }
@@ -300,6 +335,7 @@ class PriceResearchService
                                         key = key,
                                         core = emptyList(),
                                         broadening = queryPlan.broadening,
+                                        onQueryDone = onQueryDone,
                                     )
                                 }
                             }.map { it.await() }
@@ -368,6 +404,8 @@ class PriceResearchService
                     .groupBy { merged[it].platformKey }
             if (!readerKey.isNullOrBlank() && candidatesByMarketplace.isNotEmpty()) {
                 val readStart = System.currentTimeMillis()
+                val pagesTarget = candidatesByMarketplace.size * READS_PER_MARKETPLACE
+                val pagesConfirmed = AtomicInteger(0)
                 val confirmedReads: List<Pair<Int, String>> =
                     coroutineScope {
                         candidatesByMarketplace.values
@@ -376,8 +414,23 @@ class PriceResearchService
                                     val confirmed = mutableListOf<Pair<Int, String>>()
                                     for (i in candidates) {
                                         if (confirmed.size >= READS_PER_MARKETPLACE) break
+                                        val marketplaceName = Platform.fromKey(merged[i].platformKey ?: "")?.displayName ?: "listing"
                                         val text = jinaReader.read(merged[i].url, readerKey) ?: ""
-                                        if (looksLikeConfirmedListing(text)) confirmed.add(i to text)
+                                        val isMatch = looksLikeConfirmedListing(text)
+                                        if (isMatch) {
+                                            confirmed.add(i to text)
+                                            pagesConfirmed.incrementAndGet()
+                                        }
+                                        onProgress(
+                                            ResearchProgress(
+                                                phase = ResearchProgress.Phase.VERIFYING,
+                                                detail = if (isMatch) "$marketplaceName verified" else "$marketplaceName — trying next listing",
+                                                queriesRun = queriesRun.get(),
+                                                resultsFound = resultsFound.get(),
+                                                pagesConfirmed = pagesConfirmed.get(),
+                                                pagesTarget = pagesTarget,
+                                            ),
+                                        )
                                     }
                                     confirmed
                                 }
@@ -416,26 +469,31 @@ class PriceResearchService
             key: String,
             core: List<String>,
             broadening: List<String>,
+            onQueryDone: (SearchProvider, String, Int) -> Unit = { _, _, _ -> },
         ): List<SearchAttempt> {
-            suspend fun runOne(query: String): SearchAttempt =
-                runCatching { service.search(query, key) }
-                    .fold(
-                        onSuccess = { results ->
-                            SearchAttempt(
-                                provider = service.provider,
-                                query = query,
-                                results = results.map { it.withBackfilledPlatform() },
-                            )
-                        },
-                        onFailure = { e ->
-                            Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
-                            SearchAttempt(
-                                provider = service.provider,
-                                query = query,
-                                error = e.message ?: e.javaClass.simpleName,
-                            )
-                        },
-                    )
+            suspend fun runOne(query: String): SearchAttempt {
+                val attempt =
+                    runCatching { service.search(query, key) }
+                        .fold(
+                            onSuccess = { results ->
+                                SearchAttempt(
+                                    provider = service.provider,
+                                    query = query,
+                                    results = results.map { it.withBackfilledPlatform() },
+                                )
+                            },
+                            onFailure = { e ->
+                                Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
+                                SearchAttempt(
+                                    provider = service.provider,
+                                    query = query,
+                                    error = e.message ?: e.javaClass.simpleName,
+                                )
+                            },
+                        )
+                onQueryDone(service.provider, query, attempt.results.count { it.platformKey != null })
+                return attempt
+            }
 
             val coreAttempts =
                 coroutineScope {
@@ -479,6 +537,7 @@ class PriceResearchService
             item: Item,
             workerUrl: String,
             authHeader: String,
+            onProgress: (ResearchProgress) -> Unit,
         ): SearchEvidence {
             // The Worker routes every query through SearchAPI (see the "searchapi" provider in
             // the request body below), which does honor completed-sales targeting. This path
@@ -492,6 +551,8 @@ class PriceResearchService
             var lastError: String? = null
 
             val searchStart = System.currentTimeMillis()
+            var queriesRun = 0
+            var resultsFound = 0
             for (query in queries) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
                 runCatching {
@@ -529,6 +590,7 @@ class PriceResearchService
                         results.forEach { r ->
                             if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
                         }
+                        resultsFound += results.count { it.platformKey != null }
                     },
                     onFailure = {
                         Log.w(TAG, "Worker search failed for query '$query': ${it.message}")
@@ -542,6 +604,15 @@ class PriceResearchService
                             ),
                         )
                     },
+                )
+                queriesRun++
+                onProgress(
+                    ResearchProgress(
+                        phase = ResearchProgress.Phase.SEARCHING,
+                        detail = "Managed search: $query",
+                        queriesRun = queriesRun,
+                        resultsFound = resultsFound,
+                    ),
                 )
                 if (merged.size >= MIN_RESULTS_EARLY_STOP) break
             }
