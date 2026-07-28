@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* release workflow now bumps a patch version by default, matching Scrybe/PriceDrop convention (no visual change)
+
 ### Fixes
 
 ## 1.46.0 (2026-07-23)
