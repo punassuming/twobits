@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -165,26 +166,42 @@ fun MarketTab(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // With zero comps every number below comes from the model's own guess, so the
+                // "sold"/"range" framing would be asserting market data that was never observed.
+                val hasComps = research.comps.isNotEmpty()
                 if (research.averageSoldPrice > 0.0 || research.highPrice > 0.0) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatTile(
                             modifier = Modifier.weight(1f),
                             value = "$" + "%.0f".format(research.averageSoldPrice),
-                            label = stringResource(R.string.avg_sold_price),
+                            label =
+                                stringResource(
+                                    if (hasComps) R.string.avg_sold_price else R.string.ai_estimate_label,
+                                ),
                             emphasize = true,
                         )
-                        StatTile(
-                            modifier = Modifier.weight(1f),
-                            value = "$" + "%.0f".format(research.lowPrice) + "–$" + "%.0f".format(research.highPrice),
-                            label = stringResource(R.string.price_range),
-                        )
+                        if (hasComps) {
+                            StatTile(
+                                modifier = Modifier.weight(1f),
+                                value = "$" + "%.0f".format(research.lowPrice) + "–$" + "%.0f".format(research.highPrice),
+                                label = stringResource(R.string.price_range),
+                            )
+                        }
                     }
                 }
-                if (research.highPrice > research.lowPrice) {
+                if (hasComps && research.highPrice > research.lowPrice) {
                     PriceRangeBar(
                         low = research.lowPrice,
                         high = research.highPrice,
-                        marker = research.averageSoldPrice,
+                        aiEstimate = research.averageSoldPrice,
+                        listingPrices = research.comps.map { it.price }.filter { it > 0.0 },
+                    )
+                }
+                if (research.soldDataUnavailable) {
+                    Text(
+                        text = stringResource(R.string.sold_data_needs_searchapi),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (research.confidencePercent > 0) {
@@ -747,14 +764,23 @@ fun priceMarkerFraction(
     return raw.coerceIn(0.03f, 0.97f)
 }
 
-/** Gradient price range with a marker at the average/suggested price. */
+/**
+ * Gradient price range plotting every observed listing price as its own tick, with a distinct
+ * ringed marker for the AI's estimate.
+ *
+ * Showing only a single averaged marker hid how the comparables were actually distributed —
+ * three listings clustered at $40 and one outlier at $300 rendered identically to four
+ * listings evenly spread. Each real price is drawn so that spread is visible, and the AI
+ * estimate is styled differently so it is never mistaken for an observed sale.
+ */
 @Composable
 private fun PriceRangeBar(
     low: Double,
     high: Double,
-    marker: Double,
+    aiEstimate: Double,
+    listingPrices: List<Double>,
 ) {
-    val fraction = priceMarkerFraction(low, high, marker)
+    val fraction = priceMarkerFraction(low, high, aiEstimate)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(modifier = Modifier.fillMaxWidth().height(14.dp)) {
             Box(
@@ -774,6 +800,22 @@ private fun PriceRangeBar(
                             ),
                         ),
             )
+            // Observed listing prices first, so the AI marker draws on top of any that collide.
+            listingPrices.forEach { price ->
+                val tickFraction = priceMarkerFraction(low, high, price)
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(Modifier.weight(tickFraction))
+                    Box(
+                        modifier =
+                            Modifier
+                                .width(3.dp)
+                                .height(14.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(MaterialTheme.colorScheme.onSurface),
+                    )
+                    Spacer(Modifier.weight(1f - tickFraction))
+                }
+            }
             Row(modifier = Modifier.fillMaxWidth()) {
                 Spacer(Modifier.weight(fraction))
                 Box(
@@ -799,7 +841,7 @@ private fun PriceRangeBar(
             Text(
                 text =
                     stringResource(R.string.suggested).replaceFirstChar { it.uppercase() } +
-                        ": $" + "%.0f".format(marker),
+                        ": $" + "%.0f".format(aiEstimate),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -810,6 +852,12 @@ private fun PriceRangeBar(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        // Without this the vertical ticks read as decoration rather than as data points.
+        Text(
+            text = pluralStringResource(R.plurals.price_plot_legend, listingPrices.size, listingPrices.size),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

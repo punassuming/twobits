@@ -6,7 +6,27 @@
 
 ### Improvements
 
+**Market research** — far fewer search calls for the same evidence:
+* each provider now stops once it finds four real marketplace postings
+* the same query is no longer fanned out to every provider at once
+* real marketplace listings outrank blog and shop pages in the evidence
+
+**Price analysis** — the plot now shows every comparable price:
+* each listing price appears as its own bar, so the spread is visible
+* the AI estimate is a separate circle, never mistaken for a real sale
+
 ### Fixes
+
+**Price analysis** — an AI guess no longer poses as sold data:
+* with no verified listings it now reads "AI estimate", not "Avg sold price"
+* the price range and plot are hidden when nothing backs them
+
+**Sources** — only listings that back the estimate are cited:
+* unrelated results the AI already rejected no longer appear
+* a note explains that verified sold prices need SearchAPI.io
+
+**Facebook Marketplace comps** — these were silently discarded:
+* marketplace detection returned a platform key nothing could resolve
 
 ## 1.24.0 (2026-07-23)
 

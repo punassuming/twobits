@@ -15,6 +15,30 @@ data class WebSearchResult(
     val date: String = "",
 )
 
+/**
+ * Maps a result URL to a supported marketplace [com.shelfsnap.app.data.model.Platform.key],
+ * or null when the URL isn't a marketplace listing at all (blogs, retailer pages, forums).
+ *
+ * This is the shared "is this a real posting?" bar. Providers that return structured listing
+ * data (SearchAPI) set [WebSearchResult.platformKey] themselves; the generic providers
+ * (Serper/Jina/Brave) return bare title+url+snippet, so the evidence gatherer backfills the
+ * key from the URL — otherwise their results could never become comparable listings no
+ * matter how relevant they were.
+ *
+ * Returns real `Platform.key` values ("fbmarket", not "facebook") so
+ * [com.shelfsnap.app.data.model.Platform.fromKey] resolves them; an unresolvable key causes
+ * the comp to be silently discarded downstream.
+ */
+fun marketplaceKeyFromUrl(url: String): String? =
+    when {
+        url.contains("ebay.", ignoreCase = true) -> "ebay"
+        url.contains("mercari.", ignoreCase = true) -> "mercari"
+        url.contains("offerup.", ignoreCase = true) -> "offerup"
+        url.contains("facebook.", ignoreCase = true) -> "fbmarket"
+        url.contains("craigslist.", ignoreCase = true) -> "craigslist"
+        else -> null
+    }
+
 /** Which web-search backend to use for market research. */
 enum class SearchProvider(
     val key: String,
@@ -27,6 +51,14 @@ enum class SearchProvider(
     SEARCHAPI("searchapi", "SearchAPI.io"),
     SERPER("serper", "Serper.dev"),
     ;
+
+    /**
+     * Whether this backend returns structured sold/price fields rather than bare web snippets.
+     * Only SearchAPI maps eBay queries onto a completed-sales engine, so it is the only
+     * provider that can yield a *verified* sold comp; the rest are plain-Google quality.
+     */
+    val suppliesStructuredListings: Boolean
+        get() = this == SEARCHAPI
 
     companion object {
         fun fromKey(key: String): SearchProvider = entries.firstOrNull { it.key == key } ?: NONE

@@ -140,7 +140,7 @@ internal fun parseSearchApiResponse(
                 title = title,
                 url = resultUrl,
                 snippet = snippet,
-                platformKey = if (soldOnly) "ebay" else marketplaceKey(resultUrl),
+                platformKey = if (soldOnly) "ebay" else marketplaceKeyFromUrl(resultUrl),
                 price = price,
                 sold = sold,
                 date = result.string("date") ?: result.string("ended") ?: "",
@@ -168,15 +168,6 @@ private fun parsePrice(text: String): Double? =
         ?.toDoubleOrNull()
 
 private fun containsSoldWord(text: String?): Boolean = text?.contains(SOLD_PATTERN) == true
-
-private fun marketplaceKey(url: String): String? =
-    when {
-        url.contains("ebay.", ignoreCase = true) -> "ebay"
-        url.contains("mercari.", ignoreCase = true) -> "mercari"
-        url.contains("offerup.", ignoreCase = true) -> "offerup"
-        url.contains("facebook.", ignoreCase = true) -> "facebook"
-        else -> null
-    }
 
 private val PRICE_PATTERN = Regex("(?:US\\s*)?[$]\\s*([0-9]+(?:\\.[0-9]{1,2})?)")
 private val SOLD_PATTERN = Regex("\\b(sold|completed)\\b", RegexOption.IGNORE_CASE)

@@ -121,6 +121,12 @@
     <string name="apply_suggested_price">Apply</string>
     <string name="research_failed">Price research failed: %1$s</string>
     <string name="confidence_short">Confidence: %1$d%%</string>
+    <string name="ai_estimate_label">AI estimate (no sold data)</string>
+    <string name="sold_data_needs_searchapi">Verified sold prices need SearchAPI.io — the other search providers can only return active listings. Add a key in AI configuration.</string>
+    <plurals name="price_plot_legend">
+        <item quantity="one">Bars: %1$d listing price · Circle: AI estimate</item>
+        <item quantity="other">Bars: %1$d listing prices · Circle: AI estimate</item>
+    </plurals>
     <string name="search_results_verified">Based on %1$d web results via %2$s</string>
     <string name="search_results_no_comps">%1$d web results via %2$s contained no verified sold prices.</string>
     <string name="search_failed_ai_only">Web search failed — AI estimate only. %1$s</string>
