@@ -6,6 +6,9 @@
 
 ### Improvements
 
+**Market research** — searches finish noticeably faster:
+* a provider's eBay/Mercari/OfferUp queries now run at the same time, not one after another
+
 ### Fixes
 
 ## 1.24.2 (2026-07-28)

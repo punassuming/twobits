@@ -403,9 +403,13 @@ class PriceResearchService
         }
 
         /**
-         * Runs [core] (always, unconditionally) then [broadening] (until [LEGIT_POSTINGS_PER_PROVIDER]
-         * real marketplace postings are found) against a single provider, sequentially so the
-         * quota can short-circuit the broadening tail.
+         * Runs [core] (always, unconditionally, concurrently) then [broadening] (sequentially,
+         * until [LEGIT_POSTINGS_PER_PROVIDER] real marketplace postings are found) against a
+         * single provider. Core queries target different marketplaces and none of them is
+         * gated on another's outcome, so waiting for eBay to finish before even starting Mercari
+         * only added latency — a provider with 3 core queries at, say, 8s each spent 24s in
+         * this phase for no reason. Broadening stays sequential: each one's necessity depends on
+         * the running legitPostings total, which only exists once the previous query is done.
          */
         private suspend fun runProviderQueries(
             service: WebSearchService,
@@ -413,36 +417,37 @@ class PriceResearchService
             core: List<String>,
             broadening: List<String>,
         ): List<SearchAttempt> {
-            val attempts = mutableListOf<SearchAttempt>()
-            var legitPostings = 0
+            suspend fun runOne(query: String): SearchAttempt =
+                runCatching { service.search(query, key) }
+                    .fold(
+                        onSuccess = { results ->
+                            SearchAttempt(
+                                provider = service.provider,
+                                query = query,
+                                results = results.map { it.withBackfilledPlatform() },
+                            )
+                        },
+                        onFailure = { e ->
+                            Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
+                            SearchAttempt(
+                                provider = service.provider,
+                                query = query,
+                                error = e.message ?: e.javaClass.simpleName,
+                            )
+                        },
+                    )
 
-            suspend fun run(query: String) {
-                val attempt =
-                    runCatching { service.search(query, key) }
-                        .fold(
-                            onSuccess = { results ->
-                                SearchAttempt(
-                                    provider = service.provider,
-                                    query = query,
-                                    results = results.map { it.withBackfilledPlatform() },
-                                )
-                            },
-                            onFailure = { e ->
-                                Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
-                                SearchAttempt(
-                                    provider = service.provider,
-                                    query = query,
-                                    error = e.message ?: e.javaClass.simpleName,
-                                )
-                            },
-                        )
-                attempts.add(attempt)
-                legitPostings += attempt.results.count { it.platformKey != null }
-            }
-            core.forEach { run(it) }
+            val coreAttempts =
+                coroutineScope {
+                    core.map { async { runOne(it) } }.map { it.await() }
+                }
+            val attempts = coreAttempts.toMutableList()
+            var legitPostings = coreAttempts.sumOf { attempt -> attempt.results.count { it.platformKey != null } }
             for (query in broadening) {
                 if (legitPostings >= LEGIT_POSTINGS_PER_PROVIDER) break
-                run(query)
+                val attempt = runOne(query)
+                attempts.add(attempt)
+                legitPostings += attempt.results.count { it.platformKey != null }
             }
             return attempts
         }
