@@ -245,10 +245,11 @@ class PriceResearchService
 
             // Phase 1 — search. SearchAPI and Serper both honor site: reliably (SearchAPI
             // additionally maps eBay onto a real completed-sales engine), so whichever of them
-            // is enabled — either or both — runs the marketplace-targeted core queries
-            // (eBay/Mercari/OfferUp). Jina would just re-run the identical core query for a
-            // worse result (it silently drops site: and returns eBay error pages), so it skips
-            // core when a site:-honoring provider is available and spends its calls on the
+            // is enabled — either or both — runs the marketplace-targeted core queries (eBay,
+            // Mercari, OfferUp, Craigslist, Facebook Marketplace). Jina would just re-run the
+            // identical core query for a worse result (it silently drops site: and returns eBay
+            // error pages), so it skips core when a site:-honoring provider is available and
+            // spends its calls on the
             // broadening queries instead — genuinely different evidence rather than a redundant
             // search. Without SearchAPI or Serper enabled, every non-Brave provider runs core
             // itself, since it's the only evidence source for that marketplace at all.
@@ -460,7 +461,7 @@ class PriceResearchService
          * until [LEGIT_POSTINGS_PER_PROVIDER] real marketplace postings are found) against a
          * single provider. Core queries target different marketplaces and none of them is
          * gated on another's outcome, so waiting for eBay to finish before even starting Mercari
-         * only added latency — a provider with 3 core queries at, say, 8s each spent 24s in
+         * only added latency — a provider with 5 core queries at, say, 8s each spent 40s in
          * this phase for no reason. Broadening stays sequential: each one's necessity depends on
          * the running legitPostings total, which only exists once the previous query is done.
          */
@@ -629,11 +630,12 @@ class PriceResearchService
         }
 
         /**
-         * [core] targets a specific marketplace (one query each for eBay, Mercari, OfferUp) and
-         * must always run — it's the only source of evidence for that marketplace at all.
-         * [broadening] widens the search (tag-augmented, generic fallback) and exists purely to
-         * fill gaps; it's safe to skip once a provider already has enough evidence, unlike
-         * [core] where skipping a query means skipping that marketplace entirely.
+         * [core] targets a specific marketplace (one query each for eBay, Mercari, OfferUp,
+         * Craigslist, and Facebook Marketplace) and must always run — it's the only source of
+         * evidence for that marketplace at all. [broadening] widens the search (tag-augmented,
+         * generic fallback) and exists purely to fill gaps; it's safe to skip once a provider
+         * already has enough evidence, unlike [core] where skipping a query means skipping that
+         * marketplace entirely.
          */
         private data class SearchQueryPlan(
             val core: List<String>,
@@ -684,11 +686,21 @@ class PriceResearchService
             // sold-listing evidence rather than bare text searches. One eBay query is enough:
             // SearchAPI maps it to the dedicated completed-sales engine, while the other
             // providers honor the site: operator directly.
+            //
+            // Craigslist and Facebook Marketplace are real limitations, not just more of the
+            // same: Craigslist listings are deleted (not archived as "sold") once a sale closes,
+            // so soldToken finds little to nothing there even when it works elsewhere. Facebook
+            // Marketplace item pages sit almost entirely behind a login wall, so Google — and
+            // therefore every provider here — indexes very few of them at all. Both queries are
+            // included because they're the only shot at any evidence from those marketplaces,
+            // not because the hit rate is expected to match eBay/Mercari/OfferUp.
             val core =
                 listOf(
                     "$descriptor site:ebay.com/itm$soldToken".trim(),
                     "$descriptor mercari.com$soldToken".trim(),
                     "$descriptor offerup.com$soldToken".trim(),
+                    "$descriptor craigslist.org$soldToken".trim(),
+                    "$descriptor facebook.com/marketplace$soldToken".trim(),
                 )
 
             val broadening = mutableListOf<String>()
@@ -1000,8 +1012,9 @@ class PriceResearchService
 
             /**
              * How many result pages the Jina Reader opens per distinct marketplace present in
-             * the evidence set (e.g. eBay, Mercari, OfferUp), so verification spreads across
-             * marketplaces instead of all landing on whichever one ranked highest overall.
+             * the evidence set (eBay, Mercari, OfferUp, Craigslist, Facebook Marketplace), so
+             * verification spreads across marketplaces instead of all landing on whichever one
+             * ranked highest overall.
              */
             private const val READS_PER_MARKETPLACE = 2
 

@@ -13,6 +13,10 @@
 * slides up from the bottom while searching, verifying, and analyzing
 * shows which marketplace is being checked and how many listings are verified
 
+**Market research** — Craigslist and Facebook Marketplace are now searched too:
+* both were previously skipped entirely, even as broadening queries
+* expect fewer hits there — Facebook is barely indexed, Craigslist deletes sold posts
+
 ### Fixes
 
 ## 1.24.2 (2026-07-28)
