@@ -13,7 +13,8 @@
 
 **Price analysis** — the plot now shows every comparable price:
 * each listing price appears as its own bar, so the spread is visible
-* the AI estimate is a separate circle, never mistaken for a real sale
+* the comp average is a separate circle, never mistaken for a real sale
+* the plotted range always covers every price shown, active or sold
 
 ### Fixes
 

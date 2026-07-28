@@ -169,6 +169,15 @@ fun MarketTab(
                 // With zero comps every number below comes from the model's own guess, so the
                 // "sold"/"range" framing would be asserting market data that was never observed.
                 val hasComps = research.comps.isNotEmpty()
+                // research.lowPrice/highPrice/averageSoldPrice are derived from SOLD comps only
+                // when any exist (PriceResearchService.comparableStats), but every comp's price
+                // is what gets plotted below. Deriving the plotted bounds from that same full
+                // set — rather than reusing the sold-only stats — keeps every point guaranteed
+                // inside its own chart instead of an active listing outside the sold range being
+                // clamped to the 3%/97% margin next to a low/high label it doesn't match.
+                val listingPrices = research.comps.map { it.price }.filter { it > 0.0 }
+                val plotLow = listingPrices.minOrNull() ?: research.lowPrice
+                val plotHigh = listingPrices.maxOrNull() ?: research.highPrice
                 if (research.averageSoldPrice > 0.0 || research.highPrice > 0.0) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatTile(
@@ -183,18 +192,21 @@ fun MarketTab(
                         if (hasComps) {
                             StatTile(
                                 modifier = Modifier.weight(1f),
-                                value = "$" + "%.0f".format(research.lowPrice) + "–$" + "%.0f".format(research.highPrice),
+                                value = "$" + "%.0f".format(plotLow) + "–$" + "%.0f".format(plotHigh),
                                 label = stringResource(R.string.price_range),
                             )
                         }
                     }
                 }
-                if (hasComps && research.highPrice > research.lowPrice) {
+                if (hasComps && plotHigh > plotLow) {
                     PriceRangeBar(
-                        low = research.lowPrice,
-                        high = research.highPrice,
-                        aiEstimate = research.averageSoldPrice,
-                        listingPrices = research.comps.map { it.price }.filter { it > 0.0 },
+                        low = plotLow,
+                        high = plotHigh,
+                        // research.averageSoldPrice is comparableStats' average of the real comp
+                        // prices, not the model's separate suggestedValue field (which isn't
+                        // persisted on MarketResearch at all) — label it as what it actually is.
+                        compAverage = research.averageSoldPrice,
+                        listingPrices = listingPrices,
                     )
                 }
                 if (research.soldDataUnavailable) {
@@ -766,21 +778,25 @@ fun priceMarkerFraction(
 
 /**
  * Gradient price range plotting every observed listing price as its own tick, with a distinct
- * ringed marker for the AI's estimate.
+ * ringed marker for their average.
  *
  * Showing only a single averaged marker hid how the comparables were actually distributed —
  * three listings clustered at $40 and one outlier at $300 rendered identically to four
- * listings evenly spread. Each real price is drawn so that spread is visible, and the AI
- * estimate is styled differently so it is never mistaken for an observed sale.
+ * listings evenly spread. Each real price is drawn so that spread is visible, and the average
+ * is styled differently so it is never mistaken for an observed sale.
+ *
+ * [low]/[high]/[listingPrices] must come from the same set — callers should derive the bounds
+ * from the exact prices being plotted rather than a separately-computed range, or a price
+ * outside that range gets silently clamped to the chart's edge and misrepresented.
  */
 @Composable
 private fun PriceRangeBar(
     low: Double,
     high: Double,
-    aiEstimate: Double,
+    compAverage: Double,
     listingPrices: List<Double>,
 ) {
-    val fraction = priceMarkerFraction(low, high, aiEstimate)
+    val fraction = priceMarkerFraction(low, high, compAverage)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(modifier = Modifier.fillMaxWidth().height(14.dp)) {
             Box(
@@ -841,7 +857,7 @@ private fun PriceRangeBar(
             Text(
                 text =
                     stringResource(R.string.suggested).replaceFirstChar { it.uppercase() } +
-                        ": $" + "%.0f".format(aiEstimate),
+                        ": $" + "%.0f".format(compAverage),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
