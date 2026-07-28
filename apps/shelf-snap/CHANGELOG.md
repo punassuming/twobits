@@ -19,6 +19,7 @@
 
 **Market research** — active listings are found, not just sold ones:
 * eBay's sold-only filter no longer silently excluded every active listing
+* the extra query now runs only for the provider that needs it
 * other marketplaces already return a natural mix, so no extra query needed
 
 **Market research** — Debug info now shows total API calls and which services ran:

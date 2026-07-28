@@ -324,11 +324,21 @@ class PriceResearchService
                     immediateServices
                         .map { (service, key) ->
                             val runsCore = service.provider.honorsSiteFilter || !hasSiteFilterProvider
+                            // structuredExtra (eBay's for-sale query) is only relevant to a
+                            // provider whose eBay query would otherwise be sold-only by a hard
+                            // API filter — that's SearchAPI alone. Every other provider's eBay
+                            // query in `core` is plain Google and already returns both.
+                            val core =
+                                when {
+                                    !runsCore -> emptyList()
+                                    service.provider.suppliesStructuredListings -> queryPlan.core + queryPlan.structuredExtra
+                                    else -> queryPlan.core
+                                }
                             async {
                                 runProviderQueries(
                                     service = service,
                                     key = key,
-                                    core = if (runsCore) queryPlan.core else emptyList(),
+                                    core = core,
                                     broadening = queryPlan.broadening,
                                     onQueryDone = onQueryDone,
                                 )
@@ -657,33 +667,37 @@ class PriceResearchService
         }
 
         /**
-         * [core] targets a specific marketplace (two queries for eBay — sold and for-sale — one
-         * query each for Mercari, OfferUp, Craigslist, and Facebook Marketplace) and must always
-         * run — it's the only source of evidence for that marketplace at all. [broadening]
-         * widens the search (tag-augmented, generic fallback) and exists purely to fill gaps;
-         * it's safe to skip once a provider already has enough evidence, unlike [core] where
-         * skipping a query means skipping that marketplace entirely.
+         * [core] targets a specific marketplace (one query each for eBay, Mercari, OfferUp,
+         * Craigslist, and Facebook Marketplace) and must always run — it's the only source of
+         * evidence for that marketplace at all, for every provider. [structuredExtra] is an
+         * additional eBay query relevant *only* to a provider with
+         * [SearchProvider.suppliesStructuredListings] (SearchAPI) — see the field doc below.
+         * [broadening] widens the search (tag-augmented, generic fallback) and exists purely to
+         * fill gaps; it's safe to skip once a provider already has enough evidence, unlike
+         * [core]/[structuredExtra] where skipping a query means skipping that evidence entirely.
          */
         private data class SearchQueryPlan(
             val core: List<String>,
+            val structuredExtra: List<String>,
             val broadening: List<String>,
         ) {
-            val all: List<String> get() = core + broadening
+            val all: List<String> get() = core + structuredExtra + broadening
         }
 
         /**
-         * eBay is the only marketplace that gets two core queries (sold + for-sale); every other
-         * marketplace gets one neutral query that naturally surfaces both. The split exists
-         * because SearchAPI's ebay_search engine takes a hard sold_listings filter (see
-         * [com.shelfsnap.app.data.remote.search.buildSearchApiUrl]) that mirrors eBay's own
-         * site — active and sold are genuinely separate result sets there, not something one
-         * call can return both of, the same way eBay's own search UI has a distinct "Sold
-         * items" toggle rather than a combinable filter. The other marketplaces have no such
-         * API-level filter at all; "sold"/"for sale" there would just be a keyword stuffed into
-         * a generic Google query, which doesn't exclude anything — it only nudges ranking one
-         * way — so a single unbiased query already returns whatever natural mix of active and
-         * sold listings exists, and doubling those queries would only have doubled the bill for
-         * the same evidence a single query already covers.
+         * [SearchQueryPlan.core]'s eBay query is sold-biased, and [SearchQueryPlan.structuredExtra]
+         * exists to also cover active eBay listings — but *only* for a provider that supplies
+         * structured listings (SearchAPI). SearchAPI's ebay_search engine takes a hard
+         * sold_listings filter (see [com.shelfsnap.app.data.remote.search.buildSearchApiUrl])
+         * that mirrors eBay's own site — active and sold are genuinely separate result sets
+         * there, not something one call can return both of, the same way eBay's own search UI
+         * has a distinct "Sold items" toggle rather than a combinable filter. Every other
+         * provider — including Serper, despite also honoring site: for the rest of [core] — has
+         * no such API-level filter for eBay at all: it's plain Google there too, same as Mercari
+         * or OfferUp, so [SearchQueryPlan.core]'s single eBay query already returns whatever
+         * natural mix of active and sold listings exists. Sending [structuredExtra] to a
+         * non-structured provider would just be the same redundant-query waste avoided
+         * everywhere else in this plan, for a filter that provider was never subject to.
          */
         private fun buildSearchQueries(item: Item): SearchQueryPlan {
             // Prefer brand+model; fall back to a user-set title when brand/model are both blank
@@ -711,9 +725,10 @@ class PriceResearchService
                     else -> "$genericDescriptor $conditionLabel"
                 }.trim()
 
-            // One query per marketplace so generic items (no brand/model) still get real
-            // listing evidence rather than bare text searches — except eBay, which gets its
-            // sold/for-sale pair (see the class doc above).
+            // One query per marketplace, universal across every provider that runs core, so
+            // generic items (no brand/model) still get real listing evidence rather than bare
+            // text searches. structuredExtra adds the eBay for-sale query on top of this, but
+            // only for providers that actually need it (see the field doc above).
             //
             // Craigslist and Facebook Marketplace are real limitations, not just more of the
             // same: Craigslist listings are deleted (not archived as "sold") once a sale closes,
@@ -725,12 +740,12 @@ class PriceResearchService
             val core =
                 listOf(
                     "$descriptor site:ebay.com/itm sold".trim(),
-                    "$descriptor site:ebay.com/itm for sale".trim(),
                     "$descriptor mercari.com".trim(),
                     "$descriptor offerup.com".trim(),
                     "$descriptor craigslist.org".trim(),
                     "$descriptor facebook.com/marketplace".trim(),
                 )
+            val structuredExtra = listOf("$descriptor site:ebay.com/itm for sale".trim())
 
             val broadening = mutableListOf<String>()
             // Tag-augmented for broader evidence.
@@ -752,7 +767,7 @@ class PriceResearchService
                         .joinToString(" ")
                 },
             )
-            return SearchQueryPlan(core = core, broadening = broadening)
+            return SearchQueryPlan(core = core, structuredExtra = structuredExtra, broadening = broadening)
         }
 
         private fun com.shelfsnap.app.data.model.Condition.searchLabel(): String =
