@@ -198,8 +198,12 @@ class ItemRepository
                                 if (jinaKey.isNotBlank()) add(SearchProvider.JINA to jinaKey)
                                 if (getBraveSearchEnabled()) add(SearchProvider.BRAVE to getBraveApiKey())
                             },
-                        // Page reading is Jina-only — Brave/SearchAPI have no reader endpoint.
-                        readerKey = jinaKey.ifBlank { null },
+                        // Page reading (r.jina.ai) and Jina's own search engine (s.jina.ai) are
+                        // separate products behind the same key. A saved key enables reading —
+                        // opening the actual listing page for real price/condition/sold text —
+                        // even when Jina search itself is off, e.g. SearchAPI finds the listing
+                        // and Jina only verifies it. Brave/SearchAPI have no reader endpoint.
+                        readerKey = getJinaApiKey().ifBlank { null },
                         model = getReasoningModel().apiName,
                     )
                 }

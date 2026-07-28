@@ -224,26 +224,36 @@ class PriceResearchService
                     .first()
                     .first.provider.key
 
-            // Phase 1 — every provider always runs the marketplace-targeted core queries (one
-            // eBay/Mercari/OfferUp query each), then keeps going through the broadening queries
-            // only until it has enough real marketplace postings.
+            // Phase 1 — search. SearchAPI, when enabled, is the only provider that maps eBay
+            // onto a real completed-sales engine and honors site: reliably for the rest, so it
+            // alone runs the marketplace-targeted core queries (eBay/Mercari/OfferUp). Generic
+            // providers (Serper/Jina/Brave) would just re-run the identical query for a worse
+            // result, so they skip core when SearchAPI is available and spend their calls on
+            // the broadening queries instead — genuinely different evidence rather than a
+            // redundant search. Without SearchAPI enabled, every provider runs core itself,
+            // since it's the only evidence source for that marketplace at all.
             //
-            // The previous implementation fired the full (query × provider) cartesian product
-            // concurrently: with 5 queries and 3 providers that is 15 billed calls, every
-            // provider answering the *same* query, and the merged set capped at
-            // MAX_SEARCH_RESULTS anyway — so most of what was paid for was discarded. An earlier
-            // attempt at fixing this applied the same early-stop quota to every query including
-            // the marketplace-targeted ones — but "ebay." matches broadly, so a provider often
-            // satisfied the whole quota off the *first* query and never even tried Mercari or
-            // OfferUp, leaving every result from one marketplace. Providers are queried in
-            // parallel with each other (independent vendors, so wall-clock still collapses to
-            // the slowest single provider) but each provider's own queries run in sequence so
-            // its quota can short-circuit the broadening tail.
+            // Whichever providers run core, all of them keep going through the broadening
+            // queries only until they've found enough real marketplace postings. The original
+            // implementation fired the full (query × provider) cartesian product concurrently:
+            // with 5 queries and 3 providers that is 15 billed calls, every provider answering
+            // the *same* query, merged set capped at MAX_SEARCH_RESULTS anyway — most of what
+            // was paid for was discarded. An earlier attempt at fixing this applied the same
+            // early-stop quota to every query including the marketplace-targeted ones — but
+            // "ebay." matches broadly, so a provider often satisfied the whole quota off the
+            // *first* query and never even tried Mercari or OfferUp, leaving every result from
+            // one marketplace; core queries are now unconditional for whichever provider(s)
+            // are responsible for them. Providers are queried in parallel with each other
+            // (independent vendors, so wall-clock still collapses to the slowest single
+            // provider) but each provider's own queries run in sequence so its quota can
+            // short-circuit the broadening tail.
             val searchStart = System.currentTimeMillis()
             val perProviderAttempts: List<List<SearchAttempt>> =
                 coroutineScope {
                     services
                         .map { (service, key) ->
+                            val runsCore =
+                                service.provider.suppliesStructuredListings || !hasStructuredProvider
                             async {
                                 val attempts = mutableListOf<SearchAttempt>()
                                 var legitPostings = 0
@@ -273,7 +283,7 @@ class PriceResearchService
                                     attempts.add(attempt)
                                     legitPostings += attempt.results.count { it.platformKey != null }
                                 }
-                                queryPlan.core.forEach { run(it) }
+                                if (runsCore) queryPlan.core.forEach { run(it) }
                                 for (query in queryPlan.broadening) {
                                     if (legitPostings >= LEGIT_POSTINGS_PER_PROVIDER) break
                                     run(query)
