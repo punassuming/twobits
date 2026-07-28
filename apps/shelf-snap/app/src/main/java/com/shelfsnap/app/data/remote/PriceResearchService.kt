@@ -214,7 +214,7 @@ class PriceResearchService
             if (services.isEmpty()) return SearchEvidence()
 
             val hasStructuredProvider = services.any { it.first.provider.suppliesStructuredListings }
-            val queries = buildSearchQueries(item, hasStructuredProvider)
+            val queryPlan = buildSearchQueries(item, hasStructuredProvider)
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
             val queryLog = mutableListOf<MarketQuery>()
@@ -224,16 +224,21 @@ class PriceResearchService
                     .first()
                     .first.provider.key
 
-            // Phase 1 — walk each provider's own query list until that provider has produced
-            // enough real marketplace postings, then stop asking it.
+            // Phase 1 — every provider always runs the marketplace-targeted core queries (one
+            // eBay/Mercari/OfferUp query each), then keeps going through the broadening queries
+            // only until it has enough real marketplace postings.
             //
             // The previous implementation fired the full (query × provider) cartesian product
             // concurrently: with 5 queries and 3 providers that is 15 billed calls, every
             // provider answering the *same* query, and the merged set capped at
-            // MAX_SEARCH_RESULTS anyway — so most of what was paid for was discarded. Providers
-            // are queried in parallel with each other (they're independent vendors, so
-            // wall-clock still collapses to the slowest single provider) but each provider's
-            // queries run in sequence so its quota can short-circuit the rest.
+            // MAX_SEARCH_RESULTS anyway — so most of what was paid for was discarded. An earlier
+            // attempt at fixing this applied the same early-stop quota to every query including
+            // the marketplace-targeted ones — but "ebay." matches broadly, so a provider often
+            // satisfied the whole quota off the *first* query and never even tried Mercari or
+            // OfferUp, leaving every result from one marketplace. Providers are queried in
+            // parallel with each other (independent vendors, so wall-clock still collapses to
+            // the slowest single provider) but each provider's own queries run in sequence so
+            // its quota can short-circuit the broadening tail.
             val searchStart = System.currentTimeMillis()
             val perProviderAttempts: List<List<SearchAttempt>> =
                 coroutineScope {
@@ -242,8 +247,7 @@ class PriceResearchService
                             async {
                                 val attempts = mutableListOf<SearchAttempt>()
                                 var legitPostings = 0
-                                for (query in queries) {
-                                    if (legitPostings >= LEGIT_POSTINGS_PER_PROVIDER) break
+                                suspend fun run(query: String) {
                                     val attempt =
                                         runCatching { service.search(query, key) }
                                             .fold(
@@ -268,6 +272,11 @@ class PriceResearchService
                                             )
                                     attempts.add(attempt)
                                     legitPostings += attempt.results.count { it.platformKey != null }
+                                }
+                                queryPlan.core.forEach { run(it) }
+                                for (query in queryPlan.broadening) {
+                                    if (legitPostings >= LEGIT_POSTINGS_PER_PROVIDER) break
+                                    run(query)
                                 }
                                 attempts
                             }
@@ -347,8 +356,11 @@ class PriceResearchService
             authHeader: String,
         ): SearchEvidence {
             // The Worker routes every query through SearchAPI (see the "searchapi" provider in
-            // the request body below), which does honor completed-sales targeting.
-            val queries = buildSearchQueries(item, hasStructuredProvider = true)
+            // the request body below), which does honor completed-sales targeting. This path
+            // already had a sensible early-stop (MIN_RESULTS_EARLY_STOP below) before the
+            // BYOK path's per-provider quota existed, so the core/broadening split isn't
+            // needed here — run the plan's queries in their original flat order.
+            val queries = buildSearchQueries(item, hasStructuredProvider = true).all
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
             val queryLog = mutableListOf<MarketQuery>()
@@ -421,6 +433,20 @@ class PriceResearchService
         }
 
         /**
+         * [core] targets a specific marketplace (one query each for eBay, Mercari, OfferUp) and
+         * must always run — it's the only source of evidence for that marketplace at all.
+         * [broadening] widens the search (tag-augmented, generic fallback) and exists purely to
+         * fill gaps; it's safe to skip once a provider already has enough evidence, unlike
+         * [core] where skipping a query means skipping that marketplace entirely.
+         */
+        private data class SearchQueryPlan(
+            val core: List<String>,
+            val broadening: List<String>,
+        ) {
+            val all: List<String> get() = core + broadening
+        }
+
+        /**
          * @param hasStructuredProvider true when a provider that maps eBay queries onto a
          *   completed-sales engine (SearchAPI) is enabled. Without one, the trailing "sold"
          *   token is dropped: plain Google can't filter to completed sales, so it only skews
@@ -431,7 +457,7 @@ class PriceResearchService
         private fun buildSearchQueries(
             item: Item,
             hasStructuredProvider: Boolean,
-        ): List<String> {
+        ): SearchQueryPlan {
             val soldToken = if (hasStructuredProvider) " sold" else ""
             // Prefer brand+model; fall back to a user-set title when brand/model are both blank
             // so a custom title still yields a precise, quotable descriptor instead of dropping
@@ -444,7 +470,6 @@ class PriceResearchService
             val hasQuotableDescriptor = base.isNotBlank()
             val quoted = if (base.isNotBlank()) "\"$base\"" else ""
             val conditionLabel = item.condition.searchLabel()
-            val queries = mutableListOf<String>()
 
             // Build the best descriptor available for platform-targeted queries.
             // Use a truncated description so site: queries stay focused; the full AI-prose
@@ -459,24 +484,28 @@ class PriceResearchService
                     else -> "$genericDescriptor $conditionLabel"
                 }.trim()
 
-            // Always add platform-targeted queries so generic items (no brand/model) still get
-            // real sold-listing evidence rather than bare text searches.
-            // One eBay query is enough: SearchAPI maps it to the dedicated completed-sales
-            // engine, while the other providers honor the site: operator directly.
-            queries.add("$descriptor site:ebay.com/itm$soldToken".trim())
-            queries.add("$descriptor mercari.com$soldToken".trim())
-            queries.add("$descriptor offerup.com$soldToken".trim())
+            // One query per marketplace so generic items (no brand/model) still get real
+            // sold-listing evidence rather than bare text searches. One eBay query is enough:
+            // SearchAPI maps it to the dedicated completed-sales engine, while the other
+            // providers honor the site: operator directly.
+            val core =
+                listOf(
+                    "$descriptor site:ebay.com/itm$soldToken".trim(),
+                    "$descriptor mercari.com$soldToken".trim(),
+                    "$descriptor offerup.com$soldToken".trim(),
+                )
 
+            val broadening = mutableListOf<String>()
             // Tag-augmented for broader evidence.
             if (item.tags.isNotEmpty()) {
                 val tagHint = item.tags.take(3).joinToString(" ")
-                queries.add("$quoted $tagHint ${item.category}$soldToken price".trim())
+                broadening.add("$quoted $tagHint ${item.category}$soldToken price".trim())
             }
             // General fallback. Keep the descriptor quoted when we have one — an unquoted
             // brand/model let search engines drop the model number entirely and return
             // loosely-related listings for the same category (toner cartridges for a NUC),
             // which then crowded out the real postings in the capped evidence set.
-            queries.add(
+            broadening.add(
                 if (hasQuotableDescriptor) {
                     "$quoted ${item.category} resale price used".trim()
                 } else {
@@ -486,7 +515,7 @@ class PriceResearchService
                         .joinToString(" ")
                 },
             )
-            return queries
+            return SearchQueryPlan(core = core, broadening = broadening)
         }
 
         private fun com.shelfsnap.app.data.model.Condition.searchLabel(): String =

@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**Market research** — every marketplace is searched again, not just eBay:
+* a quota meant to cut redundant calls was satisfied by eBay results alone
+* every provider now always checks eBay, Mercari, and OfferUp
+
 ## 1.24.1 (2026-07-28)
 
 ### Features
