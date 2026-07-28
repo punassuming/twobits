@@ -17,6 +17,13 @@
 * both were previously skipped entirely, even as broadening queries
 * expect fewer hits there — Facebook is barely indexed, Craigslist deletes sold posts
 
+**Market research** — active listings are found, not just sold ones:
+* every marketplace now gets a "for sale" query alongside the "sold" one
+* eBay's sold-only filter no longer silently excluded every active listing
+
+**Market research** — Debug info now shows total API calls and which services ran:
+* a new "API calls" section lists the total count and services used
+
 ### Fixes
 
 ## 1.24.2 (2026-07-28)

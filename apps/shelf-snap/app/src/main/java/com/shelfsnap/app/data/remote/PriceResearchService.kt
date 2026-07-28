@@ -55,6 +55,12 @@ data class SearchEvidence(
     val queries: List<MarketQuery> = emptyList(),
     /** How many result pages were opened via the Jina Reader for richer evidence. */
     val pagesRead: Int = 0,
+    /**
+     * Total Jina Reader calls actually made, including ones that didn't pass
+     * [looksLikeConfirmedListing] and so aren't counted in [pagesRead]. This is the real
+     * page-read API call count; [pagesRead] is an evidence-quality count, not a call count.
+     */
+    val readAttempts: Int = 0,
     /** Web-search phase duration (millis). */
     val searchMs: Long = 0L,
     /** Page-reading phase duration (millis). */
@@ -204,10 +210,26 @@ class PriceResearchService
 
                 // Attach transparency detail to a successful run.
                 if (result.error == null) {
+                    // Every outbound call this run actually made: one per search query, one per
+                    // Jina Reader page (attempted, not just confirmed — a rejected read still
+                    // cost a call), and the synthesis call itself.
+                    val totalApiCalls = evidence.queries.size + evidence.readAttempts + 1
+                    val servicesUsed =
+                        (
+                            evidence.queries.map { it.label } +
+                                listOfNotNull(if (evidence.readAttempts > 0) "Jina Reader" else null) +
+                                listOf("OpenAI")
+                        ).distinct()
+                    Log.i(
+                        TAG,
+                        "Research complete: $totalApiCalls API calls (${servicesUsed.joinToString()}) in ${now - totalStart}ms",
+                    )
                     val debug =
                         MarketResearchDebug(
                             queries = evidence.queries,
                             pagesRead = evidence.pagesRead,
+                            totalApiCalls = totalApiCalls,
+                            servicesUsed = servicesUsed,
                             searchMs = evidence.searchMs,
                             readMs = evidence.readMs,
                             synthesisMs = now - synthesisStart,
@@ -233,7 +255,7 @@ class PriceResearchService
             if (services.isEmpty()) return SearchEvidence()
 
             val hasStructuredProvider = services.any { it.first.provider.suppliesStructuredListings }
-            val queryPlan = buildSearchQueries(item, hasStructuredProvider)
+            val queryPlan = buildSearchQueries(item)
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
             val queryLog = mutableListOf<MarketQuery>()
@@ -399,6 +421,7 @@ class PriceResearchService
             // sequence so a bad read can be followed by the next one.
             var pagesRead = 0
             var readMs = 0L
+            var readAttempts = 0
             val candidatesByMarketplace: Map<String?, List<Int>> =
                 merged.indices
                     .filter { merged[it].platformKey != null }
@@ -407,6 +430,7 @@ class PriceResearchService
                 val readStart = System.currentTimeMillis()
                 val pagesTarget = candidatesByMarketplace.size * READS_PER_MARKETPLACE
                 val pagesConfirmed = AtomicInteger(0)
+                val pagesAttempted = AtomicInteger(0)
                 val confirmedReads: List<Pair<Int, String>> =
                     coroutineScope {
                         candidatesByMarketplace.values
@@ -417,6 +441,7 @@ class PriceResearchService
                                         if (confirmed.size >= READS_PER_MARKETPLACE) break
                                         val marketplaceName = Platform.fromKey(merged[i].platformKey ?: "")?.displayName ?: "listing"
                                         val text = jinaReader.read(merged[i].url, readerKey) ?: ""
+                                        pagesAttempted.incrementAndGet()
                                         val isMatch = looksLikeConfirmedListing(text)
                                         if (isMatch) {
                                             confirmed.add(i to text)
@@ -441,6 +466,7 @@ class PriceResearchService
                     merged[i] = merged[i].copy(snippet = (merged[i].snippet + "\n" + text).take(MAX_SNIPPET_CHARS))
                     pagesRead++
                 }
+                readAttempts = pagesAttempted.get()
                 readMs = System.currentTimeMillis() - readStart
             }
 
@@ -450,6 +476,7 @@ class PriceResearchService
                 error = if (merged.isEmpty()) lastError else null,
                 queries = queryLog,
                 pagesRead = pagesRead,
+                readAttempts = readAttempts,
                 searchMs = searchMs,
                 readMs = readMs,
                 soldCapable = hasStructuredProvider,
@@ -545,7 +572,7 @@ class PriceResearchService
             // already had a sensible early-stop (MIN_RESULTS_EARLY_STOP below) before the
             // BYOK path's per-provider quota existed, so the core/broadening split isn't
             // needed here — run the plan's queries in their original flat order.
-            val queries = buildSearchQueries(item, hasStructuredProvider = true).all
+            val queries = buildSearchQueries(item).all
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
             val queryLog = mutableListOf<MarketQuery>()
@@ -645,18 +672,16 @@ class PriceResearchService
         }
 
         /**
-         * @param hasStructuredProvider true when a provider that maps eBay queries onto a
-         *   completed-sales engine (SearchAPI) is enabled. Without one, the trailing "sold"
-         *   token is dropped: plain Google can't filter to completed sales, so it only skews
-         *   results toward pages that happen to contain the word "sold" while still returning
-         *   active listings. The `site:` targeting is kept either way — that part *does* work
-         *   on generic search and is what surfaces real marketplace postings.
+         * Every marketplace gets both a "sold" and a "for sale" core query — a sold comp is the
+         * stronger price signal, but an asking-price-only marketplace (or one where the sold
+         * query just came up empty) still contributes useful range context. Filtering for sold
+         * alone was undercounting evidence: SearchAPI's ebay_search engine takes a hard
+         * sold-only filter (see [com.shelfsnap.app.data.remote.search.buildSearchApiUrl]), which
+         * excluded every active eBay listing outright, and the "sold" keyword added to the other
+         * marketplaces' queries — while not a hard filter there, since plain Google can't filter
+         * to completed sales — still nudged every query toward the same narrower slice.
          */
-        private fun buildSearchQueries(
-            item: Item,
-            hasStructuredProvider: Boolean,
-        ): SearchQueryPlan {
-            val soldToken = if (hasStructuredProvider) " sold" else ""
+        private fun buildSearchQueries(item: Item): SearchQueryPlan {
             // Prefer brand+model; fall back to a user-set title when brand/model are both blank
             // so a custom title still yields a precise, quotable descriptor instead of dropping
             // straight to the weaker generic description+category path below.
@@ -682,32 +707,37 @@ class PriceResearchService
                     else -> "$genericDescriptor $conditionLabel"
                 }.trim()
 
-            // One query per marketplace so generic items (no brand/model) still get real
-            // sold-listing evidence rather than bare text searches. One eBay query is enough:
-            // SearchAPI maps it to the dedicated completed-sales engine, while the other
-            // providers honor the site: operator directly.
+            // Two queries per marketplace — sold and for-sale — so generic items (no
+            // brand/model) still get real listing evidence rather than bare text searches.
             //
             // Craigslist and Facebook Marketplace are real limitations, not just more of the
             // same: Craigslist listings are deleted (not archived as "sold") once a sale closes,
-            // so soldToken finds little to nothing there even when it works elsewhere. Facebook
-            // Marketplace item pages sit almost entirely behind a login wall, so Google — and
-            // therefore every provider here — indexes very few of them at all. Both queries are
-            // included because they're the only shot at any evidence from those marketplaces,
-            // not because the hit rate is expected to match eBay/Mercari/OfferUp.
-            val core =
+            // so the sold variant finds little to nothing there even when it works elsewhere.
+            // Facebook Marketplace item pages sit almost entirely behind a login wall, so
+            // Google — and therefore every provider here — indexes very few of them at all.
+            // Both are included because they're the only shot at any evidence from those
+            // marketplaces, not because the hit rate is expected to match eBay/Mercari/OfferUp.
+            val marketplaceDomains =
                 listOf(
-                    "$descriptor site:ebay.com/itm$soldToken".trim(),
-                    "$descriptor mercari.com$soldToken".trim(),
-                    "$descriptor offerup.com$soldToken".trim(),
-                    "$descriptor craigslist.org$soldToken".trim(),
-                    "$descriptor facebook.com/marketplace$soldToken".trim(),
+                    "site:ebay.com/itm",
+                    "mercari.com",
+                    "offerup.com",
+                    "craigslist.org",
+                    "facebook.com/marketplace",
                 )
+            val core =
+                marketplaceDomains.flatMap { domain ->
+                    listOf(
+                        "$descriptor $domain sold".trim(),
+                        "$descriptor $domain for sale".trim(),
+                    )
+                }
 
             val broadening = mutableListOf<String>()
             // Tag-augmented for broader evidence.
             if (item.tags.isNotEmpty()) {
                 val tagHint = item.tags.take(3).joinToString(" ")
-                broadening.add("$quoted $tagHint ${item.category}$soldToken price".trim())
+                broadening.add("$quoted $tagHint ${item.category} price".trim())
             }
             // General fallback. Keep the descriptor quoted when we have one — an unquoted
             // brand/model let search engines drop the model number entirely and return

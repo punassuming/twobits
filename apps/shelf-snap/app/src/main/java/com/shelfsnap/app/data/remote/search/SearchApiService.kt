@@ -17,9 +17,10 @@ import javax.inject.Singleton
 /**
  * SearchAPI.io web search. Unlike Jina's s.jina.ai (which silently ignores `site:`
  * operators and returns error pages for eBay), SearchAPI.io's Google engine honors
- * `site:`, so the platform-targeted queries ("…site:ebay.com/itm sold") return real
- * marketplace listings with usable links. eBay-targeted queries use the dedicated
- * eBay engine for structured sold-listing results.
+ * `site:`, so the platform-targeted queries ("…site:ebay.com/itm sold" or "…for sale")
+ * return real marketplace listings with usable links. eBay-targeted queries use the
+ * dedicated eBay engine; its hard sold_listings filter is applied only for the
+ * "sold"-intent query, so the "for sale" one still gets active listings back.
  */
 @Singleton
 class SearchApiService
@@ -44,7 +45,7 @@ class SearchApiService
                     throw IOException("SearchAPI.io requires an API key — add one in Settings")
                 }
 
-                val isEbay = isEbaySearchQuery(query)
+                val isEbaySold = isEbaySearchQuery(query) && isSoldIntentQuery(query)
 
                 val request =
                     Request
@@ -60,7 +61,7 @@ class SearchApiService
                         Log.w(TAG, "SearchAPI.io search failed: HTTP ${response.code}")
                         throw IOException("SearchAPI.io search failed: HTTP ${response.code}")
                     }
-                    parseSearchApiResponse(response.body?.string().orEmpty(), limit, soldOnly = isEbay)
+                    parseSearchApiResponse(response.body?.string().orEmpty(), limit, soldOnly = isEbaySold)
                 }
             }
 
@@ -82,11 +83,17 @@ internal fun buildSearchApiUrl(
             query
                 .replace(Regex("site:\\S+", RegexOption.IGNORE_CASE), "")
                 .replace(Regex("\\bsold\\b", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("\\bfor sale\\b", RegexOption.IGNORE_CASE), "")
                 .replace(Regex("\\s+"), " ")
                 .trim()
         builder.addQueryParameter("engine", "ebay_search")
         builder.addQueryParameter("q", ebayQuery.ifBlank { query })
-        builder.addQueryParameter("filters", "sold_listings")
+        // Only the sold-intent query asks for eBay's completed-sales filter — the for-sale
+        // variant needs the engine's normal (active-listing) results, so filters is omitted
+        // rather than set to some "active" value that may not exist as a real filter option.
+        if (isSoldIntentQuery(query)) {
+            builder.addQueryParameter("filters", "sold_listings")
+        }
     } else {
         builder.addQueryParameter("engine", "google")
         builder.addQueryParameter("q", query)
@@ -152,6 +159,14 @@ internal fun parseSearchApiResponse(
     }
 
 private fun isEbaySearchQuery(query: String): Boolean = query.contains("ebay.com", ignoreCase = true)
+
+/**
+ * Whether [query] is one of [PriceResearchService][com.shelfsnap.app.data.remote.PriceResearchService]'s
+ * "sold" (as opposed to "for sale") core queries, detected from the literal trailing keyword.
+ * Drives whether the eBay engine's hard sold_listings filter is applied — the for-sale variant
+ * needs the engine's normal active-listing results.
+ */
+private fun isSoldIntentQuery(query: String): Boolean = Regex("\\bsold\\b", RegexOption.IGNORE_CASE).containsMatchIn(query)
 
 private fun JsonObject.string(name: String): String? = get(name)?.takeIf { it.isJsonPrimitive }?.asString
 

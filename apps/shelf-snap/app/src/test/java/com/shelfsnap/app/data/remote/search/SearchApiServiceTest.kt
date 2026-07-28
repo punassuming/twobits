@@ -17,6 +17,15 @@ class SearchApiServiceTest {
     }
 
     @Test
+    fun `ebay for-sale queries route through the engine without the sold filter`() {
+        val url = buildSearchApiUrl("grandfather clock site:ebay.com/itm for sale", limit = 8)
+
+        assertEquals("ebay_search", url.queryParameter("engine"))
+        assertEquals(null, url.queryParameter("filters"))
+        assertEquals("grandfather clock", url.queryParameter("q"))
+    }
+
+    @Test
     fun `ebay response preserves structured sold price evidence`() {
         val response =
             """

@@ -540,6 +540,34 @@ private fun DebugInfoSection(
                         TimingRow("AI synthesis", debug.synthesisMs)
                         TimingRow("Total", debug.totalMs, bold = true)
                     }
+                    if (debug.totalApiCalls > 0) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            DebugSubheader("API calls")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "Total calls",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = debug.totalApiCalls.toString(),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            if (debug.servicesUsed.isNotEmpty()) {
+                                Text(
+                                    text = debug.servicesUsed.joinToString(" · "),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         DebugSubheader("Confidence factors")
                         FactorRow("Sold listings found", soldCount.toString(), good = soldCount >= 3)
