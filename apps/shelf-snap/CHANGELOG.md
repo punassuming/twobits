@@ -15,6 +15,7 @@
 * a saved Jina key now reads listing pages even when another engine found them
 * Brave now only fires when SearchAPI/Serper/Jina came up thin, saving a redundant call
 * Jina now reads up to two pages per marketplace instead of the top 4 by overall rank
+* a dead-listing or bot-blocked read now tries the next candidate instead of stopping
 
 ## 1.24.1 (2026-07-28)
 

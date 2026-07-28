@@ -327,36 +327,43 @@ class PriceResearchService
             }
             val searchMs = System.currentTimeMillis() - searchStart
 
-            // Phase 2 — open result pages via Jina Reader concurrently so the model reads the
-            // actual listing (price, condition, sold status), not just a search snippet. Reads
-            // are picked per marketplace rather than by overall rank, so a marketplace that
-            // happened to rank lower (e.g. Mercari behind a wave of eBay hits) still gets
-            // verified instead of being crowded out entirely: up to READS_PER_MARKETPLACE pages
-            // for each distinct marketplace present in the results, capped in total at
-            // (marketplace count) × READS_PER_MARKETPLACE. Results with no resolved marketplace
-            // (blog posts, unrelated pages) are never worth reading and are skipped.
+            // Phase 2 — open result pages via Jina Reader so the model reads the actual listing
+            // (price, condition, sold status), not just a search snippet. Reads target
+            // READS_PER_MARKETPLACE *confirmed* matches per distinct marketplace present in the
+            // results, not just the first N candidates: the Reader returns page text on any
+            // HTTP 200, including "listing removed"/bot-block pages, so a read that doesn't look
+            // like a real listing (see [looksLikeConfirmedListing]) doesn't consume a slot —
+            // the next-ranked candidate for that marketplace is tried instead, until the
+            // marketplace's confirmed quota is hit or its candidates run out. Marketplaces are
+            // worked concurrently with each other (independent URLs, so wall-clock collapses to
+            // the slowest single marketplace) but each marketplace's own candidates are tried in
+            // sequence so a bad read can be followed by the next one.
             var pagesRead = 0
             var readMs = 0L
-            val readTargets: List<Int> =
+            val candidatesByMarketplace: Map<String?, List<Int>> =
                 merged.indices
                     .filter { merged[it].platformKey != null }
                     .groupBy { merged[it].platformKey }
-                    .values
-                    .flatMap { it.take(READS_PER_MARKETPLACE) }
-            if (!readerKey.isNullOrBlank() && readTargets.isNotEmpty()) {
+            if (!readerKey.isNullOrBlank() && candidatesByMarketplace.isNotEmpty()) {
                 val readStart = System.currentTimeMillis()
-                val pageResults: List<Pair<Int, String>> =
+                val confirmedReads: List<Pair<Int, String>> =
                     coroutineScope {
-                        readTargets
-                            .map { i ->
-                                async { i to (jinaReader.read(merged[i].url, readerKey) ?: "") }
+                        candidatesByMarketplace.values
+                            .map { candidates ->
+                                async {
+                                    val confirmed = mutableListOf<Pair<Int, String>>()
+                                    for (i in candidates) {
+                                        if (confirmed.size >= READS_PER_MARKETPLACE) break
+                                        val text = jinaReader.read(merged[i].url, readerKey) ?: ""
+                                        if (looksLikeConfirmedListing(text)) confirmed.add(i to text)
+                                    }
+                                    confirmed
+                                }
                             }.map { it.await() }
-                    }
-                for ((i, text) in pageResults) {
-                    if (text.isNotBlank()) {
-                        merged[i] = merged[i].copy(snippet = (merged[i].snippet + "\n" + text).take(MAX_SNIPPET_CHARS))
-                        pagesRead++
-                    }
+                    }.flatten()
+                for ((i, text) in confirmedReads) {
+                    merged[i] = merged[i].copy(snippet = (merged[i].snippet + "\n" + text).take(MAX_SNIPPET_CHARS))
+                    pagesRead++
                 }
                 readMs = System.currentTimeMillis() - readStart
             }
@@ -415,6 +422,22 @@ class PriceResearchService
                 run(query)
             }
             return attempts
+        }
+
+        /**
+         * Best-effort check that a Jina Reader response is real listing content rather than a
+         * dead link — the Reader returns HTTP 200 (and therefore non-null text) for "listing
+         * removed"/expired pages and most bot-block/CAPTCHA interstitials too, since those are
+         * still valid page loads from its point of view. There's no structured signal to check
+         * instead short of a second LLM call per page, so this is a heuristic, not a guarantee:
+         * a short response is treated as a failed read, and a small set of phrases common to
+         * dead-listing and bot-block pages across marketplaces disqualifies an otherwise
+         * long-enough response.
+         */
+        private fun looksLikeConfirmedListing(text: String): Boolean {
+            if (text.trim().length < MIN_CONFIRMED_LISTING_CHARS) return false
+            val lower = text.lowercase()
+            return DEAD_PAGE_PHRASES.none { lower.contains(it) }
         }
 
         /**
@@ -879,6 +902,34 @@ class PriceResearchService
              * marketplaces instead of all landing on whichever one ranked highest overall.
              */
             private const val READS_PER_MARKETPLACE = 2
+
+            /**
+             * Below this length, a Jina Reader response is treated as a failed read rather than
+             * a real listing — dead-listing and bot-block pages tend to be short (a redirect
+             * notice, a captcha prompt) where a real listing page has a title, price,
+             * description, and often related items.
+             */
+            private const val MIN_CONFIRMED_LISTING_CHARS = 300
+
+            /**
+             * Phrases indicating the Reader loaded a dead listing or a bot-block page rather
+             * than real content, checked case-insensitively. Not exhaustive — each marketplace
+             * phrases this differently and phrasing drifts over time — so this catches the
+             * common cases rather than guaranteeing detection.
+             */
+            private val DEAD_PAGE_PHRASES =
+                listOf(
+                    "no longer available",
+                    "listing has been removed",
+                    "this item is unavailable",
+                    "page not found",
+                    "item not found",
+                    "verify you are human",
+                    "verify you're human",
+                    "enable javascript and cookies",
+                    "access denied",
+                    "attention required",
+                )
 
             /** Cap on each evidence snippet after appending read page text (keeps prompt small). */
             private const val MAX_SNIPPET_CHARS = 2_200
