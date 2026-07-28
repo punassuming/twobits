@@ -16,6 +16,7 @@ import com.shelfsnap.app.data.remote.search.JinaReaderService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.data.remote.search.WebSearchResolver
 import com.shelfsnap.app.data.remote.search.WebSearchResult
+import com.shelfsnap.app.data.remote.search.WebSearchService
 import com.shelfsnap.app.data.remote.search.marketplaceKeyFromUrl
 import com.shelfsnap.app.util.ApiKeyValidator
 import kotlinx.coroutines.Dispatchers
@@ -227,11 +228,11 @@ class PriceResearchService
             // Phase 1 — search. SearchAPI and Serper both honor site: reliably (SearchAPI
             // additionally maps eBay onto a real completed-sales engine), so whichever of them
             // is enabled — either or both — runs the marketplace-targeted core queries
-            // (eBay/Mercari/OfferUp). Jina/Brave would just re-run the identical query for a
-            // worse result (Jina silently drops site: and returns eBay error pages), so they
-            // skip core when a site:-honoring provider is available and spend their calls on
-            // the broadening queries instead — genuinely different evidence rather than a
-            // redundant search. Without SearchAPI or Serper enabled, every provider runs core
+            // (eBay/Mercari/OfferUp). Jina would just re-run the identical core query for a
+            // worse result (it silently drops site: and returns eBay error pages), so it skips
+            // core when a site:-honoring provider is available and spends its calls on the
+            // broadening queries instead — genuinely different evidence rather than a redundant
+            // search. Without SearchAPI or Serper enabled, every non-Brave provider runs core
             // itself, since it's the only evidence source for that marketplace at all.
             //
             // Whichever providers run core, all of them keep going through the broadening
@@ -248,52 +249,55 @@ class PriceResearchService
             // (independent vendors, so wall-clock still collapses to the slowest single
             // provider) but each provider's own queries run in sequence so its quota can
             // short-circuit the broadening tail.
+            //
+            // Brave is the exception, but only when a site:-honoring provider is actually
+            // available: it has no site: advantage and no dedicated engine, so it isn't worth
+            // its cost/latency once SearchAPI/Serper already found enough. In that case it runs
+            // as a genuine fallback — held back until the rest finish, then fired (generic,
+            // unfiltered queries only) only if they came up thin. Without a site:-honoring
+            // provider at all, Brave is a primary source same as everyone else (no "better
+            // option" to defer to), so it joins the immediate group and runs core too.
             val hasSiteFilterProvider = services.any { it.first.provider.honorsSiteFilter }
+            val (braveServices, otherServices) = services.partition { it.first.provider == SearchProvider.BRAVE }
+            val immediateServices = if (hasSiteFilterProvider) otherServices else services
+            val deferredBraveServices = if (hasSiteFilterProvider) braveServices else emptyList()
             val searchStart = System.currentTimeMillis()
-            val perProviderAttempts: List<List<SearchAttempt>> =
+            val immediateAttempts: List<List<SearchAttempt>> =
                 coroutineScope {
-                    services
+                    immediateServices
                         .map { (service, key) ->
-                            val runsCore =
-                                service.provider.honorsSiteFilter || !hasSiteFilterProvider
+                            val runsCore = service.provider.honorsSiteFilter || !hasSiteFilterProvider
                             async {
-                                val attempts = mutableListOf<SearchAttempt>()
-                                var legitPostings = 0
-                                suspend fun run(query: String) {
-                                    val attempt =
-                                        runCatching { service.search(query, key) }
-                                            .fold(
-                                                onSuccess = { results ->
-                                                    SearchAttempt(
-                                                        provider = service.provider,
-                                                        query = query,
-                                                        results = results.map { it.withBackfilledPlatform() },
-                                                    )
-                                                },
-                                                onFailure = { e ->
-                                                    Log.w(
-                                                        TAG,
-                                                        "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}",
-                                                    )
-                                                    SearchAttempt(
-                                                        provider = service.provider,
-                                                        query = query,
-                                                        error = e.message ?: e.javaClass.simpleName,
-                                                    )
-                                                },
-                                            )
-                                    attempts.add(attempt)
-                                    legitPostings += attempt.results.count { it.platformKey != null }
-                                }
-                                if (runsCore) queryPlan.core.forEach { run(it) }
-                                for (query in queryPlan.broadening) {
-                                    if (legitPostings >= LEGIT_POSTINGS_PER_PROVIDER) break
-                                    run(query)
-                                }
-                                attempts
+                                runProviderQueries(
+                                    service = service,
+                                    key = key,
+                                    core = if (runsCore) queryPlan.core else emptyList(),
+                                    broadening = queryPlan.broadening,
+                                )
                             }
                         }.map { it.await() }
                 }
+            val immediateLegitPostings =
+                immediateAttempts.sumOf { attempts -> attempts.sumOf { it.results.count { r -> r.platformKey != null } } }
+            val braveAttempts: List<List<SearchAttempt>> =
+                if (deferredBraveServices.isNotEmpty() && immediateLegitPostings < BRAVE_FALLBACK_THRESHOLD) {
+                    coroutineScope {
+                        deferredBraveServices
+                            .map { (service, key) ->
+                                async {
+                                    runProviderQueries(
+                                        service = service,
+                                        key = key,
+                                        core = emptyList(),
+                                        broadening = queryPlan.broadening,
+                                    )
+                                }
+                            }.map { it.await() }
+                    }
+                } else {
+                    emptyList()
+                }
+            val perProviderAttempts: List<List<SearchAttempt>> = immediateAttempts + braveAttempts
             val allAttempts = perProviderAttempts.flatten()
             for (attempt in allAttempts) {
                 queryLog.add(
@@ -323,18 +327,29 @@ class PriceResearchService
             }
             val searchMs = System.currentTimeMillis() - searchStart
 
-            // Phase 2 — open the top result pages via Jina Reader concurrently so the model
-            // reads the actual listing (price, condition, sold status), not just a search snippet.
+            // Phase 2 — open result pages via Jina Reader concurrently so the model reads the
+            // actual listing (price, condition, sold status), not just a search snippet. Reads
+            // are picked per marketplace rather than by overall rank, so a marketplace that
+            // happened to rank lower (e.g. Mercari behind a wave of eBay hits) still gets
+            // verified instead of being crowded out entirely: up to READS_PER_MARKETPLACE pages
+            // for each distinct marketplace present in the results, capped in total at
+            // (marketplace count) × READS_PER_MARKETPLACE. Results with no resolved marketplace
+            // (blog posts, unrelated pages) are never worth reading and are skipped.
             var pagesRead = 0
             var readMs = 0L
-            if (!readerKey.isNullOrBlank() && merged.isNotEmpty()) {
+            val readTargets: List<Int> =
+                merged.indices
+                    .filter { merged[it].platformKey != null }
+                    .groupBy { merged[it].platformKey }
+                    .values
+                    .flatMap { it.take(READS_PER_MARKETPLACE) }
+            if (!readerKey.isNullOrBlank() && readTargets.isNotEmpty()) {
                 val readStart = System.currentTimeMillis()
                 val pageResults: List<Pair<Int, String>> =
                     coroutineScope {
-                        merged
-                            .take(MAX_PAGES_READ)
-                            .mapIndexed { i, r ->
-                                async { i to (jinaReader.read(r.url, readerKey) ?: "") }
+                        readTargets
+                            .map { i ->
+                                async { i to (jinaReader.read(merged[i].url, readerKey) ?: "") }
                             }.map { it.await() }
                     }
                 for ((i, text) in pageResults) {
@@ -356,6 +371,50 @@ class PriceResearchService
                 readMs = readMs,
                 soldCapable = hasStructuredProvider,
             )
+        }
+
+        /**
+         * Runs [core] (always, unconditionally) then [broadening] (until [LEGIT_POSTINGS_PER_PROVIDER]
+         * real marketplace postings are found) against a single provider, sequentially so the
+         * quota can short-circuit the broadening tail.
+         */
+        private suspend fun runProviderQueries(
+            service: WebSearchService,
+            key: String,
+            core: List<String>,
+            broadening: List<String>,
+        ): List<SearchAttempt> {
+            val attempts = mutableListOf<SearchAttempt>()
+            var legitPostings = 0
+            suspend fun run(query: String) {
+                val attempt =
+                    runCatching { service.search(query, key) }
+                        .fold(
+                            onSuccess = { results ->
+                                SearchAttempt(
+                                    provider = service.provider,
+                                    query = query,
+                                    results = results.map { it.withBackfilledPlatform() },
+                                )
+                            },
+                            onFailure = { e ->
+                                Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
+                                SearchAttempt(
+                                    provider = service.provider,
+                                    query = query,
+                                    error = e.message ?: e.javaClass.simpleName,
+                                )
+                            },
+                        )
+                attempts.add(attempt)
+                legitPostings += attempt.results.count { it.platformKey != null }
+            }
+            core.forEach { run(it) }
+            for (query in broadening) {
+                if (legitPostings >= LEGIT_POSTINGS_PER_PROVIDER) break
+                run(query)
+            }
+            return attempts
         }
 
         /**
@@ -806,8 +865,20 @@ class PriceResearchService
              */
             private const val LEGIT_POSTINGS_PER_PROVIDER = 4
 
-            /** Cap on how many result pages the Jina Reader opens per research run. */
-            private const val MAX_PAGES_READ = 4
+            /**
+             * Minimum combined real marketplace postings from the non-Brave providers before
+             * Brave is skipped as an unnecessary fallback call. Below this, the site:-honoring
+             * providers (and Jina's broadening queries) didn't turn up enough to be confident,
+             * so Brave's generic search is worth the extra call and latency.
+             */
+            private const val BRAVE_FALLBACK_THRESHOLD = LEGIT_POSTINGS_PER_PROVIDER
+
+            /**
+             * How many result pages the Jina Reader opens per distinct marketplace present in
+             * the evidence set (e.g. eBay, Mercari, OfferUp), so verification spreads across
+             * marketplaces instead of all landing on whichever one ranked highest overall.
+             */
+            private const val READS_PER_MARKETPLACE = 2
 
             /** Cap on each evidence snippet after appending read page text (keeps prompt small). */
             private const val MAX_SNIPPET_CHARS = 2_200

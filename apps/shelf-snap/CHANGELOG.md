@@ -13,6 +13,8 @@
 * every provider now always checks eBay, Mercari, and OfferUp
 * SearchAPI.io and/or Serper.dev now search marketplaces directly; others add different evidence instead
 * a saved Jina key now reads listing pages even when another engine found them
+* Brave now only fires when SearchAPI/Serper/Jina came up thin, saving a redundant call
+* Jina now reads up to two pages per marketplace instead of the top 4 by overall rank
 
 ## 1.24.1 (2026-07-28)
 
