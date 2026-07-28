@@ -8,6 +8,12 @@
 
 ### Fixes
 
+**Market research** — every marketplace is searched again, not just eBay:
+* a quota bug let eBay results crowd out Mercari and OfferUp
+* SearchAPI and/or Serper now search every marketplace directly
+* Jina now verifies listings independently of its own search toggle
+* Brave only searches as a fallback, skipping dead or blocked reads
+
 ## 1.24.1 (2026-07-28)
 
 ### Features

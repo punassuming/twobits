@@ -60,6 +60,17 @@ enum class SearchProvider(
     val suppliesStructuredListings: Boolean
         get() = this == SEARCHAPI
 
+    /**
+     * Whether this backend reliably honors `site:` operators, which is what makes the
+     * marketplace-targeted core queries ("… site:ebay.com/itm") return real marketplace
+     * postings instead of unrelated pages. SearchAPI and Serper both pass the query straight
+     * through to a real Google engine; Jina's s.jina.ai silently drops `site:` and returns
+     * eBay error pages, and Brave has no stated `site:` guarantee either. Either or both of
+     * SearchAPI/Serper can be enabled as the primary marketplace searcher(s).
+     */
+    val honorsSiteFilter: Boolean
+        get() = this == SEARCHAPI || this == SERPER
+
     companion object {
         fun fromKey(key: String): SearchProvider = entries.firstOrNull { it.key == key } ?: NONE
     }
