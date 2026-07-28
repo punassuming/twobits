@@ -488,7 +488,7 @@ class PriceResearchService
          * until [LEGIT_POSTINGS_PER_PROVIDER] real marketplace postings are found) against a
          * single provider. Core queries target different marketplaces and none of them is
          * gated on another's outcome, so waiting for eBay to finish before even starting Mercari
-         * only added latency — a provider with 5 core queries at, say, 8s each spent 40s in
+         * only added latency — a provider with 6 core queries at, say, 8s each spent 48s in
          * this phase for no reason. Broadening stays sequential: each one's necessity depends on
          * the running legitPostings total, which only exists once the previous query is done.
          */
@@ -657,12 +657,12 @@ class PriceResearchService
         }
 
         /**
-         * [core] targets a specific marketplace (one query each for eBay, Mercari, OfferUp,
-         * Craigslist, and Facebook Marketplace) and must always run — it's the only source of
-         * evidence for that marketplace at all. [broadening] widens the search (tag-augmented,
-         * generic fallback) and exists purely to fill gaps; it's safe to skip once a provider
-         * already has enough evidence, unlike [core] where skipping a query means skipping that
-         * marketplace entirely.
+         * [core] targets a specific marketplace (two queries for eBay — sold and for-sale — one
+         * query each for Mercari, OfferUp, Craigslist, and Facebook Marketplace) and must always
+         * run — it's the only source of evidence for that marketplace at all. [broadening]
+         * widens the search (tag-augmented, generic fallback) and exists purely to fill gaps;
+         * it's safe to skip once a provider already has enough evidence, unlike [core] where
+         * skipping a query means skipping that marketplace entirely.
          */
         private data class SearchQueryPlan(
             val core: List<String>,
@@ -672,14 +672,18 @@ class PriceResearchService
         }
 
         /**
-         * Every marketplace gets both a "sold" and a "for sale" core query — a sold comp is the
-         * stronger price signal, but an asking-price-only marketplace (or one where the sold
-         * query just came up empty) still contributes useful range context. Filtering for sold
-         * alone was undercounting evidence: SearchAPI's ebay_search engine takes a hard
-         * sold-only filter (see [com.shelfsnap.app.data.remote.search.buildSearchApiUrl]), which
-         * excluded every active eBay listing outright, and the "sold" keyword added to the other
-         * marketplaces' queries — while not a hard filter there, since plain Google can't filter
-         * to completed sales — still nudged every query toward the same narrower slice.
+         * eBay is the only marketplace that gets two core queries (sold + for-sale); every other
+         * marketplace gets one neutral query that naturally surfaces both. The split exists
+         * because SearchAPI's ebay_search engine takes a hard sold_listings filter (see
+         * [com.shelfsnap.app.data.remote.search.buildSearchApiUrl]) that mirrors eBay's own
+         * site — active and sold are genuinely separate result sets there, not something one
+         * call can return both of, the same way eBay's own search UI has a distinct "Sold
+         * items" toggle rather than a combinable filter. The other marketplaces have no such
+         * API-level filter at all; "sold"/"for sale" there would just be a keyword stuffed into
+         * a generic Google query, which doesn't exclude anything — it only nudges ranking one
+         * way — so a single unbiased query already returns whatever natural mix of active and
+         * sold listings exists, and doubling those queries would only have doubled the bill for
+         * the same evidence a single query already covers.
          */
         private fun buildSearchQueries(item: Item): SearchQueryPlan {
             // Prefer brand+model; fall back to a user-set title when brand/model are both blank
@@ -707,31 +711,26 @@ class PriceResearchService
                     else -> "$genericDescriptor $conditionLabel"
                 }.trim()
 
-            // Two queries per marketplace — sold and for-sale — so generic items (no
-            // brand/model) still get real listing evidence rather than bare text searches.
+            // One query per marketplace so generic items (no brand/model) still get real
+            // listing evidence rather than bare text searches — except eBay, which gets its
+            // sold/for-sale pair (see the class doc above).
             //
             // Craigslist and Facebook Marketplace are real limitations, not just more of the
             // same: Craigslist listings are deleted (not archived as "sold") once a sale closes,
-            // so the sold variant finds little to nothing there even when it works elsewhere.
-            // Facebook Marketplace item pages sit almost entirely behind a login wall, so
-            // Google — and therefore every provider here — indexes very few of them at all.
-            // Both are included because they're the only shot at any evidence from those
-            // marketplaces, not because the hit rate is expected to match eBay/Mercari/OfferUp.
-            val marketplaceDomains =
-                listOf(
-                    "site:ebay.com/itm",
-                    "mercari.com",
-                    "offerup.com",
-                    "craigslist.org",
-                    "facebook.com/marketplace",
-                )
+            // so there's little persistent evidence there even in principle. Facebook
+            // Marketplace item pages sit almost entirely behind a login wall, so Google — and
+            // therefore every provider here — indexes very few of them at all. Both are
+            // included because they're the only shot at any evidence from those marketplaces,
+            // not because the hit rate is expected to match eBay/Mercari/OfferUp.
             val core =
-                marketplaceDomains.flatMap { domain ->
-                    listOf(
-                        "$descriptor $domain sold".trim(),
-                        "$descriptor $domain for sale".trim(),
-                    )
-                }
+                listOf(
+                    "$descriptor site:ebay.com/itm sold".trim(),
+                    "$descriptor site:ebay.com/itm for sale".trim(),
+                    "$descriptor mercari.com".trim(),
+                    "$descriptor offerup.com".trim(),
+                    "$descriptor craigslist.org".trim(),
+                    "$descriptor facebook.com/marketplace".trim(),
+                )
 
             val broadening = mutableListOf<String>()
             // Tag-augmented for broader evidence.
