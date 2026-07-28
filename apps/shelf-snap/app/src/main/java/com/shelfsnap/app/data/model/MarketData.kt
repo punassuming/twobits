@@ -39,6 +39,14 @@ data class MarketResearch(
     val searchResultCount: Int = 0,
     /** Non-null when the web search itself failed (auth, network, HTTP error). */
     val searchError: String? = null,
+    /**
+     * True when web search ran but no enabled provider could return completed-sale data — only
+     * SearchAPI.io maps eBay queries onto a sold-listings engine, so with Serper/Jina/Brave a
+     * verified sold comp is impossible no matter how many results come back. Drives the Market
+     * tab's explanation so an empty comps list doesn't look like a transient failure.
+     * Defaults false so research saved before this existed doesn't show the hint spuriously.
+     */
+    val soldDataUnavailable: Boolean = false,
     /** Transparency detail (queries, timings, pages read); null for older saved research. */
     val debug: MarketResearchDebug? = null,
 )

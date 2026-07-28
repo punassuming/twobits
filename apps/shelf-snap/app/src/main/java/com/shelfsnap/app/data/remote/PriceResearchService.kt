@@ -16,6 +16,7 @@ import com.shelfsnap.app.data.remote.search.JinaReaderService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.data.remote.search.WebSearchResolver
 import com.shelfsnap.app.data.remote.search.WebSearchResult
+import com.shelfsnap.app.data.remote.search.marketplaceKeyFromUrl
 import com.shelfsnap.app.util.ApiKeyValidator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -56,6 +57,11 @@ data class SearchEvidence(
     val searchMs: Long = 0L,
     /** Page-reading phase duration (millis). */
     val readMs: Long = 0L,
+    /**
+     * True when at least one provider used here can return completed-sale data. False means
+     * verified sold comps were impossible from the start, regardless of how many calls ran.
+     */
+    val soldCapable: Boolean = false,
 )
 
 private data class SearchAttempt(
@@ -64,6 +70,17 @@ private data class SearchAttempt(
     val results: List<WebSearchResult> = emptyList(),
     val error: String? = null,
 )
+
+/**
+ * Fills in [WebSearchResult.platformKey] from the URL when the provider didn't supply one.
+ *
+ * Serper/Jina/Brave return bare title+url+snippet, so without this every result from them
+ * looks like a non-marketplace page — they could never satisfy a per-provider posting quota
+ * nor contribute a comparable listing. Structured providers already set the key, so theirs
+ * is left alone.
+ */
+private fun WebSearchResult.withBackfilledPlatform(): WebSearchResult =
+    if (platformKey != null) this else copy(platformKey = marketplaceKeyFromUrl(url))
 
 /**
  * Produces resale price guidance for an item.
@@ -196,7 +213,8 @@ class PriceResearchService
                 }
             if (services.isEmpty()) return SearchEvidence()
 
-            val queries = buildSearchQueries(item)
+            val hasStructuredProvider = services.any { it.first.provider.suppliesStructuredListings }
+            val queries = buildSearchQueries(item, hasStructuredProvider)
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
             val queryLog = mutableListOf<MarketQuery>()
@@ -206,33 +224,56 @@ class PriceResearchService
                     .first()
                     .first.provider.key
 
-            // Phase 1 — fire all (query × provider) pairs concurrently and merge.
-            // Parallel execution cuts wall-clock time from (N×P×latency) to max(latency).
+            // Phase 1 — walk each provider's own query list until that provider has produced
+            // enough real marketplace postings, then stop asking it.
+            //
+            // The previous implementation fired the full (query × provider) cartesian product
+            // concurrently: with 5 queries and 3 providers that is 15 billed calls, every
+            // provider answering the *same* query, and the merged set capped at
+            // MAX_SEARCH_RESULTS anyway — so most of what was paid for was discarded. Providers
+            // are queried in parallel with each other (they're independent vendors, so
+            // wall-clock still collapses to the slowest single provider) but each provider's
+            // queries run in sequence so its quota can short-circuit the rest.
             val searchStart = System.currentTimeMillis()
-            val allAttempts: List<SearchAttempt> =
+            val perProviderAttempts: List<List<SearchAttempt>> =
                 coroutineScope {
-                    queries
-                        .flatMap { query ->
-                            services.map { (service, key) ->
-                                async {
-                                    runCatching { service.search(query, key) }
-                                        .fold(
-                                            onSuccess = { results ->
-                                                SearchAttempt(provider = service.provider, query = query, results = results)
-                                            },
-                                            onFailure = { e ->
-                                                Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
-                                                SearchAttempt(
-                                                    provider = service.provider,
-                                                    query = query,
-                                                    error = e.message ?: e.javaClass.simpleName,
-                                                )
-                                            },
-                                        )
+                    services
+                        .map { (service, key) ->
+                            async {
+                                val attempts = mutableListOf<SearchAttempt>()
+                                var legitPostings = 0
+                                for (query in queries) {
+                                    if (legitPostings >= LEGIT_POSTINGS_PER_PROVIDER) break
+                                    val attempt =
+                                        runCatching { service.search(query, key) }
+                                            .fold(
+                                                onSuccess = { results ->
+                                                    SearchAttempt(
+                                                        provider = service.provider,
+                                                        query = query,
+                                                        results = results.map { it.withBackfilledPlatform() },
+                                                    )
+                                                },
+                                                onFailure = { e ->
+                                                    Log.w(
+                                                        TAG,
+                                                        "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}",
+                                                    )
+                                                    SearchAttempt(
+                                                        provider = service.provider,
+                                                        query = query,
+                                                        error = e.message ?: e.javaClass.simpleName,
+                                                    )
+                                                },
+                                            )
+                                    attempts.add(attempt)
+                                    legitPostings += attempt.results.count { it.platformKey != null }
                                 }
+                                attempts
                             }
                         }.map { it.await() }
                 }
+            val allAttempts = perProviderAttempts.flatten()
             for (attempt in allAttempts) {
                 queryLog.add(
                     MarketQuery(
@@ -242,9 +283,17 @@ class PriceResearchService
                         error = attempt.error,
                     ),
                 )
-                attempt.results.forEach { r ->
-                    if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
-                }
+            }
+            // Merge across providers preferring real marketplace postings, so the capped
+            // evidence set isn't crowded out by blog posts and unrelated shop pages that
+            // happened to be returned first.
+            val ranked =
+                allAttempts
+                    .flatMap { it.results }
+                    .sortedByDescending { it.platformKey != null }
+            for (r in ranked) {
+                if (merged.size >= MAX_SEARCH_RESULTS) break
+                if (seen.add(r.url)) merged.add(r)
             }
             if (merged.isEmpty()) {
                 lastError =
@@ -284,6 +333,7 @@ class PriceResearchService
                 pagesRead = pagesRead,
                 searchMs = searchMs,
                 readMs = readMs,
+                soldCapable = hasStructuredProvider,
             )
         }
 
@@ -296,7 +346,9 @@ class PriceResearchService
             workerUrl: String,
             authHeader: String,
         ): SearchEvidence {
-            val queries = buildSearchQueries(item)
+            // The Worker routes every query through SearchAPI (see the "searchapi" provider in
+            // the request body below), which does honor completed-sales targeting.
+            val queries = buildSearchQueries(item, hasStructuredProvider = true)
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
             val queryLog = mutableListOf<MarketQuery>()
@@ -364,10 +416,23 @@ class PriceResearchService
                 error = if (merged.isEmpty()) lastError else null,
                 queries = queryLog,
                 searchMs = searchMs,
+                soldCapable = true,
             )
         }
 
-        private fun buildSearchQueries(item: Item): List<String> {
+        /**
+         * @param hasStructuredProvider true when a provider that maps eBay queries onto a
+         *   completed-sales engine (SearchAPI) is enabled. Without one, the trailing "sold"
+         *   token is dropped: plain Google can't filter to completed sales, so it only skews
+         *   results toward pages that happen to contain the word "sold" while still returning
+         *   active listings. The `site:` targeting is kept either way — that part *does* work
+         *   on generic search and is what surfaces real marketplace postings.
+         */
+        private fun buildSearchQueries(
+            item: Item,
+            hasStructuredProvider: Boolean,
+        ): List<String> {
+            val soldToken = if (hasStructuredProvider) " sold" else ""
             // Prefer brand+model; fall back to a user-set title when brand/model are both blank
             // so a custom title still yields a precise, quotable descriptor instead of dropping
             // straight to the weaker generic description+category path below.
@@ -398,22 +463,28 @@ class PriceResearchService
             // real sold-listing evidence rather than bare text searches.
             // One eBay query is enough: SearchAPI maps it to the dedicated completed-sales
             // engine, while the other providers honor the site: operator directly.
-            queries.add("$descriptor site:ebay.com/itm sold".trim())
-            queries.add("$descriptor mercari.com sold".trim())
-            queries.add("$descriptor offerup.com sold".trim())
+            queries.add("$descriptor site:ebay.com/itm$soldToken".trim())
+            queries.add("$descriptor mercari.com$soldToken".trim())
+            queries.add("$descriptor offerup.com$soldToken".trim())
 
             // Tag-augmented for broader evidence.
             if (item.tags.isNotEmpty()) {
                 val tagHint = item.tags.take(3).joinToString(" ")
-                queries.add("$quoted $tagHint ${item.category} sold price".trim())
+                queries.add("$quoted $tagHint ${item.category}$soldToken price".trim())
             }
-            // General fallback. Cap the description — the full AI-prose description
-            // produces an overly long query that returns 0 results.
+            // General fallback. Keep the descriptor quoted when we have one — an unquoted
+            // brand/model let search engines drop the model number entirely and return
+            // loosely-related listings for the same category (toner cartridges for a NUC),
+            // which then crowded out the real postings in the capped evidence set.
             queries.add(
-                listOf(item.brand, item.model, item.description.take(60).trim(), item.category, "resale price used")
-                    .filter { it.isNotBlank() }
-                    .distinct()
-                    .joinToString(" "),
+                if (hasQuotableDescriptor) {
+                    "$quoted ${item.category} resale price used".trim()
+                } else {
+                    listOf(item.description.take(60).trim(), item.category, "resale price used")
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .joinToString(" ")
+                },
             )
             return queries
         }
@@ -580,16 +651,23 @@ class PriceResearchService
                         ?.associate { it.key to it.value.asDouble }
                         ?: emptyMap()
 
-                // Citations from the model, plus any evidence URLs it didn't echo back.
+                // Citations must be sources that actually back the estimate: the listings behind
+                // the comps, plus whatever the model deliberately cited. Previously *every* raw
+                // search result was appended, so unrelated pages the model had already rejected
+                // (a toner cartridge under an Intel NUC) still rendered under "Sources".
                 val modelCitations =
                     obj.getAsJsonArray("citations")?.mapNotNull { el ->
                         val c = el.asJsonObject
                         val label = c.get("label")?.asString ?: return@mapNotNull null
                         Citation(label = label, url = c.get("url")?.asString ?: "")
                     } ?: emptyList()
-                val evidenceCitations = evidence.results.map { Citation(label = it.title, url = it.url) }
+                val compUrls = comps.map { it.sourceUrl }.filter { it.isNotBlank() }.toSet()
+                val compCitations =
+                    evidence.results
+                        .filter { it.url in compUrls }
+                        .map { Citation(label = it.title, url = it.url) }
                 val citations =
-                    (modelCitations + evidenceCitations)
+                    (compCitations + modelCitations.filter { it.url.isBlank() || it.url in compUrls })
                         .distinctBy { it.url.ifBlank { it.label } }
                         .take(MAX_CITATIONS)
 
@@ -606,6 +684,7 @@ class PriceResearchService
                         searchProviderKey = evidence.providerKey,
                         searchResultCount = evidence.results.size,
                         searchError = evidence.error,
+                        soldDataUnavailable = evidence.results.isNotEmpty() && !evidence.soldCapable,
                     )
                 PriceResearchResult(
                     research = research,
@@ -677,6 +756,14 @@ class PriceResearchService
             private const val MAX_SEARCH_RESULTS = 12
             private const val MIN_RESULTS_EARLY_STOP = 5
             private const val MAX_AI_ONLY_CONFIDENCE = 30
+
+            /**
+             * How many real marketplace postings each provider should produce before it stops
+             * being asked further queries. Providers are billed per call, so the goal is enough
+             * corroborating postings per source to be worth its cost — not every query against
+             * every provider, which mostly re-fetched the same listings.
+             */
+            private const val LEGIT_POSTINGS_PER_PROVIDER = 4
 
             /** Cap on how many result pages the Jina Reader opens per research run. */
             private const val MAX_PAGES_READ = 4
