@@ -9,13 +9,10 @@
 ### Fixes
 
 **Market research** — every marketplace is searched again, not just eBay:
-* a quota meant to cut redundant calls was satisfied by eBay results alone
-* every provider now always checks eBay, Mercari, and OfferUp
-* SearchAPI.io and/or Serper.dev now search marketplaces directly; others add different evidence instead
-* a saved Jina key now reads listing pages even when another engine found them
-* Brave now only fires when SearchAPI/Serper/Jina came up thin, saving a redundant call
-* Jina now reads up to two pages per marketplace instead of the top 4 by overall rank
-* a dead-listing or bot-blocked read now tries the next candidate instead of stopping
+* a quota bug let eBay results crowd out Mercari and OfferUp
+* SearchAPI and/or Serper now search every marketplace directly
+* Jina now verifies listings independently of its own search toggle
+* Brave only searches as a fallback, skipping dead or blocked reads
 
 ## 1.24.1 (2026-07-28)
 

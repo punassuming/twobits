@@ -277,8 +277,18 @@ class PriceResearchService
                             }
                         }.map { it.await() }
                 }
+            // Distinct URLs, not raw occurrences: the same listing can come back from more than
+            // one provider or query (SearchAPI and Serper both surfacing the same eBay item,
+            // say), and counting each repeat toward the threshold could suppress Brave even
+            // though the actual amount of distinct evidence is still thin.
             val immediateLegitPostings =
-                immediateAttempts.sumOf { attempts -> attempts.sumOf { it.results.count { r -> r.platformKey != null } } }
+                immediateAttempts
+                    .flatten()
+                    .flatMap { it.results }
+                    .filter { it.platformKey != null }
+                    .map { it.url }
+                    .distinct()
+                    .size
             val braveAttempts: List<List<SearchAttempt>> =
                 if (deferredBraveServices.isNotEmpty() && immediateLegitPostings < BRAVE_FALLBACK_THRESHOLD) {
                     coroutineScope {
@@ -311,11 +321,23 @@ class PriceResearchService
             }
             // Merge across providers preferring real marketplace postings, so the capped
             // evidence set isn't crowded out by blog posts and unrelated shop pages that
-            // happened to be returned first.
-            val ranked =
-                allAttempts
-                    .flatMap { it.results }
-                    .sortedByDescending { it.platformKey != null }
+            // happened to be returned first. Real postings are interleaved round-robin across
+            // marketplaces rather than concatenated in provider/query order: a single provider
+            // can return a full page of eBay results before its Mercari/OfferUp queries even
+            // run, and concatenating would let that fill the entire MAX_SEARCH_RESULTS cap
+            // before another marketplace's results are ever considered — meaning that
+            // marketplace's query was billed but its evidence never reached the model at all.
+            // Round-robin guarantees every marketplace with at least one result keeps a slot.
+            val allResults = allAttempts.flatMap { it.results }
+            val (withPlatform, withoutPlatform) = allResults.partition { it.platformKey != null }
+            val byMarketplace = withPlatform.groupBy { it.platformKey }.values.map { it.iterator() }
+            val ranked = mutableListOf<WebSearchResult>()
+            while (byMarketplace.any { it.hasNext() }) {
+                for (it in byMarketplace) {
+                    if (it.hasNext()) ranked.add(it.next())
+                }
+            }
+            ranked.addAll(withoutPlatform)
             for (r in ranked) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
                 if (seen.add(r.url)) merged.add(r)
@@ -393,6 +415,7 @@ class PriceResearchService
         ): List<SearchAttempt> {
             val attempts = mutableListOf<SearchAttempt>()
             var legitPostings = 0
+
             suspend fun run(query: String) {
                 val attempt =
                     runCatching { service.search(query, key) }
@@ -426,13 +449,16 @@ class PriceResearchService
 
         /**
          * Best-effort check that a Jina Reader response is real listing content rather than a
-         * dead link — the Reader returns HTTP 200 (and therefore non-null text) for "listing
-         * removed"/expired pages and most bot-block/CAPTCHA interstitials too, since those are
-         * still valid page loads from its point of view. There's no structured signal to check
-         * instead short of a second LLM call per page, so this is a heuristic, not a guarantee:
-         * a short response is treated as a failed read, and a small set of phrases common to
-         * dead-listing and bot-block pages across marketplaces disqualifies an otherwise
-         * long-enough response.
+         * dead link — the Reader returns HTTP 200 (and therefore non-null text) for expired
+         * pages and most bot-block/CAPTCHA interstitials too, since those are still valid page
+         * loads from its point of view. There's no structured signal to check instead short of
+         * a second LLM call per page, so this is a heuristic, not a guarantee: a short response
+         * is treated as a failed read, and a small set of phrases disqualifies an otherwise
+         * long-enough response. The denylist deliberately excludes "no longer available" /
+         * "item is unavailable" wording: those phrases are just as common on a genuinely ended
+         * or sold listing that still shows full price/condition detail — exactly the evidence
+         * this pipeline wants most — as on an actually-removed one, so treating them as
+         * disqualifying would throw away good evidence more often than it catches bad pages.
          */
         private fun looksLikeConfirmedListing(text: String): Boolean {
             if (text.trim().length < MIN_CONFIRMED_LISTING_CHARS) return false
@@ -919,9 +945,7 @@ class PriceResearchService
              */
             private val DEAD_PAGE_PHRASES =
                 listOf(
-                    "no longer available",
                     "listing has been removed",
-                    "this item is unavailable",
                     "page not found",
                     "item not found",
                     "verify you are human",
