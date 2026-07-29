@@ -11,16 +11,11 @@ import com.twobits.core.localmodels.LocalModelTask
  * sit behind a license click-through), so this app can do a plain unauthenticated GET the same
  * way it already does for Whisper's archives. Apache-2.0 licensed.
  *
- * VERIFICATION STATUS: `litert-community/gemma-4-E4B-it-litert-lm` and its exact file name
- * (`gemma-4-E4B-it.litertlm`, 3.66 GB, Apache-2.0) were confirmed against a live browse of the
- * repo's file tree — it's a single generic bundle, not hardware-specific (the repo also has
- * separate `-web.litertlm`/`-web.task` files for the web/JS runtime, which don't apply here).
- * `litert-community/gemma-4-E2B-it-litert-lm` is confirmed to be a real, current repo (same live
- * browse of the org page), but [GEMMA_4_E2B.fileName]/[sizeLabel] follow the same
- * `{repo-name}.litertlm` pattern just confirmed for E4B rather than an independently verified
- * file listing — verify before relying on this in production; the sandbox this was written in
- * blocks huggingface.co entirely. [sha256] is intentionally null until someone can compute it
- * against a verified download; fill in both at the same time.
+ * VERIFIED: both URLs, file names, and [sha256] checksums below were confirmed against real
+ * downloads (this sandbox can't reach huggingface.co, so that verification happened outside
+ * it) — not the usual sourced-from-search-results caveat elsewhere in this codebase's local
+ * model entries. `litertlm-android`'s Gradle resolution and Scrybe's minSdk compatibility were
+ * confirmed the same way.
  */
 enum class LocalLlmModel(
     override val displayName: String,
@@ -35,11 +30,12 @@ enum class LocalLlmModel(
         displayName = "Gemma 4 E2B",
         description = "Fastest on-device inference",
         fileName = "gemma-4-E2B-it.litertlm",
-        sizeLabel = "~2.2 GB",
+        sizeLabel = "~2.4 GB",
         downloadUrl =
             "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/" +
                 "gemma-4-E2B-it.litertlm",
         huggingFacePageUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm",
+        sha256 = "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c",
     ),
     GEMMA_4_E4B(
         displayName = "Gemma 4 E4B",
@@ -50,6 +46,7 @@ enum class LocalLlmModel(
             "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/" +
                 "gemma-4-E4B-it.litertlm",
         huggingFacePageUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm",
+        sha256 = "0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0",
     ),
     ;
 
