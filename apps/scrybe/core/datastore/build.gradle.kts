@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -16,12 +18,17 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 dependencies {
     implementation(project(":core:model"))
-    // LocalGemmaModel/LocalWhisperModel (from :core:model) implement LocalModelSpec and are used
+    // LocalLlmModel/LocalWhisperModel (from :core:model) implement LocalModelSpec and are used
     // as public parameter types below, so this module's own classpath must resolve that supertype.
     implementation("com.twobits.core:local-models")
     implementation(libs.androidx.datastore.preferences)

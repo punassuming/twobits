@@ -7,6 +7,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.shelfsnap.app.data.listing.ListingCopy
 import com.shelfsnap.app.data.local.ItemDao
+import com.shelfsnap.app.data.local.LocalListingService
+import com.shelfsnap.app.data.local.LocalModelManager
+import com.shelfsnap.app.data.local.LocalVisionService
 import com.shelfsnap.app.data.local.toDomain
 import com.shelfsnap.app.data.local.toEntity
 import com.shelfsnap.app.data.model.Condition
@@ -19,6 +22,7 @@ import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.ListingGenerationService
 import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
+import com.shelfsnap.app.data.remote.ResearchProgress
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionRepository
@@ -39,6 +43,9 @@ class ItemRepository
         private val visionService: VisionAnalysisService,
         private val priceResearchService: PriceResearchService,
         private val listingGenerationService: ListingGenerationService,
+        private val localListingService: LocalListingService,
+        private val localVisionService: LocalVisionService,
+        private val localModelManager: LocalModelManager,
         private val dataStore: DataStore<Preferences>,
         private val subscriptionRepository: SubscriptionRepository,
         private val crypto: CredentialCrypto,
@@ -123,7 +130,18 @@ class ItemRepository
                             authHeader = "Bearer $appUserId",
                         )
                     }
-                    ExecutionMode.LOCAL -> DraftItemResult(error = "Local vision inference is not yet available in this build.")
+                    ExecutionMode.LOCAL -> {
+                        val primaryPath = photoPaths.getOrNull(primaryPhotoIndex) ?: photoPaths.firstOrNull()
+                        val modelFile = localModelFile()
+                        when {
+                            primaryPath == null -> DraftItemResult(error = "No photo to analyse.")
+                            modelFile == null ->
+                                DraftItemResult(
+                                    error = "No local model downloaded. Go to Settings → AI → Vision to download one.",
+                                )
+                            else -> localVisionService.analyse(primaryPath, modelFile)
+                        }
+                    }
                     ExecutionMode.BYOK, ExecutionMode.OFF -> visionService.analyse(effectivePaths, getApiKey(), model)
                 }
             if (result.error != null) return result
@@ -143,7 +161,10 @@ class ItemRepository
          * inactive Pro subscription, or the feature being turned off fails immediately with a clear
          * message instead of spinning for several seconds before the underlying call errors out.
          */
-        suspend fun researchPrice(item: Item): PriceResearchResult {
+        suspend fun researchPrice(
+            item: Item,
+            onProgress: (ResearchProgress) -> Unit = {},
+        ): PriceResearchResult {
             val sourceKey = dataStore.data.firstOrNull()?.get(KEY_TEXT_SOURCE) ?: "byok"
             val mode = executionModeFromSourceKey(sourceKey)
 
@@ -179,6 +200,7 @@ class ItemRepository
                         openAiAuthHeader = "Bearer $appUserId",
                         workerSearchUrl = "$WORKER_BASE/v1/shelfsnap/search",
                         workerAuthHeader = "Bearer $appUserId",
+                        onProgress = onProgress,
                     )
                 }
                 ExecutionMode.LOCAL -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
@@ -205,6 +227,7 @@ class ItemRepository
                         // and Jina only verifies it. Brave/SearchAPI have no reader endpoint.
                         readerKey = getJinaApiKey().ifBlank { null },
                         model = getReasoningModel().apiName,
+                        onProgress = onProgress,
                     )
                 }
             }
@@ -213,9 +236,9 @@ class ItemRepository
         /**
          * AI-refines a platform listing's copy, routed by the Listing feature's own source
          * (independent of Market Research's [KEY_TEXT_SOURCE]) — mirrors [analysePhotos]/
-         * [researchPrice]'s Pro/BYOK/Local branching. [ListingGenerationService] already falls back
-         * to returning [current] unchanged on any failure, which also covers the Local case here
-         * since no local listing-generation implementation exists yet.
+         * [researchPrice]'s Pro/BYOK/Local branching. Falls back to [current] unchanged when no
+         * local model is downloaded, matching [ListingGenerationService]'s never-lose-data
+         * contract for the cloud paths.
          */
         suspend fun refineListing(
             item: Item,
@@ -237,7 +260,10 @@ class ItemRepository
                         model = model,
                     )
                 }
-                ExecutionMode.LOCAL -> current
+                ExecutionMode.LOCAL -> {
+                    val modelFile = localModelFile()
+                    if (modelFile != null) localListingService.refine(item, platform, current, modelFile) else current
+                }
                 ExecutionMode.BYOK, ExecutionMode.OFF -> listingGenerationService.refine(item, platform, current, getApiKey(), model = model)
             }
         }
@@ -401,6 +427,11 @@ class ItemRepository
         suspend fun saveReasoningModel(model: ReasoningModel) {
             dataStore.edit { it[KEY_REASONING_MODEL] = model.apiName }
         }
+
+        /** The user's selected local model file if downloaded, else any other downloaded one. */
+        private fun localModelFile() =
+            localModelManager.selectedLlm.value?.let { localModelManager.llmFile(it) }
+                ?: localModelManager.anyLlmReady()?.let { localModelManager.llmFile(it) }
 
         // ── Settings: AI source (pro / byok / local) ─────────────────────────────
 

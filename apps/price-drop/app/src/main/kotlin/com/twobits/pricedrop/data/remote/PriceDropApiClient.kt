@@ -63,7 +63,8 @@ class PriceDropApiClient
                         }
                     workerPost("/v1/pricedrop/price", body, PriceResponseDto::class.java)
                 }
-                ProviderMode.OFF -> PriceResponseDto(found = false)
+                // Rainforest has no local capability and never offers it in the UI.
+                ProviderMode.OFF, ProviderMode.LOCAL -> PriceResponseDto(found = false)
             }
         }
 
@@ -74,7 +75,8 @@ class PriceDropApiClient
                     val body = JsonObject().apply { addProperty("asin", asin) }
                     workerPost("/v1/pricedrop/history", body, HistoryResponseDto::class.java)
                 }
-                ProviderMode.OFF -> HistoryResponseDto()
+                // Rainforest has no local capability and never offers it in the UI.
+                ProviderMode.OFF, ProviderMode.LOCAL -> HistoryResponseDto()
             }
         }
 
@@ -85,7 +87,8 @@ class PriceDropApiClient
                     val body = JsonObject().apply { addProperty("upc", upc) }
                     workerPost("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java)
                 }
-                ProviderMode.OFF -> BarcodeResponseDto(found = false)
+                // Rainforest has no local capability and never offers it in the UI.
+                ProviderMode.OFF, ProviderMode.LOCAL -> BarcodeResponseDto(found = false)
             }
         }
 
@@ -108,6 +111,11 @@ class PriceDropApiClient
             val askSource = providerSettings.getFeatureSource(AiFeature.ASK)
             if (askSource == ProviderMode.OFF) {
                 throw IOException("Ask assistant is turned off. Enable it with a BYOK key or Pro in Settings.")
+            }
+            // LOCAL routes through AskViewModel's own LocalAskSession before reaching here —
+            // this function is the cloud (BYOK/Pro) path only.
+            if (askSource == ProviderMode.LOCAL) {
+                throw IllegalStateException("chat() does not handle ProviderMode.LOCAL — route through LocalAskSession instead.")
             }
             val isProMode = askSource == ProviderMode.PRO
             val baseUrl =

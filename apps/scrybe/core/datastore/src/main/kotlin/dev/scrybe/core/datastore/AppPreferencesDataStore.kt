@@ -9,9 +9,9 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.twobits.core.localmodels.LocalLlmModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.model.AudioFormat
-import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
@@ -63,7 +63,7 @@ class AppPreferencesDataStore
             val TASKFORGE_ACTION = stringPreferencesKey("taskforge_action")
             val CLOUD_TRANSCRIPTION_MODEL = stringPreferencesKey("cloud_transcription_model")
             val SPOKEN_LANGUAGES = stringPreferencesKey("spoken_languages")
-            val LOCAL_GEMMA_MODEL = stringPreferencesKey("local_gemma_model")
+            val LOCAL_LLM_MODEL = stringPreferencesKey("local_llm_model")
             val LOCAL_WHISPER_MODEL = stringPreferencesKey("local_whisper_model")
             val DELETED_DEFAULT_PROFILE_IDS = stringPreferencesKey("deleted_default_profile_ids")
             val ENABLE_SPEAKER_IDENTIFICATION = booleanPreferencesKey("enable_speaker_identification")
@@ -222,9 +222,9 @@ class AppPreferencesDataStore
                 OpenAiTranscriptionModel.fromApiName(prefs[Keys.CLOUD_TRANSCRIPTION_MODEL] ?: "")
             }
 
-        val localGemmaModel: Flow<LocalGemmaModel> =
+        val localLlmModel: Flow<LocalLlmModel> =
             context.dataStore.data.map { prefs ->
-                LocalGemmaModel.fromName(prefs[Keys.LOCAL_GEMMA_MODEL] ?: "")
+                LocalLlmModel.fromName(prefs[Keys.LOCAL_LLM_MODEL] ?: "")
             }
 
         val localWhisperModel: Flow<LocalWhisperModel> =
@@ -386,8 +386,8 @@ class AppPreferencesDataStore
             context.dataStore.edit { prefs -> prefs[Keys.SPOKEN_LANGUAGES] = languages }
         }
 
-        suspend fun setLocalGemmaModel(model: LocalGemmaModel) {
-            context.dataStore.edit { prefs -> prefs[Keys.LOCAL_GEMMA_MODEL] = model.name }
+        suspend fun setLocalLlmModel(model: LocalLlmModel) {
+            context.dataStore.edit { prefs -> prefs[Keys.LOCAL_LLM_MODEL] = model.name }
         }
 
         suspend fun setLocalWhisperModel(model: LocalWhisperModel) {

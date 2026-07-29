@@ -76,6 +76,10 @@ data class MarketResearchDebug(
     val queries: List<MarketQuery> = emptyList(),
     /** Number of distinct listing pages opened/read via the Jina Reader. */
     val pagesRead: Int = 0,
+    /** Every outbound API call this run made: search queries + page reads + the AI synthesis call. */
+    val totalApiCalls: Int = 0,
+    /** Distinct services called, e.g. ["Serper.dev", "Jina AI Search", "Jina Reader", "OpenAI"]. */
+    val servicesUsed: List<String> = emptyList(),
     /** Web-search phase duration in millis. */
     val searchMs: Long = 0L,
     /** Page-reading (Jina Reader) phase duration in millis. */

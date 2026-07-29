@@ -9,8 +9,14 @@
 [versions]
 # ── Build tooling ─────────────────────────────────────────────────────────────
 agp = "8.7.3"
-kotlin = "2.0.21"
-ksp = "2.0.21-1.0.25"
+# 2.3.0+: litertlm-android (see litertLm below) ships Kotlin metadata that only a
+# compiler this new can read — every module in the repo needs to be on this version or
+# newer, since shared/local-ai's compiled output otherwise becomes unreadable to its
+# consumers in turn. Confirmed via real CI failures with both 2.0.21 and an
+# only-local-ai-bumped setup (each pushed the "compiled with a newer Kotlin" error to a
+# different module instead of fixing it).
+kotlin = "2.3.0"
+ksp = "2.3.0" # KSP's own versioning switched to track the Kotlin version 1:1 starting here.
 detekt = "1.23.7"
 ktlint = "12.1.1"
 
@@ -23,11 +29,21 @@ composeBom = "2024.12.01"
 navigationCompose = "2.8.5"
 
 # ── DI ────────────────────────────────────────────────────────────────────────
-hilt = "2.51.1"
+# 2.51.1's Gradle plugin can't locate KSP's task class under KSP 2.3.0 (see kotlin
+# above) — Hilt applied at the root, KSP in subprojects, ends up on a different
+# classloader ("KSP plugin was detected to be applied but its task class could not be
+# found" — google/dagger#3965). 2.59+ needs AGP 9.0.0 (this repo is on 8.7.3, confirmed
+# via a real CI failure), so 2.58 — the last version still on AGP 8 — is the newest
+# candidate for a KSP2-compatible fix without also forcing an AGP major bump.
+hilt = "2.58"
 hiltNavigationCompose = "1.2.0"   # also governs hilt-work (same androidx.hilt group version)
 
 # ── Persistence ───────────────────────────────────────────────────────────────
-room = "2.6.1"
+# 2.6.1 predates Room's KSP2 support entirely (added in 2.7.0) — under KSP 2.3.0 (see
+# kotlin above), Room's compiler crashed with "unexpected jvm signature V", a known
+# KSP2 Analysis API bug (google/ksp#2957) that Room's own KSP2 integration works around
+# in its newer releases. Bumped to current stable.
+room = "2.8.4"
 datastore = "1.1.1"
 
 # ── Networking ────────────────────────────────────────────────────────────────
@@ -54,7 +70,7 @@ coil = "2.7.0"                    # Shelf Snap only
 vico = "2.1.2"                    # PriceDrop only
 
 # ── ML / device ───────────────────────────────────────────────────────────────
-mediapipeTasksGenai = "0.10.27"   # Scrybe only
+litertLm = "0.14.0"
 mlkitBarcode = "17.3.0"           # PriceDrop only
 commonsCompress = "1.27.1"        # Scrybe only
 playServicesLocation = "21.3.0"   # Scrybe only
@@ -151,7 +167,7 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 
 # ── ML / device ───────────────────────────────────────────────────────────────
-mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeTasksGenai" }
+litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertLm" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }

@@ -102,6 +102,7 @@ fun ItemDetailScreen(
     viewModel: ItemDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val researchProgress by viewModel.researchProgress.collectAsState()
 
     LaunchedEffect(itemId) { viewModel.load(itemId) }
     LaunchedEffect(uiState.isDeleted) { if (uiState.isDeleted) onDeleted() }
@@ -161,6 +162,34 @@ fun ItemDetailScreen(
         }
     }
 
+    Box(Modifier.fillMaxSize()) {
+        ItemDetailScaffold(
+            uiState = uiState,
+            viewModel = viewModel,
+            snackbarHostState = snackbarHostState,
+            onBack = onBack,
+            onAddPhoto = onAddPhoto,
+            onNavigateToListingSummary = onNavigateToListingSummary,
+            onDeleteRequested = { showDeleteDialog = true },
+        )
+        ResearchProgressToast(
+            visible = uiState.isResearching,
+            progress = researchProgress,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+}
+
+@Composable
+private fun ItemDetailScaffold(
+    uiState: ItemDetailUiState,
+    viewModel: ItemDetailViewModel,
+    snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
+    onAddPhoto: () -> Unit,
+    onNavigateToListingSummary: () -> Unit,
+    onDeleteRequested: () -> Unit,
+) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -191,7 +220,7 @@ fun ItemDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showDeleteDialog = true }) {
+                    IconButton(onClick = onDeleteRequested) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
                     }
                 },

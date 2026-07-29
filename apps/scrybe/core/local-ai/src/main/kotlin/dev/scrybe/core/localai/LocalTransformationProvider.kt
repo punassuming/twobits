@@ -1,6 +1,7 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
+import com.twobits.localai.LiteRtLmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
@@ -23,19 +24,16 @@ class LocalTransformationProvider
 
         override suspend fun transform(input: TransformInput): Result<TransformResult> =
             runCatching {
-                val selectedModel = preferencesDataStore.localGemmaModel.first()
+                val selectedModel = preferencesDataStore.localLlmModel.first()
                 val modelFile =
-                    modelManager.gemmaModelFile(selectedModel)
-                        ?: modelManager.anyGemmaReady()?.let { modelManager.gemmaModelFile(it) }
-                        ?: error("No Gemma model downloaded. Go to Settings → Provider → Local to download one.")
+                    modelManager.llmModelFile(selectedModel)
+                        ?: modelManager.anyLlmReady()?.let { modelManager.llmModelFile(it) }
+                        ?: error("No local model downloaded. Go to Settings → Provider → Local to download one.")
 
                 val transcript = input.combinedTranscriptText ?: input.transcriptText
-                val prompt =
-                    "<start_of_turn>user\n" +
-                        "${input.systemPrompt}\n\nTranscript:\n$transcript\n\nOutput only the result." +
-                        "<end_of_turn>\n<start_of_turn>model\n"
+                val prompt = "Transcript:\n$transcript\n\nOutput only the result."
 
-                GemmaEngine(context, modelFile).use { engine ->
+                LiteRtLmEngine(context, modelFile, systemInstruction = input.systemPrompt).use { engine ->
                     val response = engine.generate(prompt)
                     TransformResult(
                         transformedText = response.trim(),

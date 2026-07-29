@@ -1,7 +1,5 @@
 package dev.scrybe.feature.settings
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
@@ -54,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
+import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.AiCredentialsDock
@@ -65,7 +63,6 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
 import dev.scrybe.core.model.OpenAiTransformModel
@@ -90,15 +87,8 @@ fun AIConfigScreen(
     val storedSpokenLanguages by viewModel.spokenLanguages.collectAsState()
     var spokenLanguagesText by remember { mutableStateOf<String?>(null) }
     val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
-    val gemmaStates by viewModel.gemmaStates.collectAsState()
-    val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
-
-    var pendingImportGemmaModel by remember { mutableStateOf<LocalGemmaModel?>(null) }
-    val importGemmaFilePicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            uri?.let { viewModel.importGemmaModel(it, pendingImportGemmaModel ?: return@let) }
-            pendingImportGemmaModel = null
-        }
+    val llmStates by viewModel.llmStates.collectAsState()
+    val selectedLlmModel by viewModel.selectedLlmModel.collectAsState()
 
     val activity = LocalContext.current as? android.app.Activity
     val hasPro = uiState.subscriptionTier is SubscriptionTier.Pro
@@ -274,22 +264,18 @@ fun AIConfigScreen(
                         ExecutionMode.LOCAL ->
                             LocalModelPanel(
                                 sectionLabel = "Gemma — on-device LLM",
-                                sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
-                                models = LocalGemmaModel.entries.toList(),
-                                status = { (gemmaStates[it] ?: LocalModelState.Absent).toStatus() },
-                                selected = selectedGemmaModel,
-                                onSelect = { viewModel.selectGemmaModel(it) },
-                                onPrimaryAction = {
-                                    pendingImportGemmaModel = it
-                                    importGemmaFilePicker.launch("*/*")
-                                },
-                                primaryActionLabel = "Import",
-                                primaryActionIcon = Icons.Default.FolderOpen,
-                                onDelete = { viewModel.deleteGemmaModel(it) },
+                                models = LocalLlmModel.entries.toList(),
+                                status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                                selected = selectedLlmModel,
+                                onSelect = { viewModel.selectLlmModel(it) },
+                                onPrimaryAction = { viewModel.downloadLlmModel(it) },
+                                primaryActionLabel = "Download",
+                                primaryActionIcon = Icons.Default.CloudDownload,
+                                onDelete = { viewModel.deleteLlmModel(it) },
                                 name = { it.displayName },
                                 sizeLabel = { it.sizeLabel },
                                 description = { it.description },
-                                progressLabel = "Importing",
+                                progressLabel = "Downloading",
                                 huggingFaceUrl = { it.huggingFacePageUrl },
                             )
                     }

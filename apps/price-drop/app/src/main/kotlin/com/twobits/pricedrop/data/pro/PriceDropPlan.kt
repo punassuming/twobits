@@ -10,7 +10,6 @@ import com.twobits.pricedrop.data.provider.ProviderMode
 /**
  * Client-side mirror of PriceDrop's managed-Pro limits. Kept in lockstep with `worker.js`
  * (USAGE_LIMITS / PRICEDROP_POLL / PRICEDROP_BUDGET); the worker remains the source of truth.
- * PriceDrop has no on-device model, so there is deliberately no LOCAL execution mode here.
  */
 object PriceDropPlan {
     const val AI_ASK_MONTHLY_LIMIT = 100
@@ -46,21 +45,20 @@ object PriceDropPlan {
         )
 }
 
-/**
- * Maps a per-provider [ProviderMode] to the shared [ExecutionMode]. Total by construction —
- * PriceDrop has no local capability, so this can never produce [ExecutionMode.LOCAL].
- */
+/** Maps a per-provider [ProviderMode] to the shared [ExecutionMode]. */
 fun ProviderMode.toExecutionMode(): ExecutionMode =
     when (this) {
         ProviderMode.OFF -> ExecutionMode.OFF
         ProviderMode.BYOK -> ExecutionMode.BYOK
         ProviderMode.PRO -> ExecutionMode.PRO
+        ProviderMode.LOCAL -> ExecutionMode.LOCAL
     }
 
-/** Inverse of [toExecutionMode]; [ExecutionMode.LOCAL] falls back to OFF (never valid in PriceDrop). */
+/** Inverse of [toExecutionMode]. */
 fun ExecutionMode.toProviderMode(): ProviderMode =
     when (this) {
+        ExecutionMode.OFF -> ProviderMode.OFF
         ExecutionMode.BYOK -> ProviderMode.BYOK
         ExecutionMode.PRO -> ProviderMode.PRO
-        ExecutionMode.OFF, ExecutionMode.LOCAL -> ProviderMode.OFF
+        ExecutionMode.LOCAL -> ProviderMode.LOCAL
     }

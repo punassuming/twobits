@@ -75,6 +75,7 @@ includeBuild("../../shared") {
         substitute(module("com.twobits.core:design")).using(project(":design"))
         substitute(module("com.twobits.core:secure-store")).using(project(":secure-store"))
         substitute(module("com.twobits.core:local-models")).using(project(":local-models"))
+        substitute(module("com.twobits.core:local-ai")).using(project(":local-ai"))
         substitute(module("com.twobits.core:pro")).using(project(":pro"))
     }
 }

@@ -4,9 +4,45 @@
 
 ### Features
 
+**On-device AI is real now** — Gemma downloads in-app instead of a manual .gguf import:
+* local listing generation now actually refines your copy, on-device
+* local vision analysis (experimental) can identify items from a photo, on-device
+* both share one downloaded model — no separate Moondream import anymore
+
 ### Improvements
 
+* Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
+* fixed a build error in the shared local-AI module — a nonexistent `.text` property on the model response (no visual change)
+* bumped the repo's Kotlin/KSP toolchain to 2.3.0 everywhere — required to compile against the on-device engine's litertlm-android dependency, whose newer releases all ship Kotlin metadata older compilers can't read (no visual change)
+* bumped Hilt to 2.58 — 2.51.1's Gradle plugin couldn't find KSP's task class once KSP moved to 2.3.0; 2.58 is the newest release that still supports this repo's AGP 8.7.3 (2.59+ requires AGP 9) (no visual change)
+* bumped Room to 2.8.4 — 2.6.1 predates Room's KSP2 support and crashed under KSP 2.3.0 (no visual change)
+
+**Market research** — searches finish noticeably faster:
+* a provider's eBay/Mercari/OfferUp queries now run at the same time, not one after another
+
+**Market research** — a live status toast now shows research progress:
+* slides up from the bottom while searching, verifying, and analyzing
+* shows short marketplace names and a verified count that stays visible throughout
+* the "found" count no longer drops when analysis starts
+
+**Market research** — Craigslist and Facebook Marketplace are now searched too:
+* both were previously skipped entirely, even as broadening queries
+* expect fewer hits there — Facebook is barely indexed, Craigslist deletes sold posts
+
+**Market research** — active listings are found, not just sold ones:
+* eBay's sold-only filter no longer silently excluded every active listing
+* the extra query now runs only for the provider that needs it
+* other marketplaces already return a natural mix, so no extra query needed
+
+**Market research** — Debug info now shows total API calls and which services ran:
+* a new "API calls" section lists the total count and services used
+
 ### Fixes
+
+**Market research** — active-listing evidence is now used correctly:
+* a historical sales count no longer misclassified active listings as sold
+* the managed (Pro) search path no longer stops after one marketplace hits 5 results
+* active listings can now become comps instead of being silently discarded
 
 ## 1.24.2 (2026-07-28)
 

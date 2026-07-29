@@ -12,6 +12,9 @@ import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import com.twobits.core.localmodels.LocalLlmModel
+import com.twobits.core.localmodels.LocalModelState
+import com.twobits.pricedrop.data.local.LocalModelManager
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.CredentialCheck
 import com.twobits.pricedrop.data.provider.PriceDropProvider
@@ -83,11 +86,27 @@ class SettingsViewModel
         billingManager: BillingManager,
         private val credentialClient: SharedCredentialClient,
         private val providerKeyValidator: ProviderKeyValidator,
+        private val localModelManager: LocalModelManager,
     ) : ViewModel() {
         private val purchaseDelegate = PurchaseDelegate(billingManager, viewModelScope)
 
         private val _exportEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
         val exportEvent: SharedFlow<String> = _exportEvent.asSharedFlow()
+
+        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = localModelManager.llmStates
+        val selectedLlm: StateFlow<LocalLlmModel?> = localModelManager.selectedLlm
+
+        fun downloadLlmModel(model: LocalLlmModel) {
+            viewModelScope.launch { localModelManager.downloadLlm(model) }
+        }
+
+        fun deleteLlmModel(model: LocalLlmModel) {
+            localModelManager.deleteLlm(model)
+        }
+
+        fun selectLlmModel(model: LocalLlmModel) {
+            localModelManager.selectLlm(model)
+        }
 
         init {
             viewModelScope.launch {

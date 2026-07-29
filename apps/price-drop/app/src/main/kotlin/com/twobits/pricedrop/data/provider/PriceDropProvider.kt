@@ -106,13 +106,19 @@ enum class PriceDropProvider(
     }
 }
 
-/** Per-provider access mode chosen by the user in Settings. */
+/**
+ * Per-provider access mode chosen by the user in Settings. [LOCAL] is only reachable for
+ * [AiFeature.ASK] — Rainforest/search providers have no local capability and never offer it
+ * in the UI, so their own exhaustive `when`s treat [LOCAL] as unreachable/empty rather than
+ * crashing.
+ */
 enum class ProviderMode(
     val value: String,
 ) {
     OFF("off"),
     BYOK("byok"),
     PRO("pro"),
+    LOCAL("local"),
     ;
 
     companion object {

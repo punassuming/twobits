@@ -29,6 +29,28 @@ sealed interface LocalModelAcquisition {
         val fileName: String,
         val huggingFacePageUrl: String,
     ) : LocalModelAcquisition
+
+    /**
+     * Downloaded single weights file needing no extraction — distinct from [DownloadArchive]
+     * (multi-file archive) and [ImportFile] (no network step at all; the user supplies an
+     * already-downloaded file via SAF). [downloadUrl] must be reachable with a plain
+     * unauthenticated GET — a HuggingFace repo gated behind license click-through won't work
+     * here and needs [ImportFile] instead, since this app never handles HuggingFace auth.
+     */
+    data class DownloadFile(
+        val fileName: String,
+        val downloadUrl: String,
+        val huggingFacePageUrl: String,
+        /**
+         * Expected SHA-256 of the downloaded bytes, lowercase hex, or null when no verified
+         * hash is available yet. When present, the downloader checks it after the transfer and
+         * treats a mismatch as a failed acquisition (deletes the file, surfaces
+         * [LocalModelState.Error]) instead of silently trusting whatever a third-party mirror
+         * served — [downloadUrl] points at a community re-upload, not the model author's own
+         * repo, so this is the integrity check that substitutes for that provenance.
+         */
+        val sha256: String? = null,
+    ) : LocalModelAcquisition
 }
 
 /**

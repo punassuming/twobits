@@ -6,6 +6,20 @@
 
 ### Improvements
 
+* Gemma 4 downloads are now checksum-verified against a known-good hash (no visual change)
+* the on-device engine and model spec moved to shared modules Shelf Snap/PriceDrop now use too (no visual change)
+* fixed a build error in the shared local-AI module — a nonexistent `.text` property on the model response (no visual change)
+* fixed a stray blank line ktlint flagged in the on-device model manager (no visual change)
+* bumped the repo's Kotlin/KSP toolchain to 2.3.0 everywhere — required to compile against the on-device engine's litertlm-android dependency, whose newer releases all ship Kotlin metadata older compilers can't read (no visual change)
+* bumped Hilt to 2.58 — 2.51.1's Gradle plugin couldn't find KSP's task class once KSP moved to 2.3.0; 2.58 is the newest release that still supports this repo's AGP 8.7.3 (2.59+ requires AGP 9) (no visual change)
+* removed a stale `ksp.useKSP2=false` setting that broke the build once KSP 2.3.0 dropped KSP1 entirely (no visual change)
+* bumped Room to 2.8.4 — 2.6.1 predates Room's KSP2 support and crashed under KSP 2.3.0 (no visual change)
+* release workflow's version bump changed to patch, matching Shelf Snap/PriceDrop (no visual change)
+
+**On-device LLM engine switched to LiteRT-LM** — MediaPipe, the previous engine, is Google's maintenance-only API:
+* local model is now Gemma 4 (E2B / E4B) and downloads in-app, one tap
+* on-device transforms use a real system-prompt turn, improving instruction-following
+
 ### Fixes
 
 ## 1.46.0 (2026-07-23)

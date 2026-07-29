@@ -470,7 +470,7 @@ Each app's CI and release workflow is a thin caller that passes app-specific inp
 
 ### Per-app release workflows (thin callers)
 Each triggers on its respective CI passing on `main` and via `workflow_dispatch`. `rebuild_for_tag` dispatches the rebuild job instead.
-- **`scrybe-release.yml`** — `tag_prefix: scrybe-v`, `default_bump: minor` (Scrybe gets minor bumps for new features)
+- **`scrybe-release.yml`** — `tag_prefix: scrybe-v`, `default_bump: patch`
 - **`shelf-snap-release.yml`** — `tag_prefix: shelf-snap-v`, `default_bump: patch`
 - **`pricedrop-release.yml`** — `tag_prefix: pricedrop-v`, `default_bump: patch`
 

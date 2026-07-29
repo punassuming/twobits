@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -69,19 +71,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-        // Material3's TopAppBar (and related components) are gated behind
-        // @ExperimentalMaterial3Api, which is @RequiresOptIn(level = ERROR). They're
-        // used across many screens, so opt in once here rather than annotating each
-        // file. Without this the debug Kotlin compile fails with "This material API
-        // is experimental…" errors.
-        freeCompilerArgs += "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
-        // Type.kt pins DM Sans weights via FontVariation.Settings, which is gated
-        // behind @ExperimentalTextApi (also @RequiresOptIn(level = ERROR)). Opt in
-        // here so the variable-font typography compiles.
-        freeCompilerArgs += "-opt-in=androidx.compose.ui.text.ExperimentalTextApi"
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -101,6 +90,22 @@ android {
         abortOnError = false
         checkReleaseBuilds = false
         warningsAsErrors = false
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+        // Material3's TopAppBar (and related components) are gated behind
+        // @ExperimentalMaterial3Api, which is @RequiresOptIn(level = ERROR). They're
+        // used across many screens, so opt in once here rather than annotating each
+        // file. Without this the debug Kotlin compile fails with "This material API
+        // is experimental…" errors.
+        freeCompilerArgs.add("-opt-in=androidx.compose.material3.ExperimentalMaterial3Api")
+        // Type.kt pins DM Sans weights via FontVariation.Settings, which is gated
+        // behind @ExperimentalTextApi (also @RequiresOptIn(level = ERROR)). Opt in
+        // here so the variable-font typography compiles.
+        freeCompilerArgs.add("-opt-in=androidx.compose.ui.text.ExperimentalTextApi")
     }
 }
 
@@ -170,6 +175,7 @@ dependencies {
     implementation("com.twobits.core:design")
     implementation("com.twobits.core:secure-store")
     implementation("com.twobits.core:local-models")
+    implementation("com.twobits.core:local-ai")
     implementation("com.twobits.core:pro")
 
     testImplementation(libs.junit)

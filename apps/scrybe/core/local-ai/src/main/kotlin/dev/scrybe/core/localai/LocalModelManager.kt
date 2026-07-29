@@ -1,11 +1,11 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
-import android.net.Uri
+import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.localai.ModelDownloader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
-import dev.scrybe.core.model.LocalGemmaModel
 import dev.scrybe.core.model.LocalWhisperModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,12 +16,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.File
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,11 +43,11 @@ class LocalModelManager
         private val _selectedWhisperModel = MutableStateFlow(LocalWhisperModel.default)
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = _selectedWhisperModel.asStateFlow()
 
-        private val _gemmaStates =
-            MutableStateFlow<Map<LocalGemmaModel, LocalModelState>>(
-                LocalGemmaModel.entries.associateWith { LocalModelState.Absent },
+        private val _llmStates =
+            MutableStateFlow<Map<LocalLlmModel, LocalModelState>>(
+                LocalLlmModel.entries.associateWith { LocalModelState.Absent },
             )
-        val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = _gemmaStates.asStateFlow()
+        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = _llmStates.asStateFlow()
 
         init {
             refreshStates()
@@ -62,7 +60,7 @@ class LocalModelManager
 
         private fun refreshStates() {
             _whisperStates.value = LocalWhisperModel.entries.associateWith { resolveWhisperState(it) }
-            _gemmaStates.value = LocalGemmaModel.entries.associateWith { resolveGemmaState(it) }
+            _llmStates.value = LocalLlmModel.entries.associateWith { resolveLlmState(it) }
         }
 
         fun whisperModelDir(model: LocalWhisperModel): File? {
@@ -78,19 +76,19 @@ class LocalModelManager
             }
         }
 
-        fun gemmaModelFile(model: LocalGemmaModel): File? {
+        fun llmModelFile(model: LocalLlmModel): File? {
             val file = File(modelsDir, model.fileName)
             return if (file.exists() && file.length() > 0) file else null
         }
 
-        fun anyGemmaReady(): LocalGemmaModel? = LocalGemmaModel.entries.firstOrNull { gemmaModelFile(it) != null }
+        fun anyLlmReady(): LocalLlmModel? = LocalLlmModel.entries.firstOrNull { llmModelFile(it) != null }
 
         private fun resolveWhisperState(model: LocalWhisperModel): LocalModelState =
             whisperModelDir(model)?.let { LocalModelState.Ready(it.absolutePath) }
                 ?: LocalModelState.Absent
 
-        private fun resolveGemmaState(model: LocalGemmaModel): LocalModelState =
-            gemmaModelFile(model)
+        private fun resolveLlmState(model: LocalLlmModel): LocalModelState =
+            llmModelFile(model)
                 ?.let { LocalModelState.Ready(it.absolutePath) }
                 ?: LocalModelState.Absent
 
@@ -100,7 +98,7 @@ class LocalModelManager
                 try {
                     updateWhisperState(model, LocalModelState.Acquiring(0))
                     val archiveFile = File(modelsDir, model.archiveName)
-                    downloadFile(model.downloadUrl, archiveFile) { progress ->
+                    ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, archiveFile) { progress ->
                         updateWhisperState(model, LocalModelState.Acquiring(progress))
                     }
                     extractTarBz2(archiveFile, modelsDir)
@@ -112,40 +110,24 @@ class LocalModelManager
             }
         }
 
-        suspend fun importGemmaFromUri(
-            uri: Uri,
-            model: LocalGemmaModel,
-        ) {
-            if (_gemmaStates.value[model] is LocalModelState.Acquiring) return
+        suspend fun downloadLlm(model: LocalLlmModel) {
+            if (_llmStates.value[model] is LocalModelState.Acquiring) return
             withContext(Dispatchers.IO) {
+                val destFile = File(modelsDir, model.fileName)
                 try {
-                    updateGemmaState(model, LocalModelState.Acquiring(0))
-                    val destFile = File(modelsDir, model.fileName)
-                    val sizeBytes =
-                        context.contentResolver
-                            .openFileDescriptor(uri, "r")
-                            ?.use { it.statSize }
-                            ?: -1L
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        destFile.outputStream().use { output ->
-                            val buffer = ByteArray(65_536)
-                            var bytesRead = 0L
-                            var read: Int
-                            while (input.read(buffer).also { read = it } != -1) {
-                                output.write(buffer, 0, read)
-                                bytesRead += read
-                                if (sizeBytes > 0) {
-                                    updateGemmaState(
-                                        model,
-                                        LocalModelState.Acquiring(((bytesRead * 100) / sizeBytes).toInt()),
-                                    )
-                                }
-                            }
-                        }
-                    } ?: throw IOException("Could not open selected file")
-                    updateGemmaState(model, resolveGemmaState(model))
+                    updateLlmState(model, LocalModelState.Acquiring(0))
+                    ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, destFile) { progress ->
+                        updateLlmState(model, LocalModelState.Acquiring(progress))
+                    }
+                    val expectedSha256 = model.sha256
+                    if (expectedSha256 != null && !ModelDownloader.matchesSha256(destFile, expectedSha256)) {
+                        destFile.delete()
+                        throw IOException("Downloaded file didn't match the expected checksum")
+                    }
+                    updateLlmState(model, resolveLlmState(model))
                 } catch (e: Exception) {
-                    updateGemmaState(model, LocalModelState.Error(e.message ?: "Import failed"))
+                    destFile.delete()
+                    updateLlmState(model, LocalModelState.Error(e.message ?: "Download failed"))
                 }
             }
         }
@@ -155,9 +137,9 @@ class LocalModelManager
             updateWhisperState(model, LocalModelState.Absent)
         }
 
-        fun deleteGemma(model: LocalGemmaModel) {
+        fun deleteLlm(model: LocalLlmModel) {
             File(modelsDir, model.fileName).delete()
-            updateGemmaState(model, LocalModelState.Absent)
+            updateLlmState(model, LocalModelState.Absent)
         }
 
         fun selectWhisperModel(model: LocalWhisperModel) {
@@ -171,40 +153,11 @@ class LocalModelManager
             _whisperStates.value = _whisperStates.value + (model to state)
         }
 
-        private fun updateGemmaState(
-            model: LocalGemmaModel,
+        private fun updateLlmState(
+            model: LocalLlmModel,
             state: LocalModelState,
         ) {
-            _gemmaStates.value = _gemmaStates.value + (model to state)
-        }
-
-        private fun downloadFile(
-            url: String,
-            dest: File,
-            onProgress: (Int) -> Unit,
-        ) {
-            val client =
-                okHttpClient
-                    .newBuilder()
-                    .callTimeout(0, TimeUnit.MILLISECONDS)
-                    .build()
-            val request = Request.Builder().url(url).build()
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            val body = response.body ?: throw IOException("Empty response body")
-            val contentLength = body.contentLength()
-            body.byteStream().use { input ->
-                dest.outputStream().use { output ->
-                    val buffer = ByteArray(8192)
-                    var bytesRead = 0L
-                    var read: Int
-                    while (input.read(buffer).also { read = it } != -1) {
-                        output.write(buffer, 0, read)
-                        bytesRead += read
-                        if (contentLength > 0) onProgress(((bytesRead * 100) / contentLength).toInt())
-                    }
-                }
-            }
+            _llmStates.value = _llmStates.value + (model to state)
         }
 
         private fun extractTarBz2(

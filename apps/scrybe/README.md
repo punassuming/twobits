@@ -48,7 +48,7 @@ Custom types are stored locally (Room `custom_recording_types` table) and surviv
 |--------|-------------|
 | **BYOK** | Paste your OpenAI API key in Settings. Audio goes directly from your phone to OpenAI. You pay provider rates — typically pennies per recording. |
 | **Scrybe Pro ($1.99/mo)** | Requests route through the TwoBits managed proxy (`api.twobits.app`). Your OpenAI key never touches your device. $2.00/month per-user spend cap enforced server-side. |
-| **Fully local** | Whisper tiny/base/small via Sherpa-ONNX for transcription; Gemma 2 2B via MediaPipe for transforms. Zero network calls. Download models once (150 MB – 2.6 GB), then everything runs on-device. |
+| **Fully local** | Whisper tiny/base/small via Sherpa-ONNX for transcription; Gemma 4 via LiteRT-LM for transforms. Zero network calls. Download models once (150 MB – 3.7 GB), then everything runs on-device. |
 
 Swap providers anytime in Settings → API Configuration.
 
@@ -118,7 +118,7 @@ AudioRecorder  ──────────────────►  Record
   │                                         ▼
   │                              TransformationPipeline
   │                               (LLM with system prompt;
-  │                                cloud GPT or local Gemma 2 2B)
+  │                                cloud GPT or local Gemma 4)
   │                                         │
   │                           ┌─────────────┴─────────────┐
   │                           ▼                           ▼
@@ -160,7 +160,7 @@ Room Database  ──────────────────►  Record
 | `:workers` | Workers | WorkManager-based deferred tasks (background transcription, batch chunking) |
 | `:core:audio` | Core | `AudioRecorder` / `AndroidMediaRecorder`; `AudioPlayer` with waveform, position flow, and insight visualizations |
 | `:core:transcription` | Core | `TranscriptionProvider`, `TranscriptionOrchestrator` (dedup + batching), OpenAI Whisper and Sherpa-ONNX implementations |
-| `:core:transforms` | Core | `TransformationProvider`, `TransformationPipeline`, three built-in `DefaultProfiles`, Gemma 2 2B local provider |
+| `:core:transforms` | Core | `TransformationProvider`, `TransformationPipeline`, three built-in `DefaultProfiles`, Gemma 4 local provider |
 | `:core:export` | Core | `ExportCoordinator`, Markdown / Text / JSON / Obsidian exporters |
 | `:core:database` | Core | Room database, entities, DAOs |
 | `:core:datastore` | Core | DataStore preferences (API keys, theme, recording defaults, model selection) |
@@ -183,7 +183,7 @@ Room Database  ──────────────────►  Record
 | Kotlinx Serialization | 1.6.3 | JSON serialisation |
 | Kotlinx Coroutines | 1.9.0 | Async / Flow |
 | Sherpa-ONNX | — | On-device Whisper transcription |
-| MediaPipe | — | On-device Gemma 2 2B transforms |
+| LiteRT-LM | — | On-device Gemma 4 transforms |
 | KSP | 1.9.25-1.0.20 | Annotation processing |
 | Detekt | 1.23.7 | Static analysis |
 | KtLint | 12.1.1 | Code formatting |
@@ -221,7 +221,7 @@ After first launch, open **Settings → API Configuration** and choose a provide
 |------|---------------|
 | **BYOK** | An OpenAI API key — get one at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Paste it in Settings → API Configuration → Save. Transcription uses `whisper-1`; transforms use `gpt-4o-mini` (or your selected model). You pay OpenAI directly at standard rates. |
 | **Scrybe Pro** | Subscribe in Settings → Pro ($1.99/mo). No key required — requests route through `api.twobits.app`. A $2/month per-user spend cap is enforced server-side. |
-| **Fully local** | No key or subscription needed. Tap **Download models** in Settings → API Configuration to download Whisper (tiny/base/small, 150 MB – 1.5 GB) and Gemma 2 2B (~2.6 GB). Everything runs on-device. |
+| **Fully local** | No key or subscription needed. Tap **Download models** in Settings → API Configuration to download Whisper (tiny/base/small, 150 MB – 1.5 GB) and Gemma 4 (~2.2–3.7 GB). Everything runs on-device. |
 
 ### Containerized development
 

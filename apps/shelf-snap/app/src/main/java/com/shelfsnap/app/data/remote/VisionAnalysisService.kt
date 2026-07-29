@@ -230,29 +230,7 @@ class VisionAnalysisService
                             .asString
                     }
 
-                // Strip possible markdown code fences
-                val cleaned =
-                    content
-                        .removePrefix("```json")
-                        .removePrefix("```")
-                        .removeSuffix("```")
-                        .trim()
-
-                val obj = JsonParser.parseString(cleaned).asJsonObject
-                DraftItemResult(
-                    category = normalizeCategory(obj.get("category")?.asString),
-                    brand = obj.get("brand")?.asString ?: "",
-                    model = obj.get("model")?.asString ?: "",
-                    title = obj.get("title")?.asString ?: "",
-                    description = obj.get("description")?.asString ?: "",
-                    tags = obj.getAsJsonArray("tags")?.map { it.asString } ?: emptyList(),
-                    condition =
-                        runCatching {
-                            Condition.valueOf(obj.get("condition")?.asString ?: "GOOD")
-                        }.getOrDefault(Condition.GOOD),
-                    estimatedValue = obj.get("estimatedValue")?.asDouble ?: 0.0,
-                    confidencePercent = obj.get("confidencePercent")?.asInt ?: 0,
-                )
+                parseDraftItemJson(content)
             }.getOrElse { e ->
                 Log.w(TAG, "Failed to parse OpenAI response: ${e.javaClass.simpleName}")
                 errorResult(ERROR_PARSE)
@@ -337,7 +315,7 @@ class VisionAnalysisService
             private const val MAX_UPLOAD_DIM = 2048
             private const val UPLOAD_JPEG_QUALITY = 90
 
-            private val SYSTEM_PROMPT =
+            internal val SYSTEM_PROMPT =
                 """
                 You are an expert at evaluating household goods for charitable donation.
                 Given one or more photos of a single item, respond ONLY with valid JSON in this exact schema:
@@ -355,7 +333,7 @@ class VisionAnalysisService
                 Do not include any explanation outside the JSON object.
                 """.trimIndent()
 
-            private const val USER_PROMPT =
+            internal const val USER_PROMPT =
                 "Please analyse the item in the following photo(s) and return the JSON."
 
             // Keys must be lowercase because normalizeCategory lowercases model output before lookup.
@@ -423,3 +401,33 @@ class VisionAnalysisService
                 }
         }
     }
+
+/**
+ * Parses a model's raw text response (markdown-fenced or not) against the JSON schema
+ * [VisionAnalysisService.SYSTEM_PROMPT] asks for. Shared by [VisionAnalysisService] (which
+ * extracts [content] from an OpenAI response envelope first) and `LocalVisionService` (which
+ * gets it directly from [com.twobits.localai.LiteRtLmEngine.generateWithImage]).
+ */
+internal fun parseDraftItemJson(content: String): DraftItemResult {
+    val cleaned =
+        content
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+    val obj = JsonParser.parseString(cleaned).asJsonObject
+    return DraftItemResult(
+        category = VisionAnalysisService.normalizeCategory(obj.get("category")?.asString),
+        brand = obj.get("brand")?.asString ?: "",
+        model = obj.get("model")?.asString ?: "",
+        title = obj.get("title")?.asString ?: "",
+        description = obj.get("description")?.asString ?: "",
+        tags = obj.getAsJsonArray("tags")?.map { it.asString } ?: emptyList(),
+        condition =
+            runCatching {
+                Condition.valueOf(obj.get("condition")?.asString ?: "GOOD")
+            }.getOrDefault(Condition.GOOD),
+        estimatedValue = obj.get("estimatedValue")?.asDouble ?: 0.0,
+        confidencePercent = obj.get("confidencePercent")?.asInt ?: 0,
+    )
+}

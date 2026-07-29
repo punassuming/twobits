@@ -12,6 +12,7 @@ import com.shelfsnap.app.data.model.PlatformListing
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.model.displayTitle
 import com.shelfsnap.app.data.model.displayTitleFallback
+import com.shelfsnap.app.data.remote.ResearchProgress
 import com.shelfsnap.app.data.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +74,13 @@ class ItemDetailViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ItemDetailUiState())
         val uiState: StateFlow<ItemDetailUiState> = _uiState.asStateFlow()
+
+        // Live status for the market-research progress toast. Separate from uiState since it
+        // updates far more frequently (once per search query / page read) than the rest of the
+        // screen's state, and is meaningless once research finishes — isResearching in uiState
+        // already governs the toast's visibility.
+        private val _researchProgress = MutableStateFlow<ResearchProgress?>(null)
+        val researchProgress: StateFlow<ResearchProgress?> = _researchProgress.asStateFlow()
 
         fun load(itemId: Long) {
             viewModelScope.launch {
@@ -159,9 +167,14 @@ class ItemDetailViewModel
             val current = currentEditedItem() ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isResearching = true, error = null) }
-                val result = repository.researchPrice(current)
+                _researchProgress.value = null
+                val result =
+                    repository.researchPrice(current) { progress ->
+                        _researchProgress.value = progress
+                    }
                 if (result.error != null) {
                     _uiState.update { it.copy(isResearching = false, error = result.error) }
+                    _researchProgress.value = null
                     return@launch
                 }
                 val updated =
@@ -170,6 +183,7 @@ class ItemDetailViewModel
                         updatedAt = System.currentTimeMillis(),
                     )
                 repository.update(updated)
+                _researchProgress.value = null
                 _uiState.update {
                     it.copy(
                         isResearching = false,
