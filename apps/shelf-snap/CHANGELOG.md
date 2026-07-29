@@ -14,6 +14,7 @@
 * Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
 * fixed a Kotlin/dependency version mismatch blocking the shared local-AI module's build (no visual change)
 * fixed a second build error in the shared local-AI module (legacy Kotlin DSL) (no visual change)
+* fixed a third build error in the shared local-AI module — a nonexistent `.text` property on the model response (no visual change)
 
 **Market research** — searches finish noticeably faster:
 * a provider's eBay/Mercari/OfferUp queries now run at the same time, not one after another

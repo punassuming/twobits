@@ -36,11 +36,6 @@ class LiteRtLmEngine(
     private val engine: Engine
 
     init {
-        // visionBackend = null here assumes EngineConfig's parameter accepts a nullable
-        // Backend? with a no-vision default — not independently confirmed against the real
-        // API signature (this sandbox can't build against litertlm-android). Verify this
-        // compiles as-is before relying on it; the documented sample always passes an
-        // explicit Backend for visionBackend, never omits or nulls it.
         val engineConfig =
             EngineConfig(
                 modelPath = modelFile.absolutePath,
@@ -62,7 +57,11 @@ class LiteRtLmEngine(
 
     suspend fun generate(prompt: String): String =
         withContext(Dispatchers.Default) {
-            conversation.sendMessage(prompt).text
+            // Message has no `.text` — the response's Content.Text is unwrapped via
+            // Message.toString() -> Contents.toString() -> Content.Text.toString() (confirmed
+            // against the real com.google.ai.edge.litertlm.Message source, not the getting-started
+            // doc, whose `.text` example doesn't match the actual class).
+            conversation.sendMessage(prompt).toString()
         }
 
     /** EXPERIMENTAL — see class doc. [imageFile] is sent as a single image alongside [prompt]. */
@@ -77,7 +76,7 @@ class LiteRtLmEngine(
                         Content.ImageFile(imageFile.absolutePath),
                         Content.Text(prompt),
                     ),
-                ).text
+                ).toString()
         }
 
     override fun close() {

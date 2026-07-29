@@ -11,6 +11,8 @@
 * fixed a Kotlin/dependency version mismatch blocking the shared local-AI module's build (no visual change)
 * release workflow's version bump reverted to minor, per AGENTS.md convention (no visual change)
 * fixed a second build error in the shared local-AI module (legacy Kotlin DSL) (no visual change)
+* fixed a third build error in the shared local-AI module — a nonexistent `.text` property on the model response (no visual change)
+* fixed a stray blank line ktlint flagged in the on-device model manager (no visual change)
 
 **On-device LLM engine switched to LiteRT-LM** — MediaPipe, the previous engine, is Google's maintenance-only API:
 * local model is now Gemma 4 (E2B / E4B) and downloads in-app, one tap

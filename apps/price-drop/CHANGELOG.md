@@ -13,6 +13,7 @@
 * Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
 * fixed a missing Gradle dependency that broke the build after the Local Ask mode landed (no visual change)
 * fixed a second build error in the shared local-AI module (legacy Kotlin DSL) (no visual change)
+* fixed a third build error in the shared local-AI module — a nonexistent `.text` property on the model response (no visual change)
 
 ### Fixes
 
