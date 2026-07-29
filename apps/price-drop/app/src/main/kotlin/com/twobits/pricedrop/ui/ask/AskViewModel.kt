@@ -3,7 +3,11 @@ package com.twobits.pricedrop.ui.ask
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.twobits.pricedrop.data.local.ChatMessageDao
+import com.twobits.pricedrop.data.local.LocalModelManager
 import com.twobits.pricedrop.data.model.ChatMessageEntity
+import com.twobits.pricedrop.data.provider.AiFeature
+import com.twobits.pricedrop.data.provider.ProviderMode
+import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.remote.PriceDropApiClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +33,9 @@ class AskViewModel
     constructor(
         private val api: PriceDropApiClient,
         private val chatMessageDao: ChatMessageDao,
+        private val providerSettings: ProviderSettingsStore,
+        private val localModelManager: LocalModelManager,
+        private val localAskSession: LocalAskSession,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(AskUiState())
         val uiState: StateFlow<AskUiState> = _uiState
@@ -57,21 +64,39 @@ class AskViewModel
             _uiState.value = _uiState.value.copy(isLoading = true)
             viewModelScope.launch {
                 chatMessageDao.insert(ChatMessageEntity(role = "user", content = text))
-                val history = _uiState.value.messages
                 val reply =
-                    runCatching { api.chat(SYSTEM_PROMPT, history) }
-                        .getOrElse { e ->
-                            "Sorry — I couldn't reach the shopping assistant. ${e.message.orEmpty()}".trim()
+                    runCatching {
+                        if (providerSettings.getFeatureSource(AiFeature.ASK) == ProviderMode.LOCAL) {
+                            sendLocal(text)
+                        } else {
+                            api.chat(SYSTEM_PROMPT, _uiState.value.messages)
                         }
+                    }.getOrElse { e ->
+                        "Sorry — I couldn't reach the shopping assistant. ${e.message.orEmpty()}".trim()
+                    }
                 chatMessageDao.insert(ChatMessageEntity(role = "assistant", content = reply))
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
 
+        private suspend fun sendLocal(text: String): String {
+            val modelFile =
+                localModelManager.selectedLlm.value?.let { localModelManager.llmFile(it) }
+                    ?: localModelManager.anyLlmReady()?.let { localModelManager.llmFile(it) }
+                    ?: error("No local model downloaded. Go to Settings → AI → Ask to download one.")
+            return localAskSession.send(text, modelFile, SYSTEM_PROMPT)
+        }
+
         fun clearHistory() {
+            localAskSession.close()
             viewModelScope.launch {
                 chatMessageDao.deleteAll()
             }
+        }
+
+        override fun onCleared() {
+            localAskSession.close()
+            super.onCleared()
         }
 
         private companion object {

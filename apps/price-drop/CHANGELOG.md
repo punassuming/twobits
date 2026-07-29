@@ -4,10 +4,13 @@
 
 ### Features
 
+**Ask assistant gets a Local mode** — a fourth option next to Off/BYOK/Pro:
+* runs entirely on-device once you download the Gemma model, no key or subscription
+* multi-turn conversation, same as the cloud path, just private and offline
+
 ### Improvements
 
 * Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
-* Shared: added a local-ai module and wired the Gradle dependency, ahead of a local Ask mode (no visual change)
 
 ### Fixes
 

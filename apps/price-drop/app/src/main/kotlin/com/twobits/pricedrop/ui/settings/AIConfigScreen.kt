@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.Hub
@@ -62,11 +63,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.core.localmodels.LocalLlmModel
+import com.twobits.core.localmodels.LocalModelState
+import com.twobits.design.components.AI_LOCAL_COLOR
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AppSectionLabel
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.CredentialRequirement
+import com.twobits.design.components.LocalModelPanel
+import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.provider.AiFeature
@@ -77,6 +83,14 @@ import com.twobits.pricedrop.data.provider.ProviderMode
 // PriceDrop accent colors (mirror the design tokens; Pro amber + BYOK coral).
 private val PD_PRO_COLOR = Color(0xFFFFD580)
 private val PD_BYOK_COLOR = Color(0xFFFF8066)
+
+private fun LocalModelState.toStatus(): LocalModelStatus =
+    when (this) {
+        is LocalModelState.Absent -> LocalModelStatus.NotAvailable
+        is LocalModelState.Acquiring -> LocalModelStatus.InProgress(progressPercent)
+        is LocalModelState.Ready -> LocalModelStatus.Ready
+        is LocalModelState.Error -> LocalModelStatus.Error(message)
+    }
 
 private fun AiFeature.icon(): ImageVector =
     when (this) {
@@ -376,6 +390,7 @@ private fun SourceBadge(source: ProviderMode) {
         when (source) {
             ProviderMode.PRO -> "Pro" to PD_PRO_COLOR
             ProviderMode.BYOK -> "BYOK" to PD_BYOK_COLOR
+            ProviderMode.LOCAL -> "Local" to AI_LOCAL_COLOR
             ProviderMode.OFF -> "Off" to Color.Gray
         }
     Surface(
@@ -576,6 +591,7 @@ private fun FeatureDetailContent(
                 SourceSegment(
                     selected = source,
                     hasPro = hasPro,
+                    hasLocal = feature == AiFeature.ASK,
                     onChange = { viewModel.setFeatureSource(feature, it) },
                 )
             }
@@ -584,6 +600,27 @@ private fun FeatureDetailContent(
                 ProviderMode.PRO ->
                     item {
                         AiProManagedCard(description = managedProDescription(feature))
+                    }
+                ProviderMode.LOCAL ->
+                    item {
+                        val llmStates by viewModel.llmStates.collectAsState()
+                        val selectedLlm by viewModel.selectedLlm.collectAsState()
+                        LocalModelPanel(
+                            sectionLabel = "Gemma — on-device LLM",
+                            models = LocalLlmModel.entries.toList(),
+                            status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                            selected = selectedLlm,
+                            onSelect = { viewModel.selectLlmModel(it) },
+                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
+                            primaryActionLabel = "Download",
+                            primaryActionIcon = Icons.Default.CloudDownload,
+                            onDelete = { viewModel.deleteLlmModel(it) },
+                            name = { it.displayName },
+                            sizeLabel = { it.sizeLabel },
+                            description = { it.description },
+                            progressLabel = "Downloading",
+                            huggingFaceUrl = { it.huggingFacePageUrl },
+                        )
                     }
                 ProviderMode.OFF ->
                     item {
@@ -664,14 +701,16 @@ private fun FeatureDetailContent(
 private fun SourceSegment(
     selected: ProviderMode,
     hasPro: Boolean,
+    hasLocal: Boolean = false,
     onChange: (ProviderMode) -> Unit,
 ) {
     val options =
-        listOf(
-            Triple(ProviderMode.OFF, "Off", Color.Gray),
-            Triple(ProviderMode.BYOK, "BYOK", PD_BYOK_COLOR),
-            Triple(ProviderMode.PRO, "Pro", PD_PRO_COLOR),
-        )
+        buildList {
+            add(Triple(ProviderMode.OFF, "Off", Color.Gray))
+            add(Triple(ProviderMode.BYOK, "BYOK", PD_BYOK_COLOR))
+            add(Triple(ProviderMode.PRO, "Pro", PD_PRO_COLOR))
+            if (hasLocal) add(Triple(ProviderMode.LOCAL, "Local", AI_LOCAL_COLOR))
+        }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
