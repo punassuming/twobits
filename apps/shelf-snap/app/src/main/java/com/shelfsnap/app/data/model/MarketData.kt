@@ -62,9 +62,33 @@ data class MarketQuery(
     /** Short provenance label, e.g. "Jina AI" or "Brave Search". */
     val label: String,
     val query: String,
+    /** Raw result count the provider returned for this query, before filtering to real postings. */
     val resultCount: Int = 0,
+    /**
+     * Of [resultCount], how many resolved to an actual marketplace posting (a recognizable
+     * platform key). Equal to [resultCount] unless results came back that didn't resolve to a
+     * marketplace platform — seeing e.g. "8 found, 0 recognized" pinpoints a classification
+     * gap (wrong platform, an unscoped query, a site indexed differently than the query
+     * assumed) instead of looking identical to a query that truly returned nothing.
+     */
+    val legitResultCount: Int = 0,
     /** Provider-specific failure for this attempt; null for successful empty results. */
     val error: String? = null,
+)
+
+/**
+ * One Jina Reader page-open attempt during the verification phase, with whether it confirmed a
+ * real listing and — when it didn't — why, so an empty comps list is diagnosable instead of a
+ * black box. Every attempt is recorded, not just confirmed ones, mirroring [MarketQuery] not
+ * hiding failed queries either.
+ */
+data class PageReadOutcome(
+    /** Display name of the marketplace this candidate page belongs to, e.g. "Mercari". */
+    val marketplace: String,
+    val url: String,
+    val verified: Boolean,
+    /** Null when [verified]; a short human-readable reason otherwise, e.g. "page too short (140 chars)" or a matched dead-page phrase. */
+    val reason: String? = null,
 )
 
 /**
@@ -76,6 +100,8 @@ data class MarketResearchDebug(
     val queries: List<MarketQuery> = emptyList(),
     /** Number of distinct listing pages opened/read via the Jina Reader. */
     val pagesRead: Int = 0,
+    /** Every Jina Reader page-open attempt (verified or rejected, with why) — see [PageReadOutcome]. */
+    val pageOutcomes: List<PageReadOutcome> = emptyList(),
     /** Every outbound API call this run made: search queries + page reads + the AI synthesis call. */
     val totalApiCalls: Int = 0,
     /** Distinct services called, e.g. ["Serper.dev", "Jina AI Search", "Jina Reader", "OpenAI"]. */

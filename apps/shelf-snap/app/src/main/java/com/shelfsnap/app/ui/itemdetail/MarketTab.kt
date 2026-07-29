@@ -52,12 +52,14 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shelfsnap.app.R
 import com.shelfsnap.app.data.model.MarketComp
 import com.shelfsnap.app.data.model.MarketQuery
 import com.shelfsnap.app.data.model.MarketResearch
 import com.shelfsnap.app.data.model.MarketResearchDebug
+import com.shelfsnap.app.data.model.PageReadOutcome
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.ui.components.PlatformBadge
@@ -453,7 +455,17 @@ private fun QueryRow(query: MarketQuery) {
                 )
             }
             Text(
-                text = if (failed) "Failed" else "${query.resultCount} results",
+                text =
+                    when {
+                        failed -> "Failed"
+                        // Raw results came back but none resolved to a real marketplace
+                        // posting — a classification/scoping gap, not "nothing found".
+                        query.resultCount > 0 && query.legitResultCount == 0 ->
+                            "${query.resultCount} found, none recognized"
+                        query.legitResultCount != query.resultCount ->
+                            "${query.legitResultCount}/${query.resultCount} recognized"
+                        else -> "${query.resultCount} results"
+                    },
                 style = MaterialTheme.typography.labelSmall,
                 color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -468,6 +480,48 @@ private fun QueryRow(query: MarketQuery) {
                 text = error,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/**
+ * One Jina Reader page-open attempt: which marketplace, whether it confirmed a real listing,
+ * and — when it didn't — why. This is the "why am I not finding matches at X" answer: a run
+ * that confirmed 0 pages for Mercari now shows *that specific candidate URL* got rejected for
+ * being bot-blocked, too short, or an actual dead listing, instead of just an empty comps list.
+ */
+@Composable
+private fun PageOutcomeRow(outcome: PageReadOutcome) {
+    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Icon(
+            if (outcome.verified) Icons.Default.CheckCircle else Icons.Default.Warning,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp).padding(top = 1.dp),
+            tint = if (outcome.verified) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary,
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Text(
+                        text = outcome.marketplace,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
+                }
+                Text(
+                    text = if (outcome.verified) "Verified" else (outcome.reason ?: "Rejected"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (outcome.verified) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.tertiary,
+                )
+            }
+            Text(
+                text = outcome.url,
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -581,6 +635,13 @@ private fun DebugInfoSection(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             DebugSubheader("Search queries")
                             debug.queries.forEach { QueryRow(it) }
+                        }
+                    }
+                    if (debug.pageOutcomes.isNotEmpty()) {
+                        val verifiedCount = debug.pageOutcomes.count { it.verified }
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            DebugSubheader("Page reads ($verifiedCount/${debug.pageOutcomes.size} verified)")
+                            debug.pageOutcomes.forEach { PageOutcomeRow(it) }
                         }
                     }
                     if (!debug.synthesisPrompt.isNullOrBlank()) {

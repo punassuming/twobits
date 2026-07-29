@@ -28,16 +28,25 @@ data class WebSearchResult(
  * Returns real `Platform.key` values ("fbmarket", not "facebook") so
  * [com.shelfsnap.app.data.model.Platform.fromKey] resolves them; an unresolvable key causes
  * the comp to be silently discarded downstream.
+ *
+ * Matches are anchored to the parsed host (exact domain or a proper subdomain of it), not a
+ * bare substring — `url.contains("mercari.")` used to match `jp.mercari.com` and `mercari.jp`
+ * (mercari.com's own Japanese site) just as readily as `mercari.com`, so every Mercari "match"
+ * silently included JP listings priced in yen. `jp.mercari.com` is explicitly excluded on top
+ * of the domain check since it's a real subdomain of mercari.com, not caught by anchoring alone.
  */
-fun marketplaceKeyFromUrl(url: String): String? =
-    when {
-        url.contains("ebay.", ignoreCase = true) -> "ebay"
-        url.contains("mercari.", ignoreCase = true) -> "mercari"
-        url.contains("offerup.", ignoreCase = true) -> "offerup"
-        url.contains("facebook.", ignoreCase = true) -> "fbmarket"
-        url.contains("craigslist.", ignoreCase = true) -> "craigslist"
+fun marketplaceKeyFromUrl(url: String): String? {
+    val host = runCatching { java.net.URI(url).host }.getOrNull()?.lowercase() ?: return null
+    fun matchesDomain(domain: String) = host == domain || host.endsWith(".$domain")
+    return when {
+        matchesDomain("ebay.com") -> "ebay"
+        matchesDomain("mercari.com") && !host.startsWith("jp.") -> "mercari"
+        matchesDomain("offerup.com") -> "offerup"
+        matchesDomain("facebook.com") -> "fbmarket"
+        matchesDomain("craigslist.org") -> "craigslist"
         else -> null
     }
+}
 
 /** Which web-search backend to use for market research. */
 enum class SearchProvider(
