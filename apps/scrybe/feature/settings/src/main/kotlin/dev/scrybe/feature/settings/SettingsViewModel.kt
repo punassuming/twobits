@@ -25,7 +25,7 @@ import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.localai.LocalModelManager
 import dev.scrybe.core.model.AudioFormat
-import dev.scrybe.core.model.LocalGemmaModel
+import dev.scrybe.core.model.LocalLlmModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
@@ -173,14 +173,14 @@ class SettingsViewModel
 
         val whisperStates: StateFlow<Map<LocalWhisperModel, LocalModelState>> = localModelManager.whisperStates
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = localModelManager.selectedWhisperModel
-        val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = localModelManager.gemmaStates
+        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = localModelManager.llmStates
 
-        val selectedGemmaModel: StateFlow<LocalGemmaModel> =
-            preferencesDataStore.localGemmaModel
+        val selectedLlmModel: StateFlow<LocalLlmModel> =
+            preferencesDataStore.localLlmModel
                 .stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(5_000),
-                    initialValue = LocalGemmaModel.default,
+                    initialValue = LocalLlmModel.default,
                 )
 
         private val apiKey = MutableStateFlow("")
@@ -525,24 +525,24 @@ class SettingsViewModel
             viewModelScope.launch { localModelManager.downloadWhisper(model) }
         }
 
-        fun downloadGemmaModel(model: LocalGemmaModel) {
-            viewModelScope.launch { localModelManager.downloadGemma(model) }
+        fun downloadLlmModel(model: LocalLlmModel) {
+            viewModelScope.launch { localModelManager.downloadLlm(model) }
         }
 
         fun deleteWhisperModel(model: LocalWhisperModel) {
             localModelManager.deleteWhisper(model)
         }
 
-        fun deleteGemmaModel(model: LocalGemmaModel) {
-            localModelManager.deleteGemma(model)
+        fun deleteLlmModel(model: LocalLlmModel) {
+            localModelManager.deleteLlm(model)
         }
 
         fun selectWhisperModel(model: LocalWhisperModel) {
             localModelManager.selectWhisperModel(model)
         }
 
-        fun selectGemmaModel(model: LocalGemmaModel) {
-            viewModelScope.launch { preferencesDataStore.setLocalGemmaModel(model) }
+        fun selectLlmModel(model: LocalLlmModel) {
+            viewModelScope.launch { preferencesDataStore.setLocalLlmModel(model) }
         }
 
         fun setThemeMode(themeMode: ThemeMode) {

@@ -29,7 +29,7 @@ dependencies {
     // Downloaded to .gradle/local-maven/ in settings.gradle.kts (library modules
     // cannot use direct local .aar file deps per AGP restriction).
     implementation("com.k2fsa:sherpa-onnx-android:1.13.0")
-    implementation(libs.mediapipe.tasks.genai)
+    implementation(libs.litertlm.android)
     implementation(libs.commons.compress)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)

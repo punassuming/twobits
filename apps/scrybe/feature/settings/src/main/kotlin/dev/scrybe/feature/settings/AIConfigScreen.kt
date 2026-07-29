@@ -62,7 +62,7 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import dev.scrybe.core.common.ScrybeLayoutDefaults
-import dev.scrybe.core.model.LocalGemmaModel
+import dev.scrybe.core.model.LocalLlmModel
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
 import dev.scrybe.core.model.OpenAiTransformModel
@@ -87,8 +87,8 @@ fun AIConfigScreen(
     val storedSpokenLanguages by viewModel.spokenLanguages.collectAsState()
     var spokenLanguagesText by remember { mutableStateOf<String?>(null) }
     val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
-    val gemmaStates by viewModel.gemmaStates.collectAsState()
-    val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
+    val llmStates by viewModel.llmStates.collectAsState()
+    val selectedLlmModel by viewModel.selectedLlmModel.collectAsState()
 
     val activity = LocalContext.current as? android.app.Activity
     val hasPro = uiState.subscriptionTier is SubscriptionTier.Pro
@@ -263,15 +263,15 @@ fun AIConfigScreen(
                         }
                         ExecutionMode.LOCAL ->
                             LocalModelPanel(
-                                sectionLabel = "Gemma — on-device LLM",
-                                models = LocalGemmaModel.entries.toList(),
-                                status = { (gemmaStates[it] ?: LocalModelState.Absent).toStatus() },
-                                selected = selectedGemmaModel,
-                                onSelect = { viewModel.selectGemmaModel(it) },
-                                onPrimaryAction = { viewModel.downloadGemmaModel(it) },
+                                sectionLabel = "Qwen — on-device LLM",
+                                models = LocalLlmModel.entries.toList(),
+                                status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                                selected = selectedLlmModel,
+                                onSelect = { viewModel.selectLlmModel(it) },
+                                onPrimaryAction = { viewModel.downloadLlmModel(it) },
                                 primaryActionLabel = "Download",
                                 primaryActionIcon = Icons.Default.CloudDownload,
-                                onDelete = { viewModel.deleteGemmaModel(it) },
+                                onDelete = { viewModel.deleteLlmModel(it) },
                                 name = { it.displayName },
                                 sizeLabel = { it.sizeLabel },
                                 description = { it.description },

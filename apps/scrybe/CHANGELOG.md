@@ -8,11 +8,12 @@
 
 * release workflow now bumps a patch version by default, matching Scrybe/PriceDrop convention (no visual change)
 
-### Fixes
+**On-device LLM moved from Gemma to Qwen3** — the underlying engine (MediaPipe) was Google's maintenance-only API:
+* switched to LiteRT-LM, Google's actively developed successor
+* default local model is now Qwen3 (0.6B / 4B) and downloads in-app, one tap
+* on-device transforms use a real system-prompt turn, improving instruction-following
 
-**On-device Gemma** — now downloads in-app instead of requiring a manual import:
-* previously required a browser download plus a file picker; now one tap
-* the source doesn't require a HuggingFace login, unlike Google's own repo
+### Fixes
 
 ## 1.46.0 (2026-07-23)
 

@@ -4,7 +4,7 @@ import android.content.Context
 import com.twobits.core.localmodels.LocalModelState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
-import dev.scrybe.core.model.LocalGemmaModel
+import dev.scrybe.core.model.LocalLlmModel
 import dev.scrybe.core.model.LocalWhisperModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,11 +45,11 @@ class LocalModelManager
         private val _selectedWhisperModel = MutableStateFlow(LocalWhisperModel.default)
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = _selectedWhisperModel.asStateFlow()
 
-        private val _gemmaStates =
-            MutableStateFlow<Map<LocalGemmaModel, LocalModelState>>(
-                LocalGemmaModel.entries.associateWith { LocalModelState.Absent },
+        private val _llmStates =
+            MutableStateFlow<Map<LocalLlmModel, LocalModelState>>(
+                LocalLlmModel.entries.associateWith { LocalModelState.Absent },
             )
-        val gemmaStates: StateFlow<Map<LocalGemmaModel, LocalModelState>> = _gemmaStates.asStateFlow()
+        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = _llmStates.asStateFlow()
 
         init {
             refreshStates()
@@ -62,7 +62,7 @@ class LocalModelManager
 
         private fun refreshStates() {
             _whisperStates.value = LocalWhisperModel.entries.associateWith { resolveWhisperState(it) }
-            _gemmaStates.value = LocalGemmaModel.entries.associateWith { resolveGemmaState(it) }
+            _llmStates.value = LocalLlmModel.entries.associateWith { resolveLlmState(it) }
         }
 
         fun whisperModelDir(model: LocalWhisperModel): File? {
@@ -78,19 +78,19 @@ class LocalModelManager
             }
         }
 
-        fun gemmaModelFile(model: LocalGemmaModel): File? {
+        fun llmModelFile(model: LocalLlmModel): File? {
             val file = File(modelsDir, model.fileName)
             return if (file.exists() && file.length() > 0) file else null
         }
 
-        fun anyGemmaReady(): LocalGemmaModel? = LocalGemmaModel.entries.firstOrNull { gemmaModelFile(it) != null }
+        fun anyLlmReady(): LocalLlmModel? = LocalLlmModel.entries.firstOrNull { llmModelFile(it) != null }
 
         private fun resolveWhisperState(model: LocalWhisperModel): LocalModelState =
             whisperModelDir(model)?.let { LocalModelState.Ready(it.absolutePath) }
                 ?: LocalModelState.Absent
 
-        private fun resolveGemmaState(model: LocalGemmaModel): LocalModelState =
-            gemmaModelFile(model)
+        private fun resolveLlmState(model: LocalLlmModel): LocalModelState =
+            llmModelFile(model)
                 ?.let { LocalModelState.Ready(it.absolutePath) }
                 ?: LocalModelState.Absent
 
@@ -112,24 +112,24 @@ class LocalModelManager
             }
         }
 
-        suspend fun downloadGemma(model: LocalGemmaModel) {
-            if (_gemmaStates.value[model] is LocalModelState.Acquiring) return
+        suspend fun downloadLlm(model: LocalLlmModel) {
+            if (_llmStates.value[model] is LocalModelState.Acquiring) return
             withContext(Dispatchers.IO) {
                 val destFile = File(modelsDir, model.fileName)
                 try {
-                    updateGemmaState(model, LocalModelState.Acquiring(0))
+                    updateLlmState(model, LocalModelState.Acquiring(0))
                     downloadFile(model.downloadUrl, destFile) { progress ->
-                        updateGemmaState(model, LocalModelState.Acquiring(progress))
+                        updateLlmState(model, LocalModelState.Acquiring(progress))
                     }
                     val expectedSha256 = model.sha256
                     if (expectedSha256 != null && !matchesSha256(destFile, expectedSha256)) {
                         destFile.delete()
                         throw IOException("Downloaded file didn't match the expected checksum")
                     }
-                    updateGemmaState(model, resolveGemmaState(model))
+                    updateLlmState(model, resolveLlmState(model))
                 } catch (e: Exception) {
                     destFile.delete()
-                    updateGemmaState(model, LocalModelState.Error(e.message ?: "Download failed"))
+                    updateLlmState(model, LocalModelState.Error(e.message ?: "Download failed"))
                 }
             }
         }
@@ -139,9 +139,9 @@ class LocalModelManager
             updateWhisperState(model, LocalModelState.Absent)
         }
 
-        fun deleteGemma(model: LocalGemmaModel) {
+        fun deleteLlm(model: LocalLlmModel) {
             File(modelsDir, model.fileName).delete()
-            updateGemmaState(model, LocalModelState.Absent)
+            updateLlmState(model, LocalModelState.Absent)
         }
 
         fun selectWhisperModel(model: LocalWhisperModel) {
@@ -155,11 +155,11 @@ class LocalModelManager
             _whisperStates.value = _whisperStates.value + (model to state)
         }
 
-        private fun updateGemmaState(
-            model: LocalGemmaModel,
+        private fun updateLlmState(
+            model: LocalLlmModel,
             state: LocalModelState,
         ) {
-            _gemmaStates.value = _gemmaStates.value + (model to state)
+            _llmStates.value = _llmStates.value + (model to state)
         }
 
         private fun downloadFile(

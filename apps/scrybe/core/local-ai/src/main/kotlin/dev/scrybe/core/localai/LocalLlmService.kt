@@ -18,13 +18,13 @@ class LocalLlmService
         private val preferencesDataStore: AppPreferencesDataStore,
     ) {
         private suspend fun generate(prompt: String): String {
-            val model = preferencesDataStore.localGemmaModel.first()
+            val model = preferencesDataStore.localLlmModel.first()
             val modelFile =
-                modelManager.gemmaModelFile(model)
-                    ?: modelManager.anyGemmaReady()?.let { modelManager.gemmaModelFile(it) }
-                    ?: error("No Gemma model downloaded. Go to Settings → Provider → Local to download one.")
-            return GemmaEngine(context, modelFile).use { engine ->
-                engine.generate(formatPrompt(prompt))
+                modelManager.llmModelFile(model)
+                    ?: modelManager.anyLlmReady()?.let { modelManager.llmModelFile(it) }
+                    ?: error("No local model downloaded. Go to Settings → Provider → Local to download one.")
+            return LiteRtLmEngine(context, modelFile).use { engine ->
+                engine.generate(prompt)
             }
         }
 
@@ -164,6 +164,4 @@ class LocalLlmService
                         .trim()
                 raw.ifBlank { "[]" }
             }
-
-        private fun formatPrompt(userText: String): String = "<start_of_turn>user\n$userText<end_of_turn>\n<start_of_turn>model\n"
     }

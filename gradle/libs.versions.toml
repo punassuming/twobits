@@ -54,7 +54,7 @@ coil = "2.7.0"                    # Shelf Snap only
 vico = "2.1.2"                    # PriceDrop only
 
 # ── ML / device ───────────────────────────────────────────────────────────────
-mediapipeTasksGenai = "0.10.27"   # Scrybe only
+litertLm = "0.13.1"               # Scrybe only — verify against Google's Maven index at build time
 mlkitBarcode = "17.3.0"           # PriceDrop only
 commonsCompress = "1.27.1"        # Scrybe only
 playServicesLocation = "21.3.0"   # Scrybe only
@@ -151,7 +151,7 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 
 # ── ML / device ───────────────────────────────────────────────────────────────
-mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeTasksGenai" }
+litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertLm" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commonsCompress" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
