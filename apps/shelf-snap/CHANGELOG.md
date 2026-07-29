@@ -12,6 +12,7 @@
 ### Improvements
 
 * Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
+* fixed a Kotlin/dependency version mismatch blocking the shared local-AI module's build (no visual change)
 
 **Market research** — searches finish noticeably faster:
 * a provider's eBay/Mercari/OfferUp queries now run at the same time, not one after another
@@ -34,6 +35,11 @@
 * a new "API calls" section lists the total count and services used
 
 ### Fixes
+
+**Market research** — active-listing evidence is now used correctly:
+* a historical sales count no longer misclassified active listings as sold
+* Pro/managed search no longer stops after one marketplace hits 5 results
+* active listings can now become comps instead of being silently discarded
 
 ## 1.24.2 (2026-07-28)
 

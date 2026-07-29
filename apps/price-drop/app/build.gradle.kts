@@ -170,6 +170,8 @@ dependencies {
     implementation("com.twobits.core:network")
     implementation("com.twobits.core:design")
     implementation("com.twobits.core:secure-store")
+    implementation("com.twobits.core:local-models")
+    implementation("com.twobits.core:local-ai")
     implementation("com.twobits.core:pro")
 
     testImplementation(libs.junit)

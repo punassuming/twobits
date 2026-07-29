@@ -1,11 +1,11 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
+import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.localai.ModelDownloader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
-import com.twobits.core.localmodels.LocalLlmModel
 import dev.scrybe.core.model.LocalWhisperModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

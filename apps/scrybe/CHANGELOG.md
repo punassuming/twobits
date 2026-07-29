@@ -6,9 +6,9 @@
 
 ### Improvements
 
-* release workflow now bumps a patch version by default, matching Scrybe/PriceDrop convention (no visual change)
 * Gemma 4 downloads are now checksum-verified against a known-good hash (no visual change)
 * the on-device engine and model spec moved to shared modules Shelf Snap/PriceDrop now use too (no visual change)
+* fixed a Kotlin/dependency version mismatch blocking the shared local-AI module's build (no visual change)
 
 **On-device LLM engine switched to LiteRT-LM** — MediaPipe, the previous engine, is Google's maintenance-only API:
 * local model is now Gemma 4 (E2B / E4B) and downloads in-app, one tap
