@@ -10,6 +10,7 @@
 * the on-device engine and model spec moved to shared modules Shelf Snap/PriceDrop now use too (no visual change)
 * fixed a Kotlin/dependency version mismatch blocking the shared local-AI module's build (no visual change)
 * release workflow's version bump reverted to minor, per AGENTS.md convention (no visual change)
+* fixed a second build error in the shared local-AI module (legacy Kotlin DSL) (no visual change)
 
 **On-device LLM engine switched to LiteRT-LM** — MediaPipe, the previous engine, is Google's maintenance-only API:
 * local model is now Gemma 4 (E2B / E4B) and downloads in-app, one tap
