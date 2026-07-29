@@ -147,7 +147,7 @@ jobs:
       # Version bumping rules (matching the previous action's semantics):
       #   BREAKING CHANGE / `type!:` → major bump
       #   feat:                      → minor bump
-      #   everything else            → default_bump (patch for PriceDrop/Scrybe)
+      #   everything else            → default_bump (patch for Shelf Snap/PriceDrop, minor for Scrybe)
       - name: Compute next version
         if: steps.release_target.outputs.stale != 'true' && steps.changelog_ready.outputs.has_bullets == 'true'
         id: version

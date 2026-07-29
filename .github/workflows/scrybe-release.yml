@@ -34,7 +34,7 @@ jobs:
       app_name: Scrybe
       app_root: apps/scrybe
       tag_prefix: scrybe-v
-      default_bump: patch
+      default_bump: minor
       keystore_alias: scrybe
       keystore_storepass: scrybe_ks_pass
       use_retry_script: true

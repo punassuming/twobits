@@ -615,11 +615,15 @@ class PriceResearchService
             onProgress: (ResearchProgress) -> Unit,
         ): SearchEvidence {
             // The Worker routes every query through SearchAPI (see the "searchapi" provider in
-            // the request body below), which does honor completed-sales targeting. This path
-            // already had a sensible early-stop (MIN_RESULTS_EARLY_STOP below) before the
-            // BYOK path's per-provider quota existed, so the core/broadening split isn't
-            // needed here — run the plan's queries in their original flat order.
-            val queries = buildSearchQueries(item).all
+            // the request body below), which does honor completed-sales targeting. MIN_RESULTS_EARLY_STOP
+            // below must not apply until every core marketplace (eBay sold + for-sale, Mercari,
+            // OfferUp, Craigslist, Facebook Marketplace) has had a chance to run — otherwise a
+            // single marketplace hitting the threshold first (very likely for eBay's sold query,
+            // which is first in the list) silently skips every other marketplace's query for
+            // Pro users, undermining the whole point of the multi-marketplace coverage.
+            val queryPlan = buildSearchQueries(item)
+            val queries = queryPlan.all
+            val coreQueryCount = queryPlan.core.size + queryPlan.structuredExtra.size
             val seen = mutableSetOf<String>()
             val merged = mutableListOf<WebSearchResult>()
             val queryLog = mutableListOf<MarketQuery>()
@@ -628,7 +632,7 @@ class PriceResearchService
             val searchStart = System.currentTimeMillis()
             var queriesRun = 0
             var resultsFound = 0
-            for (query in queries) {
+            for ((index, query) in queries.withIndex()) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
                 runCatching {
                     // "searchapi" honors site: operators (Jina silently ignores them), so the
@@ -689,7 +693,8 @@ class PriceResearchService
                         resultsFound = resultsFound,
                     ),
                 )
-                if (merged.size >= MIN_RESULTS_EARLY_STOP) break
+                val pastCoreQueries = index + 1 >= coreQueryCount
+                if (pastCoreQueries && merged.size >= MIN_RESULTS_EARLY_STOP) break
             }
             val searchMs = System.currentTimeMillis() - searchStart
 
@@ -837,15 +842,17 @@ class PriceResearchService
                   "citations": [ { "label": "<source>", "url": "<url>" } ]
                 }
                 Valid platformKey values: $platformKeys.
-                Prefer sold listings over active ones. If evidence is thin, lower the
-                confidence and say so via fewer comps.
+                Both sold (completed) and active (for-sale) listings are provided as evidence.
+                Base averageSoldPrice on sold listings only. Active listings are useful context
+                for suggestedValue/lowPrice/highPrice and may appear as comps with "sold": false.
+                If evidence is thin, lower the confidence and say so via fewer comps.
                 URL RULE: Only include a comp if its url matches exactly one of the provided
                 search result urls above. Do not synthesize or guess URLs. Leave url blank
                 if no exact match from the evidence.
-                IMPORTANT: Only use snippets that contain an actual price (e.g. '${'$'}XX.XX') and
-                indicate a completed/sold transaction. Ignore blog posts, buying guides, and
-                general articles. If fewer than 3 snippets contain real prices from actual
-                marketplace listings, set confidencePercent ≤ 30.
+                IMPORTANT: Only use snippets that contain an actual price (e.g. '${'$'}XX.XX') from
+                a genuine marketplace listing, sold or active. Ignore blog posts, buying guides,
+                and general articles. If fewer than 3 snippets contain real marketplace prices,
+                set confidencePercent ≤ 30.
                 """.trimIndent()
         }
 
@@ -1181,14 +1188,19 @@ internal fun mergeVerifiedComparableListings(
     val structuredComps =
         evidence.results.mapNotNull { result ->
             val platformKey = result.platformKey ?: return@mapNotNull null
-            if (Platform.fromKey(platformKey) == null || result.sold != true) return@mapNotNull null
+            // Admit both sold (completed) and active (for-sale) evidence — the active queries
+            // added alongside sold ones would otherwise be fetched and billed but never surface
+            // as comps. `result.sold == null` means indeterminate (BYOK's snippet-only path
+            // couldn't tell either way) rather than confirmed-active, so it's excluded here same
+            // as before; only genuinely `true`/`false` results become comps.
+            if (Platform.fromKey(platformKey) == null || result.sold == null) return@mapNotNull null
             val price = result.price?.takeIf { it.isFinite() && it > 0.0 } ?: return@mapNotNull null
             MarketComp(
                 platformKey = platformKey,
                 title = result.title,
                 price = price,
-                sold = true,
-                date = result.date.ifBlank { "Completed sale" },
+                sold = result.sold,
+                date = result.date.ifBlank { if (result.sold) "Completed sale" else "Active listing" },
                 sourceUrl = result.url,
             )
         }

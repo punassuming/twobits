@@ -130,10 +130,14 @@ internal fun parseSearchApiResponse(
                         ?.number("from")
                     ?: priceText?.let(::parsePrice)
             val rawSnippet = result.string("snippet") ?: result.string("description")
+            // items_sold is a historical unit-sales count ("10 sold") shown on active listings
+            // too — it says nothing about whether THIS listing has ended, so it must not feed
+            // into sold-status inference (only title/snippet, which may genuinely say
+            // "SOLD"/"completed" for an ended listing).
             val sold =
                 when {
                     soldOnly -> true
-                    price != null && listOf(title, rawSnippet, result.string("items_sold")).any(::containsSoldWord) -> true
+                    price != null && listOf(title, rawSnippet).any(::containsSoldWord) -> true
                     else -> null
                 }
             val snippet =

@@ -38,7 +38,7 @@
 
 **Market research** — active-listing evidence is now used correctly:
 * a historical sales count no longer misclassified active listings as sold
-* Pro/managed search no longer stops after one marketplace hits 5 results
+* the managed (Pro) search path no longer stops after one marketplace hits 5 results
 * active listings can now become comps instead of being silently discarded
 
 ## 1.24.2 (2026-07-28)
