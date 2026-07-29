@@ -54,7 +54,10 @@ coil = "2.7.0"                    # Shelf Snap only
 vico = "2.1.2"                    # PriceDrop only
 
 # ── ML / device ───────────────────────────────────────────────────────────────
-litertLm = "0.14.0"
+litertLm = "0.13.1" # 0.14.0's litertlm-android ships Kotlin metadata version 2.3.0, unreadable by
+# this repo's Kotlin 2.0.21 — and by every consumer of shared/local-ai in turn. 0.13.1 has the
+# identical Kotlin API surface shared/local-ai actually uses (verified against the upstream repo's
+# source at tag v0.13.1) without that requirement.
 mlkitBarcode = "17.3.0"           # PriceDrop only
 commonsCompress = "1.27.1"        # Scrybe only
 playServicesLocation = "21.3.0"   # Scrybe only
