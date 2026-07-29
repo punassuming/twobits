@@ -61,6 +61,18 @@ data class SearchEvidence(
      * page-read API call count; [pagesRead] is an evidence-quality count, not a call count.
      */
     val readAttempts: Int = 0,
+    /**
+     * Total real marketplace postings found across every search query, summed as each query
+     * lands (pre-dedup). Not the same number as `results.size` — that's the final deduped,
+     * round-robin-capped evidence set. This field exists so a progress display can report the
+     * same running number throughout a run instead of switching metrics partway through.
+     */
+    val legitResultsFound: Int = 0,
+    /**
+     * Total Jina Reader read slots targeted this run (marketplace count × READS_PER_MARKETPLACE),
+     * 0 when reading didn't run. Paired with [pagesRead] for an "X/Y verified" display.
+     */
+    val pagesTarget: Int = 0,
     /** Web-search phase duration (millis). */
     val searchMs: Long = 0L,
     /** Page-reading phase duration (millis). */
@@ -169,10 +181,15 @@ class PriceResearchService
                 onProgress(
                     ResearchProgress(
                         phase = ResearchProgress.Phase.SYNTHESIZING,
-                        detail = "Analyzing with AI…",
+                        detail = "Reviewing evidence and estimating a price",
                         queriesRun = evidence.queries.size,
-                        resultsFound = evidence.results.count { it.platformKey != null },
+                        // Same running total shown throughout the search phase — not
+                        // evidence.results.size, which is the final deduped/capped set and
+                        // would otherwise make the "found" count jump to a different number
+                        // right as this phase starts.
+                        resultsFound = evidence.legitResultsFound,
                         pagesConfirmed = evidence.pagesRead,
+                        pagesTarget = evidence.pagesTarget,
                     ),
                 )
 
@@ -312,7 +329,7 @@ class PriceResearchService
                 onProgress(
                     ResearchProgress(
                         phase = ResearchProgress.Phase.SEARCHING,
-                        detail = "${provider.displayName}: $query",
+                        detail = "${provider.displayName} — ${queryTargetLabel(query)}",
                         queriesRun = queriesRun.get(),
                         resultsFound = resultsFound.get(),
                     ),
@@ -432,13 +449,14 @@ class PriceResearchService
             var pagesRead = 0
             var readMs = 0L
             var readAttempts = 0
+            var pagesTarget = 0
             val candidatesByMarketplace: Map<String?, List<Int>> =
                 merged.indices
                     .filter { merged[it].platformKey != null }
                     .groupBy { merged[it].platformKey }
             if (!readerKey.isNullOrBlank() && candidatesByMarketplace.isNotEmpty()) {
                 val readStart = System.currentTimeMillis()
-                val pagesTarget = candidatesByMarketplace.size * READS_PER_MARKETPLACE
+                pagesTarget = candidatesByMarketplace.size * READS_PER_MARKETPLACE
                 val pagesConfirmed = AtomicInteger(0)
                 val pagesAttempted = AtomicInteger(0)
                 val confirmedReads: List<Pair<Int, String>> =
@@ -487,6 +505,8 @@ class PriceResearchService
                 queries = queryLog,
                 pagesRead = pagesRead,
                 readAttempts = readAttempts,
+                legitResultsFound = resultsFound.get(),
+                pagesTarget = pagesTarget,
                 searchMs = searchMs,
                 readMs = readMs,
                 soldCapable = hasStructuredProvider,
@@ -568,6 +588,23 @@ class PriceResearchService
         }
 
         /**
+         * Short human-readable label for a query's target marketplace, derived from the
+         * site:/domain text buildSearchQueries bakes into it. Used for the progress toast in
+         * place of the raw query string, which is a long, quote-and-operator-heavy string meant
+         * for a search API's `q` parameter, not a UI label.
+         */
+        private fun queryTargetLabel(query: String): String =
+            when {
+                query.contains("ebay.com", ignoreCase = true) && query.contains("for sale", ignoreCase = true) -> "eBay (for sale)"
+                query.contains("ebay.com", ignoreCase = true) -> "eBay (sold)"
+                query.contains("mercari.com", ignoreCase = true) -> "Mercari"
+                query.contains("offerup.com", ignoreCase = true) -> "OfferUp"
+                query.contains("craigslist.org", ignoreCase = true) -> "Craigslist"
+                query.contains("facebook.com/marketplace", ignoreCase = true) -> "Facebook Marketplace"
+                else -> "broader search"
+            }
+
+        /**
          * Variant of [gatherEvidence] that calls the Worker's managed Jina search endpoint
          * instead of the user's own Jina/Brave key.
          */
@@ -647,7 +684,7 @@ class PriceResearchService
                 onProgress(
                     ResearchProgress(
                         phase = ResearchProgress.Phase.SEARCHING,
-                        detail = "Managed search: $query",
+                        detail = "Managed search — ${queryTargetLabel(query)}",
                         queriesRun = queriesRun,
                         resultsFound = resultsFound,
                     ),
@@ -661,6 +698,7 @@ class PriceResearchService
                 providerKey = "searchapi",
                 error = if (merged.isEmpty()) lastError else null,
                 queries = queryLog,
+                legitResultsFound = resultsFound,
                 searchMs = searchMs,
                 soldCapable = true,
             )

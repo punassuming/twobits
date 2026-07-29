@@ -11,7 +11,8 @@
 
 **Market research** — a live status toast now shows research progress:
 * slides up from the bottom while searching, verifying, and analyzing
-* shows which marketplace is being checked and how many listings are verified
+* shows short marketplace names and a verified count that stays visible throughout
+* the "found" count no longer drops when analysis starts
 
 **Market research** — Craigslist and Facebook Marketplace are now searched too:
 * both were previously skipped entirely, even as broadening queries

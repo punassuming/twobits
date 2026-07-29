@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shelfsnap.app.data.remote.ResearchProgress
 
@@ -67,7 +68,12 @@ fun ResearchProgressToast(
                     )
                     val detail = progress?.detail
                     if (!detail.isNullOrBlank()) {
-                        Text(text = detail, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                        Text(
+                            text = detail,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     val counts = progress?.countsLabel().orEmpty()
                     if (counts.isNotBlank()) {
