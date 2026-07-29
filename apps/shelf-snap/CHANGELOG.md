@@ -13,7 +13,7 @@
 
 * Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
 * fixed a build error in the shared local-AI module — a nonexistent `.text` property on the model response (no visual change)
-* reverted the shared local-AI module's litertlm-android dependency to 0.13.1 — 0.14.0 ships Kotlin metadata this repo's compiler can't read (no visual change)
+* bumped the repo's Kotlin/KSP toolchain to 2.3.0 everywhere — required to compile against the on-device engine's litertlm-android dependency, whose newer releases all ship Kotlin metadata older compilers can't read (no visual change)
 
 **Market research** — searches finish noticeably faster:
 * a provider's eBay/Mercari/OfferUp queries now run at the same time, not one after another

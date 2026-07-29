@@ -9,8 +9,14 @@
 [versions]
 # ── Build tooling ─────────────────────────────────────────────────────────────
 agp = "8.7.3"
-kotlin = "2.0.21"
-ksp = "2.0.21-1.0.25"
+# 2.3.0+: litertlm-android (see litertLm below) ships Kotlin metadata that only a
+# compiler this new can read — every module in the repo needs to be on this version or
+# newer, since shared/local-ai's compiled output otherwise becomes unreadable to its
+# consumers in turn. Confirmed via real CI failures with both 2.0.21 and an
+# only-local-ai-bumped setup (each pushed the "compiled with a newer Kotlin" error to a
+# different module instead of fixing it).
+kotlin = "2.3.0"
+ksp = "2.3.0" # KSP's own versioning switched to track the Kotlin version 1:1 starting here.
 detekt = "1.23.7"
 ktlint = "12.1.1"
 
@@ -54,10 +60,7 @@ coil = "2.7.0"                    # Shelf Snap only
 vico = "2.1.2"                    # PriceDrop only
 
 # ── ML / device ───────────────────────────────────────────────────────────────
-litertLm = "0.13.1" # 0.14.0's litertlm-android ships Kotlin metadata version 2.3.0, unreadable by
-# this repo's Kotlin 2.0.21 — and by every consumer of shared/local-ai in turn. 0.13.1 has the
-# identical Kotlin API surface shared/local-ai actually uses (verified against the upstream repo's
-# source at tag v0.13.1) without that requirement.
+litertLm = "0.14.0"
 mlkitBarcode = "17.3.0"           # PriceDrop only
 commonsCompress = "1.27.1"        # Scrybe only
 playServicesLocation = "21.3.0"   # Scrybe only
