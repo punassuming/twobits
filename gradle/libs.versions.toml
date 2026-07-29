@@ -39,7 +39,11 @@ hilt = "2.58"
 hiltNavigationCompose = "1.2.0"   # also governs hilt-work (same androidx.hilt group version)
 
 # ── Persistence ───────────────────────────────────────────────────────────────
-room = "2.6.1"
+# 2.6.1 predates Room's KSP2 support entirely (added in 2.7.0) — under KSP 2.3.0 (see
+# kotlin above), Room's compiler crashed with "unexpected jvm signature V", a known
+# KSP2 Analysis API bug (google/ksp#2957) that Room's own KSP2 integration works around
+# in its newer releases. Bumped to current stable.
+room = "2.8.4"
 datastore = "1.1.1"
 
 # ── Networking ────────────────────────────────────────────────────────────────
