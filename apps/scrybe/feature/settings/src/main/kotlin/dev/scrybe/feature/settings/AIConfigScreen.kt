@@ -263,7 +263,7 @@ fun AIConfigScreen(
                         }
                         ExecutionMode.LOCAL ->
                             LocalModelPanel(
-                                sectionLabel = "Qwen — on-device LLM",
+                                sectionLabel = "Gemma — on-device LLM",
                                 models = LocalLlmModel.entries.toList(),
                                 status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
                                 selected = selectedLlmModel,

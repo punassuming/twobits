@@ -7,11 +7,9 @@
 ### Improvements
 
 * release workflow now bumps a patch version by default, matching Scrybe/PriceDrop convention (no visual change)
-* corrected the Qwen3 4B download source to litert-community's current repo, bumped LiteRT-LM (no visual change)
 
-**On-device LLM moved from Gemma to Qwen3** — the underlying engine (MediaPipe) was Google's maintenance-only API:
-* switched to LiteRT-LM, Google's actively developed successor
-* default local model is now Qwen3 (0.6B / 4B) and downloads in-app, one tap
+**On-device LLM engine switched to LiteRT-LM** — MediaPipe, the previous engine, is Google's maintenance-only API:
+* local model is now Gemma 4 (E2B / E4B) and downloads in-app, one tap
 * on-device transforms use a real system-prompt turn, improving instruction-following
 
 ### Fixes
