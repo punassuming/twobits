@@ -14,6 +14,7 @@
 * Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
 * fixed a build error in the shared local-AI module — a nonexistent `.text` property on the model response (no visual change)
 * bumped the repo's Kotlin/KSP toolchain to 2.3.0 everywhere — required to compile against the on-device engine's litertlm-android dependency, whose newer releases all ship Kotlin metadata older compilers can't read (no visual change)
+* bumped Hilt to 2.60.1 — 2.51.1's Gradle plugin couldn't find KSP's task class once KSP moved to 2.3.0 (no visual change)
 
 **Market research** — searches finish noticeably faster:
 * a provider's eBay/Mercari/OfferUp queries now run at the same time, not one after another

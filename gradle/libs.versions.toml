@@ -29,7 +29,11 @@ composeBom = "2024.12.01"
 navigationCompose = "2.8.5"
 
 # ── DI ────────────────────────────────────────────────────────────────────────
-hilt = "2.51.1"
+# 2.51.1's Gradle plugin can't locate KSP's task class under KSP 2.3.0 (see kotlin
+# above) — Hilt applied at the root, KSP in subprojects, ends up on a different
+# classloader ("KSP plugin was detected to be applied but its task class could not be
+# found" — google/dagger#3965). Newer Hilt tracks current KSP/Kotlin compatibility.
+hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"   # also governs hilt-work (same androidx.hilt group version)
 
 # ── Persistence ───────────────────────────────────────────────────────────────
