@@ -2,7 +2,6 @@ package dev.scrybe.feature.settings
 
 import android.app.Activity
 import android.content.Context
-import android.net.Uri
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -526,11 +525,8 @@ class SettingsViewModel
             viewModelScope.launch { localModelManager.downloadWhisper(model) }
         }
 
-        fun importGemmaModel(
-            uri: Uri,
-            model: LocalGemmaModel,
-        ) {
-            viewModelScope.launch { localModelManager.importGemmaFromUri(uri, model) }
+        fun downloadGemmaModel(model: LocalGemmaModel) {
+            viewModelScope.launch { localModelManager.downloadGemma(model) }
         }
 
         fun deleteWhisperModel(model: LocalWhisperModel) {

@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
+
 **Market research** — searches finish noticeably faster:
 * a provider's eBay/Mercari/OfferUp queries now run at the same time, not one after another
 

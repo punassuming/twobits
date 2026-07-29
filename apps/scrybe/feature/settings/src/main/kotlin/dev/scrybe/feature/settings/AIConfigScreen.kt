@@ -1,7 +1,5 @@
 package dev.scrybe.feature.settings
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +21,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
@@ -92,13 +89,6 @@ fun AIConfigScreen(
     val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
     val gemmaStates by viewModel.gemmaStates.collectAsState()
     val selectedGemmaModel by viewModel.selectedGemmaModel.collectAsState()
-
-    var pendingImportGemmaModel by remember { mutableStateOf<LocalGemmaModel?>(null) }
-    val importGemmaFilePicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            uri?.let { viewModel.importGemmaModel(it, pendingImportGemmaModel ?: return@let) }
-            pendingImportGemmaModel = null
-        }
 
     val activity = LocalContext.current as? android.app.Activity
     val hasPro = uiState.subscriptionTier is SubscriptionTier.Pro
@@ -274,22 +264,18 @@ fun AIConfigScreen(
                         ExecutionMode.LOCAL ->
                             LocalModelPanel(
                                 sectionLabel = "Gemma — on-device LLM",
-                                sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
                                 models = LocalGemmaModel.entries.toList(),
                                 status = { (gemmaStates[it] ?: LocalModelState.Absent).toStatus() },
                                 selected = selectedGemmaModel,
                                 onSelect = { viewModel.selectGemmaModel(it) },
-                                onPrimaryAction = {
-                                    pendingImportGemmaModel = it
-                                    importGemmaFilePicker.launch("*/*")
-                                },
-                                primaryActionLabel = "Import",
-                                primaryActionIcon = Icons.Default.FolderOpen,
+                                onPrimaryAction = { viewModel.downloadGemmaModel(it) },
+                                primaryActionLabel = "Download",
+                                primaryActionIcon = Icons.Default.CloudDownload,
                                 onDelete = { viewModel.deleteGemmaModel(it) },
                                 name = { it.displayName },
                                 sizeLabel = { it.sizeLabel },
                                 description = { it.description },
-                                progressLabel = "Importing",
+                                progressLabel = "Downloading",
                                 huggingFaceUrl = { it.huggingFacePageUrl },
                             )
                     }

@@ -1,7 +1,6 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
-import android.net.Uri
 import com.twobits.core.localmodels.LocalModelState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
@@ -21,6 +20,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.File
 import java.io.IOException
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -112,40 +112,24 @@ class LocalModelManager
             }
         }
 
-        suspend fun importGemmaFromUri(
-            uri: Uri,
-            model: LocalGemmaModel,
-        ) {
+        suspend fun downloadGemma(model: LocalGemmaModel) {
             if (_gemmaStates.value[model] is LocalModelState.Acquiring) return
             withContext(Dispatchers.IO) {
+                val destFile = File(modelsDir, model.fileName)
                 try {
                     updateGemmaState(model, LocalModelState.Acquiring(0))
-                    val destFile = File(modelsDir, model.fileName)
-                    val sizeBytes =
-                        context.contentResolver
-                            .openFileDescriptor(uri, "r")
-                            ?.use { it.statSize }
-                            ?: -1L
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        destFile.outputStream().use { output ->
-                            val buffer = ByteArray(65_536)
-                            var bytesRead = 0L
-                            var read: Int
-                            while (input.read(buffer).also { read = it } != -1) {
-                                output.write(buffer, 0, read)
-                                bytesRead += read
-                                if (sizeBytes > 0) {
-                                    updateGemmaState(
-                                        model,
-                                        LocalModelState.Acquiring(((bytesRead * 100) / sizeBytes).toInt()),
-                                    )
-                                }
-                            }
-                        }
-                    } ?: throw IOException("Could not open selected file")
+                    downloadFile(model.downloadUrl, destFile) { progress ->
+                        updateGemmaState(model, LocalModelState.Acquiring(progress))
+                    }
+                    val expectedSha256 = model.sha256
+                    if (expectedSha256 != null && !matchesSha256(destFile, expectedSha256)) {
+                        destFile.delete()
+                        throw IOException("Downloaded file didn't match the expected checksum")
+                    }
                     updateGemmaState(model, resolveGemmaState(model))
                 } catch (e: Exception) {
-                    updateGemmaState(model, LocalModelState.Error(e.message ?: "Import failed"))
+                    destFile.delete()
+                    updateGemmaState(model, LocalModelState.Error(e.message ?: "Download failed"))
                 }
             }
         }
@@ -226,5 +210,22 @@ class LocalModelManager
                     }
                 }
             }
+        }
+
+        /** Case-insensitive comparison against a lowercase-hex SHA-256 of [file]'s contents. */
+        private fun matchesSha256(
+            file: File,
+            expectedHex: String,
+        ): Boolean {
+            val digest = MessageDigest.getInstance("SHA-256")
+            file.inputStream().use { input ->
+                val buffer = ByteArray(8192)
+                var read: Int
+                while (input.read(buffer).also { read = it } != -1) {
+                    digest.update(buffer, 0, read)
+                }
+            }
+            val actualHex = digest.digest().joinToString("") { "%02x".format(it) }
+            return actualHex.equals(expectedHex, ignoreCase = true)
         }
     }

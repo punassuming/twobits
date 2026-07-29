@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
+
 ### Fixes
 
 ## 0.15.0 (2026-07-23)

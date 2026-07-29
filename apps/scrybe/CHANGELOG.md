@@ -10,6 +10,10 @@
 
 ### Fixes
 
+**On-device Gemma** — now downloads in-app instead of requiring a manual import:
+* previously required a browser download plus a file picker; now one tap
+* the source doesn't require a HuggingFace login, unlike Google's own repo
+
 ## 1.46.0 (2026-07-23)
 
 ### Features
