@@ -1,15 +1,16 @@
-package dev.scrybe.core.model
-
-import com.twobits.core.localmodels.LocalModelAcquisition
-import com.twobits.core.localmodels.LocalModelFamily
-import com.twobits.core.localmodels.LocalModelSpec
-import com.twobits.core.localmodels.LocalModelTask
+package com.twobits.core.localmodels
 
 /**
  * Google's own `litert-community` org on HuggingFace hosts pre-converted `.litertlm` bundles for
  * Gemma 4, published for direct app consumption (unlike Google's `google/gemma-*` repos, which
- * sit behind a license click-through), so this app can do a plain unauthenticated GET the same
- * way it already does for Whisper's archives. Apache-2.0 licensed.
+ * sit behind a license click-through), so each app can do a plain unauthenticated GET the same
+ * way Scrybe's Whisper archives already work. Apache-2.0 licensed.
+ *
+ * Shared across Scrybe, Shelf Snap, and PriceDrop — unlike [LocalWhisperModel] (Scrybe-only) or
+ * Shelf Snap's own vision model, all three apps want the literal same on-device text model, so
+ * this is the deliberate exception to keeping model inventories app-owned (see
+ * [TwoBitsLocalModels]'s doc comment): one spec avoids three copies of the same URLs/hashes
+ * drifting out of sync.
  *
  * VERIFIED: both URLs, file names, and [sha256] checksums below were confirmed against real
  * downloads (this sandbox can't reach huggingface.co, so that verification happened outside

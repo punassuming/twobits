@@ -1,6 +1,7 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
+import com.twobits.localai.LiteRtLmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.transforms.ClusterSuggestion

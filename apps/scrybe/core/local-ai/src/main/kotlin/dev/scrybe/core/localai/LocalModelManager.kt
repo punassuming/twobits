@@ -2,9 +2,10 @@ package dev.scrybe.core.localai
 
 import android.content.Context
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.localai.ModelDownloader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
-import dev.scrybe.core.model.LocalLlmModel
+import com.twobits.core.localmodels.LocalLlmModel
 import dev.scrybe.core.model.LocalWhisperModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,13 +16,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.File
 import java.io.IOException
-import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -100,7 +98,7 @@ class LocalModelManager
                 try {
                     updateWhisperState(model, LocalModelState.Acquiring(0))
                     val archiveFile = File(modelsDir, model.archiveName)
-                    downloadFile(model.downloadUrl, archiveFile) { progress ->
+                    ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, archiveFile) { progress ->
                         updateWhisperState(model, LocalModelState.Acquiring(progress))
                     }
                     extractTarBz2(archiveFile, modelsDir)
@@ -118,11 +116,11 @@ class LocalModelManager
                 val destFile = File(modelsDir, model.fileName)
                 try {
                     updateLlmState(model, LocalModelState.Acquiring(0))
-                    downloadFile(model.downloadUrl, destFile) { progress ->
+                    ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, destFile) { progress ->
                         updateLlmState(model, LocalModelState.Acquiring(progress))
                     }
                     val expectedSha256 = model.sha256
-                    if (expectedSha256 != null && !matchesSha256(destFile, expectedSha256)) {
+                    if (expectedSha256 != null && !ModelDownloader.matchesSha256(destFile, expectedSha256)) {
                         destFile.delete()
                         throw IOException("Downloaded file didn't match the expected checksum")
                     }
@@ -162,35 +160,6 @@ class LocalModelManager
             _llmStates.value = _llmStates.value + (model to state)
         }
 
-        private fun downloadFile(
-            url: String,
-            dest: File,
-            onProgress: (Int) -> Unit,
-        ) {
-            val client =
-                okHttpClient
-                    .newBuilder()
-                    .callTimeout(0, TimeUnit.MILLISECONDS)
-                    .build()
-            val request = Request.Builder().url(url).build()
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            val body = response.body ?: throw IOException("Empty response body")
-            val contentLength = body.contentLength()
-            body.byteStream().use { input ->
-                dest.outputStream().use { output ->
-                    val buffer = ByteArray(8192)
-                    var bytesRead = 0L
-                    var read: Int
-                    while (input.read(buffer).also { read = it } != -1) {
-                        output.write(buffer, 0, read)
-                        bytesRead += read
-                        if (contentLength > 0) onProgress(((bytesRead * 100) / contentLength).toInt())
-                    }
-                }
-            }
-        }
-
         private fun extractTarBz2(
             archive: File,
             destDir: File,
@@ -212,20 +181,4 @@ class LocalModelManager
             }
         }
 
-        /** Case-insensitive comparison against a lowercase-hex SHA-256 of [file]'s contents. */
-        private fun matchesSha256(
-            file: File,
-            expectedHex: String,
-        ): Boolean {
-            val digest = MessageDigest.getInstance("SHA-256")
-            file.inputStream().use { input ->
-                val buffer = ByteArray(8192)
-                var read: Int
-                while (input.read(buffer).also { read = it } != -1) {
-                    digest.update(buffer, 0, read)
-                }
-            }
-            val actualHex = digest.digest().joinToString("") { "%02x".format(it) }
-            return actualHex.equals(expectedHex, ignoreCase = true)
-        }
     }

@@ -7,6 +7,7 @@
 ### Improvements
 
 * Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
+* Shared: added a local-ai module and wired the Gradle dependency, ahead of a local Ask mode (no visual change)
 
 ### Fixes
 

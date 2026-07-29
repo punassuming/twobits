@@ -54,7 +54,7 @@ coil = "2.7.0"                    # Shelf Snap only
 vico = "2.1.2"                    # PriceDrop only
 
 # ── ML / device ───────────────────────────────────────────────────────────────
-litertLm = "0.14.0"               # Scrybe only
+litertLm = "0.14.0"
 mlkitBarcode = "17.3.0"           # PriceDrop only
 commonsCompress = "1.27.1"        # Scrybe only
 playServicesLocation = "21.3.0"   # Scrybe only

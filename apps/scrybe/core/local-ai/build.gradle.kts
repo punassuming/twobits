@@ -21,6 +21,7 @@ android {
 
 dependencies {
     implementation("com.twobits.core:local-models")
+    implementation("com.twobits.core:local-ai")
     implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:transcription"))
@@ -29,7 +30,6 @@ dependencies {
     // Downloaded to .gradle/local-maven/ in settings.gradle.kts (library modules
     // cannot use direct local .aar file deps per AGP restriction).
     implementation("com.k2fsa:sherpa-onnx-android:1.13.0")
-    implementation(libs.litertlm.android)
     implementation(libs.commons.compress)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)

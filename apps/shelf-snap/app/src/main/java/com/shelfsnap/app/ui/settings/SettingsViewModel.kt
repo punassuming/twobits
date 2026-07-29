@@ -2,13 +2,10 @@ package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
 import android.content.Context
-import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shelfsnap.app.data.local.LocalModelManager
-import com.shelfsnap.app.data.model.LocalGemmaModel
-import com.shelfsnap.app.data.model.LocalMoondreamModel
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.BraveSearchService
@@ -21,6 +18,7 @@ import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
@@ -83,10 +81,8 @@ data class SettingsUiState(
     val visionSource: String = "byok",
     val textSource: String = "byok",
     val listingSource: String = "byok",
-    val moondreamStates: Map<LocalMoondreamModel, LocalModelState> = emptyMap(),
-    val selectedMoondream: LocalMoondreamModel? = null,
-    val gemmaStates: Map<LocalGemmaModel, LocalModelState> = emptyMap(),
-    val selectedGemma: LocalGemmaModel? = null,
+    val llmStates: Map<LocalLlmModel, LocalModelState> = emptyMap(),
+    val selectedLlm: LocalLlmModel? = null,
     val aiConditionDetection: Boolean = true,
     val autoPriceEstimate: Boolean = true,
     val multiPhotoAnalysis: Boolean = false,
@@ -263,12 +259,10 @@ class SettingsViewModel
 
         private val localModelsFlow =
             combine(
-                localModelManager.moondreamStates,
-                localModelManager.selectedMoondream,
-                localModelManager.gemmaStates,
-                localModelManager.selectedGemma,
-            ) { moondreamStates, selectedMoondream, gemmaStates, selectedGemma ->
-                LocalModelsState(moondreamStates, selectedMoondream, gemmaStates, selectedGemma)
+                localModelManager.llmStates,
+                localModelManager.selectedLlm,
+            ) { llmStates, selectedLlm ->
+                LocalModelsState(llmStates, selectedLlm)
             }
 
         private val modelsFlow =
@@ -345,10 +339,8 @@ class SettingsViewModel
                     visionSource = models.visionSource,
                     textSource = models.textSource,
                     listingSource = models.listingSource,
-                    moondreamStates = models.localModels.moondreamStates,
-                    selectedMoondream = models.localModels.selectedMoondream,
-                    gemmaStates = models.localModels.gemmaStates,
-                    selectedGemma = models.localModels.selectedGemma,
+                    llmStates = models.localModels.llmStates,
+                    selectedLlm = models.localModels.selectedLlm,
                     aiConditionDetection = prefs.aiConditionDetection,
                     autoPriceEstimate = prefs.autoPriceEstimate,
                     multiPhotoAnalysis = prefs.multiPhotoAnalysis,
@@ -662,34 +654,16 @@ class SettingsViewModel
             viewModelScope.launch { repository.saveMultiPhotoAnalysis(enabled) }
         }
 
-        fun importMoondream(
-            uri: Uri,
-            model: LocalMoondreamModel,
-        ) {
-            viewModelScope.launch { localModelManager.importMoondream(uri, model) }
+        fun downloadLlmModel(model: LocalLlmModel) {
+            viewModelScope.launch { localModelManager.downloadLlm(model) }
         }
 
-        fun deleteMoondream(model: LocalMoondreamModel) {
-            localModelManager.deleteMoondream(model)
+        fun deleteLlmModel(model: LocalLlmModel) {
+            localModelManager.deleteLlm(model)
         }
 
-        fun selectMoondream(model: LocalMoondreamModel) {
-            localModelManager.selectMoondream(model)
-        }
-
-        fun importGemma(
-            uri: Uri,
-            model: LocalGemmaModel,
-        ) {
-            viewModelScope.launch { localModelManager.importGemma(uri, model) }
-        }
-
-        fun deleteGemma(model: LocalGemmaModel) {
-            localModelManager.deleteGemma(model)
-        }
-
-        fun selectGemma(model: LocalGemmaModel) {
-            localModelManager.selectGemma(model)
+        fun selectLlmModel(model: LocalLlmModel) {
+            localModelManager.selectLlm(model)
         }
 
         fun clearApiKey() {
@@ -794,10 +768,8 @@ class SettingsViewModel
         )
 
         private data class LocalModelsState(
-            val moondreamStates: Map<LocalMoondreamModel, LocalModelState>,
-            val selectedMoondream: LocalMoondreamModel?,
-            val gemmaStates: Map<LocalGemmaModel, LocalModelState>,
-            val selectedGemma: LocalGemmaModel?,
+            val llmStates: Map<LocalLlmModel, LocalModelState>,
+            val selectedLlm: LocalLlmModel?,
         )
 
         private data class ModelsState(

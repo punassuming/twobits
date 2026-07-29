@@ -1,8 +1,6 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,7 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Search
@@ -35,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,11 +42,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.R
-import com.shelfsnap.app.data.model.LocalGemmaModel
-import com.shelfsnap.app.data.model.LocalMoondreamModel
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.twobits.billing.SubscriptionTier
+import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
@@ -87,20 +83,6 @@ fun AIConfigScreen(
             viewModel.onSearchSavedShown()
         }
     }
-
-    val pendingMoondreamImport = remember { mutableStateOf<LocalMoondreamModel?>(null) }
-    val moondreamPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            uri?.let { viewModel.importMoondream(it, pendingMoondreamImport.value ?: return@let) }
-            pendingMoondreamImport.value = null
-        }
-
-    val pendingGemmaImport = remember { mutableStateOf<LocalGemmaModel?>(null) }
-    val gemmaPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            uri?.let { viewModel.importGemma(it, pendingGemmaImport.value ?: return@let) }
-            pendingGemmaImport.value = null
-        }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -160,27 +142,30 @@ fun AIConfigScreen(
                             )
                         }
                     }
-                    else ->
+                    else -> {
                         LocalModelPanel(
-                            sectionLabel = "Moondream — vision model",
-                            sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
-                            models = LocalMoondreamModel.entries.toList(),
-                            status = { (uiState.moondreamStates[it] ?: LocalModelState.Absent).toStatus() },
-                            selected = uiState.selectedMoondream,
-                            onSelect = { viewModel.selectMoondream(it) },
-                            onPrimaryAction = {
-                                pendingMoondreamImport.value = it
-                                moondreamPicker.launch("*/*")
-                            },
-                            primaryActionLabel = "Import",
-                            primaryActionIcon = Icons.Default.FolderOpen,
-                            onDelete = { viewModel.deleteMoondream(it) },
+                            sectionLabel = "Gemma — on-device vision",
+                            models = LocalLlmModel.entries.toList(),
+                            status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                            selected = uiState.selectedLlm,
+                            onSelect = { viewModel.selectLlmModel(it) },
+                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
+                            primaryActionLabel = "Download",
+                            primaryActionIcon = Icons.Default.CloudDownload,
+                            onDelete = { viewModel.deleteLlmModel(it) },
                             name = { it.displayName },
                             sizeLabel = { it.sizeLabel },
                             description = { it.description },
-                            progressLabel = "Importing",
+                            progressLabel = "Downloading",
                             huggingFaceUrl = { it.huggingFacePageUrl },
                         )
+                        Text(
+                            "Experimental — on-device vision reuses the same Gemma model as local " +
+                                "listing generation; accuracy is unverified on this device.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
@@ -217,32 +202,20 @@ fun AIConfigScreen(
                     else ->
                         LocalModelPanel(
                             sectionLabel = "Gemma — on-device LLM",
-                            sectionSubtitle = "Download from HuggingFace, then import the .gguf file.",
-                            models = LocalGemmaModel.entries.toList(),
-                            status = { (uiState.gemmaStates[it] ?: LocalModelState.Absent).toStatus() },
-                            selected = uiState.selectedGemma,
-                            onSelect = { viewModel.selectGemma(it) },
-                            onPrimaryAction = {
-                                pendingGemmaImport.value = it
-                                gemmaPicker.launch("*/*")
-                            },
-                            primaryActionLabel = "Import",
-                            primaryActionIcon = Icons.Default.FolderOpen,
-                            onDelete = { viewModel.deleteGemma(it) },
+                            models = LocalLlmModel.entries.toList(),
+                            status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                            selected = uiState.selectedLlm,
+                            onSelect = { viewModel.selectLlmModel(it) },
+                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
+                            primaryActionLabel = "Download",
+                            primaryActionIcon = Icons.Default.CloudDownload,
+                            onDelete = { viewModel.deleteLlmModel(it) },
                             name = { it.displayName },
                             sizeLabel = { it.sizeLabel },
                             description = { it.description },
-                            progressLabel = "Importing",
+                            progressLabel = "Downloading",
                             huggingFaceUrl = { it.huggingFacePageUrl },
                         )
-                }
-                if (uiState.listingSource == "local") {
-                    Text(
-                        "On-device listing generation isn't available yet — with Local selected, " +
-                            "\"Refine with AI\" leaves your listing text unchanged.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
 

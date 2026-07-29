@@ -4,6 +4,11 @@
 
 ### Features
 
+**On-device AI is real now** — Gemma downloads in-app instead of a manual .gguf import:
+* local listing generation now actually refines your copy, on-device
+* local vision analysis (experimental) can identify items from a photo, on-device
+* both share one downloaded model — no separate Moondream import anymore
+
 ### Improvements
 
 * Shared: local-models gained a single-file download acquisition type, for Scrybe's Gemma fix (no visual change)
