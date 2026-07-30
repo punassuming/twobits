@@ -40,6 +40,13 @@ private val LightColorScheme =
         onError = OnError,
         errorContainer = ErrorContainer,
         onErrorContainer = OnErrorContainer,
+        // Undefined here, these silently fall back to Material3's stock baseline-purple
+        // defaults — unrelated to this app's teal/blue palette in either theme. A dark chip
+        // against the light theme, borrowing the dark theme's brighter primary as the accent
+        // that reads against it (mirrors ScrybeTheme's inverse-role derivation).
+        inverseSurface = OnSurface,
+        inverseOnSurface = Background,
+        inversePrimary = DarkPrimary,
     )
 
 private val DarkColorScheme =
@@ -73,6 +80,11 @@ private val DarkColorScheme =
         onError = DarkOnError,
         errorContainer = DarkErrorContainer,
         onErrorContainer = DarkOnErrorContainer,
+        // A light chip against the dark theme, borrowing the light theme's primary as the
+        // accent that reads against it — see LightColorScheme's inverse roles above.
+        inverseSurface = DarkOnSurface,
+        inverseOnSurface = DarkBackground,
+        inversePrimary = Primary,
     )
 
 @Composable

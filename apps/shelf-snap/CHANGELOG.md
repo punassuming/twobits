@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* the market research progress toast now uses this app's actual teal/blue palette in both light and dark mode — it was silently falling back to Material3's generic default colors since the theme never defined them
+
 ## 1.25.1 (2026-07-30)
 
 ### Features
