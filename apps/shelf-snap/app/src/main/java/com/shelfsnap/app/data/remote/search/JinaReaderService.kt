@@ -27,6 +27,10 @@ class JinaReaderService
                 .Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(25, TimeUnit.SECONDS)
+                // Hard ceiling on the whole call, above the eBay path's own 20s X-Timeout budget
+                // plus network overhead — see JinaAiSearchService for why readTimeout alone
+                // isn't enough (it only caps the gap between reads, not total duration).
+                .callTimeout(30, TimeUnit.SECONDS)
                 .build()
 
         /**
@@ -42,7 +46,7 @@ class JinaReaderService
         ): String? =
             withContext(Dispatchers.IO) {
                 if (apiKey.isBlank() || pageUrl.isBlank()) return@withContext null
-                val request =
+                val requestBuilder =
                     Request
                         .Builder()
                         .url("https://r.jina.ai/$pageUrl")
@@ -51,8 +55,19 @@ class JinaReaderService
                         // Ask the Reader to skip images and keep the response compact.
                         .addHeader("X-Return-Format", "text")
                         .addHeader("X-Retain-Images", "none")
-                        .get()
-                        .build()
+                if (marketplaceKeyFromUrl(pageUrl) == "ebay") {
+                    // eBay item pages consistently came back under MIN_CONFIRMED_LISTING_CHARS
+                    // (~190-200 chars, near-identical length across unrelated item IDs) via the
+                    // Reader's default "auto" engine — the signature of a bot-check/consent
+                    // shell, not real content. Forcing headless-Chrome rendering and waiting for
+                    // visible content (not just the initial response) gets past it; other
+                    // marketplaces read fine on the faster default and don't need this.
+                    requestBuilder
+                        .addHeader("X-Engine", "browser")
+                        .addHeader("X-Respond-Timing", "visible-content")
+                        .addHeader("X-Timeout", "20")
+                }
+                val request = requestBuilder.get().build()
 
                 runCatching {
                     client.newCall(request).execute().use { response ->

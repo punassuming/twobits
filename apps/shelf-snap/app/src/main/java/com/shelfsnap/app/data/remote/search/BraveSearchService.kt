@@ -29,6 +29,9 @@ class BraveSearchService
                 .Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(20, TimeUnit.SECONDS)
+                // Hard ceiling on the whole call — see JinaAiSearchService for why readTimeout
+                // alone isn't enough (it only caps the gap between reads, not total duration).
+                .callTimeout(20, TimeUnit.SECONDS)
                 .build()
 
         override suspend fun search(

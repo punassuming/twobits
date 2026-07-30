@@ -1025,10 +1025,17 @@ class PriceResearchService
                         Citation(label = label, url = c.get("url")?.asString ?: "")
                     } ?: emptyList()
                 val compUrls = comps.map { it.sourceUrl }.filter { it.isNotBlank() }.toSet()
+                // Prefer the comp's own title over the raw search-result title for the same
+                // URL: the comp's title is either model-extracted from the actual page text
+                // (verifiedModelComps) or a structured provider's clean listing title, while
+                // the raw result title is whatever the search engine indexed for that page —
+                // often a mangled/duplicated search-results-page <title> (e.g. "General For
+                // Sale For Sale...") rather than the specific listing's own title.
+                val compTitleByUrl = comps.associate { it.sourceUrl to it.title }.filterValues { it.isNotBlank() }
                 val compCitations =
                     evidence.results
                         .filter { it.url in compUrls }
-                        .map { Citation(label = it.title, url = it.url) }
+                        .map { Citation(label = compTitleByUrl[it.url] ?: it.title, url = it.url) }
                 val citations =
                     (compCitations + modelCitations.filter { it.url.isBlank() || it.url in compUrls })
                         .distinctBy { it.url.ifBlank { it.label } }
