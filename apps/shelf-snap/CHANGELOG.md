@@ -9,6 +9,7 @@
 * Market research's Debug info panel now shows raw vs. recognized result counts per query, and every Jina Reader page-open attempt with why it was or wasn't confirmed as a real listing — previously an empty comps list for a marketplace gave no clue whether nothing was found, results weren't recognized, or candidate pages failed verification
 * Mercari/OfferUp/Craigslist/Facebook Marketplace core queries now use `site:` scoping like eBay's already did, instead of bare domain text that let unrelated pages mentioning the domain rank alongside real listings
 * the research progress toast now animates between status updates (phase, detail line, running counts) instead of the text jump-cutting on every change
+* fixed a ktlint blank-line-before-declaration violation in the marketplace URL matcher (no visual change)
 
 ### Fixes
 

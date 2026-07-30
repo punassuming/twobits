@@ -37,6 +37,7 @@ data class WebSearchResult(
  */
 fun marketplaceKeyFromUrl(url: String): String? {
     val host = runCatching { java.net.URI(url).host }.getOrNull()?.lowercase() ?: return null
+
     fun matchesDomain(domain: String) = host == domain || host.endsWith(".$domain")
     return when {
         matchesDomain("ebay.com") -> "ebay"
