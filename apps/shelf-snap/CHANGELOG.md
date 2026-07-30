@@ -7,6 +7,7 @@
 ### Improvements
 
 * market research search calls now have a hard 20s time limit (30s for page reads) — previously a slow-but-trickling response could run well past the intended timeout, since that only capped the gap between reads, not the call as a whole; one such call was observed stretching an entire research run past 100 seconds
+* a marketplace's page-read candidates are now verified concurrently instead of one at a time — previously a slow read (now more likely on eBay, which reads via full browser rendering) serialized every later candidate behind it
 * "Sources" now shows the same clean listing title as the matching "Comparable listings" entry, instead of the raw, sometimes-mangled title the search engine indexed for that page
 
 ### Fixes

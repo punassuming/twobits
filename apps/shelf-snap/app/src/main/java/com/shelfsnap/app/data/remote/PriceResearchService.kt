@@ -470,39 +470,56 @@ class PriceResearchService
                         candidatesByMarketplace.values
                             .map { candidates ->
                                 async {
-                                    val confirmed = mutableListOf<Pair<Int, String>>()
-                                    val outcomes = mutableListOf<PageReadOutcome>()
-                                    for (i in candidates) {
-                                        if (confirmed.size >= READS_PER_MARKETPLACE) break
-                                        val marketplaceName = Platform.fromKey(merged[i].platformKey ?: "")?.displayName ?: "listing"
-                                        val text = jinaReader.read(merged[i].url, readerKey) ?: ""
-                                        pagesAttempted.incrementAndGet()
-                                        val rejectionReason = confirmedListingRejectionReason(text)
-                                        val isMatch = rejectionReason == null
-                                        if (isMatch) {
-                                            confirmed.add(i to text)
-                                            pagesConfirmed.incrementAndGet()
+                                    // Every candidate for this marketplace is read concurrently
+                                    // now, not tried one at a time — a browser-rendered eBay
+                                    // read alone can take several seconds, so serializing
+                                    // multiple full-page-render round trips added real latency.
+                                    // Whichever candidates confirm first atomically claim one of
+                                    // this marketplace's READS_PER_MARKETPLACE slots; results
+                                    // beyond quota are still read (a small, bounded amount of
+                                    // extra API usage) but their PageReadOutcome is still
+                                    // recorded even though they aren't kept as evidence.
+                                    val marketplaceConfirmedCount = AtomicInteger(0)
+                                    val results =
+                                        coroutineScope {
+                                            candidates
+                                                .map { i ->
+                                                    async {
+                                                        val marketplaceName =
+                                                            Platform.fromKey(merged[i].platformKey ?: "")?.displayName ?: "listing"
+                                                        val text = jinaReader.read(merged[i].url, readerKey) ?: ""
+                                                        pagesAttempted.incrementAndGet()
+                                                        val rejectionReason = confirmedListingRejectionReason(text)
+                                                        val isMatch = rejectionReason == null
+                                                        val claimed =
+                                                            isMatch && marketplaceConfirmedCount.incrementAndGet() <= READS_PER_MARKETPLACE
+                                                        if (claimed) pagesConfirmed.incrementAndGet()
+                                                        onProgress(
+                                                            ResearchProgress(
+                                                                phase = ResearchProgress.Phase.VERIFYING,
+                                                                detail =
+                                                                    if (isMatch) {
+                                                                        "$marketplaceName verified"
+                                                                    } else {
+                                                                        "$marketplaceName — trying next listing"
+                                                                    },
+                                                                queriesRun = queriesRun.get(),
+                                                                resultsFound = resultsFound.get(),
+                                                                pagesConfirmed = pagesConfirmed.get(),
+                                                                pagesTarget = pagesTarget,
+                                                            ),
+                                                        )
+                                                        (if (claimed) i to text else null) to
+                                                            PageReadOutcome(
+                                                                marketplace = marketplaceName,
+                                                                url = merged[i].url,
+                                                                verified = isMatch,
+                                                                reason = rejectionReason,
+                                                            )
+                                                    }
+                                                }.map { it.await() }
                                         }
-                                        outcomes.add(
-                                            PageReadOutcome(
-                                                marketplace = marketplaceName,
-                                                url = merged[i].url,
-                                                verified = isMatch,
-                                                reason = rejectionReason,
-                                            ),
-                                        )
-                                        onProgress(
-                                            ResearchProgress(
-                                                phase = ResearchProgress.Phase.VERIFYING,
-                                                detail = if (isMatch) "$marketplaceName verified" else "$marketplaceName — trying next listing",
-                                                queriesRun = queriesRun.get(),
-                                                resultsFound = resultsFound.get(),
-                                                pagesConfirmed = pagesConfirmed.get(),
-                                                pagesTarget = pagesTarget,
-                                            ),
-                                        )
-                                    }
-                                    confirmed to outcomes
+                                    results.mapNotNull { it.first } to results.map { it.second }
                                 }
                             }.map { it.await() }
                     }
