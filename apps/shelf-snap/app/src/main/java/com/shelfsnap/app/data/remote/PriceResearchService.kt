@@ -11,6 +11,7 @@ import com.shelfsnap.app.data.model.MarketComp
 import com.shelfsnap.app.data.model.MarketQuery
 import com.shelfsnap.app.data.model.MarketResearch
 import com.shelfsnap.app.data.model.MarketResearchDebug
+import com.shelfsnap.app.data.model.PageReadOutcome
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.remote.search.JinaReaderService
 import com.shelfsnap.app.data.remote.search.SearchProvider
@@ -82,6 +83,8 @@ data class SearchEvidence(
      * verified sold comps were impossible from the start, regardless of how many calls ran.
      */
     val soldCapable: Boolean = false,
+    /** Every Jina Reader page-open attempt, verified or rejected-with-reason. See [PageReadOutcome]. */
+    val pageOutcomes: List<PageReadOutcome> = emptyList(),
 )
 
 private data class SearchAttempt(
@@ -245,6 +248,7 @@ class PriceResearchService
                         MarketResearchDebug(
                             queries = evidence.queries,
                             pagesRead = evidence.pagesRead,
+                            pageOutcomes = evidence.pageOutcomes,
                             totalApiCalls = totalApiCalls,
                             servicesUsed = servicesUsed,
                             searchMs = evidence.searchMs,
@@ -401,6 +405,7 @@ class PriceResearchService
                         label = attempt.provider.displayName,
                         query = attempt.query,
                         resultCount = attempt.results.size,
+                        legitResultCount = attempt.results.count { it.platformKey != null },
                         error = attempt.error,
                     ),
                 )
@@ -450,6 +455,7 @@ class PriceResearchService
             var readMs = 0L
             var readAttempts = 0
             var pagesTarget = 0
+            var pageOutcomes: List<PageReadOutcome> = emptyList()
             val candidatesByMarketplace: Map<String?, List<Int>> =
                 merged.indices
                     .filter { merged[it].platformKey != null }
@@ -459,22 +465,32 @@ class PriceResearchService
                 pagesTarget = candidatesByMarketplace.size * READS_PER_MARKETPLACE
                 val pagesConfirmed = AtomicInteger(0)
                 val pagesAttempted = AtomicInteger(0)
-                val confirmedReads: List<Pair<Int, String>> =
+                val perMarketplaceResults: List<Pair<List<Pair<Int, String>>, List<PageReadOutcome>>> =
                     coroutineScope {
                         candidatesByMarketplace.values
                             .map { candidates ->
                                 async {
                                     val confirmed = mutableListOf<Pair<Int, String>>()
+                                    val outcomes = mutableListOf<PageReadOutcome>()
                                     for (i in candidates) {
                                         if (confirmed.size >= READS_PER_MARKETPLACE) break
                                         val marketplaceName = Platform.fromKey(merged[i].platformKey ?: "")?.displayName ?: "listing"
                                         val text = jinaReader.read(merged[i].url, readerKey) ?: ""
                                         pagesAttempted.incrementAndGet()
-                                        val isMatch = looksLikeConfirmedListing(text)
+                                        val rejectionReason = confirmedListingRejectionReason(text)
+                                        val isMatch = rejectionReason == null
                                         if (isMatch) {
                                             confirmed.add(i to text)
                                             pagesConfirmed.incrementAndGet()
                                         }
+                                        outcomes.add(
+                                            PageReadOutcome(
+                                                marketplace = marketplaceName,
+                                                url = merged[i].url,
+                                                verified = isMatch,
+                                                reason = rejectionReason,
+                                            ),
+                                        )
                                         onProgress(
                                             ResearchProgress(
                                                 phase = ResearchProgress.Phase.VERIFYING,
@@ -486,10 +502,12 @@ class PriceResearchService
                                             ),
                                         )
                                     }
-                                    confirmed
+                                    confirmed to outcomes
                                 }
                             }.map { it.await() }
-                    }.flatten()
+                    }
+                val confirmedReads = perMarketplaceResults.flatMap { it.first }
+                pageOutcomes = perMarketplaceResults.flatMap { it.second }
                 for ((i, text) in confirmedReads) {
                     merged[i] = merged[i].copy(snippet = (merged[i].snippet + "\n" + text).take(MAX_SNIPPET_CHARS))
                     pagesRead++
@@ -504,6 +522,7 @@ class PriceResearchService
                 error = if (merged.isEmpty()) lastError else null,
                 queries = queryLog,
                 pagesRead = pagesRead,
+                pageOutcomes = pageOutcomes,
                 readAttempts = readAttempts,
                 legitResultsFound = resultsFound.get(),
                 pagesTarget = pagesTarget,
@@ -581,10 +600,22 @@ class PriceResearchService
          * this pipeline wants most — as on an actually-removed one, so treating them as
          * disqualifying would throw away good evidence more often than it catches bad pages.
          */
-        private fun looksLikeConfirmedListing(text: String): Boolean {
-            if (text.trim().length < MIN_CONFIRMED_LISTING_CHARS) return false
+        private fun looksLikeConfirmedListing(text: String): Boolean = confirmedListingRejectionReason(text) == null
+
+        /**
+         * Same heuristic as [looksLikeConfirmedListing], but returns *why* a page failed
+         * instead of collapsing it to a boolean — surfaced per-attempt in [PageReadOutcome] so
+         * a run that confirmed 0/8 pages shows whether that's short/bot-blocked pages, a
+         * specific dead-page phrase, or a genuine mix, rather than just "0 confirmed".
+         */
+        private fun confirmedListingRejectionReason(text: String): String? {
+            val trimmedLength = text.trim().length
+            if (trimmedLength < MIN_CONFIRMED_LISTING_CHARS) {
+                return "page too short ($trimmedLength chars, need $MIN_CONFIRMED_LISTING_CHARS+)"
+            }
             val lower = text.lowercase()
-            return DEAD_PAGE_PHRASES.none { lower.contains(it) }
+            val matchedPhrase = DEAD_PAGE_PHRASES.firstOrNull { lower.contains(it) }
+            return matchedPhrase?.let { "page text matched dead-page phrase \"$it\"" }
         }
 
         /**
@@ -780,13 +811,19 @@ class PriceResearchService
             // therefore every provider here — indexes very few of them at all. Both are
             // included because they're the only shot at any evidence from those marketplaces,
             // not because the hit rate is expected to match eBay/Mercari/OfferUp.
+            // site: scopes every core query to its marketplace at the search-engine level —
+            // previously only eBay did this; Mercari/OfferUp/Craigslist/Facebook were bare
+            // domain text ("$descriptor mercari.com"), which let a page merely *mentioning*
+            // the domain (a blog post, a forum comparison) rank alongside real listings. That
+            // slop then relied entirely on marketplaceKeyFromUrl to filter it back out — a
+            // second line of defense, not a substitute for scoping the query itself.
             val core =
                 listOf(
                     "$descriptor site:ebay.com/itm sold".trim(),
-                    "$descriptor mercari.com".trim(),
-                    "$descriptor offerup.com".trim(),
-                    "$descriptor craigslist.org".trim(),
-                    "$descriptor facebook.com/marketplace".trim(),
+                    "$descriptor site:mercari.com".trim(),
+                    "$descriptor site:offerup.com".trim(),
+                    "$descriptor site:craigslist.org".trim(),
+                    "$descriptor site:facebook.com/marketplace".trim(),
                 )
             val structuredExtra = listOf("$descriptor site:ebay.com/itm for sale".trim())
 

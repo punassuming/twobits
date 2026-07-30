@@ -1,11 +1,13 @@
 package com.shelfsnap.app.ui.itemdetail
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shelfsnap.app.data.remote.ResearchProgress
+
+/** Shared crossfade+slide transition for text that updates while the toast stays visible. */
+private fun contentSwapTransition() =
+    (slideInVertically(animationSpec = tween(180)) { it / 3 } + fadeIn(tween(180)))
+        .togetherWith(slideOutVertically(animationSpec = tween(140)) { -it / 3 } + fadeOut(tween(140)))
 
 /**
  * Live status toast shown while market research runs, sliding up from the bottom instead of an
@@ -61,27 +68,50 @@ fun ResearchProgressToast(
                 )
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text(
-                        text = progress.phaseLabel(),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    // Each line transitions independently — phase, detail, and the running
+                    // counts update on their own schedules (phase changes 2-3 times a run,
+                    // detail on every query/page-read, counts even more often), so a shared
+                    // AnimatedContent keyed on the whole toast would replay all three every
+                    // time only one of them actually changed.
+                    AnimatedContent(
+                        targetState = progress.phaseLabel(),
+                        transitionSpec = { contentSwapTransition() },
+                        label = "researchPhase",
+                    ) { label ->
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                     val detail = progress?.detail
                     if (!detail.isNullOrBlank()) {
-                        Text(
-                            text = detail,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        AnimatedContent(
+                            targetState = detail,
+                            transitionSpec = { contentSwapTransition() },
+                            label = "researchDetail",
+                        ) { text ->
+                            Text(
+                                text = text,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                     val counts = progress?.countsLabel().orEmpty()
                     if (counts.isNotBlank()) {
-                        Text(
-                            text = counts,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.75f),
-                        )
+                        AnimatedContent(
+                            targetState = counts,
+                            transitionSpec = { contentSwapTransition() },
+                            label = "researchCounts",
+                        ) { text ->
+                            Text(
+                                text = text,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.75f),
+                            )
+                        }
                     }
                 }
             }

@@ -35,6 +35,18 @@ class MarketplaceKeyTest {
     }
 
     @Test
+    fun `mercari's japanese site is not treated as a mercari posting`() {
+        // Regression: a bare "mercari." substring check matched jp.mercari.com (a real
+        // subdomain of mercari.com) and mercari.jp (a different domain entirely) just as
+        // readily as mercari.com itself, silently mixing yen-priced JP listings into comps.
+        listOf(
+            "https://jp.mercari.com/item/m12345678901",
+            "https://mercari.jp/item/m12345678901",
+        ).forEach { url -> assertNull("$url should not resolve as a US mercari posting", marketplaceKeyFromUrl(url)) }
+        assertEquals("mercari", marketplaceKeyFromUrl("https://www.mercari.com/us/item/m456/"))
+    }
+
+    @Test
     fun `non marketplace urls are not treated as postings`() {
         listOf(
             "https://example.com/blog/how-to-price-used-electronics",
