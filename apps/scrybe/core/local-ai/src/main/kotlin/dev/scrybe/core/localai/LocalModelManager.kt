@@ -19,7 +19,6 @@ import okhttp3.OkHttpClient
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.File
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,6 +49,10 @@ class LocalModelManager
         val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = _llmStates.asStateFlow()
 
         init {
+            // A .part file nobody has resumed in days is more likely abandoned than still
+            // wanted, and unlike a Ready model file it's disk usage the UI never surfaces, so
+            // it can't otherwise be noticed and cleaned up by hand.
+            ModelDownloader.cleanupStalePartialFiles(modelsDir)
             refreshStates()
             scope.launch {
                 preferencesDataStore.localWhisperModel.collect { model ->
@@ -116,17 +119,18 @@ class LocalModelManager
                 val destFile = File(modelsDir, model.fileName)
                 try {
                     updateLlmState(model, LocalModelState.Acquiring(0))
-                    ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, destFile) { progress ->
-                        updateLlmState(model, LocalModelState.Acquiring(progress))
-                    }
-                    val expectedSha256 = model.sha256
-                    if (expectedSha256 != null && !ModelDownloader.matchesSha256(destFile, expectedSha256)) {
-                        destFile.delete()
-                        throw IOException("Downloaded file didn't match the expected checksum")
-                    }
+                    ModelDownloader.downloadFile(
+                        okHttpClient = okHttpClient,
+                        url = model.downloadUrl,
+                        dest = destFile,
+                        expectedSha256 = model.sha256,
+                    ) { progress -> updateLlmState(model, LocalModelState.Acquiring(progress)) }
                     updateLlmState(model, resolveLlmState(model))
                 } catch (e: Exception) {
-                    destFile.delete()
+                    // The in-progress .part file is deliberately left alone here — downloadFile
+                    // already discarded it for unrecoverable failures (bad checksum, HTTP 4xx,
+                    // out of space) and otherwise preserved it so the next attempt (this button,
+                    // or an automatic retry) resumes instead of starting over.
                     updateLlmState(model, LocalModelState.Error(e.message ?: "Download failed"))
                 }
             }
@@ -134,11 +138,14 @@ class LocalModelManager
 
         fun deleteWhisper(model: LocalWhisperModel) {
             File(modelsDir, model.dirName).deleteRecursively()
+            ModelDownloader.deletePartialFile(File(modelsDir, model.archiveName))
             updateWhisperState(model, LocalModelState.Absent)
         }
 
         fun deleteLlm(model: LocalLlmModel) {
-            File(modelsDir, model.fileName).delete()
+            val destFile = File(modelsDir, model.fileName)
+            destFile.delete()
+            ModelDownloader.deletePartialFile(destFile)
             updateLlmState(model, LocalModelState.Absent)
         }
 

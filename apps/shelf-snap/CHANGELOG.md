@@ -6,7 +6,12 @@
 
 ### Improvements
 
+* on-device model downloads (Gemma) now resume from where they left off instead of restarting from byte 0 after a dropped or stalled connection, and retry automatically with backoff — previously a stalled (not failed) connection could hang indefinitely with no retry ever triggering, and any interruption meant starting the multi-gigabyte download over from scratch
+* model downloads now check available storage before starting, and old abandoned partial downloads are cleaned up automatically instead of silently taking up space with no way to notice them
+
 ### Fixes
+
+* an interrupted model download could previously be misreported as fully installed and ready to use, since only file existence was checked, not completeness
 
 ## 1.25.2 (2026-08-01)
 
@@ -22,7 +27,6 @@
 
 * the market research progress toast now uses this app's actual teal/blue palette in both light and dark mode — it was silently falling back to Material3's generic default colors since the theme never defined them
 * eBay page reads were silently failing 100% of the time — Jina Reader's default fetch got a short bot-check page instead of the real listing (consistently under the confirmation threshold), so eBay evidence never made it into comps; page reads for eBay now force full browser rendering, which reads eBay's real listing content
-
 
 ## 1.25.1 (2026-07-30)
 

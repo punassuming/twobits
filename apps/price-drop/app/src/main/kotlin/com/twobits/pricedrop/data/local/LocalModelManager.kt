@@ -20,7 +20,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -55,6 +54,10 @@ class LocalModelManager
         val selectedLlm: StateFlow<LocalLlmModel?> = _selectedLlm.asStateFlow()
 
         init {
+            // A .part file nobody has resumed in days is more likely abandoned than still
+            // wanted, and unlike a Ready model file it's disk usage the UI never surfaces, so
+            // it can't otherwise be noticed and cleaned up by hand.
+            ModelDownloader.cleanupStalePartialFiles(modelsDir)
             refreshStates()
             scope.launch {
                 dataStore.data.map { it[Keys.SELECTED_LLM_MODEL] }.collect { name ->
@@ -83,24 +86,27 @@ class LocalModelManager
                 val destFile = File(modelsDir, model.fileName)
                 try {
                     updateLlmState(model, LocalModelState.Acquiring(0))
-                    ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, destFile) { progress ->
-                        updateLlmState(model, LocalModelState.Acquiring(progress))
-                    }
-                    val expectedSha256 = model.sha256
-                    if (expectedSha256 != null && !ModelDownloader.matchesSha256(destFile, expectedSha256)) {
-                        destFile.delete()
-                        throw IOException("Downloaded file didn't match the expected checksum")
-                    }
+                    ModelDownloader.downloadFile(
+                        okHttpClient = okHttpClient,
+                        url = model.downloadUrl,
+                        dest = destFile,
+                        expectedSha256 = model.sha256,
+                    ) { progress -> updateLlmState(model, LocalModelState.Acquiring(progress)) }
                     updateLlmState(model, resolveLlmState(model))
                 } catch (e: Exception) {
-                    destFile.delete()
+                    // The in-progress .part file is deliberately left alone here — downloadFile
+                    // already discarded it for unrecoverable failures (bad checksum, HTTP 4xx,
+                    // out of space) and otherwise preserved it so the next attempt (this button,
+                    // or an automatic retry) resumes instead of starting over.
                     updateLlmState(model, LocalModelState.Error(e.message ?: "Download failed"))
                 }
             }
         }
 
         fun deleteLlm(model: LocalLlmModel) {
-            File(modelsDir, model.fileName).delete()
+            val destFile = File(modelsDir, model.fileName)
+            destFile.delete()
+            ModelDownloader.deletePartialFile(destFile)
             if (_selectedLlm.value == model) {
                 scope.launch { dataStore.edit { it.remove(Keys.SELECTED_LLM_MODEL) } }
             }
