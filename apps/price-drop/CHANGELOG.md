@@ -8,6 +8,7 @@
 
 * on-device model downloads (Gemma) now resume from where they left off instead of restarting from byte 0 after a dropped or stalled connection, and retry automatically with backoff — previously a stalled (not failed) connection could hang indefinitely with no retry ever triggering, and any interruption meant starting the multi-gigabyte download over from scratch
 * model downloads now check available storage before starting, and old abandoned partial downloads are cleaned up automatically instead of silently taking up space with no way to notice them
+* a failed model download now shows a Discard action alongside Retry, so a partial file you don't want to resume can be removed immediately instead of waiting for it to age out
 
 ### Fixes
 

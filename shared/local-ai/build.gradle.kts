@@ -27,6 +27,7 @@ kotlin {
 }
 
 dependencies {
+    implementation("com.twobits.core:local-models")
     implementation(libs.litertlm.android)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)

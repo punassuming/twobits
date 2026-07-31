@@ -265,10 +265,22 @@ private fun LocalModelRow(
                                 tint = MaterialTheme.colorScheme.error,
                             )
                         }
-                    modelStatus is LocalModelStatus.Error ->
+                    modelStatus is LocalModelStatus.Error -> {
                         TextButton(onClick = onPrimaryAction) {
                             Text("Retry", style = MaterialTheme.typography.labelMedium)
                         }
+                        // A failed download may have left a resumable partial file behind (by
+                        // design — Retry picks it back up) — Discard is how to abandon it and
+                        // reclaim that space instead of waiting on it to age out on its own.
+                        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                            Icon(
+                                Icons.Filled.Delete,
+                                contentDescription = "Discard",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
                 }
             }
         }

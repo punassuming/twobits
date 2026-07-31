@@ -3,6 +3,7 @@ package dev.scrybe.core.localai
 import android.content.Context
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.localai.LlmModelDownloadCoordinator
 import com.twobits.localai.ModelDownloader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
@@ -22,6 +23,12 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Tracks Scrybe's on-device models: Gemma (text) and Whisper (transcription). Gemma's
+ * download/state-tracking logic lives in [LlmModelDownloadCoordinator], shared with Shelf Snap
+ * and PriceDrop's equivalents; Whisper (archive download + extract) stays here since it's
+ * Scrybe-only and a different acquisition shape entirely.
+ */
 @Singleton
 class LocalModelManager
     @Inject
@@ -31,7 +38,8 @@ class LocalModelManager
         private val preferencesDataStore: AppPreferencesDataStore,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        private val modelsDir: File get() = File(context.getExternalFilesDir(null), "models").also { it.mkdirs() }
+        private val modelsDir: File = File(context.getExternalFilesDir(null), "models").also { it.mkdirs() }
+        private val llmCoordinator = LlmModelDownloadCoordinator(modelsDir, okHttpClient)
 
         private val _whisperStates =
             MutableStateFlow<Map<LocalWhisperModel, LocalModelState>>(
@@ -42,18 +50,10 @@ class LocalModelManager
         private val _selectedWhisperModel = MutableStateFlow(LocalWhisperModel.default)
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = _selectedWhisperModel.asStateFlow()
 
-        private val _llmStates =
-            MutableStateFlow<Map<LocalLlmModel, LocalModelState>>(
-                LocalLlmModel.entries.associateWith { LocalModelState.Absent },
-            )
-        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = _llmStates.asStateFlow()
+        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = llmCoordinator.states
 
         init {
-            // A .part file nobody has resumed in days is more likely abandoned than still
-            // wanted, and unlike a Ready model file it's disk usage the UI never surfaces, so
-            // it can't otherwise be noticed and cleaned up by hand.
-            ModelDownloader.cleanupStalePartialFiles(modelsDir)
-            refreshStates()
+            refreshWhisperStates()
             scope.launch {
                 preferencesDataStore.localWhisperModel.collect { model ->
                     _selectedWhisperModel.value = model
@@ -61,9 +61,8 @@ class LocalModelManager
             }
         }
 
-        private fun refreshStates() {
+        private fun refreshWhisperStates() {
             _whisperStates.value = LocalWhisperModel.entries.associateWith { resolveWhisperState(it) }
-            _llmStates.value = LocalLlmModel.entries.associateWith { resolveLlmState(it) }
         }
 
         fun whisperModelDir(model: LocalWhisperModel): File? {
@@ -79,20 +78,12 @@ class LocalModelManager
             }
         }
 
-        fun llmModelFile(model: LocalLlmModel): File? {
-            val file = File(modelsDir, model.fileName)
-            return if (file.exists() && file.length() > 0) file else null
-        }
+        fun llmModelFile(model: LocalLlmModel): File? = llmCoordinator.file(model)
 
-        fun anyLlmReady(): LocalLlmModel? = LocalLlmModel.entries.firstOrNull { llmModelFile(it) != null }
+        fun anyLlmReady(): LocalLlmModel? = llmCoordinator.anyReady()
 
         private fun resolveWhisperState(model: LocalWhisperModel): LocalModelState =
             whisperModelDir(model)?.let { LocalModelState.Ready(it.absolutePath) }
-                ?: LocalModelState.Absent
-
-        private fun resolveLlmState(model: LocalLlmModel): LocalModelState =
-            llmModelFile(model)
-                ?.let { LocalModelState.Ready(it.absolutePath) }
                 ?: LocalModelState.Absent
 
         suspend fun downloadWhisper(model: LocalWhisperModel) {
@@ -113,28 +104,7 @@ class LocalModelManager
             }
         }
 
-        suspend fun downloadLlm(model: LocalLlmModel) {
-            if (_llmStates.value[model] is LocalModelState.Acquiring) return
-            withContext(Dispatchers.IO) {
-                val destFile = File(modelsDir, model.fileName)
-                try {
-                    updateLlmState(model, LocalModelState.Acquiring(0))
-                    ModelDownloader.downloadFile(
-                        okHttpClient = okHttpClient,
-                        url = model.downloadUrl,
-                        dest = destFile,
-                        expectedSha256 = model.sha256,
-                    ) { progress -> updateLlmState(model, LocalModelState.Acquiring(progress)) }
-                    updateLlmState(model, resolveLlmState(model))
-                } catch (e: Exception) {
-                    // The in-progress .part file is deliberately left alone here — downloadFile
-                    // already discarded it for unrecoverable failures (bad checksum, HTTP 4xx,
-                    // out of space) and otherwise preserved it so the next attempt (this button,
-                    // or an automatic retry) resumes instead of starting over.
-                    updateLlmState(model, LocalModelState.Error(e.message ?: "Download failed"))
-                }
-            }
-        }
+        suspend fun downloadLlm(model: LocalLlmModel) = llmCoordinator.download(model)
 
         fun deleteWhisper(model: LocalWhisperModel) {
             File(modelsDir, model.dirName).deleteRecursively()
@@ -142,12 +112,7 @@ class LocalModelManager
             updateWhisperState(model, LocalModelState.Absent)
         }
 
-        fun deleteLlm(model: LocalLlmModel) {
-            val destFile = File(modelsDir, model.fileName)
-            destFile.delete()
-            ModelDownloader.deletePartialFile(destFile)
-            updateLlmState(model, LocalModelState.Absent)
-        }
+        fun deleteLlm(model: LocalLlmModel) = llmCoordinator.delete(model)
 
         fun selectWhisperModel(model: LocalWhisperModel) {
             scope.launch { preferencesDataStore.setLocalWhisperModel(model) }
@@ -158,13 +123,6 @@ class LocalModelManager
             state: LocalModelState,
         ) {
             _whisperStates.value = _whisperStates.value + (model to state)
-        }
-
-        private fun updateLlmState(
-            model: LocalLlmModel,
-            state: LocalModelState,
-        ) {
-            _llmStates.value = _llmStates.value + (model to state)
         }
 
         private fun extractTarBz2(
