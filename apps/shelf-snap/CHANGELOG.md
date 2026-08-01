@@ -6,11 +6,14 @@
 
 ### Improvements
 
-* on-device model downloads (Gemma) now resume from where they left off instead of restarting from byte 0 after a dropped or stalled connection, and retry automatically with backoff — previously a stalled (not failed) connection could hang indefinitely with no retry ever triggering, and any interruption meant starting the multi-gigabyte download over from scratch
-* model downloads now check available storage before starting, and old abandoned partial downloads are cleaned up automatically instead of silently taking up space with no way to notice them
-* a failed model download now shows a Discard action alongside Retry, so a partial file you don't want to resume can be removed immediately instead of waiting for it to age out
+**On-device models** — downloads are far more resilient:
+* resumes after a dropped or stalled connection, instead of restarting from scratch
+* retries automatically instead of failing on the first hiccup
+* checks free storage before starting and cleans up abandoned partial files
+* a failed download gets a Discard action next to Retry
+* keeps downloading through screen-off or backgrounding, with a progress notification
+
 * Gemma model download/state-tracking logic moved into a shared coordinator used by Scrybe and PriceDrop too, replacing three near-identical copies (no visual change)
-* Gemma downloads now run as a foreground worker with a progress notification, so turning the screen off or backgrounding the app no longer stalls or kills a multi-gigabyte download in progress
 
 ### Fixes
 

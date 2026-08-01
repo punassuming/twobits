@@ -91,9 +91,17 @@ object ModelDownloader {
 
         client.newCall(requestBuilder.build()).execute().use { response ->
             if (response.code == 416) {
-                // "Range Not Satisfiable" — the .part file is already as large as (or larger
-                // than) the server's current copy, e.g. a resume against a since-changed remote
-                // file. Discard it; the next attempt starts fresh from byte 0.
+                // "Range Not Satisfiable" usually means the .part file is stale against a
+                // since-changed remote copy — but it's also exactly what a legitimately
+                // *complete* transfer produces if the app died after the last byte arrived but
+                // before verifyAndInstall ran (e.g. killed mid-hash on a multi-gigabyte file):
+                // the next Range request starts past the server's own length. Distinguish the
+                // two via the response's authoritative total (RFC 7233 "bytes */total"); only
+                // discard when the part file doesn't actually match it.
+                val remoteTotal = response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
+                if (remoteTotal != null && remoteTotal == part.length()) {
+                    return
+                }
                 part.delete()
                 throw IOException("Range not satisfiable (HTTP 416); discarding partial file")
             }
