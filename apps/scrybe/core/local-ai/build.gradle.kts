@@ -28,7 +28,10 @@ kotlin {
 
 dependencies {
     implementation("com.twobits.core:local-models")
-    implementation("com.twobits.core:local-ai")
+    // api, not implementation: LocalModelManager publicly implements LlmDownloadSource, so
+    // consumers of this module (e.g. feature:settings, which references LocalModelManager
+    // directly) need that supertype on their own compile classpath too.
+    api("com.twobits.core:local-ai")
     implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:transcription"))

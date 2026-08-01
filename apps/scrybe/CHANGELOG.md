@@ -11,6 +11,7 @@
 * a failed model download now shows a Discard action alongside Retry, so a partial file you don't want to resume can be removed immediately instead of waiting for it to age out
 * Gemma model download/state-tracking logic moved into a shared coordinator used by Shelf Snap and PriceDrop too, replacing three near-identical copies (no visual change)
 * Gemma downloads now run as a foreground worker with a progress notification, so turning the screen off or backgrounding the app no longer stalls or kills a multi-gigabyte download in progress
+* fixed a build failure — the on-device download module's dependency on its shared library needed to be `api`, not `implementation`, since `LocalModelManager` publicly implements a type from it that Settings' module also references (no visual change)
 
 ### Fixes
 
