@@ -16,6 +16,7 @@
 
 * an interrupted model download could previously be misreported as fully installed and ready to use, since only file existence was checked, not completeness
 * local transcription now logs to the AI Call Log like every other provider — previously an on-device transcription made no network call, so nothing was ever recorded and a run looked identical to one that never fired, regardless of which local model was selected
+* local transcription now actually produces text instead of silently completing with nothing — the decoded audio was always handed to the on-device model as if it were 16kHz regardless of the recording's real sample rate (8-48kHz, user-configurable), so the model heard badly distorted audio and returned an empty result with no error
 
 ## 1.46.1 (2026-07-29)
 

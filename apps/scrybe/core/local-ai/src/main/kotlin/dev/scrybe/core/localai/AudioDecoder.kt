@@ -7,11 +7,21 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+internal data class DecodedAudio(
+    val samples: FloatArray,
+    val sampleRateHz: Int,
+)
+
 internal object AudioDecoder {
-    private const val TARGET_SAMPLE_RATE = 16000
     private const val TIMEOUT_US = 10_000L
 
-    fun decodeToFloatArray(audioFile: File): FloatArray {
+    /**
+     * Returns PCM samples at the source file's own sample rate — Scrybe's recorder is
+     * user-configurable from 8kHz to 48kHz (see `AppPreferencesDataStore.sampleRateHz`), so
+     * callers must resample or pass [DecodedAudio.sampleRateHz] through to whatever expects a
+     * fixed rate (e.g. [WhisperEngine], which needs 16kHz) rather than assuming 16kHz here.
+     */
+    fun decode(audioFile: File): DecodedAudio {
         val extractor = MediaExtractor()
         extractor.setDataSource(audioFile.absolutePath)
 
@@ -23,6 +33,7 @@ internal object AudioDecoder {
         extractor.selectTrack(trackIndex)
         val format = extractor.getTrackFormat(trackIndex)
         val mime = format.getString(MediaFormat.KEY_MIME)!!
+        val sourceSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
 
         val codec = MediaCodec.createDecoderByType(mime)
         codec.configure(format, null, null, 0)
@@ -68,7 +79,7 @@ internal object AudioDecoder {
         codec.release()
         extractor.release()
 
-        return convertToFloat(pcmBytes.toByteArray())
+        return DecodedAudio(convertToFloat(pcmBytes.toByteArray()), sourceSampleRate)
     }
 
     private fun convertToFloat(pcm16: ByteArray): FloatArray {

@@ -60,9 +60,9 @@ class WhisperTranscriptionProvider
                             return Result.failure(IllegalStateException("Whisper model not downloaded"))
                         }
 
-                val samples = AudioDecoder.decodeToFloatArray(audioFile)
+                val decoded = AudioDecoder.decode(audioFile)
                 WhisperEngine(modelDir, model.filePrefix).use { engine ->
-                    val text = engine.transcribe(samples)
+                    val text = engine.transcribe(decoded.samples, decoded.sampleRateHz)
                     record(success = true, snippet = "${text.length} chars")
                     TranscriptResult(
                         text = text,
