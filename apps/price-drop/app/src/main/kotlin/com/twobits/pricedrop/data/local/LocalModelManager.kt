@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.localai.LlmDownloadSource
 import com.twobits.localai.LlmModelDownloadCoordinator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -38,7 +39,7 @@ class LocalModelManager
         @ApplicationContext context: Context,
         okHttpClient: OkHttpClient,
         private val dataStore: DataStore<Preferences>,
-    ) {
+    ) : LlmDownloadSource {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val coordinator =
             LlmModelDownloadCoordinator(
@@ -50,7 +51,7 @@ class LocalModelManager
             val SELECTED_LLM_MODEL = stringPreferencesKey("local_llm_model")
         }
 
-        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = coordinator.states
+        override val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = coordinator.states
 
         private val _selectedLlm = MutableStateFlow<LocalLlmModel?>(null)
         val selectedLlm: StateFlow<LocalLlmModel?> = _selectedLlm.asStateFlow()
@@ -67,7 +68,7 @@ class LocalModelManager
 
         fun anyLlmReady(): LocalLlmModel? = coordinator.anyReady()
 
-        suspend fun downloadLlm(model: LocalLlmModel) = coordinator.download(model)
+        override suspend fun downloadLlm(model: LocalLlmModel) = coordinator.download(model)
 
         fun deleteLlm(model: LocalLlmModel) {
             coordinator.delete(model)

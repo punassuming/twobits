@@ -3,6 +3,7 @@ package dev.scrybe.core.localai
 import android.content.Context
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.localai.LlmDownloadSource
 import com.twobits.localai.LlmModelDownloadCoordinator
 import com.twobits.localai.ModelDownloader
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -36,7 +37,7 @@ class LocalModelManager
         @ApplicationContext private val context: Context,
         private val okHttpClient: OkHttpClient,
         private val preferencesDataStore: AppPreferencesDataStore,
-    ) {
+    ) : LlmDownloadSource {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val modelsDir: File = File(context.getExternalFilesDir(null), "models").also { it.mkdirs() }
         private val llmCoordinator = LlmModelDownloadCoordinator(modelsDir, okHttpClient)
@@ -50,7 +51,7 @@ class LocalModelManager
         private val _selectedWhisperModel = MutableStateFlow(LocalWhisperModel.default)
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = _selectedWhisperModel.asStateFlow()
 
-        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = llmCoordinator.states
+        override val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = llmCoordinator.states
 
         init {
             refreshWhisperStates()
@@ -104,7 +105,7 @@ class LocalModelManager
             }
         }
 
-        suspend fun downloadLlm(model: LocalLlmModel) = llmCoordinator.download(model)
+        override suspend fun downloadLlm(model: LocalLlmModel) = llmCoordinator.download(model)
 
         fun deleteWhisper(model: LocalWhisperModel) {
             File(modelsDir, model.dirName).deleteRecursively()
