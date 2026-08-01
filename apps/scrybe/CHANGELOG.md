@@ -10,6 +10,7 @@
 * model downloads now check available storage before starting, and old abandoned partial downloads are cleaned up automatically instead of silently taking up space with no way to notice them
 * a failed model download now shows a Discard action alongside Retry, so a partial file you don't want to resume can be removed immediately instead of waiting for it to age out
 * Gemma model download/state-tracking logic moved into a shared coordinator used by Shelf Snap and PriceDrop too, replacing three near-identical copies (no visual change)
+* Gemma downloads now run as a foreground worker with a progress notification, so turning the screen off or backgrounding the app no longer stalls or kills a multi-gigabyte download in progress
 
 ### Fixes
 

@@ -25,6 +25,7 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.localai.LocalModelManager
+import dev.scrybe.core.localai.ModelDownloadWorker
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
@@ -526,7 +527,7 @@ class SettingsViewModel
         }
 
         fun downloadLlmModel(model: LocalLlmModel) {
-            viewModelScope.launch { localModelManager.downloadLlm(model) }
+            ModelDownloadWorker.enqueue(context, model)
         }
 
         fun deleteWhisperModel(model: LocalWhisperModel) {
