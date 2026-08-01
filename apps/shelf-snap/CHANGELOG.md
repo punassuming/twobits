@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.25.2 (2026-08-01)
+
+### Features
+
+### Improvements
+
 * market research search calls now have a hard 20s time limit (30s for page reads) — previously a slow-but-trickling response could run well past the intended timeout, since that only capped the gap between reads, not the call as a whole; one such call was observed stretching an entire research run past 100 seconds
 * a marketplace's page-read candidates are now verified concurrently instead of one at a time — previously a slow read (now more likely on eBay, which reads via full browser rendering) serialized every later candidate behind it
 * "Sources" now shows the same clean listing title as the matching "Comparable listings" entry, instead of the raw, sometimes-mangled title the search engine indexed for that page
@@ -14,6 +22,7 @@
 
 * the market research progress toast now uses this app's actual teal/blue palette in both light and dark mode — it was silently falling back to Material3's generic default colors since the theme never defined them
 * eBay page reads were silently failing 100% of the time — Jina Reader's default fetch got a short bot-check page instead of the real listing (consistently under the confirmation threshold), so eBay evidence never made it into comps; page reads for eBay now force full browser rendering, which reads eBay's real listing content
+
 
 ## 1.25.1 (2026-07-30)
 
@@ -29,6 +38,7 @@
 ### Fixes
 
 * Mercari matches were silently including listings from Mercari's Japanese site (jp.mercari.com / mercari.jp) — URL-to-platform matching now requires the actual mercari.com domain
+
 
 
 ## 1.25.0 (2026-07-29)
@@ -77,6 +87,7 @@
 
 
 
+
 ## 1.24.2 (2026-07-28)
 
 ### Features
@@ -90,6 +101,7 @@
 * SearchAPI and/or Serper now search every marketplace directly
 * Jina now verifies listings independently of its own search toggle
 * Brave only searches as a fallback, skipping dead or blocked reads
+
 
 
 
@@ -127,6 +139,7 @@
 
 
 
+
 ## 1.24.0 (2026-07-23)
 
 ### Features
@@ -137,6 +150,7 @@
 * the outer margin tightened from 16dp to 12dp across every screen for more usable width
 
 ### Fixes
+
 
 
 
@@ -162,6 +176,7 @@
 
 
 
+
 ## 1.23.2 (2026-07-22)
 
 ### Features
@@ -172,6 +187,7 @@
 
 **Inventory list** — items now show again below the filter chips:
 * the chip row was expanding to fill the screen and pushing the list off-screen
+
 
 
 
@@ -193,6 +209,7 @@
 
 **Inventory filters** — selecting a filter with no matches no longer hides everything:
 * filter chips and search stay visible; a "Show all items" action appears instead
+
 
 
 
@@ -260,6 +277,7 @@
 
 
 
+
 ## 1.22.1 (2026-07-15)
 
 ### Features
@@ -273,6 +291,7 @@
 * provider failures appear beside the exact query that failed
 * unverified AI listings no longer appear as comparable evidence
 * empty evidence no longer displays a misleading zero-price card
+
 
 
 
@@ -305,6 +324,7 @@
 
 
 
+
 ## 1.21.4 (2026-07-13)
 
 ### Features
@@ -316,6 +336,7 @@
 **Screen transitions** — fixed a white flash on the edges during navigation:
 * backgrounds now stay themed throughout the slide animation
 * most noticeable previously in dark mode
+
 
 
 
@@ -356,6 +377,7 @@
 
 
 
+
 ## 1.21.2 (2026-07-12)
 
 ### Features
@@ -369,6 +391,7 @@
 * credential rows show a compact colored dot instead of a text tag
 * full descriptions, setup steps, and signup links moved to an info sheet (tap ⓘ)
 * a search provider toggled on with no saved key now shows an inline warning
+
 
 
 
@@ -425,6 +448,7 @@
 
 
 
+
 ## 1.21.0 (2026-07-03)
 
 ### Features
@@ -445,6 +469,7 @@
 **API keys** — (OpenAI, Jina, Brave, SearchAPI.io) now correctly show as "Connected" immediately after a cold app restart — the "Connected" badge was tied to this session's live validation result, which always starts unset, instead of to whether a key is actually saved; a re-test can still reset the validation feedback, but the saved key now always shows as configured
 **Internal: Market Research preflight** — now refreshes the subscription status before rejecting a request — otherwise a cold-started Pro user could hit the "needs an active Pro subscription" error until they'd separately opened Settings once
 **Internal: item title field** — editing an item's category, brand, or any other field no longer silently writes the title-field's fallback text (brand+model or category) into the persisted title — the fallback stays a display-only fallback until the title field is actually edited
+
 
 
 
@@ -494,6 +519,7 @@
 
 
 
+
 ## 1.19.0 (2026-06-28)
 
 ### Features
@@ -516,6 +542,7 @@
 ### Fixes
 
 * List tab: a sold listing can now be marked unsold (reverted to active) — previously a listing marked sold had no way to undo it
+
 
 
 
@@ -581,6 +608,7 @@
 
 
 
+
 ## 1.17.0 (2026-06-25)
 
 ### Features
@@ -603,6 +631,7 @@
 * Search queries for items without a brand or model are now shorter and more targeted, producing real sold-listing results from eBay and Mercari instead of generic article pages
 
 ### Fixes
+
 
 
 
@@ -683,6 +712,7 @@
 
 
 
+
 ## 1.15.0 (2026-06-23)
 
 ### Features
@@ -731,6 +761,7 @@
 
 
 
+
 ## 1.14.0 (2026-06-22)
 
 ### Features
@@ -747,6 +778,7 @@
 ### Fixes
 
 * Item Detail: "GPT-4o analysis" label now shows the actual model name used (tracked in UI state)
+
 
 
 
@@ -812,6 +844,7 @@
 
 
 
+
 ## 1.12.0 (2026-06-21)
 
 ### Features
@@ -846,6 +879,7 @@
 
 
 
+
 ## 1.11.0 (2026-06-19)
 
 ### Features
@@ -855,6 +889,7 @@
 * migrated to shared `gradle/libs.versions.toml` version catalog across all three apps; upgraded Compose BOM to 2024.12.01, coreKtx to 1.15.0, lifecycleRuntimeKtx to 2.8.7, and navigationCompose to 2.8.5
 
 ### Fixes
+
 
 
 
@@ -933,6 +968,7 @@
 
 
 
+
 ## 1.9.0 (2026-06-17)
 
 ### Features
@@ -952,6 +988,7 @@
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
 * `ProScreen` top bar extracted into private composable — satisfies ktlint function-body-expression rules without changing visible behaviour
+
 
 
 
@@ -1036,6 +1073,7 @@
 
 
 
+
 ## 1.7.0 (2026-06-11)
 
 ### Features
@@ -1049,6 +1087,7 @@
 * LLM synthesis prompt now instructs the model to prefer snippets with a price and "sold", and to lower confidence to ≤ 40 when no actual marketplace listings are present in the evidence
 
 ### Fixes
+
 
 
 
@@ -1108,6 +1147,7 @@
 
 
 
+
 ## 1.5.0 (2026-06-11)
 
 ### Features
@@ -1140,6 +1180,7 @@
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
 * missing FilterChip import in MarketTab restored after wildcard-import replacement
+
 
 
 
@@ -1219,6 +1260,7 @@
 
 
 
+
 ## 1.3.1 (2026-06-06)
 
 ### Improvements
@@ -1247,11 +1289,13 @@
 
 
 
+
 ## 1.3.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -1326,6 +1370,7 @@
 
 
 
+
 ## 1.1.3 (2026-06-05)
 
 ### Improvements
@@ -1354,11 +1399,13 @@
 
 
 
+
 ## 1.1.2 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
+
 
 
 
@@ -1411,12 +1458,14 @@
 
 
 
+
 ## 1.1.0 (2026-06-04)
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
+
 
 
 
@@ -1468,6 +1517,7 @@
 
 
 
+
 ## 1.0.1 (2026-06-03)
 
 ### Features
@@ -1496,9 +1546,11 @@
 
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 
