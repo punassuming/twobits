@@ -7,7 +7,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
-import com.twobits.localai.ModelDownloader
+import com.twobits.localai.LlmDownloadSource
+import com.twobits.localai.LlmModelDownloadCoordinator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,10 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,34 +31,36 @@ import javax.inject.Singleton
  * Vision previously had a separate, never-wired Moondream/GGUF import path here; it's retired
  * (no GGUF/llama.cpp inference engine exists anywhere in this monorepo, so it had zero working
  * consumers) in favor of reusing this same downloaded Gemma model for vision too.
+ *
+ * The actual download/state-tracking logic lives in [LlmModelDownloadCoordinator], shared with
+ * Scrybe and PriceDrop's equivalents — this class only owns what's genuinely app-specific: which
+ * model is *selected*.
  */
 @Singleton
 class LocalModelManager
     @Inject
     constructor(
-        @ApplicationContext private val context: Context,
+        @ApplicationContext context: Context,
         private val dataStore: DataStore<Preferences>,
-    ) {
+    ) : LlmDownloadSource {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        private val modelsDir: File
-            get() = File(context.getExternalFilesDir(null), "local_models").also { it.mkdirs() }
         private val okHttpClient = OkHttpClient.Builder().callTimeout(0, TimeUnit.MILLISECONDS).build()
+        private val coordinator =
+            LlmModelDownloadCoordinator(
+                modelsDir = File(context.getExternalFilesDir(null), "local_models").also { it.mkdirs() },
+                okHttpClient = okHttpClient,
+            )
 
         private object Keys {
             val SELECTED_LLM_MODEL = stringPreferencesKey("local_llm_model")
         }
 
-        private val _llmStates =
-            MutableStateFlow<Map<LocalLlmModel, LocalModelState>>(
-                LocalLlmModel.entries.associateWith { resolveLlmState(it) },
-            )
-        val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = _llmStates.asStateFlow()
+        override val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = coordinator.states
 
         private val _selectedLlm = MutableStateFlow<LocalLlmModel?>(null)
         val selectedLlm: StateFlow<LocalLlmModel?> = _selectedLlm.asStateFlow()
 
         init {
-            refreshStates()
             scope.launch {
                 dataStore.data.map { it[Keys.SELECTED_LLM_MODEL] }.collect { name ->
                     _selectedLlm.value = name?.let { LocalLlmModel.fromName(it) }
@@ -67,58 +68,20 @@ class LocalModelManager
             }
         }
 
-        private fun refreshStates() {
-            _llmStates.value = LocalLlmModel.entries.associateWith { resolveLlmState(it) }
-        }
+        fun llmFile(model: LocalLlmModel): File? = coordinator.file(model)
 
-        fun llmFile(model: LocalLlmModel): File? {
-            val f = File(modelsDir, model.fileName)
-            return if (f.exists() && f.length() > 0) f else null
-        }
+        fun anyLlmReady(): LocalLlmModel? = coordinator.anyReady()
 
-        fun anyLlmReady(): LocalLlmModel? = LocalLlmModel.entries.firstOrNull { llmFile(it) != null }
-
-        private fun resolveLlmState(model: LocalLlmModel): LocalModelState =
-            llmFile(model)?.let { LocalModelState.Ready(it.absolutePath) } ?: LocalModelState.Absent
-
-        suspend fun downloadLlm(model: LocalLlmModel) {
-            if (_llmStates.value[model] is LocalModelState.Acquiring) return
-            withContext(Dispatchers.IO) {
-                val destFile = File(modelsDir, model.fileName)
-                try {
-                    updateLlmState(model, LocalModelState.Acquiring(0))
-                    ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, destFile) { progress ->
-                        updateLlmState(model, LocalModelState.Acquiring(progress))
-                    }
-                    val expectedSha256 = model.sha256
-                    if (expectedSha256 != null && !ModelDownloader.matchesSha256(destFile, expectedSha256)) {
-                        destFile.delete()
-                        throw IOException("Downloaded file didn't match the expected checksum")
-                    }
-                    updateLlmState(model, resolveLlmState(model))
-                } catch (e: Exception) {
-                    destFile.delete()
-                    updateLlmState(model, LocalModelState.Error(e.message ?: "Download failed"))
-                }
-            }
-        }
+        override suspend fun downloadLlm(model: LocalLlmModel) = coordinator.download(model)
 
         fun deleteLlm(model: LocalLlmModel) {
-            File(modelsDir, model.fileName).delete()
+            coordinator.delete(model)
             if (_selectedLlm.value == model) {
                 scope.launch { dataStore.edit { it.remove(Keys.SELECTED_LLM_MODEL) } }
             }
-            updateLlmState(model, LocalModelState.Absent)
         }
 
         fun selectLlm(model: LocalLlmModel) {
             scope.launch { dataStore.edit { it[Keys.SELECTED_LLM_MODEL] = model.name } }
-        }
-
-        private fun updateLlmState(
-            model: LocalLlmModel,
-            state: LocalModelState,
-        ) {
-            _llmStates.value = _llmStates.value + (model to state)
         }
     }

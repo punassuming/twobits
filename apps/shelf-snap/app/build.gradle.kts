@@ -169,6 +169,9 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
+    // WorkManager
+    implementation(libs.work.runtime.ktx)
+
     // Shared core modules
     implementation("com.twobits.core:billing")
     implementation("com.twobits.core:common")

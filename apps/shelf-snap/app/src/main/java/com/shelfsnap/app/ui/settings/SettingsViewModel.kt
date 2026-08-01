@@ -14,6 +14,7 @@ import com.shelfsnap.app.data.remote.search.SearchApiService
 import com.shelfsnap.app.data.remote.search.SerperSearchService
 import com.shelfsnap.app.data.repository.ItemRepository
 import com.shelfsnap.app.util.ApiKeyValidator
+import com.shelfsnap.app.work.ModelDownloadWorker
 import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
@@ -655,7 +656,7 @@ class SettingsViewModel
         }
 
         fun downloadLlmModel(model: LocalLlmModel) {
-            viewModelScope.launch { localModelManager.downloadLlm(model) }
+            ModelDownloadWorker.enqueue(context, model)
         }
 
         fun deleteLlmModel(model: LocalLlmModel) {

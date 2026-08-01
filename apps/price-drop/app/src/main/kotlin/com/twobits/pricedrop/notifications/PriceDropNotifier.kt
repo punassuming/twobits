@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import com.twobits.pricedrop.MainActivity
 import com.twobits.pricedrop.R
 import com.twobits.pricedrop.data.model.Drop
+import com.twobits.pricedrop.work.ModelDownloadWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.text.NumberFormat
 import java.util.Locale
@@ -50,6 +51,15 @@ class PriceDropNotifier
             manager.createNotificationChannel(
                 NotificationChannel(CHANNEL_ERRORS, "Provider issues", NotificationManager.IMPORTANCE_LOW).apply {
                     description = "Background price checks that could not complete."
+                },
+            )
+            manager.createNotificationChannel(
+                NotificationChannel(
+                    ModelDownloadWorker.CHANNEL_ID,
+                    "Model downloads",
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = "Progress for on-device AI model downloads."
                 },
             )
         }

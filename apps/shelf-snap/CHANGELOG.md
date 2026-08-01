@@ -6,7 +6,18 @@
 
 ### Improvements
 
+**On-device models** — downloads are far more resilient:
+* resumes after a dropped or stalled connection, instead of restarting from scratch
+* retries automatically instead of failing on the first hiccup
+* checks free storage before starting and cleans up abandoned partial files
+* a failed download gets a Discard action next to Retry
+* keeps downloading through screen-off or backgrounding, with a progress notification
+
+* Gemma model download/state-tracking logic moved into a shared coordinator used by Scrybe and PriceDrop too, replacing three near-identical copies (no visual change)
+
 ### Fixes
+
+* an interrupted model download could previously be misreported as fully installed and ready to use, since only file existence was checked, not completeness
 
 ## 1.25.2 (2026-08-01)
 
@@ -22,7 +33,6 @@
 
 * the market research progress toast now uses this app's actual teal/blue palette in both light and dark mode — it was silently falling back to Material3's generic default colors since the theme never defined them
 * eBay page reads were silently failing 100% of the time — Jina Reader's default fetch got a short bot-check page instead of the real listing (consistently under the confirmation threshold), so eBay evidence never made it into comps; page reads for eBay now force full browser rendering, which reads eBay's real listing content
-
 
 ## 1.25.1 (2026-07-30)
 

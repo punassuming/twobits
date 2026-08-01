@@ -23,6 +23,7 @@ import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import com.twobits.pricedrop.data.settings.SettingsPrefs
+import com.twobits.pricedrop.work.ModelDownloadWorker
 import com.twobits.pricedrop.work.PriceCheckScheduler
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
@@ -97,7 +98,7 @@ class SettingsViewModel
         val selectedLlm: StateFlow<LocalLlmModel?> = localModelManager.selectedLlm
 
         fun downloadLlmModel(model: LocalLlmModel) {
-            viewModelScope.launch { localModelManager.downloadLlm(model) }
+            ModelDownloadWorker.enqueue(context, model)
         }
 
         fun deleteLlmModel(model: LocalLlmModel) {
