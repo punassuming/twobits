@@ -6,7 +6,14 @@
 
 ### Improvements
 
+* market research search calls now have a hard 20s time limit (30s for page reads) — previously a slow-but-trickling response could run well past the intended timeout, since that only capped the gap between reads, not the call as a whole; one such call was observed stretching an entire research run past 100 seconds
+* a marketplace's page-read candidates are now verified concurrently instead of one at a time — previously a slow read (now more likely on eBay, which reads via full browser rendering) serialized every later candidate behind it
+* "Sources" now shows the same clean listing title as the matching "Comparable listings" entry, instead of the raw, sometimes-mangled title the search engine indexed for that page
+
 ### Fixes
+
+* the market research progress toast now uses this app's actual teal/blue palette in both light and dark mode — it was silently falling back to Material3's generic default colors since the theme never defined them
+* eBay page reads were silently failing 100% of the time — Jina Reader's default fetch got a short bot-check page instead of the real listing (consistently under the confirmation threshold), so eBay evidence never made it into comps; page reads for eBay now force full browser rendering, which reads eBay's real listing content
 
 ## 1.25.1 (2026-07-30)
 

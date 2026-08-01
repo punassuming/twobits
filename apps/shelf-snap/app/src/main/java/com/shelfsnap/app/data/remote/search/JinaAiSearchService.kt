@@ -27,6 +27,12 @@ class JinaAiSearchService
                 .Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(20, TimeUnit.SECONDS)
+                // readTimeout only caps the gap *between* reads, not the call as a whole — a
+                // response that keeps trickling bytes just under that gap can run well past 20s.
+                // Observed: a single broadening query here stretched the whole search phase to
+                // 72s. callTimeout is a hard ceiling on the entire call regardless of how data
+                // arrives, so one slow/stuck query can no longer dominate the phase this way.
+                .callTimeout(20, TimeUnit.SECONDS)
                 .build()
 
         override suspend fun search(
