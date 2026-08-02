@@ -3,6 +3,7 @@ package dev.scrybe.core.localai
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -39,7 +40,11 @@ internal object AudioDecoder {
         codec.configure(format, null, null, 0)
         codec.start()
 
-        val pcmBytes = mutableListOf<Byte>()
+        // A plain byte[]-backed buffer, not a List<Byte> — the latter stores one boxed
+        // reference per byte (8+ bytes of overhead per byte of actual audio on ART), which
+        // OOMs on anything but the shortest recordings: a ~19MB raw PCM buffer (a few minutes
+        // of audio) needs 150MB+ as a List<Byte>.
+        val pcmBytes = ByteArrayOutputStream()
         val bufferInfo = MediaCodec.BufferInfo()
         var inputDone = false
         var outputDone = false
@@ -66,7 +71,7 @@ internal object AudioDecoder {
                 if (outputBuffer != null && bufferInfo.size > 0) {
                     val chunk = ByteArray(bufferInfo.size)
                     outputBuffer.get(chunk)
-                    pcmBytes.addAll(chunk.toList())
+                    pcmBytes.write(chunk)
                 }
                 codec.releaseOutputBuffer(outputIdx, false)
                 if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {

@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* local transcription of anything longer than a minute or two could crash with an out-of-memory error — the decoded recording was buffered into a `List<Byte>`, which stores one boxed reference per byte (8+ times the memory of the raw audio) instead of a packed array
+
 ## 1.46.2 (2026-08-02)
 
 ### Features
