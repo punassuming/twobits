@@ -6,6 +6,7 @@ import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.transcription.CrashLogStore
 import dev.scrybe.core.transforms.DefaultProfiles
 import dev.scrybe.service.recording.WaveformBackfiller
 import kotlinx.coroutines.CoroutineScope
@@ -23,10 +24,13 @@ class ScrybeApplication : Application() {
 
     @Inject lateinit var waveformBackfiller: WaveformBackfiller
 
+    @Inject lateinit var crashLogStore: CrashLogStore
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
+        crashLogStore.install()
         applicationScope.launch {
             waveformBackfiller.backfillMissingWaveforms()
         }
