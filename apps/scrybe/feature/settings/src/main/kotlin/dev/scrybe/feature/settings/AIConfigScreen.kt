@@ -80,6 +80,7 @@ private fun LocalModelState.toStatus(): LocalModelStatus =
 fun AIConfigScreen(
     onBack: () -> Unit,
     onNavigateToAiCallLog: () -> Unit = {},
+    onNavigateToCrashLog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -310,6 +311,12 @@ fun AIConfigScreen(
                             onClick = onNavigateToAiCallLog,
                         )
                     }
+                    HorizontalDivider()
+                    AiNavigationRow(
+                        title = "View crash log",
+                        subtitle = "Details of any app crashes, captured automatically",
+                        onClick = onNavigateToCrashLog,
+                    )
                 }
             }
         }
