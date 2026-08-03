@@ -6,7 +6,14 @@
 
 ### Improvements
 
+**Settings** — new crash log near the app version/privacy info:
+* every app crash is now captured automatically, in full — not just a one-line error banner
+* view or share the full stack trace right from Settings, no computer or adb needed
+
 ### Fixes
+
+* local transcription of anything longer than a minute or two could crash with an out-of-memory error — the decoded recording was buffered into a `List<Byte>`, which stores one boxed reference per byte (8+ times the memory of the raw audio) instead of a packed array
+* starting an on-device Gemma model download always crashed the app — WorkManager's shared foreground-download service needed an explicit manifest declaration of which foreground service type it's allowed to use, which was missing
 
 ## 1.46.3 (2026-08-02)
 
@@ -21,8 +28,6 @@
 ### Fixes
 
 * local transcription of anything longer than a minute or two could crash with an out-of-memory error — the decoded recording was buffered into a `List<Byte>`, which stores one boxed reference per byte (8+ times the memory of the raw audio) instead of a packed array
-* starting an on-device Gemma model download always crashed the app — WorkManager's shared foreground-download service needed an explicit manifest declaration of which foreground service type it's allowed to use, which was missing
-
 
 ## 1.46.2 (2026-08-02)
 

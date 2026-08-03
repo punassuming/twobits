@@ -59,6 +59,7 @@ fun SettingsScreen(
     onNavigateToPro: () -> Unit,
     onNavigateToAiConfig: () -> Unit,
     onNavigateToWhatsNew: () -> Unit,
+    onNavigateToCrashLog: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -200,6 +201,7 @@ fun SettingsScreen(
                     versionLabel = "PriceDrop v${BuildConfig.VERSION_NAME}",
                     subtitle = "Local-first. Your data stays on this device.",
                     onWhatsNew = onNavigateToWhatsNew,
+                    onCrashLog = onNavigateToCrashLog,
                 )
             }
         }

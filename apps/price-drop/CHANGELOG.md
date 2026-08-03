@@ -6,6 +6,10 @@
 
 ### Improvements
 
+**Settings** — new crash log near the app version/privacy info:
+* every app crash is now captured automatically, in full — not just an error toast
+* view or share the full stack trace right from Settings, no computer or adb needed
+
 ### Fixes
 
 * starting an on-device Gemma model download always crashed the app — WorkManager's shared foreground-download service needed an explicit manifest declaration of which foreground service type it's allowed to use, which was missing

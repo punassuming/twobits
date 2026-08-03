@@ -25,6 +25,7 @@ import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
 import com.shelfsnap.app.ui.itemdetail.MarketResearchScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingViewModel
+import com.shelfsnap.app.ui.settings.CrashLogScreen
 import com.shelfsnap.app.ui.settings.ProScreen
 import com.shelfsnap.app.ui.settings.SettingsScreen
 import com.shelfsnap.app.ui.summary.SummaryScreen
@@ -186,6 +187,7 @@ fun AppNavigation(
                     onWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
                     onAiConfig = { navController.navigate(Screen.AiConfig.route) },
                     onNavigateToPro = { navController.navigate(Screen.Pro.route) },
+                    onNavigateToCrashLog = { navController.navigate(Screen.CrashLog.route) },
                 )
             }
 
@@ -199,6 +201,10 @@ fun AppNavigation(
                 com.shelfsnap.app.ui.settings.AIConfigScreen(
                     onBack = { navController.popBackStack() },
                 )
+            }
+
+            composable(Screen.CrashLog.route) {
+                CrashLogScreen(onBack = { navController.popBackStack() })
             }
         }
         if (whatsNewState.isVisible && !suppressWhatsNew) {
