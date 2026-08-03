@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -38,5 +40,15 @@
                 <action android:name="com.twobits.pricedrop.ACTION_COPY_COUPON" />
             </intent-filter>
         </receiver>
+
+        <!-- WorkManager routes every setForeground() call (regardless of Worker) through this
+             one shared service. Its own manifest declares no foregroundServiceType by default,
+             so any Worker requesting dataSync (see ModelDownloadWorker/runLlmDownload) crashes
+             with "foregroundServiceType ... is not a subset of ... 0x00000000" unless the app
+             overrides this declaration to actually include it. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
     </application>
 </manifest>
