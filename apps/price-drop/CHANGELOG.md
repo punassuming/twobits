@@ -12,7 +12,9 @@
 
 ### Fixes
 
-* starting an on-device Gemma model download always crashed the app — WorkManager's shared foreground-download service needed an explicit manifest declaration of which foreground service type it's allowed to use, which was missing
+**On-device models** — starting a Gemma download no longer crashes the app:
+* a required manifest declaration for the download's background service was missing
+* affected every attempt, from the very first tap
 
 ## 0.16.1 (2026-08-01)
 
