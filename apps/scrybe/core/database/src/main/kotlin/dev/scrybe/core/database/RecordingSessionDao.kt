@@ -21,6 +21,9 @@ interface RecordingSessionDao {
     @Query("SELECT * FROM recording_sessions WHERE isArchived = 1 ORDER BY createdAt DESC")
     fun getArchivedSessions(): Flow<List<RecordingSessionEntity>>
 
+    @Query("SELECT * FROM recording_sessions WHERE status = :status ORDER BY updatedAt DESC")
+    fun observeSessionsByStatus(status: String): Flow<List<RecordingSessionEntity>>
+
     @Query("SELECT * FROM recording_sessions WHERE id = :id")
     fun getSessionById(id: String): Flow<RecordingSessionEntity?>
 

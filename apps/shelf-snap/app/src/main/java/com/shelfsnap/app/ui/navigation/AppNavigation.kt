@@ -6,6 +6,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,6 +20,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.shelfsnap.app.ui.camera.CameraScreen
+import com.shelfsnap.app.ui.components.LocalAnalysisProgressToast
+import com.shelfsnap.app.ui.components.LocalAnalysisProgressViewModel
 import com.shelfsnap.app.ui.inventory.InventoryScreen
 import com.shelfsnap.app.ui.itemdetail.ItemDetailScreen
 import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
@@ -52,6 +55,8 @@ fun AppNavigation(
     val navController = rememberNavController()
     val whatsNewViewModel: WhatsNewViewModel = hiltViewModel()
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
+    val localAnalysisProgressViewModel: LocalAnalysisProgressViewModel = hiltViewModel()
+    val localAnalysisProgressState by localAnalysisProgressViewModel.uiState.collectAsState()
     val slideEnter = slideInHorizontally { it } + fadeIn()
     val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
     val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
@@ -216,5 +221,11 @@ fun AppNavigation(
                 onViewHistory = { navController.navigate(Screen.WhatsNew.route) },
             )
         }
+
+        LocalAnalysisProgressToast(
+            label = localAnalysisProgressState.label,
+            otherActiveCount = localAnalysisProgressState.otherActiveCount,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+        )
     } // Box
 }
