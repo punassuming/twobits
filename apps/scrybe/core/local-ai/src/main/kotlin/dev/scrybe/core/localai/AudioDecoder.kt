@@ -35,6 +35,7 @@ internal object AudioDecoder {
         val format = extractor.getTrackFormat(trackIndex)
         val mime = format.getString(MediaFormat.KEY_MIME)!!
         val sourceSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+        val channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
 
         val codec = MediaCodec.createDecoderByType(mime)
         codec.configure(format, null, null, 0)
@@ -84,16 +85,38 @@ internal object AudioDecoder {
         codec.release()
         extractor.release()
 
-        return DecodedAudio(convertToFloat(pcmBytes.toByteArray()), sourceSampleRate)
+        return DecodedAudio(convertToFloat(pcmBytes.toByteArray(), channelCount), sourceSampleRate)
     }
 
-    private fun convertToFloat(pcm16: ByteArray): FloatArray {
+    /**
+     * sherpa-onnx's `acceptWaveform(samples, sampleRate)` takes one flat mono `FloatArray` with
+     * no channel dimension at all (confirmed against its actual C++ source, not just the Kotlin
+     * API shape) — feeding it interleaved stereo PCM as if it were sequential mono samples
+     * scrambles every frame into noise-shaped input, which Whisper then "transcribes" as a
+     * short, wrong, non-crashing result (empty/mumbled output, not an error) rather than failing
+     * loudly. Stereo recordings are reachable here (a user's own Settings → Channels → Stereo
+     * choice, or any imported audio file), so this downmixes rather than assumes mono.
+     */
+    private fun convertToFloat(
+        pcm16: ByteArray,
+        channelCount: Int,
+    ): FloatArray {
         val shorts = ShortArray(pcm16.size / 2)
         ByteBuffer
             .wrap(pcm16)
             .order(ByteOrder.LITTLE_ENDIAN)
             .asShortBuffer()
             .get(shorts)
-        return FloatArray(shorts.size) { i -> shorts[i] / 32768f }
+        if (channelCount <= 1) {
+            return FloatArray(shorts.size) { i -> shorts[i] / 32768f }
+        }
+        val frameCount = shorts.size / channelCount
+        return FloatArray(frameCount) { frame ->
+            var sum = 0f
+            for (channel in 0 until channelCount) {
+                sum += shorts[frame * channelCount + channel] / 32768f
+            }
+            sum / channelCount
+        }
     }
 }
