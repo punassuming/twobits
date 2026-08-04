@@ -6,7 +6,20 @@
 
 ### Improvements
 
+**AI Configuration** — web search services split into their own section:
+* SearchAPI.io, Serper.dev, Jina AI, and Brave Search now live in a new "Services" card below AI Configuration, not mixed into Credentials and Market research
+* their keys and enable/disable toggles are both in one place now
+
+**Local analysis** — a status toast now shows progress:
+* slides up from the bottom while on-device Gemma analysis is running
+* shows whether it's refining a listing or analyzing a photo
+
 ### Fixes
+
+**Local analysis** — no longer freezes or crashes the app:
+* starting local listing/vision analysis could run the on-device model on the main thread, freezing the UI
+* a full-resolution photo decoded natively alongside a multi-GB model in memory could crash the app outright; photos are now downscaled first
+* any failure that does happen is now recorded to the crash log, previously swallowed silently
 
 ## 1.25.4 (2026-08-04)
 

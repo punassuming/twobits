@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
@@ -257,41 +258,10 @@ fun AIConfigScreen(
                         }
                         HorizontalDivider()
                         Text(
-                            "Web search providers",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            "SearchAPI.io and Serper.dev both return real marketplace listings and honor " +
-                                "site: filters (Serper is the cheaper of the two); Jina AI opens those pages " +
-                                "to read prices and is also a search fallback; Brave adds a second index. " +
-                                "Enter the keys under Credentials above.",
+                            "Web search providers, their keys, and which are enabled now live in " +
+                                "the Services section below.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        WebSearchToggleRow(
-                            title = "SearchAPI.io",
-                            enabled = uiState.searchapiSearchEnabled,
-                            hasKey = uiState.savedSearchapiApiKey.isNotBlank(),
-                            onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
-                        )
-                        WebSearchToggleRow(
-                            title = "Serper.dev",
-                            enabled = uiState.serperSearchEnabled,
-                            hasKey = uiState.savedSerperApiKey.isNotBlank(),
-                            onEnabledChange = viewModel::onSerperSearchEnabledChange,
-                        )
-                        WebSearchToggleRow(
-                            title = stringResource(R.string.jina_api_key_label),
-                            enabled = uiState.jinaSearchEnabled,
-                            hasKey = uiState.savedJinaApiKey.isNotBlank(),
-                            onEnabledChange = viewModel::onJinaSearchEnabledChange,
-                        )
-                        WebSearchToggleRow(
-                            title = stringResource(R.string.brave_api_key_label),
-                            enabled = uiState.braveSearchEnabled,
-                            hasKey = uiState.savedBraveApiKey.isNotBlank(),
-                            onEnabledChange = viewModel::onBraveSearchEnabledChange,
                         )
                     }
                 }
@@ -319,84 +289,33 @@ fun AIConfigScreen(
                     onCheckedChange = viewModel::onMultiPhotoAnalysisChange,
                 )
             }
+
+            ServicesSection(uiState = uiState, viewModel = viewModel)
         }
     }
 }
 
-/** All BYOK keys for Shelf Snap, grouped at the top like PriceDrop's credentials section. */
+/**
+ * Web-search services market research optionally uses — kept separate from AI Configuration's
+ * own provider cards above since these aren't AI providers themselves (no vision/listing/
+ * research model runs on them directly), just supporting infrastructure one AI feature can
+ * enable. Previously split across "Credentials" (the API keys) and "Market research" (the
+ * enable/disable toggles); both live here together now.
+ */
 @Composable
-private fun CredentialsSection(
+private fun ServicesSection(
     uiState: SettingsUiState,
     viewModel: SettingsViewModel,
-    hasPro: Boolean,
-    onUpgrade: () -> Unit,
 ) {
-    AiSectionCard(icon = Icons.Filled.VpnKey, title = "Credentials") {
-        if (hasPro) {
-            Text(
-                text = "Shelf Snap Pro active — managed keys are used automatically. The keys below are optional (BYOK).",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = "Upgrade to Shelf Snap Pro for managed keys — no setup needed.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                Button(onClick = onUpgrade) { Text("Upgrade") }
-            }
-        }
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            Icon(
-                Icons.Filled.VpnKey,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(11.dp),
-            )
-            Text(
-                text = "BYOK · YOUR KEYS",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        CollapsibleProviderRow(
-            icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
-            title = "OpenAI",
-            summary = "Required for vision, listing, and market research",
-            description =
-                "Required for every AI feature — vision item ID, listing generation, and market " +
-                    "research synthesis all fail without it. The search providers below only affect " +
-                    "how well-grounded market research is; they can't substitute for this key.",
-            maskedKey = maskKey(uiState.savedApiKey),
-            isKeyValid = uiState.isKeyVerified,
-            isValidating = uiState.isVerifyingKey,
-            validationMessage =
-                when {
-                    uiState.isVerifyingKey -> "Checking connection…"
-                    uiState.isKeyVerified == true -> "Connected to OpenAI"
-                    uiState.isKeyVerified == false -> uiState.keyVerifyError ?: "Connection failed"
-                    uiState.isKeyInvalid -> "Invalid API key format"
-                    else -> null
-                },
-            apiKey = uiState.editApiKey,
-            onApiKeyChange = viewModel::onApiKeyChange,
-            onSave = viewModel::save,
-            onTest = viewModel::testApiKey,
-            onClear = viewModel::clearApiKey,
-            signupUrl = "https://platform.openai.com/api-keys",
-            requirement = CredentialRequirement.REQUIRED,
+    AiSectionCard(icon = Icons.Default.Public, title = "Services") {
+        Text(
+            "SearchAPI.io and Serper.dev both return real marketplace listings and honor site: " +
+                "filters (Serper is the cheaper of the two); Jina AI opens those pages to read prices " +
+                "and is also a search fallback; Brave adds a second index. Only used by market research.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
         CollapsibleProviderRow(
             icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
@@ -479,6 +398,115 @@ private fun CredentialsSection(
             signupUrl = "https://brave.com/search/api/",
             requirement = CredentialRequirement.OPTIONAL,
         )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        Text(
+            "Enabled for market research",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        WebSearchToggleRow(
+            title = "SearchAPI.io",
+            enabled = uiState.searchapiSearchEnabled,
+            hasKey = uiState.savedSearchapiApiKey.isNotBlank(),
+            onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
+        )
+        WebSearchToggleRow(
+            title = "Serper.dev",
+            enabled = uiState.serperSearchEnabled,
+            hasKey = uiState.savedSerperApiKey.isNotBlank(),
+            onEnabledChange = viewModel::onSerperSearchEnabledChange,
+        )
+        WebSearchToggleRow(
+            title = stringResource(R.string.jina_api_key_label),
+            enabled = uiState.jinaSearchEnabled,
+            hasKey = uiState.savedJinaApiKey.isNotBlank(),
+            onEnabledChange = viewModel::onJinaSearchEnabledChange,
+        )
+        WebSearchToggleRow(
+            title = stringResource(R.string.brave_api_key_label),
+            enabled = uiState.braveSearchEnabled,
+            hasKey = uiState.savedBraveApiKey.isNotBlank(),
+            onEnabledChange = viewModel::onBraveSearchEnabledChange,
+        )
+    }
+}
+
+/** All BYOK keys for Shelf Snap, grouped at the top like PriceDrop's credentials section. */
+@Composable
+private fun CredentialsSection(
+    uiState: SettingsUiState,
+    viewModel: SettingsViewModel,
+    hasPro: Boolean,
+    onUpgrade: () -> Unit,
+) {
+    AiSectionCard(icon = Icons.Filled.VpnKey, title = "Credentials") {
+        if (hasPro) {
+            Text(
+                text = "Shelf Snap Pro active — managed keys are used automatically. The keys below are optional (BYOK).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "Upgrade to Shelf Snap Pro for managed keys — no setup needed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Button(onClick = onUpgrade) { Text("Upgrade") }
+            }
+        }
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Icon(
+                Icons.Filled.VpnKey,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(11.dp),
+            )
+            Text(
+                text = "BYOK · YOUR KEYS",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        CollapsibleProviderRow(
+            icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            title = "OpenAI",
+            summary = "Required for vision, listing, and market research",
+            description =
+                "Required for every AI feature — vision item ID, listing generation, and market " +
+                    "research synthesis all fail without it. The web search services (Services " +
+                    "section below) only affect how well-grounded market research is; they can't " +
+                    "substitute for this key.",
+            maskedKey = maskKey(uiState.savedApiKey),
+            isKeyValid = uiState.isKeyVerified,
+            isValidating = uiState.isVerifyingKey,
+            validationMessage =
+                when {
+                    uiState.isVerifyingKey -> "Checking connection…"
+                    uiState.isKeyVerified == true -> "Connected to OpenAI"
+                    uiState.isKeyVerified == false -> uiState.keyVerifyError ?: "Connection failed"
+                    uiState.isKeyInvalid -> "Invalid API key format"
+                    else -> null
+                },
+            apiKey = uiState.editApiKey,
+            onApiKeyChange = viewModel::onApiKeyChange,
+            onSave = viewModel::save,
+            onTest = viewModel::testApiKey,
+            onClear = viewModel::clearApiKey,
+            signupUrl = "https://platform.openai.com/api-keys",
+            requirement = CredentialRequirement.REQUIRED,
+        )
     }
 }
 
@@ -507,7 +535,7 @@ private fun WebSearchToggleRow(
         }
         if (enabled && !hasKey) {
             Text(
-                text = "On, but no key saved below — this provider won't be used until you add one.",
+                text = "On, but no key saved above — this provider won't be used until you add one.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.error,
             )
