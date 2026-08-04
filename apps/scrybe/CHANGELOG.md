@@ -6,7 +6,15 @@
 
 ### Improvements
 
+**Transcription** — a status toast now shows progress:
+* slides up from the bottom while a recording is being transcribed
+* shows which recording, and how many more are queued behind it
+
 ### Fixes
+
+**Local transcription** — no longer freezes the app ("isn't responding"):
+* manually retrying, batch-transcribing, or transcribing from a recording's detail screen could run the on-device model on the main thread
+* now always runs in the background, matching how transcription after a fresh recording already worked
 
 ## 1.46.4 (2026-08-04)
 

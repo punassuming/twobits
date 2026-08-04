@@ -7,7 +7,9 @@ import dev.scrybe.core.transcription.AiCallDebugStore
 import dev.scrybe.core.transcription.TranscriptResult
 import dev.scrybe.core.transcription.TranscriptionOptions
 import dev.scrybe.core.transcription.TranscriptionProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -60,15 +62,24 @@ class WhisperTranscriptionProvider
                             return Result.failure(IllegalStateException("Whisper model not downloaded"))
                         }
 
-                val decoded = AudioDecoder.decode(audioFile)
-                WhisperEngine(modelDir, model.filePrefix).use { engine ->
-                    val text = engine.transcribe(decoded.samples, decoded.sampleRateHz)
-                    record(success = true, snippet = "${text.length} chars")
-                    TranscriptResult(
-                        text = text,
-                        language = "en",
-                        durationSeconds = null,
-                    )
+                // Decoding the recording (MediaExtractor/MediaCodec) and constructing
+                // WhisperEngine (a synchronous native model load off disk) are both blocking —
+                // neither hops dispatchers on its own, so a caller that launches this from a
+                // bare viewModelScope.launch {} (main-thread by default) would ANR. Every
+                // current caller happens to be right (auto-transcribe uses an IO-scoped
+                // coroutine), but that's an easy contract to break for a new one, so it's
+                // enforced here instead of trusted at every call site.
+                withContext(Dispatchers.IO) {
+                    val decoded = AudioDecoder.decode(audioFile)
+                    WhisperEngine(modelDir, model.filePrefix).use { engine ->
+                        val text = engine.transcribe(decoded.samples, decoded.sampleRateHz)
+                        record(success = true, snippet = "${text.length} chars")
+                        TranscriptResult(
+                            text = text,
+                            language = "en",
+                            durationSeconds = null,
+                        )
+                    }
                 }
             }.onFailure { error ->
                 record(success = false, snippet = "${error.javaClass.simpleName}: ${error.message}")
