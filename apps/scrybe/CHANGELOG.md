@@ -20,6 +20,8 @@
 * a required manifest declaration for the download's background service was missing
 * affected every attempt, from the very first tap
 
+* fixed a CI lint failure — the app module referenced a WorkManager-internal class in its manifest without a direct dependency lint could resolve it against (no visual change)
+
 ## 1.46.3 (2026-08-02)
 
 ### Features

@@ -147,6 +147,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    // Referenced directly (not just transitively via core:local-ai) so lint's MissingClass
+    // check can resolve androidx.work.impl.foreground.SystemForegroundService, which this
+    // module's own manifest declares a foregroundServiceType override for (see runLlmDownload).
+    implementation(libs.work.runtime.ktx)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)

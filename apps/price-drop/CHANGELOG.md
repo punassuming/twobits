@@ -16,6 +16,8 @@
 * a required manifest declaration for the download's background service was missing
 * affected every attempt, from the very first tap
 
+* fixed a CI build failure — the crash log's `Json` serializer wasn't resolvable from this module's own dependencies (no visual change)
+
 ## 0.16.1 (2026-08-01)
 
 ### Features
