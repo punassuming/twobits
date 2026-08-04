@@ -6,7 +6,15 @@
 
 ### Improvements
 
+**Settings** — new crash log near the app version/privacy info:
+* every app crash is now captured automatically, in full — not just an error toast
+* view or share the full stack trace right from Settings, no computer or adb needed
+
 ### Fixes
+
+**On-device models** — starting a Gemma download no longer crashes the app:
+* a required manifest declaration for the download's background service was missing
+* affected every attempt, from the very first tap
 
 ## 1.25.3 (2026-08-01)
 

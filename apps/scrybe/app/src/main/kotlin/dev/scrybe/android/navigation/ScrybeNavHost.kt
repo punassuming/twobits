@@ -159,13 +159,13 @@ fun ScrybeNavHost(
                 onNavigateToPeople = { navController.navigate(Screen.People.route) },
                 onNavigateToPro = { navController.navigate(Screen.Pro.route) },
                 onNavigateToRecordingTypes = { navController.navigate(Screen.RecordingTypes.route) },
+                onNavigateToCrashLog = { navController.navigate(Screen.CrashLog.route) },
             )
         }
         composable(Screen.AiConfig.route) {
             AIConfigScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateToAiCallLog = { navController.navigate(Screen.AiCallDebugLog.route) },
-                onNavigateToCrashLog = { navController.navigate(Screen.CrashLog.route) },
             )
         }
         composable(Screen.AiCallDebugLog.route) {

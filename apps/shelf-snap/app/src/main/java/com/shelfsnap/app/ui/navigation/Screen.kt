@@ -33,4 +33,6 @@ sealed class Screen(
     data object WhatsNew : Screen("whats_new")
 
     data object AiConfig : Screen("ai_config")
+
+    data object CrashLog : Screen("crash_log")
 }

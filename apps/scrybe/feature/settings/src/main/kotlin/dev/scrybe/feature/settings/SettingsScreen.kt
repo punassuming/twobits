@@ -92,6 +92,7 @@ fun SettingsScreen(
     onNavigateToPeople: () -> Unit = {},
     onNavigateToPro: () -> Unit = {},
     onNavigateToRecordingTypes: () -> Unit = {},
+    onNavigateToCrashLog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -614,6 +615,7 @@ fun SettingsScreen(
                     versionLabel = "Version ${uiState.versionName.ifBlank { "dev" }} (${uiState.versionCode})",
                     subtitle = uiState.latestReleaseTitle ?: "Bundled repository changelog available for this build.",
                     onWhatsNew = onNavigateToWhatsNew,
+                    onCrashLog = onNavigateToCrashLog,
                 )
             }
         }
