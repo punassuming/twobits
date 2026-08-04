@@ -56,7 +56,7 @@ fun AppNavigation(
     val whatsNewViewModel: WhatsNewViewModel = hiltViewModel()
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
     val localAnalysisProgressViewModel: LocalAnalysisProgressViewModel = hiltViewModel()
-    val localAnalysisLabel by localAnalysisProgressViewModel.label.collectAsState()
+    val localAnalysisProgressState by localAnalysisProgressViewModel.uiState.collectAsState()
     val slideEnter = slideInHorizontally { it } + fadeIn()
     val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
     val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
@@ -223,7 +223,8 @@ fun AppNavigation(
         }
 
         LocalAnalysisProgressToast(
-            label = localAnalysisLabel,
+            label = localAnalysisProgressState.label,
+            otherActiveCount = localAnalysisProgressState.otherActiveCount,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
         )
     } // Box

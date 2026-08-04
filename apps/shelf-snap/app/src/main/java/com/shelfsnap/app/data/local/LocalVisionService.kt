@@ -38,7 +38,7 @@ class LocalVisionService
             photoPath: String,
             modelFile: File,
         ): DraftItemResult {
-            progressTracker.start("Analyzing photo…")
+            val progressId = progressTracker.start("Analyzing photo…")
             return try {
                 runCatching {
                     // Constructing LiteRtLmEngine is a synchronous, blocking native model load —
@@ -65,7 +65,7 @@ class LocalVisionService
                     DraftItemResult(error = "On-device vision analysis failed. Try Pro or BYOK instead.")
                 }
             } finally {
-                progressTracker.finish()
+                progressTracker.finish(progressId)
             }
         }
 

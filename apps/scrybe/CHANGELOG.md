@@ -13,12 +13,15 @@
 ### Fixes
 
 **Local transcription** — no longer freezes the app ("isn't responding"):
-* manually retrying, batch-transcribing, or transcribing from a recording's detail screen could run the on-device model on the main thread
-* now always runs in the background, matching how transcription after a fresh recording already worked
+* manually retrying, batch transcribing, or the detail-screen button could freeze the app
+* each ran the on-device model on the main thread
+* now runs in the background instead, like auto-transcribe already did
 
 **Local transcription** — stereo recordings now transcribe correctly:
-* audio was decoded as if every recording were mono, scrambling stereo into noise the model couldn't recognize
-* produced a "successful" but wrong, near-empty result with no error — now downmixes to mono first
+* audio was always decoded as if mono, even when stereo
+* stereo got scrambled into noise the model couldn't recognize
+* result: a "successful" but wrong, near-empty transcript, no error shown
+* now downmixes to mono first
 
 ## 1.46.4 (2026-08-04)
 

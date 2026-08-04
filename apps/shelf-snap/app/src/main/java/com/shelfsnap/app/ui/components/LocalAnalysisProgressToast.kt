@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+/** Shared crossfade+slide transition for text that updates while the toast stays visible. */
+private fun contentSwapTransition() =
+    (slideInVertically(animationSpec = tween(180)) { it / 3 } + fadeIn(tween(180)))
+        .togetherWith(slideOutVertically(animationSpec = tween(140)) { -it / 3 } + fadeOut(tween(140)))
+
 /**
  * Live status toast shown while local (on-device Gemma) listing or vision analysis runs, sliding
  * up from the bottom of the screen — same pattern as [com.shelfsnap.app.ui.itemdetail.ResearchProgressToast]
@@ -32,10 +38,16 @@ import androidx.compose.ui.unit.dp
  * [com.shelfsnap.app.ui.navigation.AppNavigation]), not any one screen, since analysis can be
  * triggered from the Camera screen right after capture or an item's detail screen, and keeps
  * running if the user navigates elsewhere while it's in progress.
+ *
+ * [otherActiveCount] can be nonzero — e.g. `ItemDetailViewModel.refineAllListings()` refines
+ * every draft platform's listing concurrently, one `LocalListingService.refine()` call per
+ * platform — so this shows one label plus how many others are also currently running, not a
+ * queue position.
  */
 @Composable
 fun LocalAnalysisProgressToast(
     label: String?,
+    otherActiveCount: Int,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -61,19 +73,31 @@ fun LocalAnalysisProgressToast(
                     color = MaterialTheme.colorScheme.inversePrimary,
                 )
                 Spacer(Modifier.width(12.dp))
-                AnimatedContent(
-                    targetState = label ?: "",
-                    transitionSpec = {
-                        (slideInVertically(animationSpec = tween(180)) { it / 3 } + fadeIn(tween(180)))
-                            .togetherWith(slideOutVertically(animationSpec = tween(140)) { -it / 3 } + fadeOut(tween(140)))
-                    },
-                    label = "localAnalysisLabel",
-                ) { text ->
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
+                Column {
+                    AnimatedContent(
+                        targetState = label ?: "",
+                        transitionSpec = { contentSwapTransition() },
+                        label = "localAnalysisLabel",
+                    ) { text ->
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    if (otherActiveCount > 0) {
+                        AnimatedContent(
+                            targetState = otherActiveCount,
+                            transitionSpec = { contentSwapTransition() },
+                            label = "localAnalysisOtherCount",
+                        ) { count ->
+                            Text(
+                                text = "and $count more also running",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.75f),
+                            )
+                        }
+                    }
                 }
             }
         }

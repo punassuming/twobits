@@ -37,6 +37,7 @@ import dev.scrybe.core.model.RecordingSession
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
+import dev.scrybe.core.transcription.BatchTranscriptionTracker
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transforms.SessionSummary
 import dev.scrybe.core.transforms.SessionTransformCoordinator
@@ -123,6 +124,7 @@ class HistoryViewModel
         private val preferencesDataStore: AppPreferencesDataStore,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
+        private val batchTranscriptionTracker: BatchTranscriptionTracker,
         private val clusteringService: ClusteringServiceFacade,
         private val autoRenameService: AutoRenameServiceFacade,
         private val semanticSearchService: SemanticSearchServiceFacade,
@@ -793,20 +795,35 @@ class HistoryViewModel
 
                 var started = 0
                 var skipped = 0
-                selectedIds.forEach { sessionId ->
-                    val session = recordingSessionDao.getSessionByIdOnce(sessionId)
-                    val status =
-                        session?.let {
-                            runCatching { SessionStatus.valueOf(it.status) }.getOrNull()
+                // transcribeSession() is awaited one at a time below, so at most one of these
+                // ever reports SessionStatus.TRANSCRIBING at once — a status-based "how many are
+                // active right now" query can't tell you how many more are still waiting their
+                // turn in this batch. This tracker exists specifically to answer that, so the
+                // progress toast's queued count reflects real work still pending here instead of
+                // always reading zero.
+                batchTranscriptionTracker.setRemaining(selectedIds.size)
+                try {
+                    selectedIds.forEach { sessionId ->
+                        // Decrement first, not last: once this item is the one being worked on,
+                        // it's no longer "still waiting" — remaining should read as "how many
+                        // come after this one," matching what the progress toast shows.
+                        batchTranscriptionTracker.decrement()
+                        val session = recordingSessionDao.getSessionByIdOnce(sessionId)
+                        val status =
+                            session?.let {
+                                runCatching { SessionStatus.valueOf(it.status) }.getOrNull()
+                            }
+                        when {
+                            status == null -> skipped += 1
+                            isEligibleForTranscription(status) -> {
+                                sessionTranscriptionCoordinator.transcribeSession(sessionId)
+                                started += 1
+                            }
+                            else -> skipped += 1
                         }
-                    when {
-                        status == null -> skipped += 1
-                        isEligibleForTranscription(status) -> {
-                            sessionTranscriptionCoordinator.transcribeSession(sessionId)
-                            started += 1
-                        }
-                        else -> skipped += 1
                     }
+                } finally {
+                    batchTranscriptionTracker.setRemaining(0)
                 }
                 selection.value = RecordsSelectionState()
                 val message =

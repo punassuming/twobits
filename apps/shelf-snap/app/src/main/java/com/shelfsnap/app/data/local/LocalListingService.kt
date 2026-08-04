@@ -36,7 +36,7 @@ class LocalListingService
             current: ListingCopy,
             modelFile: File,
         ): ListingCopy {
-            progressTracker.start("Refining listing…")
+            val progressId = progressTracker.start("Refining listing…")
             return try {
                 runCatching {
                     val systemPrompt = buildListingSystemPrompt(platform)
@@ -59,7 +59,7 @@ class LocalListingService
                     current
                 }
             } finally {
-                progressTracker.finish()
+                progressTracker.finish(progressId)
             }
         }
 
