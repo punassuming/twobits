@@ -14,6 +14,12 @@
 * often produced a short "(mumbling)"/"(music)"-style result, no error shown
 * long recordings are now split into chunks and transcribed in full
 
+**Recording** — the saved audio file is no longer at risk from realtime streaming:
+* file recording and the realtime stream opened the mic at the same time
+* some devices mute whichever of the two opens the mic second
+* could silently degrade the saved file, breaking every transcription path
+* file recording now starts first; streaming only opens once it's running
+
 ## 1.46.5 (2026-08-04)
 
 ### Features
