@@ -8,6 +8,15 @@
 
 ### Fixes
 
+**Settings** — Services moved to its own menu item:
+* was nested inside AI Configuration instead of a top-level row
+* now sits directly below AI Configuration in Settings
+
+**Local analysis** — analyzing a photo no longer crashes the app:
+* the on-device engine was never configured for image input
+* crashed natively before reaching the app's own crash log
+* photo analysis now configures the engine correctly
+
 ## 1.25.5 (2026-08-04)
 
 ### Features

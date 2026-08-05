@@ -15,8 +15,6 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Insights
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -259,7 +257,7 @@ fun AIConfigScreen(
                         HorizontalDivider()
                         Text(
                             "Web search providers, their keys, and which are enabled now live in " +
-                                "the Services section below.",
+                                "Settings → Services.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -289,146 +287,7 @@ fun AIConfigScreen(
                     onCheckedChange = viewModel::onMultiPhotoAnalysisChange,
                 )
             }
-
-            ServicesSection(uiState = uiState, viewModel = viewModel)
         }
-    }
-}
-
-/**
- * Web-search services market research optionally uses — kept separate from AI Configuration's
- * own provider cards above since these aren't AI providers themselves (no vision/listing/
- * research model runs on them directly), just supporting infrastructure one AI feature can
- * enable. Previously split across "Credentials" (the API keys) and "Market research" (the
- * enable/disable toggles); both live here together now.
- */
-@Composable
-private fun ServicesSection(
-    uiState: SettingsUiState,
-    viewModel: SettingsViewModel,
-) {
-    AiSectionCard(icon = Icons.Default.Public, title = "Services") {
-        Text(
-            "SearchAPI.io and Serper.dev both return real marketplace listings and honor site: " +
-                "filters (Serper is the cheaper of the two); Jina AI opens those pages to read prices " +
-                "and is also a search fallback; Brave adds a second index. Only used by market research.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-        CollapsibleProviderRow(
-            icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-            title = "SearchAPI.io",
-            summary = "Recommended — best marketplace search evidence",
-            description =
-                "Recommended for market research — the only engine here that honors site: filters, " +
-                    "so eBay/Mercari/OfferUp \"sold\" queries return real marketplace listings instead " +
-                    "of generic web results. Without it (or Serper), research still runs on the other " +
-                    "providers or the model's own knowledge, just with weaker marketplace evidence.",
-            maskedKey = maskKey(uiState.savedSearchapiApiKey),
-            isKeyValid = uiState.searchapiTestResult,
-            isValidating = uiState.isSearchapiTesting,
-            validationMessage = uiState.searchapiTestMessage,
-            apiKey = uiState.editSearchapiApiKey,
-            onApiKeyChange = viewModel::onSearchapiApiKeyChange,
-            onSave = viewModel::saveSearchapiKey,
-            onTest = viewModel::testSearchapiKey,
-            onClear = viewModel::clearSearchapiKey,
-            signupUrl = "https://www.searchapi.io",
-            requirement = CredentialRequirement.RECOMMENDED,
-        )
-
-        CollapsibleProviderRow(
-            icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-            title = "Serper.dev",
-            summary = "Recommended — cheaper alternative to SearchAPI.io",
-            description =
-                "Recommended — a materially cheaper alternative to SearchAPI.io that also honors " +
-                    "site: filters for real marketplace listings. Has no dedicated eBay engine, so " +
-                    "eBay-targeted results are plain-Google quality rather than structured sold listings.",
-            maskedKey = maskKey(uiState.savedSerperApiKey),
-            isKeyValid = uiState.serperTestResult,
-            isValidating = uiState.isSerperTesting,
-            validationMessage = uiState.serperTestMessage,
-            apiKey = uiState.editSerperApiKey,
-            onApiKeyChange = viewModel::onSerperApiKeyChange,
-            onSave = viewModel::saveSerperKey,
-            onTest = viewModel::testSerperKey,
-            onClear = viewModel::clearSerperKey,
-            signupUrl = "https://serper.dev",
-            requirement = CredentialRequirement.RECOMMENDED,
-        )
-
-        CollapsibleProviderRow(
-            icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-            title = "Jina AI",
-            summary = "Recommended — page reading + search fallback",
-            description =
-                "Recommended — this key does two things: it's a search fallback when SearchAPI.io/" +
-                    "Serper aren't configured, AND it's the only way any search result's full page gets " +
-                    "read (price, condition, sold status), even when a different engine found the result. " +
-                    "Adding this key improves research quality no matter which search provider is primary.",
-            maskedKey = maskKey(uiState.savedJinaApiKey),
-            isKeyValid = uiState.jinaTestResult,
-            isValidating = uiState.isJinaTesting,
-            validationMessage = uiState.jinaTestMessage,
-            apiKey = uiState.editJinaApiKey,
-            onApiKeyChange = viewModel::onJinaApiKeyChange,
-            onSave = viewModel::saveJinaKey,
-            onTest = viewModel::testJinaKey,
-            onClear = viewModel::clearJinaKey,
-            signupUrl = "https://jina.ai",
-            requirement = CredentialRequirement.RECOMMENDED,
-        )
-
-        CollapsibleProviderRow(
-            icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-            title = "Brave Search",
-            description = "Optional — a second search index with no unique capability. Safe to skip.",
-            maskedKey = maskKey(uiState.savedBraveApiKey),
-            isKeyValid = uiState.braveTestResult,
-            isValidating = uiState.isBraveTesting,
-            validationMessage = uiState.braveTestMessage,
-            apiKey = uiState.editBraveApiKey,
-            onApiKeyChange = viewModel::onBraveApiKeyChange,
-            onSave = viewModel::saveBraveKey,
-            onTest = viewModel::testBraveKey,
-            onClear = viewModel::clearBraveKey,
-            signupUrl = "https://brave.com/search/api/",
-            requirement = CredentialRequirement.OPTIONAL,
-        )
-
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        Text(
-            "Enabled for market research",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        WebSearchToggleRow(
-            title = "SearchAPI.io",
-            enabled = uiState.searchapiSearchEnabled,
-            hasKey = uiState.savedSearchapiApiKey.isNotBlank(),
-            onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
-        )
-        WebSearchToggleRow(
-            title = "Serper.dev",
-            enabled = uiState.serperSearchEnabled,
-            hasKey = uiState.savedSerperApiKey.isNotBlank(),
-            onEnabledChange = viewModel::onSerperSearchEnabledChange,
-        )
-        WebSearchToggleRow(
-            title = stringResource(R.string.jina_api_key_label),
-            enabled = uiState.jinaSearchEnabled,
-            hasKey = uiState.savedJinaApiKey.isNotBlank(),
-            onEnabledChange = viewModel::onJinaSearchEnabledChange,
-        )
-        WebSearchToggleRow(
-            title = stringResource(R.string.brave_api_key_label),
-            enabled = uiState.braveSearchEnabled,
-            hasKey = uiState.savedBraveApiKey.isNotBlank(),
-            onEnabledChange = viewModel::onBraveSearchEnabledChange,
-        )
     }
 }
 
@@ -485,8 +344,8 @@ private fun CredentialsSection(
             summary = "Required for vision, listing, and market research",
             description =
                 "Required for every AI feature — vision item ID, listing generation, and market " +
-                    "research synthesis all fail without it. The web search services (Services " +
-                    "section below) only affect how well-grounded market research is; they can't " +
+                    "research synthesis all fail without it. The web search services (Settings → " +
+                    "Services) only affect how well-grounded market research is; they can't " +
                     "substitute for this key.",
             maskedKey = maskKey(uiState.savedApiKey),
             isKeyValid = uiState.isKeyVerified,
@@ -516,32 +375,6 @@ private fun maskKey(key: String): String? =
         key.isNotBlank() -> "••••"
         else -> null
     }
-
-@Composable
-private fun WebSearchToggleRow(
-    title: String,
-    enabled: Boolean,
-    hasKey: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Switch(checked = enabled, onCheckedChange = onEnabledChange)
-        }
-        if (enabled && !hasKey) {
-            Text(
-                text = "On, but no key saved above — this provider won't be used until you add one.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-}
 
 @Composable
 private fun AiToggleRow(

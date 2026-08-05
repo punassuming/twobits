@@ -30,6 +30,7 @@ import com.shelfsnap.app.ui.onboarding.OnboardingScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingViewModel
 import com.shelfsnap.app.ui.settings.CrashLogScreen
 import com.shelfsnap.app.ui.settings.ProScreen
+import com.shelfsnap.app.ui.settings.ServicesScreen
 import com.shelfsnap.app.ui.settings.SettingsScreen
 import com.shelfsnap.app.ui.summary.SummaryScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewScreen
@@ -191,6 +192,7 @@ fun AppNavigation(
                     onBack = { navController.popBackStack() },
                     onWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
                     onAiConfig = { navController.navigate(Screen.AiConfig.route) },
+                    onNavigateToServices = { navController.navigate(Screen.Services.route) },
                     onNavigateToPro = { navController.navigate(Screen.Pro.route) },
                     onNavigateToCrashLog = { navController.navigate(Screen.CrashLog.route) },
                 )
@@ -206,6 +208,10 @@ fun AppNavigation(
                 com.shelfsnap.app.ui.settings.AIConfigScreen(
                     onBack = { navController.popBackStack() },
                 )
+            }
+
+            composable(Screen.Services.route) {
+                ServicesScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.CrashLog.route) {

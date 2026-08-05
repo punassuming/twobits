@@ -8,6 +8,12 @@
 
 ### Fixes
 
+**Local transcription** — recordings over 30 seconds now fully transcribe:
+* only the first ~30 seconds of any recording was ever transcribed
+* the model's fixed 30s window silently discarded the rest
+* often produced a short "(mumbling)"/"(music)"-style result, no error shown
+* long recordings are now split into chunks and transcribed in full
+
 ## 1.46.5 (2026-08-04)
 
 ### Features
