@@ -4,6 +4,11 @@
 
 ### Features
 
+**Market research** — local Gemma can now write up the estimate:
+* web search still runs through your configured Services providers
+* on-device Gemma synthesizes the price estimate instead of OpenAI
+* no OpenAI key needed for this path — only a downloaded local model
+
 ### Improvements
 
 ### Fixes

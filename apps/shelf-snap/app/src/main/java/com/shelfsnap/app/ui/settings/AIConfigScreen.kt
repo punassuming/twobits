@@ -222,7 +222,6 @@ fun AIConfigScreen(
                 AiSourceSegment(
                     selected = uiState.textSource,
                     hasPro = hasPro,
-                    hasLocal = false,
                     onChange = viewModel::onTextSourceChange,
                 )
                 when (uiState.textSource) {
@@ -230,12 +229,32 @@ fun AIConfigScreen(
                         AiProManagedCard(
                             description = "Managed pricing & web search API active — no keys required.",
                         )
-                    "local" ->
+                    "local" -> {
+                        LocalModelPanel(
+                            sectionLabel = "Gemma — on-device synthesis",
+                            models = LocalLlmModel.entries.toList(),
+                            status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                            selected = uiState.selectedLlm,
+                            onSelect = { viewModel.selectLlmModel(it) },
+                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
+                            primaryActionLabel = "Download",
+                            primaryActionIcon = Icons.Default.CloudDownload,
+                            onDelete = { viewModel.deleteLlmModel(it) },
+                            name = { it.displayName },
+                            sizeLabel = { it.sizeLabel },
+                            description = { it.description },
+                            progressLabel = "Downloading",
+                            huggingFaceUrl = { it.huggingFacePageUrl },
+                        )
+                        HorizontalDivider()
                         Text(
-                            "Local web search isn't available — choose Pro or BYOK for market research.",
+                            "Web search still runs through your configured providers (Settings → " +
+                                "Services) — local Gemma only writes up the price estimate from " +
+                                "those results; it can't search the web itself.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
                     else -> {
                         if (uiState.editApiKey.isBlank()) {
                             AiNoKeyWarning()
