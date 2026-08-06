@@ -122,7 +122,7 @@
     <string name="research_failed">Price research failed: %1$s</string>
     <string name="confidence_short">Confidence: %1$d%%</string>
     <string name="ai_estimate_label">AI estimate (no sold data)</string>
-    <string name="sold_data_needs_searchapi">Verified sold prices need SearchAPI.io — the other search providers can only return active listings. Add a key in AI configuration.</string>
+    <string name="sold_data_needs_searchapi">Verified sold prices need SearchAPI.io — the other search providers can only return active listings. Add a key in Settings → Services.</string>
     <plurals name="price_plot_legend">
         <item quantity="one">Bars: %1$d listing price · Circle: average</item>
         <item quantity="other">Bars: %1$d listing prices · Circle: average</item>

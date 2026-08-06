@@ -170,11 +170,13 @@ class ItemRepository
 
             when (mode) {
                 ExecutionMode.BYOK -> {
-                    val hasSearchProvider =
-                        getSearchapiSearchEnabled() || getJinaSearchEnabled() || getBraveSearchEnabled() || getSerperSearchEnabled()
-                    if (getApiKey().isBlank() || !hasSearchProvider) {
+                    // Checks enabled *and keyed* providers, not just the enabled toggle —
+                    // searchapi/jina default their toggle to true on a fresh install while the
+                    // key itself defaults blank, so the toggle alone would pass this preflight
+                    // even though enabledSearchProviders() filters both back out below.
+                    if (getApiKey().isBlank() || enabledSearchProviders().isEmpty()) {
                         return PriceResearchResult(
-                            error = "Add an OpenAI key and enable at least one search provider in AI configuration.",
+                            error = "Add an OpenAI key in AI configuration and enable at least one search provider in Settings → Services.",
                         )
                     }
                 }
@@ -187,9 +189,7 @@ class ItemRepository
                 }
                 ExecutionMode.OFF -> return PriceResearchResult(error = "Market research is turned off in AI configuration.")
                 ExecutionMode.LOCAL -> {
-                    val hasSearchProvider =
-                        getSearchapiSearchEnabled() || getJinaSearchEnabled() || getBraveSearchEnabled() || getSerperSearchEnabled()
-                    if (!hasSearchProvider) {
+                    if (enabledSearchProviders().isEmpty()) {
                         return PriceResearchResult(
                             error = "Enable at least one web search provider in Settings → Services for local research.",
                         )

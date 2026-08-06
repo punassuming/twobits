@@ -22,6 +22,10 @@
 * crashed natively before reaching the app's own crash log
 * photo analysis now configures the engine correctly
 
+**Market research** — local preflight now checks for a saved key, not just a toggle:
+* the enabled toggle alone could pass with no key ever saved
+* previously fell back to a silent model-only estimate instead of erroring
+
 ## 1.25.5 (2026-08-04)
 
 ### Features

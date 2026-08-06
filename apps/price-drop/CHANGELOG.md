@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* Shared: local-ai's vision-backend config no longer leaks a third-party type across the module boundary
+
 ## 0.16.2 (2026-08-04)
 
 ### Features

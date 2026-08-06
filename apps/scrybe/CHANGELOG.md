@@ -20,6 +20,8 @@
 * could silently degrade the saved file, breaking every transcription path
 * file recording now starts first; streaming only opens once it's running
 
+* Shared: local-ai's vision-backend config no longer leaks a third-party type across the module boundary
+
 ## 1.46.5 (2026-08-04)
 
 ### Features

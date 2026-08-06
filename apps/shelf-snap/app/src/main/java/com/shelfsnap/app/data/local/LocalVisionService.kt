@@ -4,10 +4,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import com.google.ai.edge.litertlm.Backend
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.parseDraftItemJson
+import com.twobits.localai.LiteRtBackend
 import com.twobits.localai.LiteRtLmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -64,7 +64,7 @@ class LocalVisionService
                                 context,
                                 modelFile,
                                 systemInstruction = VisionAnalysisService.SYSTEM_PROMPT,
-                                visionBackend = Backend.CPU(),
+                                visionBackend = LiteRtBackend.CPU,
                             ).use { engine ->
                                 val response = engine.generateWithImage(File(downscaledPath), VisionAnalysisService.USER_PROMPT)
                                 parseDraftItemJson(response)
