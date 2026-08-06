@@ -7,6 +7,7 @@ import android.util.Log
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.parseDraftItemJson
+import com.twobits.localai.LiteRtBackend
 import com.twobits.localai.LiteRtLmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -48,10 +49,23 @@ class LocalVisionService
                     // contract to break for a new one, so it's enforced here instead of trusted
                     // at every call site (same fix already applied to Scrybe's
                     // WhisperTranscriptionProvider).
+                    //
+                    // visionBackend must be set for generateWithImage() to work at all — LiteRT-LM's
+                    // own docs only demonstrate sending Content.ImageFile with visionBackend
+                    // configured, and leaving it null (the previous state here) while sending an
+                    // image is undocumented, unsupported usage. That mismatch — not a Kotlin-level
+                    // bug — is the leading suspect for this path's crash-with-nothing-in-the-log:
+                    // native ML runtimes tend to hard-abort (SIGABRT) rather than throw a catchable
+                    // exception for unsupported configurations, which no runCatching here can see.
                     withContext(Dispatchers.IO) {
                         val downscaledPath = downscaleForLocalInference(photoPath)
                         try {
-                            LiteRtLmEngine(context, modelFile, systemInstruction = VisionAnalysisService.SYSTEM_PROMPT).use { engine ->
+                            LiteRtLmEngine(
+                                context,
+                                modelFile,
+                                systemInstruction = VisionAnalysisService.SYSTEM_PROMPT,
+                                visionBackend = LiteRtBackend.CPU,
+                            ).use { engine ->
                                 val response = engine.generateWithImage(File(downscaledPath), VisionAnalysisService.USER_PROMPT)
                                 parseDraftItemJson(response)
                             }

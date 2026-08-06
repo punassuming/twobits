@@ -14,6 +14,22 @@ import java.io.Closeable
 import java.io.File
 
 /**
+ * Public stand-in for `com.google.ai.edge.litertlm.Backend`, which callers outside this module
+ * can't reference directly — `shared/local-ai` depends on `litertlm-android` via
+ * `implementation`, not `api`, deliberately keeping the third-party library an internal
+ * implementation detail (no app module lists it as a direct dependency). [LiteRtLmEngine]
+ * translates this to the real `Backend` internally.
+ */
+enum class LiteRtBackend {
+    CPU,
+}
+
+private fun LiteRtBackend.toEngineBackend(): Backend =
+    when (this) {
+        LiteRtBackend.CPU -> Backend.CPU()
+    }
+
+/**
  * Shared LiteRT-LM wrapper for Scrybe, Shelf Snap, and PriceDrop's on-device text (and,
  * experimentally, vision) inference — one `Conversation` per instance, used for exactly one
  * logical exchange (a single [generate]/[generateWithImage] call for one-shot callers, or
@@ -31,7 +47,7 @@ class LiteRtLmEngine(
     context: Context,
     modelFile: File,
     systemInstruction: String? = null,
-    visionBackend: Backend? = null,
+    visionBackend: LiteRtBackend? = null,
 ) : Closeable {
     private val engine: Engine
 
@@ -40,7 +56,7 @@ class LiteRtLmEngine(
             EngineConfig(
                 modelPath = modelFile.absolutePath,
                 backend = Backend.CPU(),
-                visionBackend = visionBackend,
+                visionBackend = visionBackend?.toEngineBackend(),
                 cacheDir = context.cacheDir.path,
             )
         engine = Engine(engineConfig)

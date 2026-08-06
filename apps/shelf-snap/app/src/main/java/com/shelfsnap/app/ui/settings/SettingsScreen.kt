@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -51,6 +52,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onWhatsNew: () -> Unit = {},
     onAiConfig: () -> Unit = {},
+    onNavigateToServices: () -> Unit = {},
     onNavigateToPro: () -> Unit = {},
     onNavigateToCrashLog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -94,6 +96,8 @@ fun SettingsScreen(
             )
 
             AiConfigCard(onClick = onAiConfig)
+
+            ServicesCard(onClick = onNavigateToServices)
 
             // ── Capture & storage ──────────────────────────────────────────
             AppLabeledSectionCard(
@@ -166,6 +170,60 @@ private fun AiConfigCard(onClick: () -> Unit) {
                 Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+/** Web-search providers market research optionally uses — its own row since they're supporting
+ * infrastructure, not AI providers, so they don't belong inside AI configuration. */
+@Composable
+private fun ServicesCard(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.27f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.13f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Public,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Services",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Web search providers used by market research",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(20.dp),
             )
         }

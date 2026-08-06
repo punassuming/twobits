@@ -34,5 +34,7 @@ sealed class Screen(
 
     data object AiConfig : Screen("ai_config")
 
+    data object Services : Screen("services")
+
     data object CrashLog : Screen("crash_log")
 }

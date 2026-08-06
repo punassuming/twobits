@@ -4,9 +4,27 @@
 
 ### Features
 
+**Market research** — local Gemma can now write up the estimate:
+* web search still runs through your configured Services providers
+* on-device Gemma synthesizes the price estimate instead of OpenAI
+* no OpenAI key needed for this path — only a downloaded local model
+
 ### Improvements
 
 ### Fixes
+
+**Settings** — Services moved to its own menu item:
+* was nested inside AI Configuration instead of a top-level row
+* now sits directly below AI Configuration in Settings
+
+**Local analysis** — analyzing a photo no longer crashes the app:
+* the on-device engine was never configured for image input
+* crashed natively before reaching the app's own crash log
+* photo analysis now configures the engine correctly
+
+**Market research** — local preflight now checks for a saved key, not just a toggle:
+* the enabled toggle alone could pass with no key ever saved
+* previously fell back to a silent model-only estimate instead of erroring
 
 ## 1.25.5 (2026-08-04)
 

@@ -148,7 +148,6 @@ class RecordingForegroundService : Service() {
             notificationFactory.buildNotification(this),
         )
         serviceScope.launch { playRecordingFeedback() }
-        startRealtimeStreamingIfEligible()
         locationDeferred =
             serviceScope.async {
                 if (preferencesDataStore.locationRecordingEnabled.first()) {
@@ -183,7 +182,15 @@ class RecordingForegroundService : Service() {
                 )
             audioRecorder
                 .startRecording(config)
-                .onFailure { error ->
+                .onSuccess {
+                    // Only opened once the authoritative file recording already has the mic —
+                    // starting both captures concurrently (as this used to) risks some OEM audio
+                    // stacks muting whichever client opens the mic second. Racing them meant the
+                    // *file* itself — which every transcription path depends on, including a
+                    // manual Local retry long after streaming's outcome stopped mattering —
+                    // could silently end up silent or degraded depending on device timing.
+                    startRealtimeStreamingIfEligible()
+                }.onFailure { error ->
                     android.util.Log.e(TAG, "Failed to start recording", error)
                     recordingSessionEvents.onRecordingError(error.message ?: "Failed to start recording")
                     cleanupAfterRecordingCommand()

@@ -170,11 +170,13 @@ class ItemRepository
 
             when (mode) {
                 ExecutionMode.BYOK -> {
-                    val hasSearchProvider =
-                        getSearchapiSearchEnabled() || getJinaSearchEnabled() || getBraveSearchEnabled() || getSerperSearchEnabled()
-                    if (getApiKey().isBlank() || !hasSearchProvider) {
+                    // Checks enabled *and keyed* providers, not just the enabled toggle —
+                    // searchapi/jina default their toggle to true on a fresh install while the
+                    // key itself defaults blank, so the toggle alone would pass this preflight
+                    // even though enabledSearchProviders() filters both back out below.
+                    if (getApiKey().isBlank() || enabledSearchProviders().isEmpty()) {
                         return PriceResearchResult(
-                            error = "Add an OpenAI key and enable at least one search provider in AI configuration.",
+                            error = "Add an OpenAI key in AI configuration and enable at least one search provider in Settings → Services.",
                         )
                     }
                 }
@@ -186,7 +188,18 @@ class ItemRepository
                     }
                 }
                 ExecutionMode.OFF -> return PriceResearchResult(error = "Market research is turned off in AI configuration.")
-                ExecutionMode.LOCAL -> {}
+                ExecutionMode.LOCAL -> {
+                    if (enabledSearchProviders().isEmpty()) {
+                        return PriceResearchResult(
+                            error = "Enable at least one web search provider in Settings → Services for local research.",
+                        )
+                    }
+                    if (localModelFile() == null) {
+                        return PriceResearchResult(
+                            error = "No local model downloaded. Go to Settings → AI configuration to download one.",
+                        )
+                    }
+                }
             }
 
             return when (mode) {
@@ -203,23 +216,21 @@ class ItemRepository
                         onProgress = onProgress,
                     )
                 }
-                ExecutionMode.LOCAL -> PriceResearchResult(error = "Local LLM inference is not yet available in this build.")
+                ExecutionMode.LOCAL ->
+                    priceResearchService.researchLocal(
+                        item = item,
+                        modelFile = requireNotNull(localModelFile()) { "checked above" },
+                        searchProviders = enabledSearchProviders(),
+                        // Same reasoning as the BYOK branch below: a saved Jina key enables page
+                        // reading regardless of whether Jina search itself is enabled.
+                        readerKey = getJinaApiKey().ifBlank { null },
+                        onProgress = onProgress,
+                    )
                 ExecutionMode.BYOK, ExecutionMode.OFF -> {
-                    val jinaKey = if (getJinaSearchEnabled()) getJinaApiKey() else ""
-                    val searchapiKey = if (getSearchapiSearchEnabled()) getSearchapiApiKey() else ""
-                    val serperKey = if (getSerperSearchEnabled()) getSerperApiKey() else ""
                     priceResearchService.research(
                         item = item,
                         openAiKey = getApiKey(),
-                        searchProviders =
-                            buildList {
-                                // SearchAPI.io first — it honors site: and returns real links
-                                // where Jina returns eBay error pages.
-                                if (searchapiKey.isNotBlank()) add(SearchProvider.SEARCHAPI to searchapiKey)
-                                if (serperKey.isNotBlank()) add(SearchProvider.SERPER to serperKey)
-                                if (jinaKey.isNotBlank()) add(SearchProvider.JINA to jinaKey)
-                                if (getBraveSearchEnabled()) add(SearchProvider.BRAVE to getBraveApiKey())
-                            },
+                        searchProviders = enabledSearchProviders(),
                         // Page reading (r.jina.ai) and Jina's own search engine (s.jina.ai) are
                         // separate products behind the same key. A saved key enables reading —
                         // opening the actual listing page for real price/condition/sold text —
@@ -230,6 +241,23 @@ class ItemRepository
                         onProgress = onProgress,
                     )
                 }
+            }
+        }
+
+        /**
+         * SearchAPI.io first — it honors site: and returns real links where Jina returns eBay
+         * error pages. Shared by [ExecutionMode.LOCAL] and [ExecutionMode.BYOK]/[ExecutionMode.OFF]
+         * — web search is independent of which LLM synthesizes the evidence.
+         */
+        private suspend fun enabledSearchProviders(): List<Pair<SearchProvider, String>> {
+            val jinaKey = if (getJinaSearchEnabled()) getJinaApiKey() else ""
+            val searchapiKey = if (getSearchapiSearchEnabled()) getSearchapiApiKey() else ""
+            val serperKey = if (getSerperSearchEnabled()) getSerperApiKey() else ""
+            return buildList {
+                if (searchapiKey.isNotBlank()) add(SearchProvider.SEARCHAPI to searchapiKey)
+                if (serperKey.isNotBlank()) add(SearchProvider.SERPER to serperKey)
+                if (jinaKey.isNotBlank()) add(SearchProvider.JINA to jinaKey)
+                if (getBraveSearchEnabled()) add(SearchProvider.BRAVE to getBraveApiKey())
             }
         }
 

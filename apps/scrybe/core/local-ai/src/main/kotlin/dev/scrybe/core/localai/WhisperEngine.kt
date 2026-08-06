@@ -32,9 +32,39 @@ internal class WhisperEngine(
         recognizer = OfflineRecognizer(config = config)
     }
 
+    /**
+     * sherpa-onnx's offline Whisper decode silently discards anything past the first ~29.5s of a
+     * single acceptWaveform() call — Whisper's encoder has a fixed 30s context window, and
+     * sherpa-onnx trims to it (logging a warning no caller here ever sees) rather than chunking
+     * on its own. Left alone, a multi-minute recording only ever has its opening ~30 seconds
+     * decoded, and if that opening is silence, ringing, or hold music, Whisper hallucinates a
+     * short non-speech token ("(mumbling)", "[Music]") for the whole file — indistinguishable
+     * from transcription being totally broken. Real recordings routinely run minutes long, so
+     * this splits into sub-30s windows and decodes each one on the same recognizer/model
+     * instance, concatenating the results.
+     */
     suspend fun transcribe(
         samples: FloatArray,
         sampleRate: Int = 16000,
+    ): String {
+        val chunkSize = CHUNK_SECONDS * sampleRate
+        if (samples.size <= chunkSize) {
+            return decodeChunk(samples, sampleRate)
+        }
+        val parts = mutableListOf<String>()
+        var offset = 0
+        while (offset < samples.size) {
+            val end = (offset + chunkSize).coerceAtMost(samples.size)
+            val chunkText = decodeChunk(samples.copyOfRange(offset, end), sampleRate)
+            if (chunkText.isNotBlank()) parts += chunkText
+            offset = end
+        }
+        return parts.joinToString(" ")
+    }
+
+    private suspend fun decodeChunk(
+        samples: FloatArray,
+        sampleRate: Int,
     ): String =
         withContext(Dispatchers.Default) {
             val stream = recognizer.createStream()
@@ -47,5 +77,10 @@ internal class WhisperEngine(
 
     override fun close() {
         recognizer.release()
+    }
+
+    private companion object {
+        // Comfortably under sherpa-onnx's ~29.5s (max_num_frames - 50 at 10ms/frame) hard cutoff.
+        const val CHUNK_SECONDS = 28
     }
 }

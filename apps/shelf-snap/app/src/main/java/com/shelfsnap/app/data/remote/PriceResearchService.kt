@@ -1,5 +1,6 @@
 package com.shelfsnap.app.data.remote
 
+import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonArray
@@ -20,6 +21,8 @@ import com.shelfsnap.app.data.remote.search.WebSearchResult
 import com.shelfsnap.app.data.remote.search.WebSearchService
 import com.shelfsnap.app.data.remote.search.marketplaceKeyFromUrl
 import com.shelfsnap.app.util.ApiKeyValidator
+import com.twobits.localai.LiteRtLmEngine
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -28,6 +31,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
@@ -102,8 +106,7 @@ private data class SearchAttempt(
  * nor contribute a comparable listing. Structured providers already set the key, so theirs
  * is left alone.
  */
-private fun WebSearchResult.withBackfilledPlatform(): WebSearchResult =
-    if (platformKey != null) this else copy(platformKey = marketplaceKeyFromUrl(url))
+private fun WebSearchResult.withBackfilledPlatform(): WebSearchResult = if (platformKey != null) this else copy(platformKey = marketplaceKeyFromUrl(url))
 
 /**
  * Produces resale price guidance for an item.
@@ -122,6 +125,7 @@ private fun WebSearchResult.withBackfilledPlatform(): WebSearchResult =
 class PriceResearchService
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val searchResolver: WebSearchResolver,
         private val jinaReader: JinaReaderService,
     ) {
@@ -256,6 +260,88 @@ class PriceResearchService
                             synthesisMs = now - synthesisStart,
                             totalMs = now - totalStart,
                             synthesisPrompt = synthesisPromptSnippet,
+                        )
+                    result.copy(research = result.research.copy(debug = debug))
+                } else {
+                    result
+                }
+            }
+
+        /**
+         * Local counterpart to [research]: identical web-search evidence gathering (the same
+         * [gatherEvidence] used for BYOK/Pro — search is plain HTTP against SearchAPI/Serper/
+         * Jina/Brave, entirely decoupled from which LLM does the synthesis), but the synthesis
+         * step runs on an on-device Gemma model via [LiteRtLmEngine] instead of calling OpenAI.
+         *
+         * The evidence payload is trimmed harder than [buildRequest]'s (fewer results, shorter
+         * snippets) since on-device models here run with a much smaller context window than
+         * gpt-5-mini — sending the same ~12-result/2200-char-snippet payload risked silently
+         * truncating mid-JSON and producing an unparseable response instead of a real estimate.
+         */
+        suspend fun researchLocal(
+            item: Item,
+            modelFile: File,
+            searchProviders: List<Pair<SearchProvider, String>> = emptyList(),
+            readerKey: String? = null,
+            onProgress: (ResearchProgress) -> Unit = {},
+        ): PriceResearchResult =
+            withContext(Dispatchers.IO) {
+                val totalStart = System.currentTimeMillis()
+                val evidence = gatherEvidence(item, searchProviders, readerKey, onProgress)
+
+                onProgress(
+                    ResearchProgress(
+                        phase = ResearchProgress.Phase.SYNTHESIZING,
+                        detail = "Reviewing evidence and estimating a price",
+                        queriesRun = evidence.queries.size,
+                        resultsFound = evidence.legitResultsFound,
+                        pagesConfirmed = evidence.pagesRead,
+                        pagesTarget = evidence.pagesTarget,
+                    ),
+                )
+
+                val synthesisStart = System.currentTimeMillis()
+                val systemPrompt = buildSystemPrompt(item)
+                val result =
+                    runCatching {
+                        val userMessage =
+                            gson.toJson(
+                                buildUserPayload(
+                                    item,
+                                    evidence,
+                                    maxResults = LOCAL_MAX_RESULTS,
+                                    maxSnippetChars = LOCAL_MAX_SNIPPET_CHARS,
+                                ),
+                            )
+                        val text =
+                            LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt).use { engine ->
+                                engine.generate(userMessage)
+                            }
+                        parseContentJson(text, evidence)
+                    }.getOrElse { e ->
+                        Log.w(TAG, "Local price research failed: ${e.javaClass.simpleName}")
+                        PriceResearchResult(error = "On-device market research failed. Try Pro or BYOK instead.")
+                    }
+                val now = System.currentTimeMillis()
+
+                if (result.error == null) {
+                    val debug =
+                        MarketResearchDebug(
+                            queries = evidence.queries,
+                            pagesRead = evidence.pagesRead,
+                            pageOutcomes = evidence.pageOutcomes,
+                            totalApiCalls = evidence.queries.size + evidence.readAttempts,
+                            servicesUsed =
+                                (
+                                    evidence.queries.map { it.label } +
+                                        listOfNotNull(if (evidence.readAttempts > 0) "Jina Reader" else null) +
+                                        listOf("On-device Gemma")
+                                ).distinct(),
+                            searchMs = evidence.searchMs,
+                            readMs = evidence.readMs,
+                            synthesisMs = now - synthesisStart,
+                            totalMs = now - totalStart,
+                            synthesisPrompt = systemPrompt.take(800),
                         )
                     result.copy(research = result.research.copy(debug = debug))
                 } else {
@@ -910,44 +996,56 @@ class PriceResearchService
                 """.trimIndent()
         }
 
+        /**
+         * Shared payload builder for both the OpenAI request body ([buildRequest]) and the local
+         * Gemma prompt ([researchLocal]). [maxResults]/[maxSnippetChars] let the local path send a
+         * smaller evidence set than the cloud path's, since on-device context windows are much
+         * smaller than gpt-5-mini's.
+         */
+        private fun buildUserPayload(
+            item: Item,
+            evidence: SearchEvidence,
+            maxResults: Int = Int.MAX_VALUE,
+            maxSnippetChars: Int = Int.MAX_VALUE,
+        ): JsonObject =
+            JsonObject().apply {
+                addProperty("category", item.category)
+                addProperty("brand", item.brand)
+                addProperty("model", item.model)
+                addProperty("condition", item.condition.name)
+                addProperty("size", item.size)
+                addProperty("color", item.color)
+                addProperty("quantity", item.quantity)
+                addProperty("originalPrice", item.originalPrice)
+                addProperty("description", item.description)
+                add("tags", JsonArray().apply { item.tags.forEach { add(it) } })
+                add(
+                    "searchEvidence",
+                    JsonArray().apply {
+                        evidence.results.take(maxResults).forEach { r ->
+                            add(
+                                JsonObject().apply {
+                                    addProperty("title", r.title)
+                                    addProperty("url", r.url)
+                                    addProperty("snippet", r.snippet.take(maxSnippetChars))
+                                    r.platformKey?.let { addProperty("platform", it) }
+                                    r.price?.let { addProperty("price", it) }
+                                    r.sold?.let { addProperty("sold", it) }
+                                    if (r.date.isNotBlank()) addProperty("date", r.date)
+                                },
+                            )
+                        }
+                    },
+                )
+            }
+
         private fun buildRequest(
             item: Item,
             evidence: SearchEvidence,
             model: String = MODEL,
         ): JsonObject {
             val systemPrompt = buildSystemPrompt(item)
-
-            val userPayload =
-                JsonObject().apply {
-                    addProperty("category", item.category)
-                    addProperty("brand", item.brand)
-                    addProperty("model", item.model)
-                    addProperty("condition", item.condition.name)
-                    addProperty("size", item.size)
-                    addProperty("color", item.color)
-                    addProperty("quantity", item.quantity)
-                    addProperty("originalPrice", item.originalPrice)
-                    addProperty("description", item.description)
-                    add("tags", JsonArray().apply { item.tags.forEach { add(it) } })
-                    add(
-                        "searchEvidence",
-                        JsonArray().apply {
-                            evidence.results.forEach { r ->
-                                add(
-                                    JsonObject().apply {
-                                        addProperty("title", r.title)
-                                        addProperty("url", r.url)
-                                        addProperty("snippet", r.snippet)
-                                        r.platformKey?.let { addProperty("platform", it) }
-                                        r.price?.let { addProperty("price", it) }
-                                        r.sold?.let { addProperty("sold", it) }
-                                        if (r.date.isNotBlank()) addProperty("date", r.date)
-                                    },
-                                )
-                            }
-                        },
-                    )
-                }
+            val userPayload = buildUserPayload(item, evidence)
 
             val messages =
                 JsonArray().apply {
@@ -1002,8 +1100,29 @@ class PriceResearchService
                             .getAsJsonObject("message")
                             .get("content")
                             .asString
-                    }.removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
+                    }
+                parseContentJson(content, evidence)
+            }.getOrElse {
+                Log.w(TAG, "Failed to parse pricing response: ${it.javaClass.simpleName}")
+                PriceResearchResult(error = ERROR_PARSE)
+            }
 
+        /**
+         * Parses the model's raw JSON text (already unwrapped from whichever API envelope
+         * produced it — OpenAI's Chat/Responses payload, or a local model's plain text) into a
+         * [PriceResearchResult]. Shared by [parseResponse] (cloud) and [researchLocal] (on-device).
+         */
+        private fun parseContentJson(
+            rawContent: String,
+            evidence: SearchEvidence,
+        ): PriceResearchResult =
+            runCatching {
+                val content =
+                    rawContent
+                        .removePrefix("```json")
+                        .removePrefix("```")
+                        .removeSuffix("```")
+                        .trim()
                 val obj = JsonParser.parseString(content).asJsonObject
 
                 val modelComps =
@@ -1197,6 +1316,16 @@ class PriceResearchService
             /** Cap on each evidence snippet after appending read page text (keeps prompt small). */
             private const val MAX_SNIPPET_CHARS = 2_200
 
+            /**
+             * On-device models here run with a far smaller context window than gpt-5-mini, so
+             * [researchLocal] sends fewer results ([LOCAL_MAX_RESULTS]) with shorter snippets
+             * ([LOCAL_MAX_SNIPPET_CHARS]) than the cloud path's [MAX_SEARCH_RESULTS]/
+             * [MAX_SNIPPET_CHARS] — the same evidence payload that fits gpt-5-mini easily risked
+             * overflowing the local model's context and truncating mid-JSON.
+             */
+            private const val LOCAL_MAX_RESULTS = 6
+            private const val LOCAL_MAX_SNIPPET_CHARS = 400
+
             internal const val ERROR_INVALID_KEY =
                 "Invalid or missing OpenAI API key. Check Settings."
             internal const val ERROR_RATE_LIMITED =
@@ -1241,7 +1370,11 @@ internal fun mergeVerifiedComparableListings(
     modelComps: List<MarketComp>,
     evidence: SearchEvidence,
 ): List<MarketComp> {
-    val evidenceUrls = evidence.results.map { it.url }.filter { it.isNotBlank() }.toSet()
+    val evidenceUrls =
+        evidence.results
+            .map { it.url }
+            .filter { it.isNotBlank() }
+            .toSet()
     val verifiedModelComps =
         modelComps.filter { comp ->
             comp.price.isFinite() && comp.price > 0.0 && comp.sourceUrl in evidenceUrls

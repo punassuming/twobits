@@ -111,7 +111,8 @@ fun MarketTab(
                 text =
                     stringResource(
                         R.string.last_researched,
-                        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
+                        DateFormat
+                            .getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
                             .format(Date(research.retrievedAt)),
                     ),
                 style = MaterialTheme.typography.labelSmall,
@@ -795,7 +796,7 @@ private fun SearchStatusBanner(research: MarketResearch) {
                     icon = Icons.Default.Info,
                     text =
                         "Prices estimated from AI training data. Enable Brave Search or Jina AI " +
-                            "in Settings → AI for live market prices.",
+                            "in Settings → Services for live market prices.",
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
