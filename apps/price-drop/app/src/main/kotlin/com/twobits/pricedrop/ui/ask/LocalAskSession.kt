@@ -2,6 +2,8 @@ package com.twobits.pricedrop.ui.ask
 
 import android.content.Context
 import com.twobits.localai.LiteRtLmEngine
+import com.twobits.pricedrop.data.local.AiCallDebugEntry
+import com.twobits.pricedrop.data.local.AiCallDebugStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -27,6 +29,7 @@ class LocalAskSession
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val aiCallDebugStore: AiCallDebugStore,
     ) {
         private var engine: LiteRtLmEngine? = null
         private var engineModelFile: File? = null
@@ -36,12 +39,56 @@ class LocalAskSession
             modelFile: File,
             systemPrompt: String,
         ): String {
-            if (engine == null || engineModelFile != modelFile) {
-                close()
-                engine = LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt)
-                engineModelFile = modelFile
+            val startedAtMs = System.currentTimeMillis()
+            // Recorded — and awaited — before the risky native call below, not after: a native
+            // crash in LiteRT-LM's engine construction/generate kills the process with zero
+            // chance for any Kotlin try/catch to run, so this "start" entry being safely on disk
+            // beforehand is the only way to see, after the fact, that this call was in flight.
+            aiCallDebugStore.record(
+                AiCallDebugEntry(
+                    timestampMs = startedAtMs,
+                    op = "ask-start",
+                    endpoint = "on-device",
+                    model = modelFile.name,
+                    requestSummary = "prompt ${prompt.length} chars",
+                    success = true,
+                ),
+            )
+            return try {
+                if (engine == null || engineModelFile != modelFile) {
+                    close()
+                    engine = LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt)
+                    engineModelFile = modelFile
+                }
+                val response = requireNotNull(engine).generate(prompt)
+                aiCallDebugStore.record(
+                    AiCallDebugEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        op = "ask",
+                        endpoint = "on-device",
+                        model = modelFile.name,
+                        requestSummary = "prompt ${prompt.length} chars",
+                        success = true,
+                        responseSnippet = "${response.length} chars",
+                        durationMs = System.currentTimeMillis() - startedAtMs,
+                    ),
+                )
+                response
+            } catch (e: Throwable) {
+                aiCallDebugStore.record(
+                    AiCallDebugEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        op = "ask",
+                        endpoint = "on-device",
+                        model = modelFile.name,
+                        requestSummary = "prompt ${prompt.length} chars",
+                        success = false,
+                        responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                        durationMs = System.currentTimeMillis() - startedAtMs,
+                    ),
+                )
+                throw e
             }
-            return requireNotNull(engine).generate(prompt)
         }
 
         /** Ends the current conversation's engine. Call on new conversation / screen exit. */

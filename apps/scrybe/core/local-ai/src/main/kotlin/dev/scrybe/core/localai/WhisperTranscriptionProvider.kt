@@ -39,6 +39,7 @@ class WhisperTranscriptionProvider
             suspend fun record(
                 success: Boolean,
                 snippet: String,
+                durationMs: Long? = null,
             ) {
                 if (!debugEnabled) return
                 aiCallDebugStore.record(
@@ -50,6 +51,7 @@ class WhisperTranscriptionProvider
                         requestSummary = "file=${audioFile.name}",
                         success = success,
                         responseSnippet = snippet,
+                        durationMs = durationMs,
                     ),
                 )
             }
@@ -70,10 +72,14 @@ class WhisperTranscriptionProvider
                 // coroutine), but that's an easy contract to break for a new one, so it's
                 // enforced here instead of trusted at every call site.
                 withContext(Dispatchers.IO) {
+                    // Measures decode + model-load + chunked-transcribe together, not just the
+                    // model call — this is what actually answers "why does local transcription
+                    // feel slow", since decode/model-construction can dominate for a short clip.
+                    val startedAtMs = System.currentTimeMillis()
                     val decoded = AudioDecoder.decode(audioFile)
                     WhisperEngine(modelDir, model.filePrefix).use { engine ->
                         val text = engine.transcribe(decoded.samples, decoded.sampleRateHz)
-                        record(success = true, snippet = "${text.length} chars")
+                        record(success = true, snippet = "${text.length} chars", durationMs = System.currentTimeMillis() - startedAtMs)
                         TranscriptResult(
                             text = text,
                             language = "en",

@@ -4,6 +4,10 @@
 
 ### Features
 
+**Settings** — new AI call log, next to AI configuration:
+* every local Ask call is now recorded with timing
+* a call that crashes mid-run still leaves a "started" entry behind it
+
 ### Improvements
 
 ### Fixes

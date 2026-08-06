@@ -4,9 +4,19 @@
 
 ### Features
 
+**Settings** — new AI call log, next to AI configuration:
+* every local and cloud AI call is now recorded with timing
+* covers vision analysis and listing refinement so far
+* a call that crashes mid-run still leaves a "started" entry behind it
+
 ### Improvements
 
 ### Fixes
+
+**Progress toasts** — now follow the app's actual theme in dark mode:
+* the local-analysis and market-research toasts used a fixed inverted color
+* looked like a light popup even with the app set to dark mode
+* now uses the same surface color as the rest of the screen
 
 ## 1.26.0 (2026-08-06)
 

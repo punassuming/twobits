@@ -108,6 +108,7 @@ class OpenAiInsightService
                             .toRequestBody(JSON_MEDIA_TYPE),
                     ).build()
             var recorded = false
+            val startedAtMs = System.currentTimeMillis()
 
             suspend fun recordOnce(
                 success: Boolean,
@@ -126,6 +127,7 @@ class OpenAiInsightService
                         success = success,
                         httpStatus = httpStatus,
                         responseSnippet = snippet,
+                        durationMs = System.currentTimeMillis() - startedAtMs,
                     ),
                 )
             }
