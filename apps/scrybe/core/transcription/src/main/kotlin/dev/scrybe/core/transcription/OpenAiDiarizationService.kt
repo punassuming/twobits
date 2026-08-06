@@ -138,6 +138,7 @@ class OpenAiDiarizationService
             // entry, so the outer catch (network failure, timeout — anything before/after a
             // response) only records if nothing more specific already did.
             var recorded = false
+            val startedAtMs = System.currentTimeMillis()
 
             suspend fun recordOnce(
                 success: Boolean,
@@ -156,6 +157,7 @@ class OpenAiDiarizationService
                         success = success,
                         httpStatus = httpStatus,
                         responseSnippet = snippet,
+                        durationMs = System.currentTimeMillis() - startedAtMs,
                     ),
                 )
             }
@@ -291,6 +293,8 @@ class OpenAiDiarizationService
             // meant an assignment failure was indistinguishable from a genuine single-speaker
             // recording: the exact silent breakage that hid the reasoning-token/cap bug. record()
             // captures each failure in the AI call log before it propagates.
+            val startedAtMs = System.currentTimeMillis()
+
             suspend fun record(
                 success: Boolean,
                 httpStatus: Int?,
@@ -307,6 +311,7 @@ class OpenAiDiarizationService
                         success = success,
                         httpStatus = httpStatus,
                         responseSnippet = snippet,
+                        durationMs = System.currentTimeMillis() - startedAtMs,
                     ),
                 )
             }
@@ -320,7 +325,11 @@ class OpenAiDiarizationService
                 }
             return response.use {
                 if (!response.isSuccessful) {
-                    val err = response.body?.string().orEmpty().take(300)
+                    val err =
+                        response.body
+                            ?.string()
+                            .orEmpty()
+                            .take(300)
                     record(success = false, httpStatus = response.code, snippet = err)
                     throw IOException("Speaker assignment failed: ${response.code} $err")
                 }

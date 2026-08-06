@@ -30,6 +30,7 @@ import com.twobits.pricedrop.ui.pro.ProScreen
 import com.twobits.pricedrop.ui.product.ProductDetailScreen
 import com.twobits.pricedrop.ui.search.SearchScreen
 import com.twobits.pricedrop.ui.settings.AIConfigScreen
+import com.twobits.pricedrop.ui.settings.AiCallDebugScreen
 import com.twobits.pricedrop.ui.settings.CrashLogScreen
 import com.twobits.pricedrop.ui.settings.SettingsScreen
 import com.twobits.pricedrop.ui.watch.WatchScreen
@@ -129,12 +130,16 @@ fun AppNavigation(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToPro = { navController.navigate(Screen.Pro.route) },
                     onNavigateToAiConfig = { navController.navigate(Screen.AiConfig.route) },
+                    onNavigateToAiCallLog = { navController.navigate(Screen.AiCallLog.route) },
                     onNavigateToWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
                     onNavigateToCrashLog = { navController.navigate(Screen.CrashLog.route) },
                 )
             }
             composable(Screen.AiConfig.route) {
                 AIConfigScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.AiCallLog.route) {
+                AiCallDebugScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.CrashLog.route) {
                 CrashLogScreen(onBack = { navController.popBackStack() })

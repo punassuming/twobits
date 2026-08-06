@@ -133,6 +133,7 @@ class OpenAiTranscriptionProvider
                     .build()
 
             var recorded = false
+            val startedAtMs = System.currentTimeMillis()
 
             suspend fun recordOnce(
                 success: Boolean,
@@ -151,6 +152,7 @@ class OpenAiTranscriptionProvider
                         success = success,
                         httpStatus = httpStatus,
                         responseSnippet = snippet,
+                        durationMs = System.currentTimeMillis() - startedAtMs,
                     ),
                 )
             }

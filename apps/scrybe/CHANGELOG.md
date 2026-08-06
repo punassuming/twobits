@@ -4,9 +4,18 @@
 
 ### Features
 
+**AI call log** — every entry now shows how long the call took:
+* transcription, diarization, and insight calls, local and cloud alike
+* makes it possible to see whether local transcription is actually slower
+
 ### Improvements
 
 ### Fixes
+
+**Transcription progress toast** — now follows the app's actual theme in dark mode:
+* it used a fixed inverted color regardless of light/dark mode
+* looked like a light popup even with the app set to dark mode
+* now uses the same surface color as the rest of the screen
 
 ## 1.47.0 (2026-08-06)
 

@@ -34,6 +34,7 @@ class LocalVisionService
         @ApplicationContext private val context: Context,
         private val crashLogStore: CrashLogStore,
         private val progressTracker: LocalAnalysisProgressTracker,
+        private val aiCallDebugStore: AiCallDebugStore,
     ) {
         suspend fun analyse(
             photoPath: String,
@@ -59,6 +60,23 @@ class LocalVisionService
                     // exception for unsupported configurations, which no runCatching here can see.
                     withContext(Dispatchers.IO) {
                         val downscaledPath = downscaleForLocalInference(photoPath)
+                        val startedAtMs = System.currentTimeMillis()
+                        // Recorded — and awaited — immediately before the risky native call below,
+                        // not after: a native crash in LiteRT-LM's vision path kills the process
+                        // with zero chance for any Kotlin try/catch to run, so this entry already
+                        // being safely on disk is the only way to later see, from the AI call log
+                        // alone, which specific call (model, photo size) was in flight when it
+                        // crashed — there is no matching "vision-analyze" entry after it if so.
+                        aiCallDebugStore.record(
+                            AiCallDebugEntry(
+                                timestampMs = startedAtMs,
+                                op = "vision-analyze-start",
+                                endpoint = "on-device",
+                                model = modelFile.name,
+                                requestSummary = "photo=${File(downscaledPath).name} (${File(downscaledPath).length()} bytes)",
+                                success = true,
+                            ),
+                        )
                         try {
                             LiteRtLmEngine(
                                 context,
@@ -67,6 +85,18 @@ class LocalVisionService
                                 visionBackend = LiteRtBackend.CPU,
                             ).use { engine ->
                                 val response = engine.generateWithImage(File(downscaledPath), VisionAnalysisService.USER_PROMPT)
+                                aiCallDebugStore.record(
+                                    AiCallDebugEntry(
+                                        timestampMs = System.currentTimeMillis(),
+                                        op = "vision-analyze",
+                                        endpoint = "on-device",
+                                        model = modelFile.name,
+                                        requestSummary = "photo=${File(downscaledPath).name}",
+                                        success = true,
+                                        responseSnippet = "${response.length} chars",
+                                        durationMs = System.currentTimeMillis() - startedAtMs,
+                                    ),
+                                )
                                 parseDraftItemJson(response)
                             }
                         } finally {
@@ -76,6 +106,17 @@ class LocalVisionService
                 }.getOrElse {
                     Log.w(TAG, "Local vision analysis failed: ${it.javaClass.simpleName}")
                     crashLogStore.record(it)
+                    aiCallDebugStore.record(
+                        AiCallDebugEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            op = "vision-analyze",
+                            endpoint = "on-device",
+                            model = modelFile.name,
+                            requestSummary = "photo=${File(photoPath).name}",
+                            success = false,
+                            responseSnippet = "${it.javaClass.simpleName}: ${it.message}",
+                        ),
+                    )
                     DraftItemResult(error = "On-device vision analysis failed. Try Pro or BYOK instead.")
                 }
             } finally {

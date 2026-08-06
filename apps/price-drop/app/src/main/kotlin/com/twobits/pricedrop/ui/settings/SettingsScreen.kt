@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
@@ -58,6 +59,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPro: () -> Unit,
     onNavigateToAiConfig: () -> Unit,
+    onNavigateToAiCallLog: () -> Unit = {},
     onNavigateToWhatsNew: () -> Unit,
     onNavigateToCrashLog: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -118,6 +120,9 @@ fun SettingsScreen(
             }
             item {
                 AiConfigEntry(onClick = onNavigateToAiConfig)
+            }
+            item {
+                AiCallLogEntry(onClick = onNavigateToAiCallLog)
             }
             item {
                 AppLabeledSectionCard(
@@ -251,6 +256,55 @@ private fun AiConfigEntry(onClick: () -> Unit) {
                 Icons.Filled.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AiCallLogEntry(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.BugReport,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "AI call log",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "Recent local and cloud AI calls, with timing",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.size(18.dp),
             )
         }

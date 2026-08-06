@@ -28,6 +28,7 @@ import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
 import com.shelfsnap.app.ui.itemdetail.MarketResearchScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingViewModel
+import com.shelfsnap.app.ui.settings.AiCallDebugScreen
 import com.shelfsnap.app.ui.settings.CrashLogScreen
 import com.shelfsnap.app.ui.settings.ProScreen
 import com.shelfsnap.app.ui.settings.ServicesScreen
@@ -207,11 +208,16 @@ fun AppNavigation(
             composable(Screen.AiConfig.route) {
                 com.shelfsnap.app.ui.settings.AIConfigScreen(
                     onBack = { navController.popBackStack() },
+                    onNavigateToAiCallLog = { navController.navigate(Screen.AiCallLog.route) },
                 )
             }
 
             composable(Screen.Services.route) {
                 ServicesScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Screen.AiCallLog.route) {
+                AiCallDebugScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Screen.CrashLog.route) {

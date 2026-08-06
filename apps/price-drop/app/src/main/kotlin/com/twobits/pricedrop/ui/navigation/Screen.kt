@@ -19,6 +19,8 @@ sealed class Screen(
 
     data object AiConfig : Screen("ai_config")
 
+    data object AiCallLog : Screen("ai_call_log")
+
     data object CrashLog : Screen("crash_log")
 
     data object WhatsNew : Screen("whats_new")

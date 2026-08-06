@@ -52,8 +52,8 @@ fun ResearchProgressToast(
     ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.inverseSurface,
-            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp,
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
         ) {
@@ -64,7 +64,7 @@ fun ResearchProgressToast(
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.inversePrimary,
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.width(12.dp))
                 Column {
@@ -109,7 +109,7 @@ fun ResearchProgressToast(
                             Text(
                                 text = text,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.75f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }

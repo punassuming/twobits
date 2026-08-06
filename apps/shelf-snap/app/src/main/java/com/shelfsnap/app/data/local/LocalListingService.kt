@@ -29,6 +29,7 @@ class LocalListingService
         @ApplicationContext private val context: Context,
         private val crashLogStore: CrashLogStore,
         private val progressTracker: LocalAnalysisProgressTracker,
+        private val aiCallDebugStore: AiCallDebugStore,
     ) {
         suspend fun refine(
             item: Item,
@@ -41,6 +42,7 @@ class LocalListingService
                 runCatching {
                     val systemPrompt = buildListingSystemPrompt(platform)
                     val userMessage = buildListingUserMessage(item, current, platform)
+                    val startedAtMs = System.currentTimeMillis()
                     // Constructing LiteRtLmEngine is a synchronous, blocking native model load —
                     // it doesn't hop dispatchers on its own, so a caller that launches this from a
                     // bare viewModelScope.launch {} (main-thread by default) would ANR. Every
@@ -50,12 +52,36 @@ class LocalListingService
                     // WhisperTranscriptionProvider).
                     withContext(Dispatchers.IO) {
                         LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt).use { engine ->
-                            parseListingJson(engine.generate(userMessage), current, platform.titleCharLimit)
+                            val response = engine.generate(userMessage)
+                            aiCallDebugStore.record(
+                                AiCallDebugEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    op = "listing-refine",
+                                    endpoint = "on-device",
+                                    model = modelFile.name,
+                                    requestSummary = "platform=${platform.name}",
+                                    success = true,
+                                    responseSnippet = "${response.length} chars",
+                                    durationMs = System.currentTimeMillis() - startedAtMs,
+                                ),
+                            )
+                            parseListingJson(response, current, platform.titleCharLimit)
                         }
                     }
                 }.getOrElse {
                     Log.w(TAG, "Local listing refinement failed: ${it.javaClass.simpleName} — keeping current copy")
                     crashLogStore.record(it)
+                    aiCallDebugStore.record(
+                        AiCallDebugEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            op = "listing-refine",
+                            endpoint = "on-device",
+                            model = modelFile.name,
+                            requestSummary = "platform=${platform.name}",
+                            success = false,
+                            responseSnippet = "${it.javaClass.simpleName}: ${it.message}",
+                        ),
+                    )
                     current
                 }
             } finally {

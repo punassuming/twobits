@@ -1,4 +1,4 @@
-package dev.scrybe.feature.settings
+package com.shelfsnap.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,15 +34,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.scrybe.core.transcription.AiCallDebugEntry
+import com.shelfsnap.app.data.local.AiCallDebugEntry
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Global, chronological log of every AI request/response captured while "AI call debug" is
- * enabled in AI configuration — covers transcription, diarization, and insight calls, not just
- * one feature. Never shows raw audio or full transcript/prompt text, only short summaries.
+ * Global, chronological log of every AI inference call — local and cloud, across vision, listing
+ * generation, and market research. A "-start" entry with no matching completed entry right after
+ * it means the app crashed mid-call: the last "-start" you see is the call that was in flight —
+ * see [com.shelfsnap.app.data.local.AiCallDebugEntry]'s doc for why this is the only way to
+ * diagnose a native crash without adb. Never shows raw photos or full prompt/response text.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,8 +79,8 @@ fun AiCallDebugScreen(
                 }
                 uiState.entries.isEmpty() -> {
                     Text(
-                        "No AI calls recorded yet. Record something with \"AI call debug\" enabled, " +
-                            "then come back here.",
+                        "No AI calls recorded yet. Run a vision analysis, listing refinement, " +
+                            "or market research, then come back here.",
                         modifier = Modifier.align(Alignment.Center).padding(24.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -119,20 +121,25 @@ fun AiCallDebugScreen(
 
 @Composable
 private fun AiCallDebugEntryCard(entry: AiCallDebugEntry) {
+    val isStartMarker = entry.op.endsWith("-start")
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                "${entry.op} — ${if (entry.success) "OK" else "FAILED"}${entry.httpStatus?.let { " ($it)" } ?: ""}",
+                when {
+                    isStartMarker -> "${entry.op.removeSuffix("-start")} — STARTED"
+                    entry.success -> "${entry.op} — OK"
+                    else -> "${entry.op} — FAILED"
+                } + (entry.httpStatus?.let { " ($it)" } ?: ""),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 color =
-                    if (entry.success) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.error
+                    when {
+                        isStartMarker -> MaterialTheme.colorScheme.tertiary
+                        entry.success -> MaterialTheme.colorScheme.onSurface
+                        else -> MaterialTheme.colorScheme.error
                     },
             )
             Text(

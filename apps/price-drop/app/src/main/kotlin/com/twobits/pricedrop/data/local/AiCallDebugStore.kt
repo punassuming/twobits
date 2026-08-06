@@ -1,4 +1,4 @@
-package dev.scrybe.core.transcription
+package com.twobits.pricedrop.data.local
 
 import android.content.Context
 import android.util.Log
@@ -13,8 +13,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * One network call made to an AI provider, for on-device diagnosis without adb — never contains
- * raw audio bytes or the full transcript/prompt text, only short redacted summaries.
+ * One AI inference call (local or cloud), for on-device diagnosis without adb — never contains
+ * the full prompt/response, only short summaries. Mirrors Scrybe's `AiCallDebugEntry`.
+ *
+ * [op] values ending in "-start" are written synchronously *before* a risky call (a native model
+ * load or inference that could crash the process outright) and have no matching
+ * [success]/[durationMs] — [AiCallDebugStore.record] returning means the entry is already on
+ * disk, so if the process dies before the matching completed entry is ever written, a dangling
+ * "-start" entry with no successor is itself the diagnostic: it pinpoints exactly which call was
+ * in flight at the moment of the crash, since no Kotlin exception handler runs in time to catch
+ * a native fault.
  */
 @Serializable
 data class AiCallDebugEntry(
@@ -26,17 +34,13 @@ data class AiCallDebugEntry(
     val success: Boolean,
     val httpStatus: Int? = null,
     val responseSnippet: String? = null,
-    /** Wall-clock time the call took, when the caller measured it — null for older entries. */
     val durationMs: Long? = null,
 )
 
 /**
  * Rolling, file-backed log of the most recent [AiCallDebugEntry] calls across every AI feature
- * (transcription, diarization, insights, transforms) — a superset of the older per-session
- * [DiarizationDebugStore], for diagnosing failures that never reach a specific session's debug
- * record (e.g. a transcription call that fails before anything is persisted). Deliberately not in
- * Room, same reasoning as [DiarizationDebugStore]: diagnostic data should never force a schema
- * migration.
+ * (Ask, product search) — local and cloud alike, so their speed and success rate can be compared
+ * directly. Deliberately not in Room: diagnostic data should never force a schema migration.
  */
 @Singleton
 class AiCallDebugStore
