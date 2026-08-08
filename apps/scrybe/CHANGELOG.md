@@ -4,9 +4,16 @@
 
 ### Features
 
+**Transcription progress toast** — now has a Cancel button:
+* stops the transcription in progress, and anything still queued behind it
+* previously there was no way to stop one once started
+
 ### Improvements
 
 ### Fixes
+
+**Transcription progress toast** — no longer sits with an oversized gap at the bottom:
+* trimmed the extra margin below the toast so it sits closer to the screen edge
 
 ## 1.48.0 (2026-08-08)
 

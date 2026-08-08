@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.BatchTranscriptionTracker
+import dev.scrybe.core.transcription.TranscriptionCancellationController
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -38,6 +39,7 @@ class TranscriptionProgressViewModel
     constructor(
         recordingSessionDao: RecordingSessionDao,
         batchTranscriptionTracker: BatchTranscriptionTracker,
+        private val cancellationController: TranscriptionCancellationController,
     ) : ViewModel() {
         val uiState: StateFlow<TranscriptionProgressUiState> =
             combine(
@@ -55,4 +57,9 @@ class TranscriptionProgressViewModel
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = TranscriptionProgressUiState(),
             )
+
+        /** Stops whatever transcription(s) are currently in flight or queued behind them. */
+        fun cancel() {
+            cancellationController.cancelAll()
+        }
     }

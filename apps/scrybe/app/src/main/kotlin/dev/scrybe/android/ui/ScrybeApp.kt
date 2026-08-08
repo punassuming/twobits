@@ -74,6 +74,7 @@ private fun ScrybeMainContent(
         navController = navController,
         activeRecordingState = activeRecordingState,
         transcriptionProgressState = transcriptionProgressState,
+        onCancelTranscription = transcriptionProgressViewModel::cancel,
         startDestination = startDestination,
         modifier = Modifier.fillMaxSize(),
     )
@@ -93,6 +94,7 @@ private fun MainContentBox(
     navController: NavHostController,
     activeRecordingState: ActiveRecordingUiState,
     transcriptionProgressState: TranscriptionProgressUiState,
+    onCancelTranscription: () -> Unit,
     startDestination: String,
     modifier: Modifier = Modifier,
 ) {
@@ -130,6 +132,7 @@ private fun MainContentBox(
             visible = transcriptionProgressState.isTranscribing,
             label = transcriptionProgressState.label,
             queuedCount = transcriptionProgressState.queuedCount,
+            onCancel = onCancelTranscription,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
         )
     }
