@@ -10,6 +10,8 @@
 
 ### Improvements
 
+* Shared: retriggered CI for all three apps after a GitHub Actions billing gap (no functional change)
+
 ### Fixes
 
 ## 0.17.0 (2026-08-06)
