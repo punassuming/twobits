@@ -10,6 +10,8 @@
 
 ### Improvements
 
+* Shared: retriggered CI for all three apps after a GitHub Actions billing gap (no functional change)
+
 ### Fixes
 
 **Transcription progress toast** — now follows the app's actual theme in dark mode:
