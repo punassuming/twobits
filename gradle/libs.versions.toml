@@ -1,6 +1,9 @@
 # Shared version catalog for all TwoBits apps.
 # Update a version here once to apply it across Scrybe, Shelf Snap, and PriceDrop.
 #
+# (No version changes below — this file is touched on its own, in a dedicated PR, purely to
+# retrigger CI for all three apps after a GitHub Actions billing gap: this path is in every
+# app's CI `paths:` filter, so one commit here reaches all three without touching app code.)
 # Alias naming: where two apps historically used different alias names for the
 # same Maven artifact, both aliases are kept so existing build.gradle.kts files
 # need no changes. App-specific deps are included with a comment noting which
