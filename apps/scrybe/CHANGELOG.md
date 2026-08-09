@@ -8,6 +8,10 @@
 * stops the transcription in progress, and anything still queued behind it
 * previously there was no way to stop one once started
 
+**On-device model** — Gemma 3n E2B/E4B added alongside Gemma 4:
+* try this if Gemma 4 crashes or freezes on your device
+* an older, more battle-tested runtime pairing, at somewhat lower quality
+
 ### Improvements
 
 ### Fixes

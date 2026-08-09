@@ -4,6 +4,10 @@
 
 ### Features
 
+**On-device model** — Gemma 3n E2B/E4B added alongside Gemma 4:
+* try this if Gemma 4 crashes or freezes on your device
+* an older, more battle-tested runtime pairing, at somewhat lower quality
+
 ### Improvements
 
 ### Fixes
