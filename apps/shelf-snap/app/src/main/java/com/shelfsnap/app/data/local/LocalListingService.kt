@@ -27,9 +27,8 @@ class LocalListingService
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val crashLogStore: CrashLogStore,
+        private val debugLogStore: DebugLogStore,
         private val progressTracker: LocalAnalysisProgressTracker,
-        private val aiCallDebugStore: AiCallDebugStore,
     ) {
         suspend fun refine(
             item: Item,
@@ -53,9 +52,10 @@ class LocalListingService
                     withContext(Dispatchers.IO) {
                         LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt).use { engine ->
                             val response = engine.generate(userMessage)
-                            aiCallDebugStore.record(
-                                AiCallDebugEntry(
+                            debugLogStore.record(
+                                DebugLogEntry(
                                     timestampMs = System.currentTimeMillis(),
+                                    type = DebugLogEntryType.AI_CALL,
                                     op = "listing-refine",
                                     endpoint = "on-device",
                                     model = modelFile.name,
@@ -70,16 +70,21 @@ class LocalListingService
                     }
                 }.getOrElse {
                     Log.w(TAG, "Local listing refinement failed: ${it.javaClass.simpleName} — keeping current copy")
-                    crashLogStore.record(it)
-                    aiCallDebugStore.record(
-                        AiCallDebugEntry(
+                    // One AI_CALL entry, not a second separate CRASH entry for the same failure —
+                    // the unified log would otherwise show every failure here twice. stackTrace
+                    // (a field shared across every entry type) carries the same diagnostic detail
+                    // a standalone crash entry would have.
+                    debugLogStore.record(
+                        DebugLogEntry(
                             timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.AI_CALL,
                             op = "listing-refine",
                             endpoint = "on-device",
                             model = modelFile.name,
                             requestSummary = "platform=${platform.name}",
                             success = false,
                             responseSnippet = "${it.javaClass.simpleName}: ${it.message}",
+                            stackTrace = it.stackTraceToString(),
                         ),
                     )
                     current

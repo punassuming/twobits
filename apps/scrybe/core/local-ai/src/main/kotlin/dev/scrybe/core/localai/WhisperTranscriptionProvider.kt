@@ -2,8 +2,9 @@ package dev.scrybe.core.localai
 
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.AiCallDebugEntry
-import dev.scrybe.core.transcription.AiCallDebugStore
+import dev.scrybe.core.transcription.DebugLogEntry
+import dev.scrybe.core.transcription.DebugLogEntryType
+import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.TranscriptResult
 import dev.scrybe.core.transcription.TranscriptionOptions
 import dev.scrybe.core.transcription.TranscriptionProvider
@@ -19,7 +20,7 @@ class WhisperTranscriptionProvider
     @Inject
     constructor(
         private val modelManager: LocalModelManager,
-        private val aiCallDebugStore: AiCallDebugStore,
+        private val debugLogStore: DebugLogStore,
         private val preferencesDataStore: AppPreferencesDataStore,
     ) : TranscriptionProvider {
         override val providerType: ProviderType = ProviderType.LOCAL
@@ -42,9 +43,10 @@ class WhisperTranscriptionProvider
                 durationMs: Long? = null,
             ) {
                 if (!debugEnabled) return
-                aiCallDebugStore.record(
-                    AiCallDebugEntry(
+                debugLogStore.record(
+                    DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
                         op = "transcribe",
                         endpoint = "on-device",
                         model = modelManager.selectedWhisperModel.value.filePrefix,

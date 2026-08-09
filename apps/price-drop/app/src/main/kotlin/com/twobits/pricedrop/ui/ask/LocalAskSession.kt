@@ -2,8 +2,9 @@ package com.twobits.pricedrop.ui.ask
 
 import android.content.Context
 import com.twobits.localai.LiteRtLmEngine
-import com.twobits.pricedrop.data.local.AiCallDebugEntry
-import com.twobits.pricedrop.data.local.AiCallDebugStore
+import com.twobits.pricedrop.data.local.DebugLogEntry
+import com.twobits.pricedrop.data.local.DebugLogEntryType
+import com.twobits.pricedrop.data.local.DebugLogStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -29,7 +30,7 @@ class LocalAskSession
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val aiCallDebugStore: AiCallDebugStore,
+        private val debugLogStore: DebugLogStore,
     ) {
         private var engine: LiteRtLmEngine? = null
         private var engineModelFile: File? = null
@@ -44,9 +45,10 @@ class LocalAskSession
             // crash in LiteRT-LM's engine construction/generate kills the process with zero
             // chance for any Kotlin try/catch to run, so this "start" entry being safely on disk
             // beforehand is the only way to see, after the fact, that this call was in flight.
-            aiCallDebugStore.record(
-                AiCallDebugEntry(
+            debugLogStore.record(
+                DebugLogEntry(
                     timestampMs = startedAtMs,
+                    type = DebugLogEntryType.AI_CALL,
                     op = "ask-start",
                     endpoint = "on-device",
                     model = modelFile.name,
@@ -61,9 +63,10 @@ class LocalAskSession
                     engineModelFile = modelFile
                 }
                 val response = requireNotNull(engine).generate(prompt)
-                aiCallDebugStore.record(
-                    AiCallDebugEntry(
+                debugLogStore.record(
+                    DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
                         op = "ask",
                         endpoint = "on-device",
                         model = modelFile.name,
@@ -75,9 +78,10 @@ class LocalAskSession
                 )
                 response
             } catch (e: Throwable) {
-                aiCallDebugStore.record(
-                    AiCallDebugEntry(
+                debugLogStore.record(
+                    DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
                         op = "ask",
                         endpoint = "on-device",
                         model = modelFile.name,
@@ -85,6 +89,7 @@ class LocalAskSession
                         success = false,
                         responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
                         durationMs = System.currentTimeMillis() - startedAtMs,
+                        stackTrace = e.stackTraceToString(),
                     ),
                 )
                 throw e

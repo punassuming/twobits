@@ -31,7 +31,7 @@ class OpenAiDiarizationService
         private val json: Json,
         private val endpointResolver: OpenAiEndpointResolver,
         private val debugStore: DiarizationDebugStore,
-        private val aiCallDebugStore: AiCallDebugStore,
+        private val debugLogStore: DebugLogStore,
         private val preferencesDataStore: AppPreferencesDataStore,
     ) : DiarizationService {
         override suspend fun diarize(
@@ -147,9 +147,10 @@ class OpenAiDiarizationService
             ) {
                 if (!debugEnabled || recorded) return
                 recorded = true
-                aiCallDebugStore.record(
-                    AiCallDebugEntry(
+                debugLogStore.record(
+                    DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
                         op = "diarize-audio",
                         endpoint = "/v1/audio/transcriptions",
                         model = "whisper-1",
@@ -301,9 +302,10 @@ class OpenAiDiarizationService
                 snippet: String,
             ) {
                 if (!debugEnabled) return
-                aiCallDebugStore.record(
-                    AiCallDebugEntry(
+                debugLogStore.record(
+                    DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
                         op = "diarize-assign",
                         endpoint = "/v1/responses",
                         model = MODEL,

@@ -20,24 +20,26 @@ import androidx.compose.ui.unit.dp
 
 /**
  * The Settings-screen "About" section shared by all three apps: version line, a What's New row,
- * a Crash log row, and a Privacy policy row. Built on [AppSectionLabel]/[AppSectionCard]/
+ * a Debug log row, and a Privacy policy row. Built on [AppSectionLabel]/[AppSectionCard]/
  * [SettingsRow] (which previously had zero call sites anywhere) instead of each app hand-rolling
  * its own.
  *
- * The crash log row lives here — in main Settings, next to version/privacy — rather than under
- * AI configuration: a crash isn't an AI feature's problem to surface, and burying crash retrieval
- * inside an AI-specific screen means anyone hunting for it after a crash won't think to look there.
+ * The debug log row lives here — in main Settings, next to version/privacy — rather than under
+ * AI configuration: a crash isn't an AI feature's problem to surface, and burying it inside an
+ * AI-specific screen means anyone hunting for it after a crash won't think to look there. It
+ * merges what used to be two separate screens (crash log, AI call log) into one chronological
+ * timeline, so cause and effect between them can actually be seen together.
  */
 @Composable
 fun SettingsAppInfoSection(
     versionLabel: String,
     onWhatsNew: () -> Unit,
-    onCrashLog: () -> Unit,
+    onDebugLog: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     title: String = "About",
     whatsNewSubtitle: String = "Recent changes & release notes",
-    crashLogSubtitle: String = "Details of any app crashes, captured automatically",
+    debugLogSubtitle: String = "Crashes, AI calls, and service calls — captured automatically",
     privacyUrl: String = "https://punassuming.github.io/twobits/privacy.html",
     privacySubtitle: String = "punassuming.github.io/twobits/privacy",
 ) {
@@ -76,8 +78,8 @@ fun SettingsAppInfoSection(
             )
             HorizontalDivider()
             SettingsRow(
-                title = "Crash log",
-                subtitle = crashLogSubtitle,
+                title = "Debug log",
+                subtitle = debugLogSubtitle,
                 trailing = {
                     Icon(
                         Icons.Filled.BugReport,
@@ -85,7 +87,7 @@ fun SettingsAppInfoSection(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
-                onClick = onCrashLog,
+                onClick = onDebugLog,
             )
             HorizontalDivider()
             SettingsRow(

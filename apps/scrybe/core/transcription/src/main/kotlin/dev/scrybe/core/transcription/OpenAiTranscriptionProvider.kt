@@ -25,7 +25,7 @@ class OpenAiTranscriptionProvider
         private val json: Json,
         private val endpointResolver: OpenAiEndpointResolver,
         private val audioChunker: OpenAiAudioChunker,
-        private val aiCallDebugStore: AiCallDebugStore,
+        private val debugLogStore: DebugLogStore,
         private val preferencesDataStore: AppPreferencesDataStore,
     ) : TranscriptionProvider {
         override val providerType: ProviderType = ProviderType.OPENAI
@@ -142,9 +142,10 @@ class OpenAiTranscriptionProvider
             ) {
                 if (!debugEnabled || recorded) return
                 recorded = true
-                aiCallDebugStore.record(
-                    AiCallDebugEntry(
+                debugLogStore.record(
+                    DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
                         op = "transcribe",
                         endpoint = "/v1/audio/transcriptions",
                         model = options.model,

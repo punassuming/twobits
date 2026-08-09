@@ -8,7 +8,15 @@
 * try this if Gemma 4 crashes or freezes on your device
 * an older, more battle-tested runtime pairing, at somewhat lower quality
 
+**Settings** — Crash log and AI call log merged into one Debug log:
+* crashes, AI calls, and service calls now show as one chronological timeline
+* web search and Jina Reader calls are now logged too — previously invisible
+* filter chips narrow the view to just crashes, AI calls, or services
+* Share now exports whatever's currently visible, filtered or not
+
 ### Improvements
+
+* bumped the on-device LLM runtime (litertlm-android) to 0.15.0 — its changelog includes a fix for re-entrancy issues on concurrent engine initializations, relevant since some local-AI paths construct more than one engine at once
 
 ### Fixes
 

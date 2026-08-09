@@ -54,7 +54,7 @@ fun SettingsScreen(
     onAiConfig: () -> Unit = {},
     onNavigateToServices: () -> Unit = {},
     onNavigateToPro: () -> Unit = {},
-    onNavigateToCrashLog: () -> Unit = {},
+    onNavigateToDebugLog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -118,7 +118,7 @@ fun SettingsScreen(
                 versionLabel = stringResource(R.string.about_version, BuildConfig.VERSION_NAME),
                 subtitle = stringResource(R.string.about_privacy),
                 onWhatsNew = onWhatsNew,
-                onCrashLog = onNavigateToCrashLog,
+                onDebugLog = onNavigateToDebugLog,
             )
         }
     }

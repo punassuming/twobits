@@ -3,8 +3,9 @@ package dev.scrybe.core.localai
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.SpeakerSegment
-import dev.scrybe.core.transcription.AiCallDebugEntry
-import dev.scrybe.core.transcription.AiCallDebugStore
+import dev.scrybe.core.transcription.DebugLogEntry
+import dev.scrybe.core.transcription.DebugLogEntryType
+import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.DiarizationService
 import dev.scrybe.core.transcription.OpenAiDiarizationService
 import kotlinx.coroutines.flow.first
@@ -19,7 +20,7 @@ class DiarizationServiceFacade
         private val openAiService: OpenAiDiarizationService,
         private val localService: LocalDiarizationService,
         private val preferencesDataStore: AppPreferencesDataStore,
-        private val aiCallDebugStore: AiCallDebugStore,
+        private val debugLogStore: DebugLogStore,
     ) : DiarizationService {
         override suspend fun diarize(
             sessionId: String,
@@ -32,9 +33,10 @@ class DiarizationServiceFacade
                 // without this the AI call log shows nothing at all for the whole diarization —
                 // indistinguishable from diarization never running.
                 if (preferencesDataStore.debugDiarization.first()) {
-                    aiCallDebugStore.record(
-                        AiCallDebugEntry(
+                    debugLogStore.record(
+                        DebugLogEntry(
                             timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.AI_CALL,
                             op = "diarize",
                             endpoint = "on-device",
                             model = "local",

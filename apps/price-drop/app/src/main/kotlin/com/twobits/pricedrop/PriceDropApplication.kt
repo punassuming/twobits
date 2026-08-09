@@ -1,7 +1,7 @@
 package com.twobits.pricedrop
 
 import android.app.Application
-import com.twobits.pricedrop.data.local.CrashLogStore
+import com.twobits.pricedrop.data.local.DebugLogStore
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.settings.SettingsPrefs
 import com.twobits.pricedrop.work.PriceCheckScheduler
@@ -28,11 +28,11 @@ class PriceDropApplication : Application() {
     lateinit var credentialClient: SharedCredentialClient
 
     @Inject
-    lateinit var crashLogStore: CrashLogStore
+    lateinit var debugLogStore: DebugLogStore
 
     override fun onCreate() {
         super.onCreate()
-        crashLogStore.install()
+        debugLogStore.install()
         val deps = EntryPointAccessors.fromApplication(this, PriceCheckWorker.Deps::class.java)
         deps.notifier().ensureChannels()
         appScope.launch {

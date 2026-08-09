@@ -4,6 +4,9 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.twobits.billing.SubscriptionRepository
+import com.twobits.pricedrop.data.local.DebugLogEntry
+import com.twobits.pricedrop.data.local.DebugLogEntryType
+import com.twobits.pricedrop.data.local.DebugLogStore
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode
@@ -42,6 +45,7 @@ class PriceDropApiClient
         private val gson: Gson,
         private val subscriptionRepository: SubscriptionRepository,
         private val providerSettings: ProviderSettingsStore,
+        private val debugLogStore: DebugLogStore,
     ) {
         private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
@@ -52,8 +56,8 @@ class PriceDropApiClient
         suspend fun price(
             asin: String? = null,
             upc: String? = null,
-        ): PriceResponseDto {
-            return when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
+        ): PriceResponseDto =
+            when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
                 ProviderMode.BYOK -> priceDirect(asin, upc, byokKey(PriceDropProvider.RAINFOREST))
                 ProviderMode.PRO -> {
                     val body =
@@ -61,36 +65,33 @@ class PriceDropApiClient
                             asin?.takeIf { it.isNotBlank() }?.let { addProperty("asin", it) }
                             upc?.takeIf { it.isNotBlank() }?.let { addProperty("upc", it) }
                         }
-                    workerPost("/v1/pricedrop/price", body, PriceResponseDto::class.java)
+                    workerPost("/v1/pricedrop/price", body, PriceResponseDto::class.java, op = "price")
                 }
                 // Rainforest has no local capability and never offers it in the UI.
                 ProviderMode.OFF, ProviderMode.LOCAL -> PriceResponseDto(found = false)
             }
-        }
 
-        suspend fun history(asin: String): HistoryResponseDto {
-            return when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
+        suspend fun history(asin: String): HistoryResponseDto =
+            when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
                 ProviderMode.BYOK -> historyDirect(asin, byokKey(PriceDropProvider.RAINFOREST))
                 ProviderMode.PRO -> {
                     val body = JsonObject().apply { addProperty("asin", asin) }
-                    workerPost("/v1/pricedrop/history", body, HistoryResponseDto::class.java)
+                    workerPost("/v1/pricedrop/history", body, HistoryResponseDto::class.java, op = "history")
                 }
                 // Rainforest has no local capability and never offers it in the UI.
                 ProviderMode.OFF, ProviderMode.LOCAL -> HistoryResponseDto()
             }
-        }
 
-        suspend fun barcode(upc: String): BarcodeResponseDto {
-            return when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
+        suspend fun barcode(upc: String): BarcodeResponseDto =
+            when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
                 ProviderMode.BYOK -> barcodeDirect(upc, byokKey(PriceDropProvider.RAINFOREST))
                 ProviderMode.PRO -> {
                     val body = JsonObject().apply { addProperty("upc", upc) }
-                    workerPost("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java)
+                    workerPost("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java, op = "barcode")
                 }
                 // Rainforest has no local capability and never offers it in the UI.
                 ProviderMode.OFF, ProviderMode.LOCAL -> BarcodeResponseDto(found = false)
             }
-        }
 
         /**
          * Shopping-scoped chat. Both whether Ask runs at all AND whether it routes through the
@@ -181,7 +182,15 @@ class PriceDropApiClient
                     addProperty("model", model)
                     add("messages", messages)
                 }
-            val dto = post("$baseUrl/v1/chat/completions", body, ChatResponseDto::class.java, authHeader, op = "chat")
+            val dto =
+                post(
+                    "$baseUrl/v1/chat/completions",
+                    body,
+                    ChatResponseDto::class.java,
+                    authHeader,
+                    op = "chat",
+                    logType = DebugLogEntryType.AI_CALL,
+                )
             return dto.choices
                 .firstOrNull()
                 ?.message
@@ -199,6 +208,7 @@ class PriceDropApiClient
             apiKey: String,
         ): PriceResponseDto =
             withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
                 val urlBuilder =
                     "https://api.rainforestapi.com/request"
                         .toHttpUrl()
@@ -217,64 +227,91 @@ class PriceDropApiClient
                         .url(urlBuilder.build())
                         .get()
                         .build()
-                client.newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
-                    val data = gson.fromJson(text, JsonObject::class.java)
-                    val product =
-                        data["product"]?.asJsonObject
-                            ?: data["search_results"]
-                                ?.asJsonArray
-                                ?.firstOrNull()
-                                ?.asJsonObject
-                                ?.get("product")
-                                ?.asJsonObject
-                            ?: return@use PriceResponseDto(found = false)
+                runCatching {
+                    client.newCall(request).execute().use { response ->
+                        val text = response.body?.string().orEmpty()
+                        if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
+                        val data = gson.fromJson(text, JsonObject::class.java)
+                        val product =
+                            data["product"]?.asJsonObject
+                                ?: data["search_results"]
+                                    ?.asJsonArray
+                                    ?.firstOrNull()
+                                    ?.asJsonObject
+                                    ?.get("product")
+                                    ?.asJsonObject
+                                ?: return@use PriceResponseDto(found = false)
 
-                    val listings = product["sellers_results"]?.asJsonObject?.get("listings")?.asJsonArray ?: JsonArray()
-                    val offers =
-                        listings
-                            .mapNotNull { listing ->
-                                val l = listing.asJsonObject
-                                val price = l["price"]?.asJsonObject?.get("value")?.let { runCatching { it.asDouble }.getOrNull() } ?: return@mapNotNull null
-                                OfferDto(
-                                    seller = l["seller"]?.asJsonObject?.get("name")?.asString ?: "",
-                                    price = price,
-                                    shipping = l["shipping_charge"]?.asJsonObject?.get("value")?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0,
-                                    availability = l["availability"]?.asJsonObject?.get("type")?.asString ?: "unknown",
-                                    url = l["link"]?.asString ?: product["link"]?.asString ?: "",
-                                )
-                            }.take(10)
+                        val listings = product["sellers_results"]?.asJsonObject?.get("listings")?.asJsonArray ?: JsonArray()
+                        val offers =
+                            listings
+                                .mapNotNull { listing ->
+                                    val l = listing.asJsonObject
+                                    val price = l["price"]?.asJsonObject?.get("value")?.let { runCatching { it.asDouble }.getOrNull() } ?: return@mapNotNull null
+                                    OfferDto(
+                                        seller = l["seller"]?.asJsonObject?.get("name")?.asString ?: "",
+                                        price = price,
+                                        shipping = l["shipping_charge"]?.asJsonObject?.get("value")?.let { runCatching { it.asDouble }.getOrNull() } ?: 0.0,
+                                        availability = l["availability"]?.asJsonObject?.get("type")?.asString ?: "unknown",
+                                        url = l["link"]?.asString ?: product["link"]?.asString ?: "",
+                                    )
+                                }.take(10)
 
-                    PriceResponseDto(
-                        found = true,
-                        title = product["title"]?.asString,
-                        asin = product["asin"]?.asString,
-                        price =
-                            product["buybox_winner"]
-                                ?.asJsonObject
-                                ?.get("price")
-                                ?.asJsonObject
-                                ?.get("value")
-                                ?.let { runCatching { it.asDouble }.getOrNull() },
-                        currency =
-                            product["buybox_winner"]
-                                ?.asJsonObject
-                                ?.get("price")
-                                ?.asJsonObject
-                                ?.get("currency")
-                                ?.asString ?: "USD",
-                        availability =
-                            product["buybox_winner"]
-                                ?.asJsonObject
-                                ?.get("availability")
-                                ?.asJsonObject
-                                ?.get("type")
-                                ?.asString ?: "unknown",
-                        url = product["link"]?.asString,
-                        offers = offers,
+                        PriceResponseDto(
+                            found = true,
+                            title = product["title"]?.asString,
+                            asin = product["asin"]?.asString,
+                            price =
+                                product["buybox_winner"]
+                                    ?.asJsonObject
+                                    ?.get("price")
+                                    ?.asJsonObject
+                                    ?.get("value")
+                                    ?.let { runCatching { it.asDouble }.getOrNull() },
+                            currency =
+                                product["buybox_winner"]
+                                    ?.asJsonObject
+                                    ?.get("price")
+                                    ?.asJsonObject
+                                    ?.get("currency")
+                                    ?.asString ?: "USD",
+                            availability =
+                                product["buybox_winner"]
+                                    ?.asJsonObject
+                                    ?.get("availability")
+                                    ?.asJsonObject
+                                    ?.get("type")
+                                    ?.asString ?: "unknown",
+                            url = product["link"]?.asString,
+                            offers = offers,
+                        )
+                    }
+                }.onSuccess {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "price",
+                            endpoint = "rainforest",
+                            success = true,
+                            responseSnippet = if (it.found) "found" else "not found",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
                     )
-                }
+                }.onFailure { e ->
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "price",
+                            endpoint = "rainforest",
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
+                        ),
+                    )
+                }.getOrThrow()
             }
 
         // Mirrors the worker's pdHistory: Rainforest already provides Amazon price history
@@ -284,6 +321,7 @@ class PriceDropApiClient
             apiKey: String,
         ): HistoryResponseDto =
             withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
                 val url =
                     "https://api.rainforestapi.com/request"
                         .toHttpUrl()
@@ -299,37 +337,73 @@ class PriceDropApiClient
                         .url(url)
                         .get()
                         .build()
-                client.newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
-                    val data = gson.fromJson(text, JsonObject::class.java)
-                    val product = data["product"]?.asJsonObject ?: return@use HistoryResponseDto()
+                runCatching {
+                    client.newCall(request).execute().use { response ->
+                        val text = response.body?.string().orEmpty()
+                        if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
+                        val data = gson.fromJson(text, JsonObject::class.java)
+                        val product = data["product"]?.asJsonObject ?: return@use HistoryResponseDto()
 
-                    val rawHistory = product["price_history"]?.asJsonArray ?: JsonArray()
-                    val history =
-                        rawHistory.mapNotNull { entry ->
-                            val e = entry.asJsonObject
-                            val price = e["price"]?.let { runCatching { it.asDouble }.getOrNull() } ?: return@mapNotNull null
-                            val ts = e["date"]?.asString?.let { parseRainforestDate(it) } ?: return@mapNotNull null
-                            HistoryPointDto(ts = ts, price = price)
-                        }
-                    val lowestPrice = history.minOfOrNull { it.price }
-                    HistoryResponseDto(history = history, lowestPrice = lowestPrice)
-                }
+                        val rawHistory = product["price_history"]?.asJsonArray ?: JsonArray()
+                        val history =
+                            rawHistory.mapNotNull { entry ->
+                                val e = entry.asJsonObject
+                                val price = e["price"]?.let { runCatching { it.asDouble }.getOrNull() } ?: return@mapNotNull null
+                                val ts = e["date"]?.asString?.let { parseRainforestDate(it) } ?: return@mapNotNull null
+                                HistoryPointDto(ts = ts, price = price)
+                            }
+                        val lowestPrice = history.minOfOrNull { it.price }
+                        HistoryResponseDto(history = history, lowestPrice = lowestPrice)
+                    }
+                }.onSuccess {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "history",
+                            endpoint = "rainforest",
+                            success = true,
+                            responseSnippet = "${it.history.size} points",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
+                }.onFailure { e ->
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "history",
+                            endpoint = "rainforest",
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
+                        ),
+                    )
+                }.getOrThrow()
             }
 
         // Rainforest's price_history dates have been observed as ISO-8601 ("2024-01-15" or
         // full instants); try both and skip entries that don't parse rather than guessing.
         private fun parseRainforestDate(raw: String): Long? =
-            runCatching { java.time.Instant.parse(raw).toEpochMilli() }
-                .recoverCatching { java.time.LocalDate.parse(raw).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() }
-                .getOrNull()
+            runCatching {
+                java.time.Instant
+                    .parse(raw)
+                    .toEpochMilli()
+            }.recoverCatching {
+                java.time.LocalDate
+                    .parse(raw)
+                    .atStartOfDay(java.time.ZoneOffset.UTC)
+                    .toInstant()
+                    .toEpochMilli()
+            }.getOrNull()
 
         private suspend fun barcodeDirect(
             upc: String,
             apiKey: String,
         ): BarcodeResponseDto =
             withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
                 val url =
                     "https://api.rainforestapi.com/request"
                         .toHttpUrl()
@@ -345,27 +419,54 @@ class PriceDropApiClient
                         .url(url)
                         .get()
                         .build()
-                client.newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
-                    val data = gson.fromJson(text, JsonObject::class.java)
-                    val product =
-                        data["search_results"]
-                            ?.asJsonArray
-                            ?.firstOrNull()
-                            ?.asJsonObject
-                            ?.get("product")
-                            ?.asJsonObject
-                            ?: return@use BarcodeResponseDto(found = false)
-                    BarcodeResponseDto(
-                        found = true,
-                        title = product["title"]?.asString,
-                        asin = product["asin"]?.asString,
-                        imageUrl = product["image"]?.asString,
-                        price = product["price"]?.asJsonObject?.get("value")?.let { runCatching { it.asDouble }.getOrNull() },
-                        url = product["link"]?.asString,
+                runCatching {
+                    client.newCall(request).execute().use { response ->
+                        val text = response.body?.string().orEmpty()
+                        if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
+                        val data = gson.fromJson(text, JsonObject::class.java)
+                        val product =
+                            data["search_results"]
+                                ?.asJsonArray
+                                ?.firstOrNull()
+                                ?.asJsonObject
+                                ?.get("product")
+                                ?.asJsonObject
+                                ?: return@use BarcodeResponseDto(found = false)
+                        BarcodeResponseDto(
+                            found = true,
+                            title = product["title"]?.asString,
+                            asin = product["asin"]?.asString,
+                            imageUrl = product["image"]?.asString,
+                            price = product["price"]?.asJsonObject?.get("value")?.let { runCatching { it.asDouble }.getOrNull() },
+                            url = product["link"]?.asString,
+                        )
+                    }
+                }.onSuccess {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "barcode",
+                            endpoint = "rainforest",
+                            success = true,
+                            responseSnippet = if (it.found) "found" else "not found",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
                     )
-                }
+                }.onFailure { e ->
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "barcode",
+                            endpoint = "rainforest",
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
+                        ),
+                    )
+                }.getOrThrow()
             }
 
         // ---------------------------------------------------------------------------
@@ -378,6 +479,7 @@ class PriceDropApiClient
             apiKey: String,
         ): SearchResponseDto =
             withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
                 val url =
                     "https://s.jina.ai/"
                         .toHttpUrl()
@@ -393,25 +495,54 @@ class PriceDropApiClient
                         .addHeader("X-Return-Format", "json")
                         .get()
                         .build()
-                client.newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
-                    val data = gson.fromJson(text, JsonObject::class.java)
-                    val results =
-                        (data.getAsJsonArray("data") ?: JsonArray())
-                            .take(maxResults)
-                            .map { item ->
-                                val r = item.asJsonObject
-                                val itemUrl = r["url"]?.asString
-                                SearchResultDto(
-                                    title = r["title"]?.asString,
-                                    price = null,
-                                    source = runCatching { itemUrl?.toHttpUrl()?.host }.getOrNull(),
-                                    url = itemUrl,
-                                )
-                            }
-                    SearchResponseDto(results)
-                }
+                runCatching {
+                    client.newCall(request).execute().use { response ->
+                        val text = response.body?.string().orEmpty()
+                        if (!response.isSuccessful) throw IOException(friendlyError(response.code, text))
+                        val data = gson.fromJson(text, JsonObject::class.java)
+                        val results =
+                            (data.getAsJsonArray("data") ?: JsonArray())
+                                .take(maxResults)
+                                .map { item ->
+                                    val r = item.asJsonObject
+                                    val itemUrl = r["url"]?.asString
+                                    SearchResultDto(
+                                        title = r["title"]?.asString,
+                                        price = null,
+                                        source = runCatching { itemUrl?.toHttpUrl()?.host }.getOrNull(),
+                                        url = itemUrl,
+                                    )
+                                }
+                        SearchResponseDto(results)
+                    }
+                }.onSuccess {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "web-search",
+                            endpoint = "jina",
+                            requestSummary = query,
+                            success = true,
+                            responseSnippet = "${it.results.size} results",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
+                }.onFailure { e ->
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "web-search",
+                            endpoint = "jina",
+                            requestSummary = query,
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
+                        ),
+                    )
+                }.getOrThrow()
             }
 
         /**
@@ -428,6 +559,7 @@ class PriceDropApiClient
             apiKey: String,
         ): String =
             withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
                 runCatching {
                     val encodedUrl = java.net.URLEncoder.encode(url, "UTF-8")
                     val request =
@@ -441,6 +573,32 @@ class PriceDropApiClient
                         if (!response.isSuccessful) return@use ""
                         response.body?.string().orEmpty()
                     }
+                }.onSuccess {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "jina-read",
+                            endpoint = "jina-reader",
+                            requestSummary = url,
+                            success = it.isNotEmpty(),
+                            responseSnippet = "${it.length} chars",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
+                }.onFailure { e ->
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "jina-read",
+                            endpoint = "jina-reader",
+                            requestSummary = url,
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
                 }.getOrDefault("")
             }
 
@@ -492,7 +650,14 @@ class PriceDropApiClient
                         )
                     }
                 val dto =
-                    post("$baseUrl/v1/chat/completions", body, ChatResponseDto::class.java, authHeader, op = "extract-product")
+                    post(
+                        "$baseUrl/v1/chat/completions",
+                        body,
+                        ChatResponseDto::class.java,
+                        authHeader,
+                        op = "extract-product",
+                        logType = DebugLogEntryType.AI_CALL,
+                    )
                 val json =
                     gson.fromJson(
                         dto.choices
@@ -533,7 +698,8 @@ class PriceDropApiClient
             path: String,
             body: JsonObject,
             type: Class<T>,
-        ): T = post("$PRO_BASE_URL$path", body, type, "Bearer ${subscriptionRepository.getAppUserId()}")
+            op: String? = null,
+        ): T = post("$PRO_BASE_URL$path", body, type, "Bearer ${subscriptionRepository.getAppUserId()}", op = op)
 
         private suspend fun <T> post(
             url: String,
@@ -541,8 +707,10 @@ class PriceDropApiClient
             type: Class<T>,
             authHeader: String,
             op: String? = null,
+            logType: DebugLogEntryType = DebugLogEntryType.SERVICE_CALL,
         ): T =
             withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
                 val builder =
                     Request
                         .Builder()
@@ -553,13 +721,39 @@ class PriceDropApiClient
                         .post(gson.toJson(body).toRequestBody(jsonMedia))
                 if (op != null) builder.addHeader("X-TwoBits-Op", op)
                 val request = builder.build()
-                client.newCall(request).execute().use { response ->
-                    val text = response.body?.string().orEmpty()
-                    if (!response.isSuccessful) {
-                        throw IOException(friendlyError(response.code, text))
+                runCatching {
+                    client.newCall(request).execute().use { response ->
+                        val text = response.body?.string().orEmpty()
+                        if (!response.isSuccessful) {
+                            throw IOException(friendlyError(response.code, text))
+                        }
+                        gson.fromJson(text, type)
                     }
-                    gson.fromJson(text, type)
-                }
+                }.onSuccess {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = logType,
+                            op = op ?: "post",
+                            endpoint = url,
+                            success = true,
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
+                }.onFailure { e ->
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = logType,
+                            op = op ?: "post",
+                            endpoint = url,
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
+                        ),
+                    )
+                }.getOrThrow()
             }
 
         private fun friendlyError(
