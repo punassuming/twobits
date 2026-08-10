@@ -30,7 +30,11 @@ class ProductDiscoveryCoordinator
         private val registry: ProviderRegistry,
         private val resolver: ProductResolver,
         private val offerAggregator: OfferAggregator,
-        private val debugLogStore: DebugLogStore,
+        // Nullable, not just Hilt-injected: this repo has no mocking library or Robolectric,
+        // so a plain JUnit test can't construct a real DebugLogStore (needs a working
+        // android.content.Context) — the null default lets ProductDiscoveryCoordinatorTest
+        // omit it entirely while Hilt still supplies the real singleton in production.
+        private val debugLogStore: DebugLogStore? = null,
     ) {
         suspend fun discover(request: ProductSearchRequest): ProductDiscoveryResult =
             coroutineScope {
@@ -50,7 +54,7 @@ class ProductDiscoveryCoordinator
                                 val latency = System.currentTimeMillis() - started
                                 when {
                                     result.isFailure -> {
-                                        debugLogStore.record(
+                                        debugLogStore?.record(
                                             DebugLogEntry(
                                                 timestampMs = System.currentTimeMillis(),
                                                 type = DebugLogEntryType.SERVICE_CALL,
@@ -78,7 +82,7 @@ class ProductDiscoveryCoordinator
                                     }
                                     result.getOrNull() is ProviderResult.Success -> {
                                         val candidates = (result.getOrNull() as ProviderResult.Success<List<ProductCandidate>>).value
-                                        debugLogStore.record(
+                                        debugLogStore?.record(
                                             DebugLogEntry(
                                                 timestampMs = System.currentTimeMillis(),
                                                 type = DebugLogEntryType.SERVICE_CALL,
@@ -101,7 +105,7 @@ class ProductDiscoveryCoordinator
                                     }
                                     else -> {
                                         val failure = result.getOrNull() as ProviderResult.Failure
-                                        debugLogStore.record(
+                                        debugLogStore?.record(
                                             DebugLogEntry(
                                                 timestampMs = System.currentTimeMillis(),
                                                 type = DebugLogEntryType.SERVICE_CALL,

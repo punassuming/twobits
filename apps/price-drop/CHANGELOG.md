@@ -20,6 +20,8 @@
 
 ### Fixes
 
+* fixed a unit test compile failure introduced by the new product-search debug logging (no visual change)
+
 ## 0.18.0 (2026-08-08)
 
 ### Features

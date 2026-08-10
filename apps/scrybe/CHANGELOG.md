@@ -26,6 +26,8 @@
 **Transcription progress toast** — no longer sits with an oversized gap at the bottom:
 * trimmed the extra margin below the toast so it sits closer to the screen edge
 
+* fixed a release-build compile failure in AI configuration — a missing import broke the model-picker dialog (no visual change)
+
 ## 1.48.0 (2026-08-08)
 
 ### Features
