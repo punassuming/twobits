@@ -52,6 +52,30 @@ data class DebugLogEntry(
     val stackTrace: String? = null,
 )
 
+/** Pre-merge `CrashLogStore` schema — kept only to decode `crash_log.json` during migration. */
+@Serializable
+private data class LegacyCrashLogEntry(
+    val timestampMs: Long,
+    val threadName: String,
+    val exceptionType: String,
+    val message: String?,
+    val stackTrace: String,
+)
+
+/** Pre-merge `AiCallDebugStore` schema — kept only to decode `ai_call_debug.json` during migration. */
+@Serializable
+private data class LegacyAiCallDebugEntry(
+    val timestampMs: Long,
+    val op: String,
+    val endpoint: String,
+    val model: String? = null,
+    val requestSummary: String,
+    val success: Boolean,
+    val httpStatus: Int? = null,
+    val responseSnippet: String? = null,
+    val durationMs: Long? = null,
+)
+
 /**
  * Rolling, file-backed log merging what were previously two separate signals — uncaught crashes
  * ([install]) and AI/service call outcomes ([record]) — into one chronological timeline, so
@@ -79,11 +103,86 @@ class DebugLogStore
         /** Idempotent — safe to call more than once. */
         fun install() {
             if (previousHandler != null) return
+            migrateLegacyLogsIfPresent()
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                 runCatching { write(crashEntry(thread, throwable)) }
                     .onFailure { Log.e(TAG, "Failed to record crash log entry", it) }
                 previousHandler?.uncaughtException(thread, throwable)
+            }
+        }
+
+        /**
+         * One-time upgrade path: entries recorded by the old, separate CrashLogStore/
+         * AiCallDebugStore (before they merged into this one timeline) would otherwise vanish
+         * the moment a user upgrades and opens the new Debug log screen — exactly when they're
+         * most likely trying to diagnose a crash from right before the upgrade. Reads both
+         * legacy files if present, converts their entries, merges them into the unified log in
+         * timestamp order, then deletes the legacy files so this is a no-op on every later call.
+         */
+        private fun migrateLegacyLogsIfPresent() {
+            synchronized(lock) {
+                runCatching {
+                    val legacyCrashFile = File(context.filesDir, LEGACY_CRASH_FILE_NAME)
+                    val legacyAiCallFile = File(context.filesDir, LEGACY_AI_CALL_FILE_NAME)
+                    if (!legacyCrashFile.exists() && !legacyAiCallFile.exists()) return
+
+                    val migratedCrashes =
+                        runCatching {
+                            if (!legacyCrashFile.exists()) return@runCatching emptyList()
+                            json
+                                .decodeFromString(ListSerializer(LegacyCrashLogEntry.serializer()), legacyCrashFile.readText())
+                                .map {
+                                    DebugLogEntry(
+                                        timestampMs = it.timestampMs,
+                                        type = DebugLogEntryType.CRASH,
+                                        threadName = it.threadName,
+                                        exceptionType = it.exceptionType,
+                                        message = it.message,
+                                        stackTrace = it.stackTrace,
+                                    )
+                                }
+                        }.getOrElse { emptyList() }
+
+                    val migratedAiCalls =
+                        runCatching {
+                            if (!legacyAiCallFile.exists()) return@runCatching emptyList()
+                            json
+                                .decodeFromString(ListSerializer(LegacyAiCallDebugEntry.serializer()), legacyAiCallFile.readText())
+                                .map {
+                                    DebugLogEntry(
+                                        timestampMs = it.timestampMs,
+                                        type = DebugLogEntryType.AI_CALL,
+                                        op = it.op,
+                                        endpoint = it.endpoint,
+                                        model = it.model,
+                                        requestSummary = it.requestSummary,
+                                        success = it.success,
+                                        httpStatus = it.httpStatus,
+                                        responseSnippet = it.responseSnippet,
+                                        durationMs = it.durationMs,
+                                    )
+                                }
+                        }.getOrElse { emptyList() }
+
+                    if (migratedCrashes.isNotEmpty() || migratedAiCalls.isNotEmpty()) {
+                        val existing =
+                            runCatching {
+                                if (!file.exists()) {
+                                    emptyList()
+                                } else {
+                                    json.decodeFromString(ListSerializer(DebugLogEntry.serializer()), file.readText())
+                                }
+                            }.getOrElse { emptyList() }
+                        val merged =
+                            (existing + migratedCrashes + migratedAiCalls)
+                                .sortedBy { it.timestampMs }
+                                .takeLast(MAX_ENTRIES)
+                        file.writeText(json.encodeToString(ListSerializer(DebugLogEntry.serializer()), merged))
+                    }
+                    legacyCrashFile.delete()
+                    legacyAiCallFile.delete()
+                }.onFailure { Log.w(TAG, "Failed to migrate legacy debug logs: ${it.javaClass.simpleName}") }
             }
         }
 
@@ -146,6 +245,8 @@ class DebugLogStore
         private companion object {
             const val TAG = "DebugLog"
             const val FILE_NAME = "debug_log.json"
+            const val LEGACY_CRASH_FILE_NAME = "crash_log.json"
+            const val LEGACY_AI_CALL_FILE_NAME = "ai_call_debug.json"
             const val MAX_ENTRIES = 150
         }
     }

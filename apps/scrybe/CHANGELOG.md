@@ -6,7 +6,17 @@
 
 ### Improvements
 
+**Transcription progress toast Cancel button** — now stops the actual work, not just the wait:
+* the in-flight network request is now aborted, not left running to completion in the background
+* the cancelled session's status resets so it's immediately retryable, instead of staying stuck as "in progress"
+
+**Debug log** — old crash and AI-call history now carries over on upgrade:
+* previously the switch to the merged Debug log left pre-upgrade entries stranded and invisible
+* now migrated in automatically the first time the app launches after upgrading
+
 ### Fixes
+
+* fixed the Gemma 3n on-device model download added in 1.49.0 — it pointed at the wrong file name and always failed instead of installing
 
 ## 1.49.0 (2026-08-10)
 
@@ -35,7 +45,6 @@
 * trimmed the extra margin below the toast so it sits closer to the screen edge
 
 * fixed a release-build compile failure in AI configuration — a missing import broke the model-picker dialog (no visual change)
-
 
 ## 1.48.0 (2026-08-08)
 

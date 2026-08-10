@@ -10,13 +10,16 @@ import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
@@ -54,6 +57,15 @@ class SessionTranscriptionCoordinator
             job?.let { cancellationController.register(sessionId, it) }
             try {
                 return transcribeSessionInternal(sessionId)
+            } catch (e: CancellationException) {
+                // A cancelled job can't run further suspend work on its own context — without
+                // NonCancellable this update would itself be skipped, leaving the session stuck
+                // at TRANSCRIBING (global progress toast never clears, retry never becomes
+                // available) until some other screen happens to reset it.
+                withContext(NonCancellable) {
+                    updateSessionStatus(sessionId, SessionStatus.FAILED)
+                }
+                throw e
             } finally {
                 job?.let { cancellationController.unregister(sessionId, it) }
             }

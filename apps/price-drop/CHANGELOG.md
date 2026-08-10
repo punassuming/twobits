@@ -6,7 +6,13 @@
 
 ### Improvements
 
+**Debug log** — old crash and AI-call history now carries over on upgrade:
+* previously the switch to the merged Debug log left pre-upgrade entries stranded and invisible
+* now migrated in automatically the first time the app launches after upgrading
+
 ### Fixes
+
+* fixed the Gemma 3n on-device model download added in 0.19.0 — it pointed at the wrong file name and always failed instead of installing
 
 ## 0.19.0 (2026-08-10)
 
@@ -29,7 +35,6 @@
 ### Fixes
 
 * fixed a unit test compile failure introduced by the new product-search debug logging (no visual change)
-
 
 ## 0.18.0 (2026-08-08)
 

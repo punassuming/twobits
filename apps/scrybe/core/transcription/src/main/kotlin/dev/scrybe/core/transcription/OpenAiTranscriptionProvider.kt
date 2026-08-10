@@ -1,6 +1,7 @@
 package dev.scrybe.core.transcription
 
 import android.util.Log
+import com.twobits.network.await
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import kotlinx.coroutines.Dispatchers
@@ -159,7 +160,9 @@ class OpenAiTranscriptionProvider
             }
 
             return runCatching {
-                okHttpClient.newCall(request).execute().use { response ->
+                // .await(), not .execute() — a Cancel action needs to actually abort this
+                // request, not just stop the coroutine waiting on it (see Call.await()'s doc).
+                okHttpClient.newCall(request).await().use { response ->
                     if (!response.isSuccessful) {
                         val errorBody =
                             response.body
