@@ -5,10 +5,14 @@ import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.localai.LlmDownloadSource
 import com.twobits.localai.LlmModelDownloadCoordinator
+import com.twobits.localai.ModelDownloadDiagnostics
 import com.twobits.localai.ModelDownloader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.LocalWhisperModel
+import dev.scrybe.core.transcription.DebugLogEntry
+import dev.scrybe.core.transcription.DebugLogEntryType
+import dev.scrybe.core.transcription.DebugLogStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,10 +41,31 @@ class LocalModelManager
         @ApplicationContext private val context: Context,
         private val okHttpClient: OkHttpClient,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val debugLogStore: DebugLogStore,
     ) : LlmDownloadSource {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val modelsDir: File = File(context.getExternalFilesDir(null), "models").also { it.mkdirs() }
-        private val llmCoordinator = LlmModelDownloadCoordinator(modelsDir, okHttpClient)
+        private val llmCoordinator =
+            LlmModelDownloadCoordinator(
+                modelsDir,
+                okHttpClient,
+                diagnostics =
+                    ModelDownloadDiagnostics { model, success, message, stackTraceText, durationMs ->
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.SERVICE_CALL,
+                                op = "model-download",
+                                endpoint = model.downloadUrl,
+                                model = model.fileName,
+                                success = success,
+                                responseSnippet = message,
+                                durationMs = durationMs,
+                                stackTrace = stackTraceText,
+                            ),
+                        )
+                    },
+            )
 
         private val _whisperStates =
             MutableStateFlow<Map<LocalWhisperModel, LocalModelState>>(
@@ -90,6 +115,7 @@ class LocalModelManager
         suspend fun downloadWhisper(model: LocalWhisperModel) {
             if (_whisperStates.value[model] is LocalModelState.Acquiring) return
             withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
                 try {
                     updateWhisperState(model, LocalModelState.Acquiring(0))
                     val archiveFile = File(modelsDir, model.archiveName)
@@ -99,8 +125,32 @@ class LocalModelManager
                     extractTarBz2(archiveFile, modelsDir)
                     archiveFile.delete()
                     updateWhisperState(model, resolveWhisperState(model))
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "model-download",
+                            endpoint = model.downloadUrl,
+                            model = model.archiveName,
+                            success = true,
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
                 } catch (e: Exception) {
                     updateWhisperState(model, LocalModelState.Error(e.message ?: "Download failed"))
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "model-download",
+                            endpoint = model.downloadUrl,
+                            model = model.archiveName,
+                            success = false,
+                            responseSnippet = e.message ?: "Download failed",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
+                        ),
+                    )
                 }
             }
         }

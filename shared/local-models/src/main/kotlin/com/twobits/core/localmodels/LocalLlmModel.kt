@@ -12,17 +12,23 @@ package com.twobits.core.localmodels
  * [TwoBitsLocalModels]'s doc comment): one spec avoids three copies of the same URLs/hashes
  * drifting out of sync.
  *
- * VERIFIED — all four entries' URLs and file names were confirmed against real downloads (this
- * sandbox can't reach huggingface.co, so verification happened outside it). GEMMA_4_E2B/E4B's
- * [sha256] checksums were confirmed the same way; GEMMA_3N_E2B/E4B's URLs are confirmed reachable
- * with a plain unauthenticated GET (despite living under `google/gemma-3n-*-it-litert-lm`, not
- * `litert-community`) but their checksums are not yet captured, so [sha256] is left null there —
- * see [LocalModelAcquisition.DownloadFile.sha256]'s doc for what that means for integrity
- * checking. `litertlm-android`'s Gradle resolution and Scrybe's minSdk compatibility were
- * confirmed the same way as the checksums.
+ * VERIFIED (GEMMA_4_E2B / GEMMA_4_E4B only): those two entries' URLs, file names, and [sha256]
+ * checksums were confirmed against real downloads (this sandbox can't reach huggingface.co, so
+ * that verification happened outside it). `litertlm-android`'s Gradle resolution and Scrybe's
+ * minSdk compatibility were confirmed the same way.
  *
- * Gemma 3n exists alongside Gemma 4 (not replacing it) for the widespread Gemma 4 + LiteRT-LM
- * stability reports independent of vision — see PR #147's review discussion.
+ * A Gemma 3n fallback (for the widespread Gemma 4 + LiteRT-LM stability reports — see PR #147's
+ * review) was attempted twice and reverted twice — see PR #148's history. Both `.../resolve/main/
+ * gemma-3n-E2B-it-int4.litertlm` and the plain (no `-int4`) filename under `google/gemma-3n-*-it-
+ * litert-lm` returned HTTP 401 on a real device: the repo's browsable page and file listing are
+ * public, but `google/gemma-3n-*` sits behind a HuggingFace license click-through that gates the
+ * actual file bytes — a plain unauthenticated GET, the only kind [LocalModelAcquisition.DownloadFile]
+ * supports, can't get past that regardless of filename. `litert-community` (the org GEMMA_4_E2B/
+ * E4B's unauthenticated URLs live under) has no equivalent Gemma 3n `.litertlm` repo. Re-add only
+ * once either (a) an unauthenticated mirror exists, verified against a real download — not just a
+ * reachable-looking page — or (b) [LocalModelAcquisition.ImportFile] (defined, but not yet wired
+ * into any app's download UI) is built out so this can route through manual SAF import instead of
+ * a direct download.
  */
 enum class LocalLlmModel(
     override val displayName: String,
@@ -54,28 +60,6 @@ enum class LocalLlmModel(
                 "gemma-4-E4B-it.litertlm",
         huggingFacePageUrl = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm",
         sha256 = "0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0",
-    ),
-    GEMMA_3N_E2B(
-        displayName = "Gemma 3n E2B",
-        description = "Older, more stable runtime — try this if Gemma 4 crashes",
-        fileName = "gemma-3n-E2B-it-int4.litertlm",
-        sizeLabel = "~2.5 GB",
-        downloadUrl =
-            "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/" +
-                "gemma-3n-E2B-it-int4.litertlm",
-        huggingFacePageUrl = "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm",
-        sha256 = null,
-    ),
-    GEMMA_3N_E4B(
-        displayName = "Gemma 3n E4B",
-        description = "Older, more stable runtime, better quality — requires 4 GB+ RAM",
-        fileName = "gemma-3n-E4B-it-int4.litertlm",
-        sizeLabel = "~4 GB",
-        downloadUrl =
-            "https://huggingface.co/google/gemma-3n-E4B-it-litert-lm/resolve/main/" +
-                "gemma-3n-E4B-it-int4.litertlm",
-        huggingFacePageUrl = "https://huggingface.co/google/gemma-3n-E4B-it-litert-lm",
-        sha256 = null,
     ),
     ;
 

@@ -6,7 +6,13 @@
 
 ### Improvements
 
+**Debug log** — on-device model downloads now show up, including failures:
+* a failed download (a bad URL, a network drop, a checksum mismatch) previously only showed as an inline error chip in AI configuration, with no other record of it
+* every download attempt — success or failure — is now logged
+
 ### Fixes
+
+* removed the Gemma 3n on-device model option added in 1.28.0 — confirmed on a real device to fail with HTTP 401, since its HuggingFace repo gates the actual file behind a license click-through no matter the filename; re-added once a working unauthenticated source exists
 
 ## 1.28.1 (2026-08-10)
 
