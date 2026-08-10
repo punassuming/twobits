@@ -43,6 +43,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -72,6 +74,7 @@ import com.twobits.design.components.AppSectionLabel
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.CredentialRequirement
 import com.twobits.design.components.LocalModelPanel
+import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import com.twobits.pricedrop.data.pro.PriceDropPlan
@@ -145,6 +148,7 @@ fun AIConfigScreen(
     val hasPro = uiState.hasPro
 
     var selectedFeature by remember { mutableStateOf<AiFeature?>(null) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     Scaffold(
         topBar = {
@@ -168,15 +172,49 @@ fun AIConfigScreen(
     ) { padding ->
         val feature = selectedFeature
         if (feature == null) {
-            FeatureListContent(
-                modifier = Modifier.padding(padding),
-                hasPro = hasPro,
-                providerStates = providerStates,
-                featureStates = featureStates,
-                viewModel = viewModel,
-                onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
-                onSelectFeature = { selectedFeature = it },
-            )
+            Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+                TabRow(selectedTabIndex = selectedTab) {
+                    Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Configuration") })
+                    Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Models") })
+                }
+                if (selectedTab == 1) {
+                    val llmStates by viewModel.llmStates.collectAsState()
+                    val selectedLlm by viewModel.selectedLlm.collectAsState()
+                    LazyColumn(
+                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+                    ) {
+                        item {
+                            LocalModelPanel(
+                                sectionLabel = "On-device models",
+                                models = LocalLlmModel.entries.toList(),
+                                status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                                selected = selectedLlm,
+                                onSelect = { viewModel.selectLlmModel(it) },
+                                onPrimaryAction = { viewModel.downloadLlmModel(it) },
+                                primaryActionLabel = "Download",
+                                primaryActionIcon = Icons.Default.CloudDownload,
+                                onDelete = { viewModel.deleteLlmModel(it) },
+                                name = { it.displayName },
+                                sizeLabel = { it.sizeLabel },
+                                description = { it.description },
+                                progressLabel = "Downloading",
+                                huggingFaceUrl = { it.huggingFacePageUrl },
+                            )
+                        }
+                    }
+                } else {
+                    FeatureListContent(
+                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        hasPro = hasPro,
+                        providerStates = providerStates,
+                        featureStates = featureStates,
+                        viewModel = viewModel,
+                        onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
+                        onSelectFeature = { selectedFeature = it },
+                    )
+                }
+            }
         } else {
             FeatureDetailContent(
                 modifier = Modifier.padding(padding),
@@ -185,6 +223,10 @@ fun AIConfigScreen(
                 featureState = featureStates[feature],
                 providerStates = providerStates,
                 viewModel = viewModel,
+                onManageModels = {
+                    selectedFeature = null
+                    selectedTab = 1
+                },
             )
         }
     }
@@ -546,6 +588,7 @@ private fun FeatureDetailContent(
     featureState: FeatureState?,
     providerStates: Map<PriceDropProvider, ProviderState>,
     viewModel: SettingsViewModel,
+    onManageModels: () -> Unit,
 ) {
     val source = featureState?.source ?: ProviderMode.BYOK
     val enabledProviders = featureState?.enabledProviders ?: feature.providers.map { it.key }.toSet()
@@ -605,21 +648,14 @@ private fun FeatureDetailContent(
                     item {
                         val llmStates by viewModel.llmStates.collectAsState()
                         val selectedLlm by viewModel.selectedLlm.collectAsState()
-                        LocalModelPanel(
-                            sectionLabel = "On-device LLM",
+                        LocalModelPicker(
                             models = LocalLlmModel.entries.toList(),
                             status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
                             selected = selectedLlm,
                             onSelect = { viewModel.selectLlmModel(it) },
-                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
-                            primaryActionLabel = "Download",
-                            primaryActionIcon = Icons.Default.CloudDownload,
-                            onDelete = { viewModel.deleteLlmModel(it) },
                             name = { it.displayName },
                             sizeLabel = { it.sizeLabel },
-                            description = { it.description },
-                            progressLabel = "Downloading",
-                            huggingFaceUrl = { it.huggingFacePageUrl },
+                            onManageModels = onManageModels,
                         )
                     }
                 ProviderMode.OFF ->

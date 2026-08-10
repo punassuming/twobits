@@ -33,6 +33,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -59,6 +61,7 @@ import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AiSourceSegment
 import com.twobits.design.components.LocalModelPanel
+import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import dev.scrybe.core.common.ScrybeLayoutDefaults
@@ -93,6 +96,7 @@ fun AIConfigScreen(
     val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
     val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
     var showTransformModelPicker by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     // Derived from uiState on every recomposition rather than captured once in rememberSaveable:
     // the old snapshot was taken before DataStore emitted the real values and never re-synced, so
@@ -127,179 +131,216 @@ fun AIConfigScreen(
             )
         },
     ) { paddingValues ->
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
-            contentAlignment = Alignment.TopCenter,
-        ) {
-            Column(
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Configuration") })
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Models") })
+            }
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(vertical = 12.dp)
-                        .fillMaxWidth()
-                        .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
-                verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                        .padding(horizontal = ScrybeLayoutDefaults.screenHorizontalPadding),
+                contentAlignment = Alignment.TopCenter,
             ) {
-                AiCredentialsDock(
-                    proLabel = "Scrybe Pro",
-                    proPrice = "\$1.99/mo",
-                    hasPro = hasPro,
-                    apiKey = uiState.apiKey,
-                    isValidating = uiState.apiKeyValidationStatus == ApiKeyValidationStatus.Validating,
-                    validationMessage = uiState.apiKeyValidationMessage,
-                    isKeyValid =
-                        when (uiState.apiKeyValidationStatus) {
-                            ApiKeyValidationStatus.Valid -> true
-                            ApiKeyValidationStatus.Invalid -> false
-                            else -> null
-                        },
-                    onApiKeyChange = viewModel::updateApiKey,
-                    onSave = viewModel::saveApiKey,
-                    onClear = viewModel::clearApiKey,
-                    onTest = viewModel::testApiConnection,
-                    onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
-                )
-
-                CallBudgetCard(
-                    speakerIdEnabled = uiState.enableSpeakerIdentification,
-                    insightsEnabled = uiState.enableInsightAnalysis,
-                )
-
-                AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
-                    AiSourceSegment(
-                        selected = transcriptionMode.toSegment(),
-                        hasPro = hasPro,
-                        onChange = { seg ->
-                            val mode = executionModeFromSegment(seg)
-                            viewModel.setTranscriptionProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
-                        },
-                    )
-                    when (transcriptionMode) {
-                        ExecutionMode.PRO ->
-                            AiProManagedCard(
-                                description = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
-                            )
-                        ExecutionMode.BYOK, ExecutionMode.OFF -> {
-                            if (uiState.apiKey.isBlank()) {
-                                AiNoKeyWarning()
-                            } else {
-                                Text(
-                                    "Transcription model",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                ModelRadioList(
-                                    models = OpenAiTranscriptionModel.entries.toList(),
-                                    selected = selectedTranscriptionModel,
-                                    onSelect = { viewModel.setTranscriptionModel(it) },
-                                    name = { it.title },
-                                    subtitle = { it.subtitle },
-                                    costLabel = { it.costLabel },
-                                )
-                            }
-                        }
-                        ExecutionMode.LOCAL ->
-                            LocalModelPanel(
-                                sectionLabel = "Whisper — speech-to-text",
-                                models = LocalWhisperModel.entries.toList(),
-                                status = { (whisperStates[it] ?: LocalModelState.Absent).toStatus() },
-                                selected = selectedWhisperModel,
-                                onSelect = { viewModel.selectWhisperModel(it) },
-                                onPrimaryAction = { viewModel.downloadWhisperModel(it) },
-                                primaryActionLabel = "Download",
-                                primaryActionIcon = Icons.Default.CloudDownload,
-                                onDelete = { viewModel.deleteWhisperModel(it) },
-                                name = { it.displayName },
-                                sizeLabel = { it.sizeLabel },
-                                description = { it.description },
-                                progressLabel = "Downloading",
-                            )
-                    }
-                    if (transcriptionMode != ExecutionMode.LOCAL) {
-                        OutlinedTextField(
-                            value = spokenLanguagesText ?: storedSpokenLanguages,
-                            onValueChange = {
-                                spokenLanguagesText = it
-                                viewModel.setSpokenLanguages(it)
-                            },
-                            singleLine = true,
-                            label = { Text("Spoken languages") },
-                            supportingText = {
-                                Text("Comma-separated, e.g. English, Korean — keeps multilingual recordings in their original languages")
-                            },
-                            modifier = Modifier.fillMaxWidth(),
+                if (selectedTab == 1) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = 12.dp)
+                                .fillMaxWidth()
+                                .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
+                        verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                    ) {
+                        LocalModelPanel(
+                            sectionLabel = "Whisper — speech-to-text",
+                            models = LocalWhisperModel.entries.toList(),
+                            status = { (whisperStates[it] ?: LocalModelState.Absent).toStatus() },
+                            selected = selectedWhisperModel,
+                            onSelect = { viewModel.selectWhisperModel(it) },
+                            onPrimaryAction = { viewModel.downloadWhisperModel(it) },
+                            primaryActionLabel = "Download",
+                            primaryActionIcon = Icons.Default.CloudDownload,
+                            onDelete = { viewModel.deleteWhisperModel(it) },
+                            name = { it.displayName },
+                            sizeLabel = { it.sizeLabel },
+                            description = { it.description },
+                            progressLabel = "Downloading",
+                        )
+                        LocalModelPanel(
+                            sectionLabel = "On-device LLM",
+                            models = LocalLlmModel.entries.toList(),
+                            status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                            selected = selectedLlmModel,
+                            onSelect = { viewModel.selectLlmModel(it) },
+                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
+                            primaryActionLabel = "Download",
+                            primaryActionIcon = Icons.Default.CloudDownload,
+                            onDelete = { viewModel.deleteLlmModel(it) },
+                            name = { it.displayName },
+                            sizeLabel = { it.sizeLabel },
+                            description = { it.description },
+                            progressLabel = "Downloading",
+                            huggingFaceUrl = { it.huggingFacePageUrl },
                         )
                     }
+                    return@Box
                 }
-
-                AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Transforms & Profiles") {
-                    AiSourceSegment(
-                        selected = featuresMode.toSegment(),
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = 12.dp)
+                            .fillMaxWidth()
+                            .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
+                    verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
+                ) {
+                    AiCredentialsDock(
+                        proLabel = "Scrybe Pro",
+                        proPrice = "\$1.99/mo",
                         hasPro = hasPro,
-                        onChange = { seg ->
-                            val mode = executionModeFromSegment(seg)
-                            viewModel.setAiFeaturesProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
-                        },
+                        apiKey = uiState.apiKey,
+                        isValidating = uiState.apiKeyValidationStatus == ApiKeyValidationStatus.Validating,
+                        validationMessage = uiState.apiKeyValidationMessage,
+                        isKeyValid =
+                            when (uiState.apiKeyValidationStatus) {
+                                ApiKeyValidationStatus.Valid -> true
+                                ApiKeyValidationStatus.Invalid -> false
+                                else -> null
+                            },
+                        onApiKeyChange = viewModel::updateApiKey,
+                        onSave = viewModel::saveApiKey,
+                        onClear = viewModel::clearApiKey,
+                        onTest = viewModel::testApiConnection,
+                        onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                     )
-                    when (featuresMode) {
-                        ExecutionMode.PRO ->
-                            AiProManagedCard(
-                                description = "AI transforms managed by Pro subscription. No personal key needed.",
-                            )
-                        ExecutionMode.BYOK, ExecutionMode.OFF -> {
-                            if (uiState.apiKey.isBlank()) AiNoKeyWarning()
-                            SettingOptionRow(
-                                title = "Transform model",
-                                value = selectedTransformModel?.title ?: "Select",
-                                onClick = { showTransformModelPicker = true },
+
+                    CallBudgetCard(
+                        speakerIdEnabled = uiState.enableSpeakerIdentification,
+                        insightsEnabled = uiState.enableInsightAnalysis,
+                    )
+
+                    AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
+                        AiSourceSegment(
+                            selected = transcriptionMode.toSegment(),
+                            hasPro = hasPro,
+                            onChange = { seg ->
+                                val mode = executionModeFromSegment(seg)
+                                viewModel.setTranscriptionProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
+                            },
+                        )
+                        when (transcriptionMode) {
+                            ExecutionMode.PRO ->
+                                AiProManagedCard(
+                                    description = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
+                                )
+                            ExecutionMode.BYOK, ExecutionMode.OFF -> {
+                                if (uiState.apiKey.isBlank()) {
+                                    AiNoKeyWarning()
+                                } else {
+                                    Text(
+                                        "Transcription model",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    ModelRadioList(
+                                        models = OpenAiTranscriptionModel.entries.toList(),
+                                        selected = selectedTranscriptionModel,
+                                        onSelect = { viewModel.setTranscriptionModel(it) },
+                                        name = { it.title },
+                                        subtitle = { it.subtitle },
+                                        costLabel = { it.costLabel },
+                                    )
+                                }
+                            }
+                            ExecutionMode.LOCAL ->
+                                LocalModelPicker(
+                                    models = LocalWhisperModel.entries.toList(),
+                                    status = { (whisperStates[it] ?: LocalModelState.Absent).toStatus() },
+                                    selected = selectedWhisperModel,
+                                    onSelect = { viewModel.selectWhisperModel(it) },
+                                    name = { it.displayName },
+                                    sizeLabel = { it.sizeLabel },
+                                    onManageModels = { selectedTab = 1 },
+                                )
+                        }
+                        if (transcriptionMode != ExecutionMode.LOCAL) {
+                            OutlinedTextField(
+                                value = spokenLanguagesText ?: storedSpokenLanguages,
+                                onValueChange = {
+                                    spokenLanguagesText = it
+                                    viewModel.setSpokenLanguages(it)
+                                },
+                                singleLine = true,
+                                label = { Text("Spoken languages") },
+                                supportingText = {
+                                    Text("Comma-separated, e.g. English, Korean — keeps multilingual recordings in their original languages")
+                                },
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
-                        ExecutionMode.LOCAL ->
-                            LocalModelPanel(
-                                sectionLabel = "On-device LLM",
-                                models = LocalLlmModel.entries.toList(),
-                                status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
-                                selected = selectedLlmModel,
-                                onSelect = { viewModel.selectLlmModel(it) },
-                                onPrimaryAction = { viewModel.downloadLlmModel(it) },
-                                primaryActionLabel = "Download",
-                                primaryActionIcon = Icons.Default.CloudDownload,
-                                onDelete = { viewModel.deleteLlmModel(it) },
-                                name = { it.displayName },
-                                sizeLabel = { it.sizeLabel },
-                                description = { it.description },
-                                progressLabel = "Downloading",
-                                huggingFaceUrl = { it.huggingFacePageUrl },
-                            )
                     }
-                }
 
-                AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
-                    AiToggleRow(
-                        title = "Speaker identification",
-                        subtitle = "Color-code multiple voices in transcript",
-                        checked = uiState.enableSpeakerIdentification,
-                        onCheckedChange = viewModel::setEnableSpeakerIdentification,
-                    )
-                    HorizontalDivider()
-                    AiToggleRow(
-                        title = "Insight extraction",
-                        subtitle = "Pull tasks and action items from transcripts with AI",
-                        checked = uiState.enableInsightAnalysis,
-                        onCheckedChange = viewModel::setEnableInsightAnalysis,
-                    )
-                    HorizontalDivider()
-                    AiToggleRow(
-                        title = "AI call debug",
-                        subtitle = "Log every AI request/response (transcription, diarization, insights) to Settings → Debug log",
-                        checked = uiState.debugDiarization,
-                        onCheckedChange = viewModel::setDebugDiarization,
-                    )
+                    AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Transforms & Profiles") {
+                        AiSourceSegment(
+                            selected = featuresMode.toSegment(),
+                            hasPro = hasPro,
+                            onChange = { seg ->
+                                val mode = executionModeFromSegment(seg)
+                                viewModel.setAiFeaturesProvider(if (mode == ExecutionMode.LOCAL) "LOCAL" else "OPENAI")
+                            },
+                        )
+                        when (featuresMode) {
+                            ExecutionMode.PRO ->
+                                AiProManagedCard(
+                                    description = "AI transforms managed by Pro subscription. No personal key needed.",
+                                )
+                            ExecutionMode.BYOK, ExecutionMode.OFF -> {
+                                if (uiState.apiKey.isBlank()) AiNoKeyWarning()
+                                SettingOptionRow(
+                                    title = "Transform model",
+                                    value = selectedTransformModel?.title ?: "Select",
+                                    onClick = { showTransformModelPicker = true },
+                                )
+                            }
+                            ExecutionMode.LOCAL ->
+                                LocalModelPicker(
+                                    models = LocalLlmModel.entries.toList(),
+                                    status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                                    selected = selectedLlmModel,
+                                    onSelect = { viewModel.selectLlmModel(it) },
+                                    name = { it.displayName },
+                                    sizeLabel = { it.sizeLabel },
+                                    onManageModels = { selectedTab = 1 },
+                                )
+                        }
+                    }
+
+                    AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
+                        AiToggleRow(
+                            title = "Speaker identification",
+                            subtitle = "Color-code multiple voices in transcript",
+                            checked = uiState.enableSpeakerIdentification,
+                            onCheckedChange = viewModel::setEnableSpeakerIdentification,
+                        )
+                        HorizontalDivider()
+                        AiToggleRow(
+                            title = "Insight extraction",
+                            subtitle = "Pull tasks and action items from transcripts with AI",
+                            checked = uiState.enableInsightAnalysis,
+                            onCheckedChange = viewModel::setEnableInsightAnalysis,
+                        )
+                        HorizontalDivider()
+                        AiToggleRow(
+                            title = "AI call debug",
+                            subtitle = "Log every AI request/response (transcription, diarization, insights) to Settings → Debug log",
+                            checked = uiState.debugDiarization,
+                            onCheckedChange = viewModel::setDebugDiarization,
+                        )
+                    }
                 }
             }
         }

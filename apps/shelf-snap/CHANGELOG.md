@@ -10,6 +10,11 @@
 * Qwen 3 1.7B is a different model family entirely — an alternative if Gemma doesn't work well
 * on-device vision analysis still only offers Gemma 4, the only variant it's been tested with
 
+**AI configuration** — downloads move to their own Models tab:
+* a new "Models" tab lists every on-device model with Download/Delete in one place, instead of scattered across Vision, Listing generation, and Market research
+* each feature's Local option now just picks between models already downloaded
+* picking Local with nothing downloaded yet shows a warning with a link straight to the Models tab
+
 ### Improvements
 
 **Debug log** — on-device model downloads now show up, including failures:
