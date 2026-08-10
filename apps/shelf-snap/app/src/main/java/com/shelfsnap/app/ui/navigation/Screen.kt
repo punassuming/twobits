@@ -36,7 +36,5 @@ sealed class Screen(
 
     data object Services : Screen("services")
 
-    data object AiCallLog : Screen("ai_call_log")
-
-    data object CrashLog : Screen("crash_log")
+    data object DebugLog : Screen("debug_log")
 }

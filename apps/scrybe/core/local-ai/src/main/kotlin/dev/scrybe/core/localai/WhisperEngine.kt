@@ -5,6 +5,8 @@ import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.io.File
@@ -54,6 +56,11 @@ internal class WhisperEngine(
         val parts = mutableListOf<String>()
         var offset = 0
         while (offset < samples.size) {
+            // A chunk's native decode call has no suspension points of its own to notice
+            // cancellation at, so this is the only checkpoint between chunks a Cancel action
+            // (TranscriptionCancellationController) has to actually stop a long recording instead
+            // of running every remaining chunk to completion first.
+            currentCoroutineContext().ensureActive()
             val end = (offset + chunkSize).coerceAtMost(samples.size)
             val chunkText = decodeChunk(samples.copyOfRange(offset, end), sampleRate)
             if (chunkText.isNotBlank()) parts += chunkText

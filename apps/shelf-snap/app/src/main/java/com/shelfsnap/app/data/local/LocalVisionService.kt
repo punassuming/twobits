@@ -32,9 +32,8 @@ class LocalVisionService
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val crashLogStore: CrashLogStore,
+        private val debugLogStore: DebugLogStore,
         private val progressTracker: LocalAnalysisProgressTracker,
-        private val aiCallDebugStore: AiCallDebugStore,
     ) {
         suspend fun analyse(
             photoPath: String,
@@ -67,9 +66,10 @@ class LocalVisionService
                         // being safely on disk is the only way to later see, from the AI call log
                         // alone, which specific call (model, photo size) was in flight when it
                         // crashed — there is no matching "vision-analyze" entry after it if so.
-                        aiCallDebugStore.record(
-                            AiCallDebugEntry(
+                        debugLogStore.record(
+                            DebugLogEntry(
                                 timestampMs = startedAtMs,
+                                type = DebugLogEntryType.AI_CALL,
                                 op = "vision-analyze-start",
                                 endpoint = "on-device",
                                 model = modelFile.name,
@@ -85,9 +85,10 @@ class LocalVisionService
                                 visionBackend = LiteRtBackend.CPU,
                             ).use { engine ->
                                 val response = engine.generateWithImage(File(downscaledPath), VisionAnalysisService.USER_PROMPT)
-                                aiCallDebugStore.record(
-                                    AiCallDebugEntry(
+                                debugLogStore.record(
+                                    DebugLogEntry(
                                         timestampMs = System.currentTimeMillis(),
+                                        type = DebugLogEntryType.AI_CALL,
                                         op = "vision-analyze",
                                         endpoint = "on-device",
                                         model = modelFile.name,
@@ -105,16 +106,21 @@ class LocalVisionService
                     }
                 }.getOrElse {
                     Log.w(TAG, "Local vision analysis failed: ${it.javaClass.simpleName}")
-                    crashLogStore.record(it)
-                    aiCallDebugStore.record(
-                        AiCallDebugEntry(
+                    // One AI_CALL entry, not a second separate CRASH entry for the same failure —
+                    // the unified log would otherwise show every failure here twice. stackTrace
+                    // (a field shared across every entry type) carries the same diagnostic detail
+                    // a standalone crash entry would have.
+                    debugLogStore.record(
+                        DebugLogEntry(
                             timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.AI_CALL,
                             op = "vision-analyze",
                             endpoint = "on-device",
                             model = modelFile.name,
                             requestSummary = "photo=${File(photoPath).name}",
                             success = false,
                             responseSnippet = "${it.javaClass.simpleName}: ${it.message}",
+                            stackTrace = it.stackTraceToString(),
                         ),
                     )
                     DraftItemResult(error = "On-device vision analysis failed. Try Pro or BYOK instead.")

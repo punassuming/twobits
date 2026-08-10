@@ -4,9 +4,29 @@
 
 ### Features
 
+**Transcription progress toast** — now has a Cancel button:
+* stops the transcription in progress, and anything still queued behind it
+* previously there was no way to stop one once started
+
+**On-device model** — Gemma 3n E2B/E4B added alongside Gemma 4:
+* try this if Gemma 4 crashes or freezes on your device
+* an older, more battle-tested runtime pairing, at somewhat lower quality
+
+**Settings** — Crash log and AI call log merged into one Debug log:
+* crashes, AI calls, and service calls now show as one chronological timeline
+* filter chips narrow the view to just crashes, AI calls, or services
+* Share now exports whatever's currently visible, filtered or not
+
 ### Improvements
 
+* bumped the on-device LLM runtime (litertlm-android) to 0.15.0 — its changelog includes a fix for re-entrancy issues on concurrent engine initializations, relevant since some local-AI paths construct more than one engine at once
+
 ### Fixes
+
+**Transcription progress toast** — no longer sits with an oversized gap at the bottom:
+* trimmed the extra margin below the toast so it sits closer to the screen edge
+
+* fixed a release-build compile failure in AI configuration — a missing import broke the model-picker dialog (no visual change)
 
 ## 1.48.0 (2026-08-08)
 

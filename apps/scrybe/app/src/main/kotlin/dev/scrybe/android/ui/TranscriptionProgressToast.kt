@@ -16,7 +16,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -44,6 +48,7 @@ fun TranscriptionProgressToast(
     visible: Boolean,
     label: String,
     queuedCount: Int,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -57,7 +62,10 @@ fun TranscriptionProgressToast(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp,
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            // Bottom margin trimmed relative to the other sides — this sits above
+            // navigationBarsPadding() already applied by the caller, so a full 16dp here on top
+            // of that read as an oversized gap below the toast ("offset from the bottom").
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp).fillMaxWidth(),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -110,6 +118,14 @@ fun TranscriptionProgressToast(
                             )
                         }
                     }
+                }
+                Spacer(Modifier.width(4.dp))
+                IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Cancel transcription",
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         }

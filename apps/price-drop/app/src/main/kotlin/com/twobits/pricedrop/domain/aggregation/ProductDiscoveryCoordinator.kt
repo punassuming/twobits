@@ -1,5 +1,8 @@
 package com.twobits.pricedrop.domain.aggregation
 
+import com.twobits.pricedrop.data.local.DebugLogEntry
+import com.twobits.pricedrop.data.local.DebugLogEntryType
+import com.twobits.pricedrop.data.local.DebugLogStore
 import com.twobits.pricedrop.data.provider.contracts.ProductSearchRequest
 import com.twobits.pricedrop.data.provider.contracts.ProviderResult
 import com.twobits.pricedrop.data.provider.registry.ProviderRegistry
@@ -27,65 +30,109 @@ class ProductDiscoveryCoordinator
         private val registry: ProviderRegistry,
         private val resolver: ProductResolver,
         private val offerAggregator: OfferAggregator,
+        // Nullable, not just Hilt-injected: this repo has no mocking library or Robolectric,
+        // so a plain JUnit test can't construct a real DebugLogStore (needs a working
+        // android.content.Context) — the null default lets ProductDiscoveryCoordinatorTest
+        // omit it entirely while Hilt still supplies the real singleton in production.
+        private val debugLogStore: DebugLogStore? = null,
     ) {
         suspend fun discover(request: ProductSearchRequest): ProductDiscoveryResult =
             coroutineScope {
                 val providers = registry.searchProviders()
                 val semaphore = Semaphore(MAX_CONCURRENT_PROVIDERS)
                 val outcomes =
-                    providers.map { provider ->
-                        async {
-                            val started = System.currentTimeMillis()
-                            val result =
-                                runCatching {
-                                    withTimeout(PROVIDER_TIMEOUT_MS) {
-                                        semaphore.withPermit { provider.search(request) }
+                    providers
+                        .map { provider ->
+                            async {
+                                val started = System.currentTimeMillis()
+                                val result =
+                                    runCatching {
+                                        withTimeout(PROVIDER_TIMEOUT_MS) {
+                                            semaphore.withPermit { provider.search(request) }
+                                        }
+                                    }
+                                val latency = System.currentTimeMillis() - started
+                                when {
+                                    result.isFailure -> {
+                                        debugLogStore?.record(
+                                            DebugLogEntry(
+                                                timestampMs = System.currentTimeMillis(),
+                                                type = DebugLogEntryType.SERVICE_CALL,
+                                                op = "product-search",
+                                                endpoint = provider.descriptor.id,
+                                                requestSummary = request.query,
+                                                success = false,
+                                                responseSnippet = result.exceptionOrNull()?.message ?: "timeout",
+                                                durationMs = latency,
+                                                stackTrace = result.exceptionOrNull()?.stackTraceToString(),
+                                            ),
+                                        )
+                                        ProviderOutcome(
+                                            emptyList(),
+                                            listOf(
+                                                ProviderDiagnostic(
+                                                    provider.descriptor.id,
+                                                    ProviderStatus.TIMEOUT,
+                                                    latency,
+                                                    0,
+                                                    result.exceptionOrNull()?.message,
+                                                ),
+                                            ),
+                                        )
+                                    }
+                                    result.getOrNull() is ProviderResult.Success -> {
+                                        val candidates = (result.getOrNull() as ProviderResult.Success<List<ProductCandidate>>).value
+                                        debugLogStore?.record(
+                                            DebugLogEntry(
+                                                timestampMs = System.currentTimeMillis(),
+                                                type = DebugLogEntryType.SERVICE_CALL,
+                                                op = "product-search",
+                                                endpoint = provider.descriptor.id,
+                                                requestSummary = request.query,
+                                                success = true,
+                                                responseSnippet = "${candidates.size} candidates",
+                                                durationMs = latency,
+                                            ),
+                                        )
+                                        ProviderOutcome(
+                                            candidates,
+                                            successDiagnostics(
+                                                result.getOrNull() as ProviderResult.Success<List<ProductCandidate>>,
+                                                provider.descriptor.id,
+                                                latency,
+                                            ),
+                                        )
+                                    }
+                                    else -> {
+                                        val failure = result.getOrNull() as ProviderResult.Failure
+                                        debugLogStore?.record(
+                                            DebugLogEntry(
+                                                timestampMs = System.currentTimeMillis(),
+                                                type = DebugLogEntryType.SERVICE_CALL,
+                                                op = "product-search",
+                                                endpoint = provider.descriptor.id,
+                                                requestSummary = request.query,
+                                                success = false,
+                                                responseSnippet = failure.message,
+                                                durationMs = latency,
+                                            ),
+                                        )
+                                        ProviderOutcome(
+                                            emptyList(),
+                                            listOf(
+                                                ProviderDiagnostic(
+                                                    provider.descriptor.id,
+                                                    ProviderStatus.ERROR,
+                                                    latency,
+                                                    0,
+                                                    failure.message,
+                                                ),
+                                            ),
+                                        )
                                     }
                                 }
-                            val latency = System.currentTimeMillis() - started
-                            when {
-                                result.isFailure ->
-                                    ProviderOutcome(
-                                        emptyList(),
-                                        listOf(
-                                            ProviderDiagnostic(
-                                                provider.descriptor.id,
-                                                ProviderStatus.TIMEOUT,
-                                                latency,
-                                                0,
-                                                result.exceptionOrNull()?.message,
-                                            ),
-                                        ),
-                                    )
-                                result.getOrNull() is ProviderResult.Success -> {
-                                    val candidates = (result.getOrNull() as ProviderResult.Success<List<ProductCandidate>>).value
-                                    ProviderOutcome(
-                                        candidates,
-                                        successDiagnostics(
-                                            result.getOrNull() as ProviderResult.Success<List<ProductCandidate>>,
-                                            provider.descriptor.id,
-                                            latency,
-                                        ),
-                                    )
-                                }
-                                else -> {
-                                    val failure = result.getOrNull() as ProviderResult.Failure
-                                    ProviderOutcome(
-                                        emptyList(),
-                                        listOf(
-                                            ProviderDiagnostic(
-                                                provider.descriptor.id,
-                                                ProviderStatus.ERROR,
-                                                latency,
-                                                0,
-                                                failure.message,
-                                            ),
-                                        ),
-                                    )
-                                }
                             }
-                        }
-                    }.awaitAll()
+                        }.awaitAll()
                 val resolved = resolveAndCluster(request, outcomes.flatMap { it.candidates })
                 ProductDiscoveryResult(
                     query = request.query,
@@ -113,7 +160,12 @@ class ProductDiscoveryCoordinator
                     )
                 }.sortedWith(
                     compareByDescending<ResolvedProduct> { it.assessment.score }
-                        .thenBy { it.offers.firstOrNull()?.totalPrice?.amountMinor ?: Long.MAX_VALUE },
+                        .thenBy {
+                            it.offers
+                                .firstOrNull()
+                                ?.totalPrice
+                                ?.amountMinor ?: Long.MAX_VALUE
+                        },
                 )
 
         private fun canonicalKey(candidate: ProductCandidate): String =
@@ -124,7 +176,10 @@ class ProductDiscoveryCoordinator
                 candidate.identity.asin,
                 candidate.identity.manufacturerPartNumber,
             ).firstOrNull()?.lowercase()
-                ?: candidate.title.lowercase().replace(Regex("[^a-z0-9]+"), " ").trim()
+                ?: candidate.title
+                    .lowercase()
+                    .replace(Regex("[^a-z0-9]+"), " ")
+                    .trim()
 
         private fun sha256(value: String): String =
             MessageDigest

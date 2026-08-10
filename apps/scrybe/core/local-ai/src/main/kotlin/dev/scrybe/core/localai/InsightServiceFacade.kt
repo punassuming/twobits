@@ -2,8 +2,9 @@ package dev.scrybe.core.localai
 
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.AiCallDebugEntry
-import dev.scrybe.core.transcription.AiCallDebugStore
+import dev.scrybe.core.transcription.DebugLogEntry
+import dev.scrybe.core.transcription.DebugLogEntryType
+import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.InsightService
 import dev.scrybe.core.transcription.OpenAiInsightService
 import kotlinx.coroutines.flow.first
@@ -17,7 +18,7 @@ class InsightServiceFacade
         private val openAiService: OpenAiInsightService,
         private val localService: LocalInsightService,
         private val preferencesDataStore: AppPreferencesDataStore,
-        private val aiCallDebugStore: AiCallDebugStore,
+        private val debugLogStore: DebugLogStore,
     ) : InsightService {
         override suspend fun analyzeSentiment(
             transcriptText: String,
@@ -47,9 +48,10 @@ class InsightServiceFacade
         private suspend fun routedLocal(op: String): Boolean {
             val local = preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name
             if (local && preferencesDataStore.debugDiarization.first()) {
-                aiCallDebugStore.record(
-                    AiCallDebugEntry(
+                debugLogStore.record(
+                    DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
                         op = op,
                         endpoint = "on-device",
                         model = "local",

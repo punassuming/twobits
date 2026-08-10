@@ -4,9 +4,23 @@
 
 ### Features
 
+**On-device model** — Gemma 3n E2B/E4B added alongside Gemma 4:
+* try this if Gemma 4 crashes or freezes on your device
+* an older, more battle-tested runtime pairing, at somewhat lower quality
+
+**Settings** — Crash log and AI call log merged into one Debug log:
+* crashes, AI calls, and service calls now show as one chronological timeline
+* product search, price/history/barcode lookups, and Jina web search/page reads are now logged too — previously invisible
+* filter chips narrow the view to just crashes, AI calls, or services
+* Share now exports whatever's currently visible, filtered or not
+
 ### Improvements
 
+* bumped the on-device LLM runtime (litertlm-android) to 0.15.0 — its changelog includes a fix for re-entrancy issues on concurrent engine initializations, relevant since some local-AI paths construct more than one engine at once
+
 ### Fixes
+
+* fixed a unit test compile failure introduced by the new product-search debug logging (no visual change)
 
 ## 0.18.0 (2026-08-08)
 

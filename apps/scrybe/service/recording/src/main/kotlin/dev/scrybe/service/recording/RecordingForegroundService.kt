@@ -28,7 +28,7 @@ import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
-import dev.scrybe.core.transcription.CrashLogStore
+import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transcription.realtime.OpenAiRealtimeTranscriptionProvider
 import dev.scrybe.core.transcription.realtime.RealtimeTranscriptSession
@@ -76,7 +76,7 @@ class RecordingForegroundService : Service() {
 
     @Inject lateinit var customRecordingTypeDao: CustomRecordingTypeDao
 
-    @Inject lateinit var crashLogStore: CrashLogStore
+    @Inject lateinit var debugLogStore: DebugLogStore
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -322,7 +322,7 @@ class RecordingForegroundService : Service() {
                                 }
                             transcriptionResult.onFailure {
                                 android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
-                                crashLogStore.record(it)
+                                debugLogStore.record(it)
                                 recordingSessionEvents.onRecordingError(
                                     it.message ?: "Auto-transcription failed",
                                 )
@@ -344,7 +344,7 @@ class RecordingForegroundService : Service() {
                         }
                     }.onFailure { error ->
                         android.util.Log.e(TAG, "Failed to save recording", error)
-                        crashLogStore.record(error)
+                        debugLogStore.record(error)
                         recordingSessionEvents.onRecordingError(error.message ?: "Failed to save recording")
                         runCatching { File(recordedAudio.filePath).takeIf { it.exists() }?.delete() }
                     }

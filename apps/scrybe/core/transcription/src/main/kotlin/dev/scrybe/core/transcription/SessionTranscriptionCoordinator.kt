@@ -12,7 +12,9 @@ import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
@@ -31,6 +33,7 @@ class SessionTranscriptionCoordinator
         private val batchTranscriptionService: BatchTranscriptionService,
         private val diarizationService: DiarizationService,
         private val insightService: InsightService,
+        private val cancellationController: TranscriptionCancellationController,
     ) {
         private val postTranscriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -43,6 +46,20 @@ class SessionTranscriptionCoordinator
         }
 
         suspend fun transcribeSession(sessionId: String): Result<TranscriptEntity> {
+            // Registers the currently-running coroutine's own Job — not a new child — so
+            // cancelling it here cancels exactly this call (and, for a batch caller looping
+            // transcribeSession() directly in its own coroutine, the rest of that batch too).
+            // See TranscriptionCancellationController's doc for why that's the intended behavior.
+            val job = currentCoroutineContext()[Job]
+            job?.let { cancellationController.register(sessionId, it) }
+            try {
+                return transcribeSessionInternal(sessionId)
+            } finally {
+                job?.let { cancellationController.unregister(sessionId, it) }
+            }
+        }
+
+        private suspend fun transcribeSessionInternal(sessionId: String): Result<TranscriptEntity> {
             val session =
                 sessionDao.getSessionByIdOnce(sessionId)
                     ?: return Result.failure(IllegalArgumentException("Session $sessionId not found"))

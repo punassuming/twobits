@@ -1,9 +1,10 @@
-package com.shelfsnap.app.ui.settings
+package com.twobits.pricedrop.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shelfsnap.app.data.local.CrashLogEntry
-import com.shelfsnap.app.data.local.CrashLogStore
+import com.twobits.pricedrop.data.local.DebugLogEntry
+import com.twobits.pricedrop.data.local.DebugLogEntryType
+import com.twobits.pricedrop.data.local.DebugLogStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,19 +14,24 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-data class CrashLogUiState(
-    val entries: List<CrashLogEntry> = emptyList(),
+/** null [filter] shows every entry type — the default, chronological "everything" view. */
+data class DebugLogUiState(
+    val entries: List<DebugLogEntry> = emptyList(),
+    val filter: DebugLogEntryType? = null,
     val isLoading: Boolean = true,
-)
+) {
+    val visibleEntries: List<DebugLogEntry>
+        get() = if (filter == null) entries else entries.filter { it.type == filter }
+}
 
 @HiltViewModel
-class CrashLogViewModel
+class DebugLogViewModel
     @Inject
     constructor(
-        private val store: CrashLogStore,
+        private val store: DebugLogStore,
     ) : ViewModel() {
-        private val _uiState = MutableStateFlow(CrashLogUiState())
-        val uiState: StateFlow<CrashLogUiState> = _uiState.asStateFlow()
+        private val _uiState = MutableStateFlow(DebugLogUiState())
+        val uiState: StateFlow<DebugLogUiState> = _uiState.asStateFlow()
 
         init {
             refresh()
@@ -35,8 +41,12 @@ class CrashLogViewModel
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 val entries = withContext(Dispatchers.IO) { store.readAll() }.sortedByDescending { it.timestampMs }
-                _uiState.value = CrashLogUiState(entries = entries, isLoading = false)
+                _uiState.value = _uiState.value.copy(entries = entries, isLoading = false)
             }
+        }
+
+        fun setFilter(filter: DebugLogEntryType?) {
+            _uiState.value = _uiState.value.copy(filter = filter)
         }
 
         fun clear() {

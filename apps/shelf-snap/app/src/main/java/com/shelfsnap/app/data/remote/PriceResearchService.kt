@@ -6,6 +6,9 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.shelfsnap.app.data.local.DebugLogEntry
+import com.shelfsnap.app.data.local.DebugLogEntryType
+import com.shelfsnap.app.data.local.DebugLogStore
 import com.shelfsnap.app.data.model.Citation
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.MarketComp
@@ -128,6 +131,7 @@ class PriceResearchService
         @ApplicationContext private val context: Context,
         private val searchResolver: WebSearchResolver,
         private val jinaReader: JinaReaderService,
+        private val debugLogStore: DebugLogStore,
     ) {
         private val client =
             OkHttpClient
@@ -573,7 +577,20 @@ class PriceResearchService
                                                     async {
                                                         val marketplaceName =
                                                             Platform.fromKey(merged[i].platformKey ?: "")?.displayName ?: "listing"
+                                                        val readStartedAtMs = System.currentTimeMillis()
                                                         val text = jinaReader.read(merged[i].url, readerKey) ?: ""
+                                                        debugLogStore.record(
+                                                            DebugLogEntry(
+                                                                timestampMs = System.currentTimeMillis(),
+                                                                type = DebugLogEntryType.SERVICE_CALL,
+                                                                op = "jina-read",
+                                                                endpoint = "jina-reader",
+                                                                requestSummary = merged[i].url,
+                                                                success = text.isNotEmpty(),
+                                                                responseSnippet = "${text.length} chars",
+                                                                durationMs = System.currentTimeMillis() - readStartedAtMs,
+                                                            ),
+                                                        )
                                                         pagesAttempted.incrementAndGet()
                                                         val rejectionReason = confirmedListingRejectionReason(text)
                                                         val isMatch = rejectionReason == null
@@ -652,10 +669,23 @@ class PriceResearchService
             onQueryDone: (SearchProvider, String, Int) -> Unit = { _, _, _ -> },
         ): List<SearchAttempt> {
             suspend fun runOne(query: String): SearchAttempt {
+                val startedAtMs = System.currentTimeMillis()
                 val attempt =
                     runCatching { service.search(query, key) }
                         .fold(
                             onSuccess = { results ->
+                                debugLogStore.record(
+                                    DebugLogEntry(
+                                        timestampMs = System.currentTimeMillis(),
+                                        type = DebugLogEntryType.SERVICE_CALL,
+                                        op = "web-search",
+                                        endpoint = service.provider.key,
+                                        requestSummary = query,
+                                        success = true,
+                                        responseSnippet = "${results.size} results",
+                                        durationMs = System.currentTimeMillis() - startedAtMs,
+                                    ),
+                                )
                                 SearchAttempt(
                                     provider = service.provider,
                                     query = query,
@@ -664,6 +694,19 @@ class PriceResearchService
                             },
                             onFailure = { e ->
                                 Log.w(TAG, "Web search failed for query '$query': ${e.javaClass.simpleName}: ${e.message}")
+                                debugLogStore.record(
+                                    DebugLogEntry(
+                                        timestampMs = System.currentTimeMillis(),
+                                        type = DebugLogEntryType.SERVICE_CALL,
+                                        op = "web-search",
+                                        endpoint = service.provider.key,
+                                        requestSummary = query,
+                                        success = false,
+                                        responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                                        durationMs = System.currentTimeMillis() - startedAtMs,
+                                        stackTrace = e.stackTraceToString(),
+                                    ),
+                                )
                                 SearchAttempt(
                                     provider = service.provider,
                                     query = query,
@@ -768,6 +811,7 @@ class PriceResearchService
             var resultsFound = 0
             for ((index, query) in queries.withIndex()) {
                 if (merged.size >= MAX_SEARCH_RESULTS) break
+                val startedAtMs = System.currentTimeMillis()
                 runCatching {
                     // "searchapi" honors site: operators (Jina silently ignores them), so the
                     // platform-targeted queries below actually return marketplace listings.
@@ -799,6 +843,18 @@ class PriceResearchService
                     }
                 }.fold(
                     onSuccess = { results ->
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.SERVICE_CALL,
+                                op = "web-search",
+                                endpoint = "worker-managed-search",
+                                requestSummary = query,
+                                success = true,
+                                responseSnippet = "${results.size} results",
+                                durationMs = System.currentTimeMillis() - startedAtMs,
+                            ),
+                        )
                         queryLog.add(MarketQuery(label = "Managed search", query = query, resultCount = results.size))
                         results.forEach { r ->
                             if (seen.add(r.url) && merged.size < MAX_SEARCH_RESULTS) merged.add(r)
@@ -808,6 +864,19 @@ class PriceResearchService
                     onFailure = {
                         Log.w(TAG, "Worker search failed for query '$query': ${it.message}")
                         lastError = it.message ?: it.javaClass.simpleName
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.SERVICE_CALL,
+                                op = "web-search",
+                                endpoint = "worker-managed-search",
+                                requestSummary = query,
+                                success = false,
+                                responseSnippet = "${it.javaClass.simpleName}: ${it.message}",
+                                durationMs = System.currentTimeMillis() - startedAtMs,
+                                stackTrace = it.stackTraceToString(),
+                            ),
+                        )
                         queryLog.add(
                             MarketQuery(
                                 label = "Managed search",

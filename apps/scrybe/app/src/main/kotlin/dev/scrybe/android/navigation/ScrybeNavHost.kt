@@ -18,8 +18,7 @@ import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.AIConfigScreen
-import dev.scrybe.feature.settings.AiCallDebugScreen
-import dev.scrybe.feature.settings.CrashLogScreen
+import dev.scrybe.feature.settings.DebugLogScreen
 import dev.scrybe.feature.settings.PeopleScreen
 import dev.scrybe.feature.settings.ProScreen
 import dev.scrybe.feature.settings.RecordingTypesScreen
@@ -45,9 +44,7 @@ sealed class Screen(
 
     object AiConfig : Screen("ai_config")
 
-    object AiCallDebugLog : Screen("ai_call_debug_log")
-
-    object CrashLog : Screen("crash_log")
+    object DebugLog : Screen("debug_log")
 
     object RecordingTypes : Screen("recording_types")
 
@@ -159,20 +156,14 @@ fun ScrybeNavHost(
                 onNavigateToPeople = { navController.navigate(Screen.People.route) },
                 onNavigateToPro = { navController.navigate(Screen.Pro.route) },
                 onNavigateToRecordingTypes = { navController.navigate(Screen.RecordingTypes.route) },
-                onNavigateToCrashLog = { navController.navigate(Screen.CrashLog.route) },
+                onNavigateToDebugLog = { navController.navigate(Screen.DebugLog.route) },
             )
         }
         composable(Screen.AiConfig.route) {
-            AIConfigScreen(
-                onBack = { navController.popBackStack() },
-                onNavigateToAiCallLog = { navController.navigate(Screen.AiCallDebugLog.route) },
-            )
+            AIConfigScreen(onBack = { navController.popBackStack() })
         }
-        composable(Screen.AiCallDebugLog.route) {
-            AiCallDebugScreen(onBack = { navController.popBackStack() })
-        }
-        composable(Screen.CrashLog.route) {
-            CrashLogScreen(onBack = { navController.popBackStack() })
+        composable(Screen.DebugLog.route) {
+            DebugLogScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.RecordingTypes.route) {
             RecordingTypesScreen(onBack = { navController.popBackStack() })

@@ -23,7 +23,7 @@ class OpenAiInsightService
         private val okHttpClient: OkHttpClient,
         private val json: Json,
         private val endpointResolver: OpenAiEndpointResolver,
-        private val aiCallDebugStore: AiCallDebugStore,
+        private val debugLogStore: DebugLogStore,
         private val preferencesDataStore: AppPreferencesDataStore,
     ) : InsightService {
         override suspend fun analyzeSentiment(
@@ -117,9 +117,10 @@ class OpenAiInsightService
             ) {
                 if (!debugEnabled || recorded) return
                 recorded = true
-                aiCallDebugStore.record(
-                    AiCallDebugEntry(
+                debugLogStore.record(
+                    DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
                         op = op,
                         endpoint = "/v1/responses",
                         model = MODEL_NAME,

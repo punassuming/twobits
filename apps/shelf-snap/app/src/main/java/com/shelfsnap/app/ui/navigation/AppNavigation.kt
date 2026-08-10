@@ -28,8 +28,7 @@ import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
 import com.shelfsnap.app.ui.itemdetail.MarketResearchScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingViewModel
-import com.shelfsnap.app.ui.settings.AiCallDebugScreen
-import com.shelfsnap.app.ui.settings.CrashLogScreen
+import com.shelfsnap.app.ui.settings.DebugLogScreen
 import com.shelfsnap.app.ui.settings.ProScreen
 import com.shelfsnap.app.ui.settings.ServicesScreen
 import com.shelfsnap.app.ui.settings.SettingsScreen
@@ -195,7 +194,7 @@ fun AppNavigation(
                     onAiConfig = { navController.navigate(Screen.AiConfig.route) },
                     onNavigateToServices = { navController.navigate(Screen.Services.route) },
                     onNavigateToPro = { navController.navigate(Screen.Pro.route) },
-                    onNavigateToCrashLog = { navController.navigate(Screen.CrashLog.route) },
+                    onNavigateToDebugLog = { navController.navigate(Screen.DebugLog.route) },
                 )
             }
 
@@ -208,7 +207,6 @@ fun AppNavigation(
             composable(Screen.AiConfig.route) {
                 com.shelfsnap.app.ui.settings.AIConfigScreen(
                     onBack = { navController.popBackStack() },
-                    onNavigateToAiCallLog = { navController.navigate(Screen.AiCallLog.route) },
                 )
             }
 
@@ -216,12 +214,8 @@ fun AppNavigation(
                 ServicesScreen(onBack = { navController.popBackStack() })
             }
 
-            composable(Screen.AiCallLog.route) {
-                AiCallDebugScreen(onBack = { navController.popBackStack() })
-            }
-
-            composable(Screen.CrashLog.route) {
-                CrashLogScreen(onBack = { navController.popBackStack() })
+            composable(Screen.DebugLog.route) {
+                DebugLogScreen(onBack = { navController.popBackStack() })
             }
         }
         if (whatsNewState.isVisible && !suppressWhatsNew) {

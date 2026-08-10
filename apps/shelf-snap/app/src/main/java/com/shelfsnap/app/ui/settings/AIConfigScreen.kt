@@ -1,7 +1,6 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +11,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ImageSearch
@@ -70,7 +68,6 @@ private fun LocalModelState.toStatus(): LocalModelStatus =
 @Composable
 fun AIConfigScreen(
     onBack: () -> Unit,
-    onNavigateToAiCallLog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -308,12 +305,6 @@ fun AIConfigScreen(
                     checked = uiState.multiPhotoAnalysis,
                     onCheckedChange = viewModel::onMultiPhotoAnalysisChange,
                 )
-                HorizontalDivider()
-                AiNavigationRow(
-                    title = "View AI call log",
-                    subtitle = "Recent local and cloud AI calls, with timing — vision, listing, market research",
-                    onClick = onNavigateToAiCallLog,
-                )
             }
         }
     }
@@ -428,32 +419,5 @@ private fun AiToggleRow(
             )
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@Composable
-private fun AiNavigationRow(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Icon(
-            Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
