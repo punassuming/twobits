@@ -144,7 +144,7 @@ fun AIConfigScreen(
                     else -> {
                         LocalModelPanel(
                             sectionLabel = "Gemma — on-device vision",
-                            models = LocalLlmModel.entries.toList(),
+                            models = LocalLlmModel.entries.filter { it.visionCapable },
                             status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
                             selected = uiState.selectedLlm,
                             onSelect = { viewModel.selectLlmModel(it) },
@@ -200,7 +200,7 @@ fun AIConfigScreen(
                     }
                     else ->
                         LocalModelPanel(
-                            sectionLabel = "Gemma — on-device LLM",
+                            sectionLabel = "On-device LLM",
                             models = LocalLlmModel.entries.toList(),
                             status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
                             selected = uiState.selectedLlm,
@@ -231,7 +231,7 @@ fun AIConfigScreen(
                         )
                     "local" -> {
                         LocalModelPanel(
-                            sectionLabel = "Gemma — on-device synthesis",
+                            sectionLabel = "On-device synthesis",
                             models = LocalLlmModel.entries.toList(),
                             status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
                             selected = uiState.selectedLlm,
@@ -249,8 +249,8 @@ fun AIConfigScreen(
                         HorizontalDivider()
                         Text(
                             "Web search still runs through your configured providers (Settings → " +
-                                "Services) — local Gemma only writes up the price estimate from " +
-                                "those results; it can't search the web itself.",
+                                "Services) — the local model only writes up the price estimate " +
+                                "from those results; it can't search the web itself.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

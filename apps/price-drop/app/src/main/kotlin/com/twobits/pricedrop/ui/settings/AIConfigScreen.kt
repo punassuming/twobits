@@ -606,7 +606,7 @@ private fun FeatureDetailContent(
                         val llmStates by viewModel.llmStates.collectAsState()
                         val selectedLlm by viewModel.selectedLlm.collectAsState()
                         LocalModelPanel(
-                            sectionLabel = "Gemma — on-device LLM",
+                            sectionLabel = "On-device LLM",
                             models = LocalLlmModel.entries.toList(),
                             status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
                             selected = selectedLlm,

@@ -4,6 +4,11 @@
 
 ### Features
 
+**On-device models** — Gemma 3 1B, Gemma 3 270M, and Qwen 3 1.7B added:
+* Gemma 3 1B is a good default for lower-RAM devices
+* Gemma 3 270M is the smallest/fastest option, for constrained devices
+* Qwen 3 1.7B is a different model family entirely — an alternative if Gemma doesn't work well
+
 ### Improvements
 
 **Debug log** — on-device model downloads now show up, including failures:
