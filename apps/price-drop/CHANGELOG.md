@@ -12,7 +12,7 @@
 
 ### Fixes
 
-* removed the Gemma 3n on-device model option added in 0.19.0 — its download requires a HuggingFace license click-through this app doesn't support, so it failed instead of installing; re-added once a working unauthenticated source exists
+* fixed the Gemma 3n on-device model download added in 0.19.0 — it pointed at the wrong file name and always failed instead of installing
 
 ## 0.19.0 (2026-08-10)
 
