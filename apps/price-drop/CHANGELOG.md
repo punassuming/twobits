@@ -6,7 +6,13 @@
 
 ### Improvements
 
+**Debug log** — old crash and AI-call history now carries over on upgrade:
+* previously the switch to the merged Debug log left pre-upgrade entries stranded and invisible
+* now migrated in automatically the first time the app launches after upgrading
+
 ### Fixes
+
+* removed the Gemma 3n on-device model option added in 0.19.0 — its download requires a HuggingFace license click-through this app doesn't support, so it failed instead of installing; re-added once a working unauthenticated source exists
 
 ## 0.19.0 (2026-08-10)
 
@@ -29,7 +35,6 @@
 ### Fixes
 
 * fixed a unit test compile failure introduced by the new product-search debug logging (no visual change)
-
 
 ## 0.18.0 (2026-08-08)
 
