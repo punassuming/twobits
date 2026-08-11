@@ -4,9 +4,26 @@
 
 ### Features
 
+**On-device models** — Gemma 3 1B, Gemma 3 270M, and Qwen 3 1.7B added:
+* Gemma 3 1B is a good default for lower-RAM devices
+* Gemma 3 270M is the smallest/fastest option, for constrained devices
+* Qwen 3 1.7B is a different model family entirely — an alternative if Gemma doesn't work well
+* on-device vision analysis still only offers Gemma 4, the only variant it's been tested with
+
+**AI configuration** — downloads move to their own Models tab:
+* a new "Models" tab lists every on-device model with Download/Delete in one place, instead of scattered across Vision, Listing generation, and Market research
+* each feature's Local option now just picks between models already downloaded
+* picking Local with nothing downloaded yet shows a warning with a link straight to the Models tab
+
 ### Improvements
 
+**Debug log** — on-device model downloads now show up, including failures:
+* a failed download (a bad URL, a network drop, a checksum mismatch) previously only showed as an inline error chip in AI configuration, with no other record of it
+* every download attempt — success or failure — is now logged
+
 ### Fixes
+
+* removed the Gemma 3n on-device model option added in 1.28.0 — confirmed on a real device to fail with HTTP 401, since its HuggingFace repo gates the actual file behind a license click-through no matter the filename; re-added once a working unauthenticated source exists
 
 ## 1.28.1 (2026-08-10)
 

@@ -9,6 +9,7 @@ import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.localai.LlmDownloadSource
 import com.twobits.localai.LlmModelDownloadCoordinator
+import com.twobits.localai.ModelDownloadDiagnostics
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,7 @@ class LocalModelManager
     constructor(
         @ApplicationContext context: Context,
         private val dataStore: DataStore<Preferences>,
+        private val debugLogStore: DebugLogStore,
     ) : LlmDownloadSource {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val okHttpClient = OkHttpClient.Builder().callTimeout(0, TimeUnit.MILLISECONDS).build()
@@ -49,6 +51,22 @@ class LocalModelManager
             LlmModelDownloadCoordinator(
                 modelsDir = File(context.getExternalFilesDir(null), "local_models").also { it.mkdirs() },
                 okHttpClient = okHttpClient,
+                diagnostics =
+                    ModelDownloadDiagnostics { model, success, message, stackTraceText, durationMs ->
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.SERVICE_CALL,
+                                op = "model-download",
+                                endpoint = model.downloadUrl,
+                                model = model.fileName,
+                                success = success,
+                                responseSnippet = message,
+                                durationMs = durationMs,
+                                stackTrace = stackTraceText,
+                            ),
+                        )
+                    },
             )
 
         private object Keys {

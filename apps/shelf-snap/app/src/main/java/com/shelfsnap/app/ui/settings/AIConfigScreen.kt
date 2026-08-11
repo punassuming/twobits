@@ -26,13 +26,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +57,7 @@ import com.twobits.design.components.AiSourceSegment
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.CredentialRequirement
 import com.twobits.design.components.LocalModelPanel
+import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 
@@ -75,6 +80,7 @@ fun AIConfigScreen(
     val hasPro = uiState.subscriptionTier is SubscriptionTier.Pro
     val snackbarHostState = remember { SnackbarHostState() }
     val searchSavedMessage = stringResource(R.string.search_settings_saved)
+    var selectedTab by remember { mutableStateOf(0) }
 
     LaunchedEffect(uiState.isSearchSaved) {
         if (uiState.isSearchSaved) {
@@ -96,215 +102,225 @@ fun AIConfigScreen(
             )
         },
     ) { padding ->
-        Column(
-            modifier =
-                Modifier
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            CredentialsSection(
-                uiState = uiState,
-                viewModel = viewModel,
-                hasPro = hasPro,
-                onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
-            )
-
-            AiSectionCard(icon = Icons.Default.ImageSearch, title = "Vision — item identification") {
-                AiSourceSegment(
-                    selected = uiState.visionSource,
+        Column(modifier = Modifier.padding(padding)) {
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Configuration") })
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Models") })
+            }
+            if (selectedTab == 1) {
+                Column(
+                    modifier =
+                        Modifier
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 12.dp, vertical = 16.dp),
+                ) {
+                    LocalModelPanel(
+                        sectionLabel = "On-device models",
+                        models = LocalLlmModel.entries.toList(),
+                        status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                        selected = uiState.selectedLlm,
+                        onSelect = { viewModel.selectLlmModel(it) },
+                        onPrimaryAction = { viewModel.downloadLlmModel(it) },
+                        primaryActionLabel = "Download",
+                        primaryActionIcon = Icons.Default.CloudDownload,
+                        onDelete = { viewModel.deleteLlmModel(it) },
+                        name = { it.displayName },
+                        sizeLabel = { it.sizeLabel },
+                        description = { it.description },
+                        progressLabel = "Downloading",
+                        huggingFaceUrl = { it.huggingFacePageUrl },
+                    )
+                }
+                return@Scaffold
+            }
+            Column(
+                modifier =
+                    Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                CredentialsSection(
+                    uiState = uiState,
+                    viewModel = viewModel,
                     hasPro = hasPro,
-                    onChange = viewModel::onVisionSourceChange,
+                    onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                 )
-                when (uiState.visionSource) {
-                    "pro" ->
-                        AiProManagedCard(
-                            description = "Managed vision API active — items analysed automatically.",
-                        )
-                    "byok" -> {
-                        if (uiState.editApiKey.isBlank()) {
-                            AiNoKeyWarning()
-                        } else {
-                            Text(
-                                "Vision model",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
+
+                AiSectionCard(icon = Icons.Default.ImageSearch, title = "Vision — item identification") {
+                    AiSourceSegment(
+                        selected = uiState.visionSource,
+                        hasPro = hasPro,
+                        onChange = viewModel::onVisionSourceChange,
+                    )
+                    when (uiState.visionSource) {
+                        "pro" ->
+                            AiProManagedCard(
+                                description = "Managed vision API active — items analysed automatically.",
                             )
-                            ModelRadioList(
-                                models = VisionModel.entries.toList(),
-                                selected = uiState.visionModel,
-                                onSelect = viewModel::onVisionModelChange,
+                        "byok" -> {
+                            if (uiState.editApiKey.isBlank()) {
+                                AiNoKeyWarning()
+                            } else {
+                                Text(
+                                    "Vision model",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                ModelRadioList(
+                                    models = VisionModel.entries.toList(),
+                                    selected = uiState.visionModel,
+                                    onSelect = viewModel::onVisionModelChange,
+                                    name = { it.displayName },
+                                    subtitle = { it.supportingText },
+                                    costLabel = { it.costLabel },
+                                )
+                            }
+                        }
+                        else -> {
+                            LocalModelPicker(
+                                models = LocalLlmModel.entries.filter { it.visionCapable },
+                                status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                                selected = uiState.selectedLlm,
+                                onSelect = { viewModel.selectLlmModel(it) },
                                 name = { it.displayName },
-                                subtitle = { it.supportingText },
-                                costLabel = { it.costLabel },
+                                sizeLabel = { it.sizeLabel },
+                                onManageModels = { selectedTab = 1 },
+                            )
+                            Text(
+                                "Experimental — on-device vision reuses the same Gemma model as local " +
+                                    "listing generation; accuracy is unverified on this device.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
-                    else -> {
-                        LocalModelPanel(
-                            sectionLabel = "Gemma — on-device vision",
-                            models = LocalLlmModel.entries.toList(),
-                            status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
-                            selected = uiState.selectedLlm,
-                            onSelect = { viewModel.selectLlmModel(it) },
-                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
-                            primaryActionLabel = "Download",
-                            primaryActionIcon = Icons.Default.CloudDownload,
-                            onDelete = { viewModel.deleteLlmModel(it) },
-                            name = { it.displayName },
-                            sizeLabel = { it.sizeLabel },
-                            description = { it.description },
-                            progressLabel = "Downloading",
-                            huggingFaceUrl = { it.huggingFacePageUrl },
-                        )
-                        Text(
-                            "Experimental — on-device vision reuses the same Gemma model as local " +
-                                "listing generation; accuracy is unverified on this device.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                }
+
+                AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Listing generation") {
+                    AiSourceSegment(
+                        selected = uiState.listingSource,
+                        hasPro = hasPro,
+                        onChange = viewModel::onListingSourceChange,
+                    )
+                    when (uiState.listingSource) {
+                        "pro" ->
+                            AiProManagedCard(
+                                description = "Managed listing API active — refined listing copy generated automatically.",
+                            )
+                        "byok" -> {
+                            if (uiState.editApiKey.isBlank()) {
+                                AiNoKeyWarning()
+                            } else {
+                                Text(
+                                    "Listing model",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                ModelRadioList(
+                                    models = ReasoningModel.entries.toList(),
+                                    selected = uiState.reasoningModel,
+                                    onSelect = viewModel::onReasoningModelChange,
+                                    name = { it.displayName },
+                                    subtitle = { it.supportingText },
+                                    costLabel = { it.costLabel },
+                                )
+                            }
+                        }
+                        else ->
+                            LocalModelPicker(
+                                models = LocalLlmModel.entries.toList(),
+                                status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                                selected = uiState.selectedLlm,
+                                onSelect = { viewModel.selectLlmModel(it) },
+                                name = { it.displayName },
+                                sizeLabel = { it.sizeLabel },
+                                onManageModels = { selectedTab = 1 },
+                            )
                     }
                 }
-            }
 
-            AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Listing generation") {
-                AiSourceSegment(
-                    selected = uiState.listingSource,
-                    hasPro = hasPro,
-                    onChange = viewModel::onListingSourceChange,
-                )
-                when (uiState.listingSource) {
-                    "pro" ->
-                        AiProManagedCard(
-                            description = "Managed listing API active — refined listing copy generated automatically.",
-                        )
-                    "byok" -> {
-                        if (uiState.editApiKey.isBlank()) {
-                            AiNoKeyWarning()
-                        } else {
-                            Text(
-                                "Listing model",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
+                AiSectionCard(icon = Icons.Default.Insights, title = "Market research") {
+                    AiSourceSegment(
+                        selected = uiState.textSource,
+                        hasPro = hasPro,
+                        onChange = viewModel::onTextSourceChange,
+                    )
+                    when (uiState.textSource) {
+                        "pro" ->
+                            AiProManagedCard(
+                                description = "Managed pricing & web search API active — no keys required.",
                             )
-                            ModelRadioList(
-                                models = ReasoningModel.entries.toList(),
-                                selected = uiState.reasoningModel,
-                                onSelect = viewModel::onReasoningModelChange,
+                        "local" -> {
+                            LocalModelPicker(
+                                models = LocalLlmModel.entries.toList(),
+                                status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
+                                selected = uiState.selectedLlm,
+                                onSelect = { viewModel.selectLlmModel(it) },
                                 name = { it.displayName },
-                                subtitle = { it.supportingText },
-                                costLabel = { it.costLabel },
+                                sizeLabel = { it.sizeLabel },
+                                onManageModels = { selectedTab = 1 },
+                            )
+                            HorizontalDivider()
+                            Text(
+                                "Web search still runs through your configured providers (Settings → " +
+                                    "Services) — the local model only writes up the price estimate " +
+                                    "from those results; it can't search the web itself.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        else -> {
+                            if (uiState.editApiKey.isBlank()) {
+                                AiNoKeyWarning()
+                            } else {
+                                Text(
+                                    "Market research model",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                ModelRadioList(
+                                    models = ReasoningModel.entries.toList(),
+                                    selected = uiState.reasoningModel,
+                                    onSelect = viewModel::onReasoningModelChange,
+                                    name = { it.displayName },
+                                    subtitle = { it.supportingText },
+                                    costLabel = { it.costLabel },
+                                )
+                            }
+                            HorizontalDivider()
+                            Text(
+                                "Web search providers, their keys, and which are enabled now live in " +
+                                    "Settings → Services.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
-                    else ->
-                        LocalModelPanel(
-                            sectionLabel = "Gemma — on-device LLM",
-                            models = LocalLlmModel.entries.toList(),
-                            status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
-                            selected = uiState.selectedLlm,
-                            onSelect = { viewModel.selectLlmModel(it) },
-                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
-                            primaryActionLabel = "Download",
-                            primaryActionIcon = Icons.Default.CloudDownload,
-                            onDelete = { viewModel.deleteLlmModel(it) },
-                            name = { it.displayName },
-                            sizeLabel = { it.sizeLabel },
-                            description = { it.description },
-                            progressLabel = "Downloading",
-                            huggingFaceUrl = { it.huggingFacePageUrl },
-                        )
                 }
-            }
 
-            AiSectionCard(icon = Icons.Default.Insights, title = "Market research") {
-                AiSourceSegment(
-                    selected = uiState.textSource,
-                    hasPro = hasPro,
-                    onChange = viewModel::onTextSourceChange,
-                )
-                when (uiState.textSource) {
-                    "pro" ->
-                        AiProManagedCard(
-                            description = "Managed pricing & web search API active — no keys required.",
-                        )
-                    "local" -> {
-                        LocalModelPanel(
-                            sectionLabel = "Gemma — on-device synthesis",
-                            models = LocalLlmModel.entries.toList(),
-                            status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
-                            selected = uiState.selectedLlm,
-                            onSelect = { viewModel.selectLlmModel(it) },
-                            onPrimaryAction = { viewModel.downloadLlmModel(it) },
-                            primaryActionLabel = "Download",
-                            primaryActionIcon = Icons.Default.CloudDownload,
-                            onDelete = { viewModel.deleteLlmModel(it) },
-                            name = { it.displayName },
-                            sizeLabel = { it.sizeLabel },
-                            description = { it.description },
-                            progressLabel = "Downloading",
-                            huggingFaceUrl = { it.huggingFacePageUrl },
-                        )
-                        HorizontalDivider()
-                        Text(
-                            "Web search still runs through your configured providers (Settings → " +
-                                "Services) — local Gemma only writes up the price estimate from " +
-                                "those results; it can't search the web itself.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    else -> {
-                        if (uiState.editApiKey.isBlank()) {
-                            AiNoKeyWarning()
-                        } else {
-                            Text(
-                                "Market research model",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            ModelRadioList(
-                                models = ReasoningModel.entries.toList(),
-                                selected = uiState.reasoningModel,
-                                onSelect = viewModel::onReasoningModelChange,
-                                name = { it.displayName },
-                                subtitle = { it.supportingText },
-                                costLabel = { it.costLabel },
-                            )
-                        }
-                        HorizontalDivider()
-                        Text(
-                            "Web search providers, their keys, and which are enabled now live in " +
-                                "Settings → Services.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
+                    AiToggleRow(
+                        title = "AI condition detection",
+                        subtitle = "Automatically assess item condition from photos",
+                        checked = uiState.aiConditionDetection,
+                        onCheckedChange = viewModel::onAiConditionDetectionChange,
+                    )
+                    HorizontalDivider()
+                    AiToggleRow(
+                        title = "Auto price estimate",
+                        subtitle = "Generate a resale price estimate when analyzing items",
+                        checked = uiState.autoPriceEstimate,
+                        onCheckedChange = viewModel::onAutoPriceEstimateChange,
+                    )
+                    HorizontalDivider()
+                    AiToggleRow(
+                        title = "Multi-photo analysis",
+                        subtitle = "Use all captured photos for richer item identification",
+                        checked = uiState.multiPhotoAnalysis,
+                        onCheckedChange = viewModel::onMultiPhotoAnalysisChange,
+                    )
                 }
-            }
-
-            AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
-                AiToggleRow(
-                    title = "AI condition detection",
-                    subtitle = "Automatically assess item condition from photos",
-                    checked = uiState.aiConditionDetection,
-                    onCheckedChange = viewModel::onAiConditionDetectionChange,
-                )
-                HorizontalDivider()
-                AiToggleRow(
-                    title = "Auto price estimate",
-                    subtitle = "Generate a resale price estimate when analyzing items",
-                    checked = uiState.autoPriceEstimate,
-                    onCheckedChange = viewModel::onAutoPriceEstimateChange,
-                )
-                HorizontalDivider()
-                AiToggleRow(
-                    title = "Multi-photo analysis",
-                    subtitle = "Use all captured photos for richer item identification",
-                    checked = uiState.multiPhotoAnalysis,
-                    onCheckedChange = viewModel::onMultiPhotoAnalysisChange,
-                )
             }
         }
     }

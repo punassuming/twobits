@@ -21,6 +21,7 @@ import java.io.File
 class LlmModelDownloadCoordinator(
     private val modelsDir: File,
     private val okHttpClient: OkHttpClient,
+    private val diagnostics: ModelDownloadDiagnostics? = null,
 ) {
     init {
         // A .part file nobody has resumed in days is more likely abandoned than still wanted,
@@ -46,6 +47,7 @@ class LlmModelDownloadCoordinator(
         if (_states.value[model] is LocalModelState.Acquiring) return
         withContext(Dispatchers.IO) {
             val destFile = File(modelsDir, model.fileName)
+            val startedAtMs = System.currentTimeMillis()
             try {
                 update(model, LocalModelState.Acquiring(0))
                 ModelDownloader.downloadFile(
@@ -55,12 +57,20 @@ class LlmModelDownloadCoordinator(
                     expectedSha256 = model.sha256,
                 ) { progress -> update(model, LocalModelState.Acquiring(progress)) }
                 update(model, resolveState(model))
+                diagnostics?.record(model, success = true, message = null, stackTraceText = null, durationMs = System.currentTimeMillis() - startedAtMs)
             } catch (e: Exception) {
                 // The in-progress .part file is deliberately left alone here — downloadFile
                 // already discarded it for unrecoverable failures (bad checksum, HTTP 4xx, out
                 // of space) and otherwise preserved it so the next attempt (Retry, or an
                 // automatic future retry) resumes instead of starting over.
                 update(model, LocalModelState.Error(e.message ?: "Download failed"))
+                diagnostics?.record(
+                    model,
+                    success = false,
+                    message = e.message ?: "Download failed",
+                    stackTraceText = e.stackTraceToString(),
+                    durationMs = System.currentTimeMillis() - startedAtMs,
+                )
             }
         }
     }

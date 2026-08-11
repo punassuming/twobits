@@ -1,7 +1,7 @@
 package com.twobits.core.localmodels
 
 /** Which on-device model family a spec belongs to. */
-enum class LocalModelFamily { WHISPER, GEMMA, MOONDREAM }
+enum class LocalModelFamily { WHISPER, GEMMA, QWEN, MOONDREAM }
 
 /** What the model is used for. Drives which AI-config section surfaces it. */
 enum class LocalModelTask { TRANSCRIBE, TEXT, VISION }
