@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Features
-
+**Icon** - updated application icon
 ### Improvements
 
 ### Fixes
