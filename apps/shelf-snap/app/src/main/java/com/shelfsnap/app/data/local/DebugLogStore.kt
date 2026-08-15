@@ -107,14 +107,28 @@ class DebugLogStore
          * matching completion — the one signal available that a native crash killed the process
          * mid-inference last run (see [DebugLogEntry]'s doc comment; a native abort skips
          * [Thread.setDefaultUncaughtExceptionHandler] entirely, so there's nothing else to catch
-         * it with). Read once at launch, not re-polled: the moment any new entry is recorded this
-         * session, it's no longer the log's last entry, so this stays a one-shot per-process
-         * signal without needing a separate "acknowledged" flag written back to disk.
+         * it with). Read once at launch, not re-polled within this process. [dismissStaleStartWarning]
+         * writes a closing entry so the dangling "-start" stops being the log's last entry —
+         * without that, every future launch would re-detect the same unresolved marker and
+         * re-show the warning indefinitely, not just once.
          */
         private val _staleStartWarning = MutableStateFlow<DebugLogEntry?>(null)
         val staleStartWarning: StateFlow<DebugLogEntry?> = _staleStartWarning.asStateFlow()
 
         fun dismissStaleStartWarning() {
+            val entry = _staleStartWarning.value ?: return
+            write(
+                DebugLogEntry(
+                    timestampMs = System.currentTimeMillis(),
+                    type = entry.type,
+                    op = entry.op?.removeSuffix("-start"),
+                    endpoint = entry.endpoint,
+                    model = entry.model,
+                    requestSummary = entry.requestSummary,
+                    success = false,
+                    responseSnippet = "Dismissed after an apparent crash — no completion was ever recorded for this call.",
+                ),
+            )
             _staleStartWarning.value = null
         }
 

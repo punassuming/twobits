@@ -6,7 +6,9 @@
 
 ### Improvements
 
-* if the app closed unexpectedly during on-device analysis last time (a native crash, which never had any catchable error to show before), Shelf Snap now shows a one-time dialog on next launch pointing to the Debug Log — previously this failed completely silently, with no way to tell it had even happened.
+**Crash recovery** — a one-time dialog on next launch if local analysis crashed:
+* previously a native crash failed completely silently, with no way to tell it had even happened
+* the dialog names what was running and links straight to the Debug Log
 
 ### Fixes
 

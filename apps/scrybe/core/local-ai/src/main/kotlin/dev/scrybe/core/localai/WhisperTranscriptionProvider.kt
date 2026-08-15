@@ -79,6 +79,25 @@ class WhisperTranscriptionProvider
                     // feel slow", since decode/model-construction can dominate for a short clip.
                     val startedAtMs = System.currentTimeMillis()
                     val decoded = AudioDecoder.decode(audioFile)
+                    // Recorded — and awaited — immediately before the risky native call below, not
+                    // after: a native crash in WhisperEngine's ONNX model load/decode kills the
+                    // process with zero chance for any Kotlin try/catch to run, so this entry
+                    // already being safely on disk is the only way to later see, from the debug
+                    // log alone, that a transcription was in flight when it crashed — there's no
+                    // matching "transcribe" entry after it if so (see DebugLogStore.staleStartWarning).
+                    if (debugEnabled) {
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = startedAtMs,
+                                type = DebugLogEntryType.AI_CALL,
+                                op = "transcribe-start",
+                                endpoint = "on-device",
+                                model = model.filePrefix,
+                                requestSummary = "file=${audioFile.name}",
+                                success = true,
+                            ),
+                        )
+                    }
                     WhisperEngine(modelDir, model.filePrefix).use { engine ->
                         val text = engine.transcribe(decoded.samples, decoded.sampleRateHz)
                         record(success = true, snippet = "${text.length} chars", durationMs = System.currentTimeMillis() - startedAtMs)
