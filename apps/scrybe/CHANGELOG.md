@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* fixed a crash on every local-transcription inference with the Whisper Medium model — it hardcoded int8-quantized model filenames, but sherpa-onnx's release only ships int8 encoder/decoder pairs for Tiny/Base/Small; Medium only has fp32 files, so the native model load aborted the app outright with no catchable error. Now falls back to the fp32 filenames when the int8 variant isn't present.
+
 ## 1.50.0 (2026-08-11)
 
 ### Features
