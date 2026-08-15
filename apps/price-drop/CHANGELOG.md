@@ -6,7 +6,13 @@
 
 ### Improvements
 
+**Crash recovery** — a one-time dialog on next launch if local Ask crashed:
+* previously a native crash failed completely silently, with no way to tell it had even happened
+* the dialog names what was running and links straight to the Debug Log
+
 ### Fixes
+
+* no user-visible change: `LlmModelDownloadCoordinator.anyReady()` (shared with Scrybe/Shelf Snap) gained an optional filter predicate, needed for a Shelf Snap vision-model crash fix — PriceDrop's own callers are unaffected since the new parameter defaults to matching any model, same as before.
 
 ## 0.20.1 (2026-08-11)
 

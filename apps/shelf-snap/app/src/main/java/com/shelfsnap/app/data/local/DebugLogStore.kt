@@ -5,6 +5,9 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -99,10 +102,41 @@ class DebugLogStore
         private val file: File get() = File(context.filesDir, FILE_NAME)
         private var previousHandler: Thread.UncaughtExceptionHandler? = null
 
+        /**
+         * Whether the log's last entry, as of [install], was a dangling "-start" with no
+         * matching completion — the one signal available that a native crash killed the process
+         * mid-inference last run (see [DebugLogEntry]'s doc comment; a native abort skips
+         * [Thread.setDefaultUncaughtExceptionHandler] entirely, so there's nothing else to catch
+         * it with). Read once at launch, not re-polled within this process. [dismissStaleStartWarning]
+         * writes a closing entry so the dangling "-start" stops being the log's last entry —
+         * without that, every future launch would re-detect the same unresolved marker and
+         * re-show the warning indefinitely, not just once.
+         */
+        private val _staleStartWarning = MutableStateFlow<DebugLogEntry?>(null)
+        val staleStartWarning: StateFlow<DebugLogEntry?> = _staleStartWarning.asStateFlow()
+
+        fun dismissStaleStartWarning() {
+            val entry = _staleStartWarning.value ?: return
+            write(
+                DebugLogEntry(
+                    timestampMs = System.currentTimeMillis(),
+                    type = entry.type,
+                    op = entry.op?.removeSuffix("-start"),
+                    endpoint = entry.endpoint,
+                    model = entry.model,
+                    requestSummary = entry.requestSummary,
+                    success = false,
+                    responseSnippet = "Dismissed after an apparent crash — no completion was ever recorded for this call.",
+                ),
+            )
+            _staleStartWarning.value = null
+        }
+
         /** Idempotent — safe to call more than once. */
         fun install() {
             if (previousHandler != null) return
             migrateLegacyLogsIfPresent()
+            _staleStartWarning.value = readAll().lastOrNull()?.takeIf { it.op?.endsWith("-start") == true }
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                 runCatching { write(crashEntry(thread, throwable)) }

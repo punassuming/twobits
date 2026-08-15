@@ -18,8 +18,14 @@ internal class WhisperEngine(
     private val recognizer: OfflineRecognizer
 
     init {
-        val encoderPath = File(modelDir, "$filePrefix-encoder.int8.onnx").absolutePath
-        val decoderPath = File(modelDir, "$filePrefix-decoder.int8.onnx").absolutePath
+        // sherpa-onnx's asr-models release only ships int8-quantized encoder/decoder pairs for
+        // tiny/base/small — medium (and any future larger tier) has only the fp32 files. Handing
+        // OfflineRecognizer's native constructor a path that doesn't exist aborts the whole
+        // process (no JNI exception to catch, so runCatching upstream never sees it) — every
+        // inference on that tier crashed the app outright. Falling back to fp32 here keeps
+        // construction on the Kotlin side, where a missing model can fail as a normal exception.
+        val encoderPath = resolveModelFile(modelDir, "$filePrefix-encoder").absolutePath
+        val decoderPath = resolveModelFile(modelDir, "$filePrefix-decoder").absolutePath
         val tokensPath = File(modelDir, "$filePrefix-tokens.txt").absolutePath
 
         val whisperConfig =
@@ -89,5 +95,16 @@ internal class WhisperEngine(
     private companion object {
         // Comfortably under sherpa-onnx's ~29.5s (max_num_frames - 50 at 10ms/frame) hard cutoff.
         const val CHUNK_SECONDS = 28
+
+        fun resolveModelFile(
+            modelDir: File,
+            baseName: String,
+        ): File {
+            val int8 = File(modelDir, "$baseName.int8.onnx")
+            if (int8.exists()) return int8
+            val fp32 = File(modelDir, "$baseName.onnx")
+            if (fp32.exists()) return fp32
+            error("No $baseName model file found in ${modelDir.absolutePath} (checked .int8.onnx and .onnx)")
+        }
     }
 }

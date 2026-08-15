@@ -38,7 +38,8 @@ class LlmModelDownloadCoordinator(
         return if (f.exists() && f.length() > 0) f else null
     }
 
-    fun anyReady(): LocalLlmModel? = LocalLlmModel.entries.firstOrNull { file(it) != null }
+    fun anyReady(predicate: (LocalLlmModel) -> Boolean = { true }): LocalLlmModel? =
+        LocalLlmModel.entries.firstOrNull { predicate(it) && file(it) != null }
 
     private fun resolveState(model: LocalLlmModel): LocalModelState =
         file(model)?.let { LocalModelState.Ready(it.absolutePath) } ?: LocalModelState.Absent
