@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,9 +69,11 @@ private fun ScrybeMainContent(
     val whatsNewViewModel: WhatsNewViewModel = hiltViewModel()
     val activeRecordingViewModel: ActiveRecordingViewModel = hiltViewModel()
     val transcriptionProgressViewModel: TranscriptionProgressViewModel = hiltViewModel()
+    val crashWarningViewModel: CrashWarningViewModel = hiltViewModel()
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
     val activeRecordingState by activeRecordingViewModel.uiState.collectAsState()
     val transcriptionProgressState by transcriptionProgressViewModel.uiState.collectAsState()
+    val staleStartWarning by crashWarningViewModel.staleStartWarning.collectAsState()
     MainContentBox(
         navController = navController,
         activeRecordingState = activeRecordingState,
@@ -87,6 +91,46 @@ private fun ScrybeMainContent(
             onViewHistory = { navController.navigate(Screen.WhatsNew.route) },
         )
     }
+    staleStartWarning?.let { entry ->
+        CrashWarningDialog(
+            opLabel = entry.op.orEmpty().removeSuffix("-start"),
+            onViewDebugLog = {
+                crashWarningViewModel.dismiss()
+                navController.navigate(Screen.DebugLog.route)
+            },
+            onDismiss = crashWarningViewModel::dismiss,
+        )
+    }
+}
+
+/**
+ * [DebugLogStore.staleStartWarning][dev.scrybe.core.transcription.DebugLogStore.staleStartWarning]
+ * surfaced as a one-time dialog — a native crash (a bad model file, an ONNX/LiteRT abort) has no
+ * catchable Kotlin exception to report through the usual error paths, so without this the app
+ * would just silently relaunch with no explanation for what happened last time.
+ */
+@Composable
+private fun CrashWarningDialog(
+    opLabel: String,
+    onViewDebugLog: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Scrybe closed unexpectedly") },
+        text = {
+            Text(
+                "It looks like the app closed while running \"$opLabel\" last time — likely a crash " +
+                    "in on-device transcription. Check the Debug Log for details.",
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onViewDebugLog) { Text("View Debug Log") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Dismiss") }
+        },
+    )
 }
 
 @Composable

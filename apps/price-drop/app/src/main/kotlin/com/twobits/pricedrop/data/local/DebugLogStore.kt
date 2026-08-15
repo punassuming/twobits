@@ -3,6 +3,9 @@ package com.twobits.pricedrop.data.local
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -100,10 +103,27 @@ class DebugLogStore
         private val file: File get() = File(context.filesDir, FILE_NAME)
         private var previousHandler: Thread.UncaughtExceptionHandler? = null
 
+        /**
+         * Whether the log's last entry, as of [install], was a dangling "-start" with no
+         * matching completion — the one signal available that a native crash killed the process
+         * mid-inference last run (see [DebugLogEntry]'s doc comment; a native abort skips
+         * [Thread.setDefaultUncaughtExceptionHandler] entirely, so there's nothing else to catch
+         * it with). Read once at launch, not re-polled: the moment any new entry is recorded this
+         * session, it's no longer the log's last entry, so this stays a one-shot per-process
+         * signal without needing a separate "acknowledged" flag written back to disk.
+         */
+        private val _staleStartWarning = MutableStateFlow<DebugLogEntry?>(null)
+        val staleStartWarning: StateFlow<DebugLogEntry?> = _staleStartWarning.asStateFlow()
+
+        fun dismissStaleStartWarning() {
+            _staleStartWarning.value = null
+        }
+
         /** Idempotent — safe to call more than once. */
         fun install() {
             if (previousHandler != null) return
             migrateLegacyLogsIfPresent()
+            _staleStartWarning.value = readAll().lastOrNull()?.takeIf { it.op?.endsWith("-start") == true }
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                 runCatching { write(crashEntry(thread, throwable)) }

@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* if the app closed unexpectedly during on-device analysis last time (a native crash, which never had any catchable error to show before), Shelf Snap now shows a one-time dialog on next launch pointing to the Debug Log — previously this failed completely silently, with no way to tell it had even happened.
+
 ### Fixes
 
 * fixed a crash on local photo analysis when a non-vision-capable model (Gemma 3 1B/270M, Qwen 3) was selected for Listing generation or Market research while Vision was also set to Local — the two features shared one "selected local model" preference, so picking a text-only model for one silently pointed Vision's native `generateWithImage()` call at a model it can't use, aborting the app with no catchable error. Vision now resolves its own model independently and only ever picks a vision-capable one (Gemma 4 E2B/E4B), showing a clear in-app error instead of crashing if none is downloaded.

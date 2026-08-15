@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* if the app closed unexpectedly during on-device Ask last time (a native crash, which never had any catchable error to show before), PriceDrop now shows a one-time dialog on next launch pointing to the Debug Log — previously this failed completely silently, with no way to tell it had even happened.
+
 ### Fixes
 
 * no user-visible change: `LlmModelDownloadCoordinator.anyReady()` (shared with Scrybe/Shelf Snap) gained an optional filter predicate, needed for a Shelf Snap vision-model crash fix — PriceDrop's own callers are unaffected since the new parameter defaults to matching any model, same as before.

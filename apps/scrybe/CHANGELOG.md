@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* if the app closed unexpectedly during on-device transcription last time (a native crash, which never had any catchable error to show before), Scrybe now shows a one-time dialog on next launch pointing to the Debug Log — previously this failed completely silently, with no way to tell it had even happened.
+
 ### Fixes
 
 * fixed a crash on every local-transcription inference with the Whisper Medium model — it hardcoded int8-quantized model filenames, but sherpa-onnx's release only ships int8 encoder/decoder pairs for Tiny/Base/Small; Medium only has fp32 files, so the native model load aborted the app outright with no catchable error. Now falls back to the fp32 filenames when the int8 variant isn't present.
