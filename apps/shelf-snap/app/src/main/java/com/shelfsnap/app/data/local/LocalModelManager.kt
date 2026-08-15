@@ -90,6 +90,8 @@ class LocalModelManager
 
         fun anyLlmReady(): LocalLlmModel? = coordinator.anyReady()
 
+        fun anyVisionLlmReady(): LocalLlmModel? = coordinator.anyReady { it.visionCapable }
+
         override suspend fun downloadLlm(model: LocalLlmModel) = coordinator.download(model)
 
         fun deleteLlm(model: LocalLlmModel) {

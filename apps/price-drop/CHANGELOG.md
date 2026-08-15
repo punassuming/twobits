@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: `LlmModelDownloadCoordinator.anyReady()` (shared with Scrybe/Shelf Snap) gained an optional filter predicate, needed for a Shelf Snap vision-model crash fix — PriceDrop's own callers are unaffected since the new parameter defaults to matching any model, same as before.
+
 ## 0.20.1 (2026-08-11)
 
 ### Features

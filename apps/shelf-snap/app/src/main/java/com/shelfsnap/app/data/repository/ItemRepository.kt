@@ -27,6 +27,7 @@ import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.pro.ExecutionMode
 import com.twobits.securestore.CredentialCrypto
 import kotlinx.coroutines.flow.Flow
@@ -132,12 +133,14 @@ class ItemRepository
                     }
                     ExecutionMode.LOCAL -> {
                         val primaryPath = photoPaths.getOrNull(primaryPhotoIndex) ?: photoPaths.firstOrNull()
-                        val modelFile = localModelFile()
+                        val modelFile = localVisionModelFile()
                         when {
                             primaryPath == null -> DraftItemResult(error = "No photo to analyse.")
                             modelFile == null ->
                                 DraftItemResult(
-                                    error = "No local model downloaded. Go to Settings → AI → Vision to download one.",
+                                    error =
+                                        "No vision-capable local model downloaded. Go to Settings → AI → Vision " +
+                                            "and download Gemma 4 E2B or E4B — other local models can't analyse photos.",
                                 )
                             else -> localVisionService.analyse(primaryPath, modelFile)
                         }
@@ -460,6 +463,20 @@ class ItemRepository
         private fun localModelFile() =
             localModelManager.selectedLlm.value?.let { localModelManager.llmFile(it) }
                 ?: localModelManager.anyLlmReady()?.let { localModelManager.llmFile(it) }
+
+        /**
+         * Same resolution as [localModelFile], but restricted to [LocalLlmModel.visionCapable]
+         * models. [LocalModelManager.selectedLlm] is a single preference shared by text
+         * (listing/market-research) and vision use — the Listing/Market-research Local pickers
+         * let you select a non-vision model into that same slot, which would otherwise reach
+         * [LocalVisionService]'s native `generateWithImage()` call unchecked and crash the process
+         * outright (no catchable exception for a bad native model configuration).
+         */
+        private fun localVisionModelFile() =
+            localModelManager.selectedLlm.value
+                ?.takeIf { it.visionCapable }
+                ?.let { localModelManager.llmFile(it) }
+                ?: localModelManager.anyVisionLlmReady()?.let { localModelManager.llmFile(it) }
 
         // ── Settings: AI source (pro / byok / local) ─────────────────────────────
 

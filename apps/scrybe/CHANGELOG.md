@@ -9,6 +9,7 @@
 ### Fixes
 
 * fixed a crash on every local-transcription inference with the Whisper Medium model — it hardcoded int8-quantized model filenames, but sherpa-onnx's release only ships int8 encoder/decoder pairs for Tiny/Base/Small; Medium only has fp32 files, so the native model load aborted the app outright with no catchable error. Now falls back to the fp32 filenames when the int8 variant isn't present.
+* no user-visible change: `LlmModelDownloadCoordinator.anyReady()` (shared with Shelf Snap/PriceDrop) gained an optional filter predicate, needed for a Shelf Snap vision-model crash fix — Scrybe's own callers are unaffected since the new parameter defaults to matching any model, same as before.
 
 ## 1.50.0 (2026-08-11)
 
