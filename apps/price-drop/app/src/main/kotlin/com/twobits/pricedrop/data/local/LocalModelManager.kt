@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.io.File
+import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,12 +49,12 @@ class LocalModelManager
                 modelsDir = File(context.getExternalFilesDir(null), "local_models").also { it.mkdirs() },
                 okHttpClient = okHttpClient,
                 diagnostics =
-                    ModelDownloadDiagnostics { model, success, message, stackTraceText, durationMs ->
+                    ModelDownloadDiagnostics { model, op, success, message, stackTraceText, durationMs ->
                         debugLogStore.record(
                             DebugLogEntry(
                                 timestampMs = System.currentTimeMillis(),
                                 type = DebugLogEntryType.SERVICE_CALL,
-                                op = "model-download",
+                                op = op,
                                 endpoint = model.downloadUrl,
                                 model = model.fileName,
                                 success = success,
@@ -88,6 +89,11 @@ class LocalModelManager
 
         override suspend fun downloadLlm(model: LocalLlmModel) = coordinator.download(model)
 
+        suspend fun importLlm(
+            model: LocalLlmModel,
+            source: InputStream,
+        ): Result<Unit> = coordinator.importFrom(model, source)
+
         fun deleteLlm(model: LocalLlmModel) {
             coordinator.delete(model)
             if (_selectedLlm.value == model) {
@@ -99,7 +105,11 @@ class LocalModelManager
             scope.launch { dataStore.edit { it[Keys.SELECTED_LLM_MODEL] = model.name } }
         }
 
-        fun orphanedStorageBytes(): Long = coordinator.orphanedStorageBytes()
+        fun orphanedFileDetails(): List<Pair<String, Long>> = coordinator.orphanedFileDetails()
 
         fun deleteOrphanedFiles(): Long = coordinator.deleteOrphanedFiles()
+
+        fun installedFileDetails(): List<Pair<String, Long>> = coordinator.installedFileDetails()
+
+        fun storageDirPath(): String = coordinator.storageDirPath()
     }

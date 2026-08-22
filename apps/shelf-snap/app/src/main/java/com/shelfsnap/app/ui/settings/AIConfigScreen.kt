@@ -1,6 +1,8 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,7 +64,7 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
-import com.twobits.design.components.OrphanedStorageCard
+import com.twobits.design.components.ModelStorageSection
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
     when (this) {
@@ -92,10 +94,19 @@ fun AIConfigScreen(
         }
     }
 
-    val orphanedStorageBytes by viewModel.orphanedStorageBytes.collectAsState()
+    val orphanedFileDetails by viewModel.orphanedFileDetails.collectAsState()
+    val installedFileDetails by viewModel.installedFileDetails.collectAsState()
     LaunchedEffect(selectedTab) {
-        if (selectedTab == 1) viewModel.refreshOrphanedStorage()
+        if (selectedTab == 1) viewModel.refreshModelStorage()
     }
+
+    var importLlmTarget by remember { mutableStateOf<LocalLlmModel?>(null) }
+    val importLlmLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val target = importLlmTarget
+            importLlmTarget = null
+            if (uri != null && target != null) viewModel.importLlmModel(target, uri)
+        }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -137,11 +148,17 @@ fun AIConfigScreen(
                         description = { it.description },
                         progressLabel = "Downloading",
                         huggingFaceUrl = { it.huggingFacePageUrl },
+                        onImport = { model ->
+                            importLlmTarget = model
+                            importLlmLauncher.launch(arrayOf("*/*"))
+                        },
                     )
                     Spacer(Modifier.height(12.dp))
-                    OrphanedStorageCard(
-                        bytes = orphanedStorageBytes,
-                        onClear = { viewModel.clearOrphanedStorage() },
+                    ModelStorageSection(
+                        storageDirPath = viewModel.storageDirPath,
+                        installed = installedFileDetails,
+                        orphaned = orphanedFileDetails,
+                        onClearOrphaned = { viewModel.clearOrphanedStorage() },
                     )
                 }
                 return@Scaffold

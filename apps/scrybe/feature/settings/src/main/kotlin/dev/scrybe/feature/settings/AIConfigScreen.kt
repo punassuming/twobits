@@ -1,5 +1,7 @@
 package dev.scrybe.feature.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -65,7 +67,7 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
-import com.twobits.design.components.OrphanedStorageCard
+import com.twobits.design.components.ModelStorageSection
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
@@ -92,7 +94,8 @@ fun AIConfigScreen(
     val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
     val llmStates by viewModel.llmStates.collectAsState()
     val selectedLlmModel by viewModel.selectedLlmModel.collectAsState()
-    val orphanedStorageBytes by viewModel.orphanedStorageBytes.collectAsState()
+    val orphanedFileDetails by viewModel.orphanedFileDetails.collectAsState()
+    val installedFileDetails by viewModel.installedFileDetails.collectAsState()
 
     val activity = LocalContext.current as? android.app.Activity
     val hasPro = uiState.subscriptionTier is SubscriptionTier.Pro
@@ -102,8 +105,23 @@ fun AIConfigScreen(
     var selectedTab by remember { mutableStateOf(0) }
 
     LaunchedEffect(selectedTab) {
-        if (selectedTab == 1) viewModel.refreshOrphanedStorage()
+        if (selectedTab == 1) viewModel.refreshModelStorage()
     }
+
+    var importWhisperTarget by remember { mutableStateOf<LocalWhisperModel?>(null) }
+    val importWhisperLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val target = importWhisperTarget
+            importWhisperTarget = null
+            if (uri != null && target != null) viewModel.importWhisperModel(target, uri)
+        }
+    var importLlmTarget by remember { mutableStateOf<LocalLlmModel?>(null) }
+    val importLlmLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val target = importLlmTarget
+            importLlmTarget = null
+            if (uri != null && target != null) viewModel.importLlmModel(target, uri)
+        }
 
     // Derived from uiState on every recomposition rather than captured once in rememberSaveable:
     // the old snapshot was taken before DataStore emitted the real values and never re-synced, so
@@ -175,6 +193,10 @@ fun AIConfigScreen(
                             sizeLabel = { it.sizeLabel },
                             description = { it.description },
                             progressLabel = "Downloading",
+                            onImport = { model ->
+                                importWhisperTarget = model
+                                importWhisperLauncher.launch(arrayOf("*/*"))
+                            },
                         )
                         LocalModelPanel(
                             sectionLabel = "On-device LLM",
@@ -191,10 +213,16 @@ fun AIConfigScreen(
                             description = { it.description },
                             progressLabel = "Downloading",
                             huggingFaceUrl = { it.huggingFacePageUrl },
+                            onImport = { model ->
+                                importLlmTarget = model
+                                importLlmLauncher.launch(arrayOf("*/*"))
+                            },
                         )
-                        OrphanedStorageCard(
-                            bytes = orphanedStorageBytes,
-                            onClear = { viewModel.clearOrphanedStorage() },
+                        ModelStorageSection(
+                            storageDirPath = viewModel.storageDirPath,
+                            installed = installedFileDetails,
+                            orphaned = orphanedFileDetails,
+                            onClearOrphaned = { viewModel.clearOrphanedStorage() },
                         )
                     }
                     return@Box

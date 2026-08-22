@@ -6,9 +6,10 @@
 
 ### Improvements
 
-**Models tab** — clear leftover on-device model storage:
-* surfaces bytes left behind by a removed model option, or a failed download/extraction nothing else could ever find or delete
-* one tap reclaims it, with a confirmation before deleting
+**Models tab** — view and manage on-device model storage:
+* shows every installed and leftover file with its exact size and the on-disk storage path
+* clears bytes left behind by a removed model option, or a failed download/extraction nothing else could ever find or delete, with a confirmation before deleting
+* Import lets you install a model from a file you already have (e.g. downloaded on a computer) instead of downloading it again in-app
 
 ### Fixes
 

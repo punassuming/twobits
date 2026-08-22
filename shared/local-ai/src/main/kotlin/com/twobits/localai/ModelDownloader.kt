@@ -248,7 +248,7 @@ object ModelDownloader {
     fun orphanedBytes(
         dir: File,
         knownNames: Set<String>,
-    ): Long = orphanedEntries(dir, knownNames).sumOf { it.sizeBytes() }
+    ): Long = orphanedEntries(dir, knownNames).sumOf { sizeBytes(it) }
 
     /** Deletes every [orphanedEntries] result and returns the total bytes reclaimed. */
     fun deleteOrphanedEntries(
@@ -256,13 +256,14 @@ object ModelDownloader {
         knownNames: Set<String>,
     ): Long {
         val entries = orphanedEntries(dir, knownNames)
-        val bytes = entries.sumOf { it.sizeBytes() }
+        val bytes = entries.sumOf { sizeBytes(it) }
         entries.forEach { it.deleteRecursively() }
         return bytes
     }
 
-    private fun File.sizeBytes(): Long =
-        if (isDirectory) walkTopDown().filter { it.isFile }.sumOf { it.length() } else length()
+    /** Public so callers building a per-entry storage listing (not just the aggregate) can reuse this. */
+    fun sizeBytes(file: File): Long =
+        if (file.isDirectory) file.walkTopDown().filter { it.isFile }.sumOf { it.length() } else file.length()
 
     /**
      * A failure that retrying won't fix — the caller should stop immediately rather than burn
