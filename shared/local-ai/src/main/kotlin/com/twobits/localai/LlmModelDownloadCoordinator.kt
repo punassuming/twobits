@@ -141,7 +141,8 @@ class LlmModelDownloadCoordinator(
                 source.use { input ->
                     tempFile.outputStream().use { output -> input.copyTo(output) }
                 }
-                if (model.sha256 != null && !ModelDownloader.matchesSha256(tempFile, model.sha256)) {
+                val expectedSha256 = model.sha256
+                if (expectedSha256 != null && !ModelDownloader.matchesSha256(tempFile, expectedSha256)) {
                     error("That file doesn't match the expected contents for ${model.displayName}")
                 }
                 if (!tempFile.renameTo(destFile)) {
@@ -156,6 +157,7 @@ class LlmModelDownloadCoordinator(
                     stackTraceText = null,
                     durationMs = System.currentTimeMillis() - startedAtMs,
                 )
+                Unit
             }.onFailure { e ->
                 tempFile.delete()
                 update(model, LocalModelState.Error(e.message ?: "Import failed"))

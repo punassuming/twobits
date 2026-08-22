@@ -13,6 +13,8 @@
 
 ### Fixes
 
+* no user-visible change: fixed a Kotlin compile error in the shared `LlmModelDownloadCoordinator.importFrom()` (type-inference and cross-module smart-cast issues) — caught by CI before release, so this never shipped
+
 ## 1.30.0 (2026-08-16)
 
 ### Features

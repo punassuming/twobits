@@ -18,6 +18,7 @@
 * the half-written model could even be reported as ready to use
 * extraction now writes to a temporary location and only replaces the real model once it fully succeeds
 * leftovers are cleaned up automatically, and the delete button also clears a pre-existing leak from before this fix
+* no user-visible change: fixed a Kotlin compile error in the shared `LlmModelDownloadCoordinator.importFrom()` (type-inference and cross-module smart-cast issues) — caught by CI before release, so this never shipped
 
 ## 1.51.0 (2026-08-16)
 
