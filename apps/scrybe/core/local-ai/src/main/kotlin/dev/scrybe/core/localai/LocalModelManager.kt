@@ -25,6 +25,7 @@ import okhttp3.OkHttpClient
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.File
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -122,22 +123,36 @@ class LocalModelManager
                     ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, archiveFile) { progress ->
                         updateWhisperState(model, LocalModelState.Acquiring(progress))
                     }
+                    // Extracted to a temporary sibling directory and only moved into place with
+                    // an atomic rename on full success — model.dirName itself must never exist in
+                    // a half-written state, since resolveWhisperState() only checks dir.exists()
+                    // and would otherwise report an interrupted extraction as "Ready." A plain
+                    // try/catch(Exception) around extraction straight into dirName can't guarantee
+                    // that: OutOfMemoryError (a real risk unpacking a multi-GB Whisper Medium
+                    // archive) is an Error, not an Exception, so it skips that catch entirely, and
+                    // a hard process kill runs neither catch nor finally block at all — only
+                    // "extraction never touches the real name until it's fully done" is safe
+                    // against every one of those. tempDir is cleaned up in the finally below
+                    // regardless of how extraction ends, including the now-empty husk left behind
+                    // after a successful rename.
+                    val tempDir = File(modelsDir, ".tmp-${model.dirName}")
                     try {
-                        extractTarBz2(archiveFile, modelsDir)
-                    } catch (e: Exception) {
-                        // A failed extraction (corrupt archive, OOM on a multi-GB Whisper Medium
-                        // tar.bz2, process killed mid-extract) previously left both the archive
-                        // and a half-written model directory behind forever: resolveWhisperState
-                        // only checks dir.exists(), so the partial directory could even report as
-                        // "Ready," and deleteWhisper() never targeted archiveName at all — nothing
-                        // in the app could ever reclaim that space again. Clean up both before
-                        // rethrowing so a failed download leaves nothing behind to clean up.
-                        File(modelsDir, model.dirName).deleteRecursively()
-                        throw e
+                        tempDir.deleteRecursively()
+                        extractTarBz2(archiveFile, tempDir)
+                        val extractedDir = File(tempDir, model.dirName)
+                        if (!extractedDir.isDirectory) {
+                            throw IOException("Archive ${model.archiveName} didn't produce the expected ${model.dirName} directory")
+                        }
+                        val finalDir = File(modelsDir, model.dirName)
+                        finalDir.deleteRecursively()
+                        if (!extractedDir.renameTo(finalDir)) {
+                            throw IOException("Couldn't finalize Whisper model install (rename failed)")
+                        }
                     } finally {
+                        tempDir.deleteRecursively()
                         // The archive is scratch space either way once extraction has been
                         // attempted — on success its contents are already on disk under dirName,
-                        // and on failure it's cleaned up above.
+                        // and on failure nothing downstream needs it either.
                         archiveFile.delete()
                     }
                     updateWhisperState(model, resolveWhisperState(model))
@@ -175,6 +190,7 @@ class LocalModelManager
 
         fun deleteWhisper(model: LocalWhisperModel) {
             File(modelsDir, model.dirName).deleteRecursively()
+            File(modelsDir, ".tmp-${model.dirName}").deleteRecursively()
             // Belt-and-suspenders alongside downloadWhisper()'s own cleanup: a device already
             // carrying a pre-fix leaked archive (extraction failed before this existed, or the
             // process died before the finally block ran) still needs this delete button to

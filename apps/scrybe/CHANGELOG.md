@@ -12,7 +12,11 @@
 
 ### Fixes
 
-* fixed a storage leak in Whisper model downloads — a failed extraction (corrupt archive, low memory on a multi-GB Whisper Medium archive, app killed mid-extract) left the archive file and a half-written model directory behind forever; the delete button never targeted the archive, so there was no way to reclaim that space. Both are now cleaned up automatically on failure, and the delete button also clears a pre-existing leak from before this fix.
+**Whisper downloads** — no longer leak storage or corrupt state on a failed extraction:
+* a corrupt archive, low memory, or the app getting killed mid-extract left the archive and a half-written model behind forever, unreachable by the delete button
+* the half-written model could even be reported as ready to use
+* extraction now writes to a temporary location and only replaces the real model once it fully succeeds
+* leftovers are cleaned up automatically, and the delete button also clears a pre-existing leak from before this fix
 
 ## 1.51.0 (2026-08-16)
 
