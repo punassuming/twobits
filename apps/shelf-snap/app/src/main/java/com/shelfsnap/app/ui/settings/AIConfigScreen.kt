@@ -4,7 +4,9 @@ import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -60,6 +62,7 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
+import com.twobits.design.components.OrphanedStorageCard
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
     when (this) {
@@ -87,6 +90,11 @@ fun AIConfigScreen(
             snackbarHostState.showSnackbar(searchSavedMessage)
             viewModel.onSearchSavedShown()
         }
+    }
+
+    val orphanedStorageBytes by viewModel.orphanedStorageBytes.collectAsState()
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 1) viewModel.refreshOrphanedStorage()
     }
 
     Scaffold(
@@ -129,6 +137,11 @@ fun AIConfigScreen(
                         description = { it.description },
                         progressLabel = "Downloading",
                         huggingFaceUrl = { it.huggingFacePageUrl },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OrphanedStorageCard(
+                        bytes = orphanedStorageBytes,
+                        onClear = { viewModel.clearOrphanedStorage() },
                     )
                 }
                 return@Scaffold

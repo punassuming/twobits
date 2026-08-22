@@ -232,6 +232,39 @@ object ModelDownloader {
     }
 
     /**
+     * Top-level entries under [dir] whose name isn't in [knownNames] — every other lookup in a
+     * model-download coordinator is keyed off the *current* model enum (`entries.associateWith`,
+     * `entries.firstOrNull { file(it) != null }`, etc.), so a fully-downloaded file or directory
+     * left behind by a since-removed or renamed model (a retired option, a filename scheme
+     * change) is otherwise invisible forever — nothing ever scans [dir] itself to notice it,
+     * unlike a `.part` file, which [cleanupStalePartialFiles] at least ages out on its own.
+     */
+    fun orphanedEntries(
+        dir: File,
+        knownNames: Set<String>,
+    ): List<File> = dir.listFiles { f -> f.name !in knownNames }?.toList() ?: emptyList()
+
+    /** Total bytes an [orphanedEntries] listing would reclaim, without deleting anything. */
+    fun orphanedBytes(
+        dir: File,
+        knownNames: Set<String>,
+    ): Long = orphanedEntries(dir, knownNames).sumOf { it.sizeBytes() }
+
+    /** Deletes every [orphanedEntries] result and returns the total bytes reclaimed. */
+    fun deleteOrphanedEntries(
+        dir: File,
+        knownNames: Set<String>,
+    ): Long {
+        val entries = orphanedEntries(dir, knownNames)
+        val bytes = entries.sumOf { it.sizeBytes() }
+        entries.forEach { it.deleteRecursively() }
+        return bytes
+    }
+
+    private fun File.sizeBytes(): Long =
+        if (isDirectory) walkTopDown().filter { it.isFile }.sumOf { it.length() } else length()
+
+    /**
      * A failure that retrying won't fix — the caller should stop immediately rather than burn
      * through [MAX_ATTEMPTS] backoff delays first. [discardPartial] is false only for
      * insufficient-storage: that partial is legitimate progress toward a download that can still

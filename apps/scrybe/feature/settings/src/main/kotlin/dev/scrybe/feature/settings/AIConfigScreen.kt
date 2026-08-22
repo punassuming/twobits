@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +65,7 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
+import com.twobits.design.components.OrphanedStorageCard
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
@@ -90,6 +92,7 @@ fun AIConfigScreen(
     val selectedWhisperModel by viewModel.selectedWhisperModel.collectAsState()
     val llmStates by viewModel.llmStates.collectAsState()
     val selectedLlmModel by viewModel.selectedLlmModel.collectAsState()
+    val orphanedStorageBytes by viewModel.orphanedStorageBytes.collectAsState()
 
     val activity = LocalContext.current as? android.app.Activity
     val hasPro = uiState.subscriptionTier is SubscriptionTier.Pro
@@ -97,6 +100,10 @@ fun AIConfigScreen(
     val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
     var showTransformModelPicker by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
+
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 1) viewModel.refreshOrphanedStorage()
+    }
 
     // Derived from uiState on every recomposition rather than captured once in rememberSaveable:
     // the old snapshot was taken before DataStore emitted the real values and never re-synced, so
@@ -184,6 +191,10 @@ fun AIConfigScreen(
                             description = { it.description },
                             progressLabel = "Downloading",
                             huggingFaceUrl = { it.huggingFacePageUrl },
+                        )
+                        OrphanedStorageCard(
+                            bytes = orphanedStorageBytes,
+                            onClear = { viewModel.clearOrphanedStorage() },
                         )
                     }
                     return@Box

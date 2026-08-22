@@ -29,6 +29,7 @@ import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -107,6 +109,23 @@ class SettingsViewModel
 
         fun selectLlmModel(model: LocalLlmModel) {
             localModelManager.selectLlm(model)
+        }
+
+        private val _orphanedStorageBytes = MutableStateFlow(0L)
+        val orphanedStorageBytes: StateFlow<Long> = _orphanedStorageBytes.asStateFlow()
+
+        /** Call when the Models tab becomes visible — this is a disk scan, not a reactive flow. */
+        fun refreshOrphanedStorage() {
+            viewModelScope.launch(Dispatchers.IO) {
+                _orphanedStorageBytes.value = localModelManager.orphanedStorageBytes()
+            }
+        }
+
+        fun clearOrphanedStorage() {
+            viewModelScope.launch(Dispatchers.IO) {
+                localModelManager.deleteOrphanedFiles()
+                _orphanedStorageBytes.value = 0L
+            }
         }
 
         init {

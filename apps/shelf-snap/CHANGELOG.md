@@ -6,6 +6,10 @@
 
 ### Improvements
 
+**Models tab** — clear leftover on-device model storage:
+* surfaces bytes left behind by a removed model option, or a failed download/extraction nothing else could ever find or delete
+* one tap reclaims it, with a confirmation before deleting
+
 ### Fixes
 
 ## 1.30.0 (2026-08-16)

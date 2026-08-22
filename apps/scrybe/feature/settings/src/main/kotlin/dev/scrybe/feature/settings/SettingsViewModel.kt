@@ -38,9 +38,11 @@ import dev.scrybe.core.transcription.ApiKeyProvider
 import dev.scrybe.core.transcription.OpenAiApiKeyValidator
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transforms.OpenAiProfileSuggestionService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -175,6 +177,23 @@ class SettingsViewModel
         val whisperStates: StateFlow<Map<LocalWhisperModel, LocalModelState>> = localModelManager.whisperStates
         val selectedWhisperModel: StateFlow<LocalWhisperModel> = localModelManager.selectedWhisperModel
         val llmStates: StateFlow<Map<LocalLlmModel, LocalModelState>> = localModelManager.llmStates
+
+        private val _orphanedStorageBytes = MutableStateFlow(0L)
+        val orphanedStorageBytes: StateFlow<Long> = _orphanedStorageBytes.asStateFlow()
+
+        /** Call when the Models tab becomes visible — this is a disk scan, not a reactive flow. */
+        fun refreshOrphanedStorage() {
+            viewModelScope.launch(Dispatchers.IO) {
+                _orphanedStorageBytes.value = localModelManager.orphanedStorageBytes()
+            }
+        }
+
+        fun clearOrphanedStorage() {
+            viewModelScope.launch(Dispatchers.IO) {
+                localModelManager.deleteOrphanedFiles()
+                _orphanedStorageBytes.value = 0L
+            }
+        }
 
         val selectedLlmModel: StateFlow<LocalLlmModel> =
             preferencesDataStore.localLlmModel

@@ -122,8 +122,24 @@ class LocalModelManager
                     ModelDownloader.downloadFile(okHttpClient, model.downloadUrl, archiveFile) { progress ->
                         updateWhisperState(model, LocalModelState.Acquiring(progress))
                     }
-                    extractTarBz2(archiveFile, modelsDir)
-                    archiveFile.delete()
+                    try {
+                        extractTarBz2(archiveFile, modelsDir)
+                    } catch (e: Exception) {
+                        // A failed extraction (corrupt archive, OOM on a multi-GB Whisper Medium
+                        // tar.bz2, process killed mid-extract) previously left both the archive
+                        // and a half-written model directory behind forever: resolveWhisperState
+                        // only checks dir.exists(), so the partial directory could even report as
+                        // "Ready," and deleteWhisper() never targeted archiveName at all — nothing
+                        // in the app could ever reclaim that space again. Clean up both before
+                        // rethrowing so a failed download leaves nothing behind to clean up.
+                        File(modelsDir, model.dirName).deleteRecursively()
+                        throw e
+                    } finally {
+                        // The archive is scratch space either way once extraction has been
+                        // attempted — on success its contents are already on disk under dirName,
+                        // and on failure it's cleaned up above.
+                        archiveFile.delete()
+                    }
                     updateWhisperState(model, resolveWhisperState(model))
                     debugLogStore.record(
                         DebugLogEntry(
@@ -159,11 +175,32 @@ class LocalModelManager
 
         fun deleteWhisper(model: LocalWhisperModel) {
             File(modelsDir, model.dirName).deleteRecursively()
+            // Belt-and-suspenders alongside downloadWhisper()'s own cleanup: a device already
+            // carrying a pre-fix leaked archive (extraction failed before this existed, or the
+            // process died before the finally block ran) still needs this delete button to
+            // actually reclaim it.
+            File(modelsDir, model.archiveName).delete()
             ModelDownloader.deletePartialFile(File(modelsDir, model.archiveName))
             updateWhisperState(model, LocalModelState.Absent)
         }
 
         fun deleteLlm(model: LocalLlmModel) = llmCoordinator.delete(model)
+
+        /**
+         * Names under [modelsDir] Whisper's downloads produce or are entitled to leave behind —
+         * the extracted directory, the archive (transient, but see [downloadWhisper]'s cleanup;
+         * a pre-fix leak may still be sitting on disk), and the archive's `.part`. Combined with
+         * [LlmModelDownloadCoordinator.knownFileNames] (Gemma/Qwen share this same directory)
+         * this is the full set of names [orphanedStorageBytes]/[deleteOrphanedFiles] treat as
+         * legitimate, so only genuinely unaccounted-for bytes get flagged.
+         */
+        private fun whisperKnownFileNames(): Set<String> = LocalWhisperModel.entries.flatMap { listOf(it.dirName, it.archiveName, "${it.archiveName}.part") }.toSet()
+
+        private fun knownFileNames(): Set<String> = llmCoordinator.knownFileNames() + whisperKnownFileNames()
+
+        fun orphanedStorageBytes(): Long = ModelDownloader.orphanedBytes(modelsDir, knownFileNames())
+
+        fun deleteOrphanedFiles(): Long = ModelDownloader.deleteOrphanedEntries(modelsDir, knownFileNames())
 
         fun selectWhisperModel(model: LocalWhisperModel) {
             scope.launch { preferencesDataStore.setLocalWhisperModel(model) }

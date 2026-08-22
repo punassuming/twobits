@@ -6,7 +6,13 @@
 
 ### Improvements
 
+**Models tab** — clear leftover on-device model storage:
+* surfaces bytes left behind by a removed model option, or a failed download/extraction nothing else could ever find or delete
+* one tap reclaims it, with a confirmation before deleting
+
 ### Fixes
+
+* fixed a storage leak in Whisper model downloads — a failed extraction (corrupt archive, low memory on a multi-GB Whisper Medium archive, app killed mid-extract) left the archive file and a half-written model directory behind forever; the delete button never targeted the archive, so there was no way to reclaim that space. Both are now cleaned up automatically on failure, and the delete button also clears a pre-existing leak from before this fix.
 
 ## 1.51.0 (2026-08-16)
 

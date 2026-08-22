@@ -77,6 +77,7 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
+import com.twobits.design.components.OrphanedStorageCard
 import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.AiModelOption
@@ -180,6 +181,8 @@ fun AIConfigScreen(
                 if (selectedTab == 1) {
                     val llmStates by viewModel.llmStates.collectAsState()
                     val selectedLlm by viewModel.selectedLlm.collectAsState()
+                    val orphanedStorageBytes by viewModel.orphanedStorageBytes.collectAsState()
+                    LaunchedEffect(Unit) { viewModel.refreshOrphanedStorage() }
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
@@ -200,6 +203,13 @@ fun AIConfigScreen(
                                 description = { it.description },
                                 progressLabel = "Downloading",
                                 huggingFaceUrl = { it.huggingFacePageUrl },
+                            )
+                        }
+                        item {
+                            OrphanedStorageCard(
+                                bytes = orphanedStorageBytes,
+                                onClear = { viewModel.clearOrphanedStorage() },
+                                modifier = Modifier.padding(top = 12.dp),
                             )
                         }
                     }

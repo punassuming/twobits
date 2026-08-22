@@ -104,4 +104,8 @@ class LocalModelManager
         fun selectLlm(model: LocalLlmModel) {
             scope.launch { dataStore.edit { it[Keys.SELECTED_LLM_MODEL] = model.name } }
         }
+
+        fun orphanedStorageBytes(): Long = coordinator.orphanedStorageBytes()
+
+        fun deleteOrphanedFiles(): Long = coordinator.deleteOrphanedFiles()
     }

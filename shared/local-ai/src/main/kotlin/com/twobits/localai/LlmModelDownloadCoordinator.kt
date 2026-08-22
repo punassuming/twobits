@@ -83,6 +83,22 @@ class LlmModelDownloadCoordinator(
         update(model, LocalModelState.Absent)
     }
 
+    /**
+     * Names under [modelsDir] this coordinator's downloads produce or are entitled to leave
+     * behind (a finished file, or a `.part` still in progress) — a caller that shares
+     * [modelsDir] with another download family entirely (Scrybe's Whisper archives, downloaded
+     * to the same directory) needs this to correctly tell "someone else's file" apart from "an
+     * orphan of ours" when scanning the whole directory, since this coordinator only ever
+     * tracks [LocalLlmModel] entries by name, never the directory's actual contents.
+     */
+    fun knownFileNames(): Set<String> = LocalLlmModel.entries.flatMap { listOf(it.fileName, "${it.fileName}.part") }.toSet()
+
+    /** Bytes under [modelsDir] that don't belong to any current [LocalLlmModel] — see [knownFileNames]. */
+    fun orphanedStorageBytes(): Long = ModelDownloader.orphanedBytes(modelsDir, knownFileNames())
+
+    /** Deletes every orphaned entry under [modelsDir] and returns the bytes reclaimed. */
+    fun deleteOrphanedFiles(): Long = ModelDownloader.deleteOrphanedEntries(modelsDir, knownFileNames())
+
     private fun update(
         model: LocalLlmModel,
         state: LocalModelState,
