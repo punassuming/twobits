@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 0.22.0 (2026-08-23)
+
+### Features
+
+### Improvements
+
 **Models tab** — view and manage on-device model storage:
 * shows every installed and leftover file with its exact size and the on-disk storage path
 * clears bytes left behind by a removed model option, or a failed download/extraction nothing else could ever find or delete, with a confirmation before deleting
@@ -14,6 +22,7 @@
 ### Fixes
 
 * no user-visible change: fixed a Kotlin compile error in the shared `LlmModelDownloadCoordinator.importFrom()` (type-inference and cross-module smart-cast issues) — caught by CI before release, so this never shipped
+
 
 ## 0.21.0 (2026-08-16)
 
@@ -30,6 +39,7 @@
 * no user-visible change: `LlmModelDownloadCoordinator.anyReady()` (shared with Scrybe/Shelf Snap) gained an optional filter predicate, needed for a Shelf Snap vision-model crash fix — PriceDrop's own callers are unaffected since the new parameter defaults to matching any model, same as before.
 
 
+
 ## 0.20.1 (2026-08-11)
 
 ### Features
@@ -37,6 +47,7 @@
 ### Improvements
 
 ### Fixes
+
 
 
 
@@ -67,6 +78,7 @@
 
 
 
+
 ## 0.19.1 (2026-08-10)
 
 ### Features
@@ -80,6 +92,7 @@
 ### Fixes
 
 * fixed the Gemma 3n on-device model download added in 0.19.0 — it pointed at the wrong file name and always failed instead of installing
+
 
 
 
@@ -111,6 +124,7 @@
 
 
 
+
 ## 0.18.0 (2026-08-08)
 
 ### Features
@@ -131,6 +145,7 @@
 
 
 
+
 ## 0.17.0 (2026-08-06)
 
 ### Features
@@ -140,6 +155,7 @@
 ### Fixes
 
 * Shared: local-ai's vision-backend config no longer leaks a third-party type across the module boundary
+
 
 
 
@@ -174,6 +190,7 @@
 
 
 
+
 ## 0.16.1 (2026-08-01)
 
 ### Features
@@ -192,6 +209,7 @@
 ### Fixes
 
 * an interrupted model download could previously be misreported as fully installed and ready to use, since only file existence was checked, not completeness
+
 
 
 
@@ -231,6 +249,7 @@
 
 
 
+
 ## 0.15.0 (2026-07-23)
 
 ### Features
@@ -241,6 +260,7 @@
 * the outer margin tightened from 16dp to 12dp across every screen for more usable width
 
 ### Fixes
+
 
 
 
@@ -276,6 +296,7 @@
 
 
 
+
 ## 0.14.1 (2026-07-21)
 
 ### Features
@@ -287,6 +308,7 @@
 **Ask** — its own Source setting now actually controls it:
 * the two features shared one provider setting; each now has its own
 * choosing BYOK or Pro for Ask now routes its calls accordingly, not Product search's setting
+
 
 
 
@@ -349,6 +371,7 @@
 
 
 
+
 ## 0.13.0 (2026-07-14)
 
 ### Features
@@ -392,6 +415,7 @@
 
 
 
+
 ## 0.12.3 (2026-07-13)
 
 ### Features
@@ -403,6 +427,7 @@
 **Screen transitions** — fixed a white flash on the edges during navigation:
 * backgrounds now stay themed throughout the slide animation
 * most noticeable previously in dark mode
+
 
 
 
@@ -451,6 +476,7 @@
 
 
 
+
 ## 0.12.1 (2026-07-12)
 
 ### Features
@@ -464,6 +490,7 @@
 * provider rows show a compact colored dot instead of a text tag
 * full descriptions, setup steps, and signup links moved to an info sheet (tap ⓘ)
 * the feature list now flags BYOK features that have no saved key
+
 
 
 
@@ -531,6 +558,7 @@
 
 
 
+
 ## 0.11.0 (2026-07-03)
 
 ### Features
@@ -547,6 +575,7 @@
 **Changelog asset** — fixed a build bug where it was never bundled (the Gradle task pointed at a repo-root `CHANGELOG.md` that no longer exists) — the "What's New" screen was silently rendering empty
 **Internal: credential card** — fixed a shared bug where the "Connected" badge was tied to session-only validation state instead of whether a key is saved; PriceDrop's own credential flow already re-validates on every save so this was latent here, but the fix removes the risk of a saved-but-not-yet-tested key showing as "Not configured"
 **Check-frequency slider** — no longer allows hourly (or sub-4-hour) polling — the range is now 4–96 hours; a previously saved value outside that range is transparently clamped on next read instead of being scheduled as-is
+
 
 
 
@@ -603,6 +632,7 @@
 
 
 
+
 ## 0.9.0 (2026-06-28)
 
 ### Features
@@ -616,6 +646,7 @@
 * Free product cap now refreshes subscription status on a cold start, so a returning PriceDrop Pro subscriber isn't temporarily limited to 3 products before opening Settings
 * BYOK Google Shopping results are now parsed from SearchAPI.io's actual response shape (shopping_results + popular_products, seller / product_link), so common queries no longer return empty or save products with a blank retailer/URL
 * AI Config: a provider key that previously passed verification now shows "Connected" on launch — the verified state is persisted, so you no longer have to expand, save, and test each key every time you open the app
+
 
 
 
@@ -698,6 +729,7 @@
 
 
 
+
 ## 0.7.0 (2026-06-26)
 
 ### Features
@@ -711,6 +743,7 @@
 * **URL product metadata** — when adding a product by URL the extracted title and current price (from Jina reader + OpenAI) are now saved to the watchlist; previously the product was always stored with the placeholder title "Product from URL" and price $0.00
 * **Export data** — "Export data" in Settings → Privacy now shares the full watchlist as a JSON file via the system share sheet; previously the button was a no-op
 * **Build version** — `versionCode` and `versionName` in `build.gradle.kts` corrected to 0.6.0; automated release tooling mis-stamped 0.0.1 due to a tag-fetch race (now fixed in the release workflow)
+
 
 
 
@@ -777,6 +810,7 @@
 
 
 
+
 ## 0.5.0 (2026-06-24)
 
 ### Features
@@ -798,6 +832,7 @@
 * Price lookups for ASIN products now prefer Rainforest BYOK when configured, rather than always falling back to SerpAPI/Shopping
 * Chat model selection now reads the user's AI Config model choice for the Ask feature; falls back to default Pro/BYOK model constants only when the user has not selected a model
 * `ProviderSettingsStore` gains `getFeatureModel()` suspend getter (was missing — only the flow + setter existed); `isByok()` in `PriceDropApiClient` is now a suspend function to correctly call the suspend `getMode()` — fixes compile errors in CI
+
 
 
 
@@ -875,6 +910,7 @@
 
 
 
+
 ## 0.3.0 (2026-06-22)
 
 ### Features
@@ -903,6 +939,7 @@
 ### Fixes
 
 * restore missing `fillMaxWidth` import in `ProScreen` that caused a build failure after extracting `ProTierCard`
+
 
 
 
@@ -998,6 +1035,7 @@
 
 
 
+
 ## 0.1.0 (2026-06-21)
 
 ### Features
@@ -1007,6 +1045,7 @@
 ### Fixes
 
 * ktlint formatting fixes across source files (trailing commas, annotation placement, multiline expressions, blank lines)
+
 
 
 
