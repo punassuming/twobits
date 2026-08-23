@@ -6,7 +6,14 @@
 
 ### Improvements
 
+**Models tab** — view and manage on-device model storage:
+* shows every installed and leftover file with its exact size and the on-disk storage path
+* clears bytes left behind by a removed model option, or a failed download/extraction nothing else could ever find or delete, with a confirmation before deleting
+* Import lets you install a model from a file you already have (e.g. downloaded on a computer) instead of downloading it again in-app
+
 ### Fixes
+
+* no user-visible change: fixed a Kotlin compile error in the shared `LlmModelDownloadCoordinator.importFrom()` (type-inference and cross-module smart-cast issues) — caught by CI before release, so this never shipped
 
 ## 0.21.0 (2026-08-16)
 

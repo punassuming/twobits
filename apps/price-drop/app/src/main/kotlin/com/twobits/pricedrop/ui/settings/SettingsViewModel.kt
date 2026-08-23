@@ -2,6 +2,7 @@ package com.twobits.pricedrop.ui.settings
 
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -29,6 +30,7 @@ import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -107,6 +110,40 @@ class SettingsViewModel
 
         fun selectLlmModel(model: LocalLlmModel) {
             localModelManager.selectLlm(model)
+        }
+
+        private val _orphanedFileDetails = MutableStateFlow<List<Pair<String, Long>>>(emptyList())
+        val orphanedFileDetails: StateFlow<List<Pair<String, Long>>> = _orphanedFileDetails.asStateFlow()
+
+        private val _installedFileDetails = MutableStateFlow<List<Pair<String, Long>>>(emptyList())
+        val installedFileDetails: StateFlow<List<Pair<String, Long>>> = _installedFileDetails.asStateFlow()
+
+        val storageDirPath: String = localModelManager.storageDirPath()
+
+        /** Call when the Models tab becomes visible — this is a disk scan, not a reactive flow. */
+        fun refreshModelStorage() {
+            viewModelScope.launch(Dispatchers.IO) {
+                _orphanedFileDetails.value = localModelManager.orphanedFileDetails()
+                _installedFileDetails.value = localModelManager.installedFileDetails()
+            }
+        }
+
+        fun clearOrphanedStorage() {
+            viewModelScope.launch(Dispatchers.IO) {
+                localModelManager.deleteOrphanedFiles()
+                _orphanedFileDetails.value = emptyList()
+            }
+        }
+
+        fun importLlmModel(
+            model: LocalLlmModel,
+            uri: Uri,
+        ) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val input = context.contentResolver.openInputStream(uri) ?: return@launch
+                localModelManager.importLlm(model, input)
+                refreshModelStorage()
+            }
         }
 
         init {

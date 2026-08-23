@@ -1,6 +1,8 @@
 package com.twobits.pricedrop.ui.settings
 
 import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -77,6 +79,7 @@ import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
+import com.twobits.design.components.ModelStorageSection
 import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.AiModelOption
@@ -180,6 +183,16 @@ fun AIConfigScreen(
                 if (selectedTab == 1) {
                     val llmStates by viewModel.llmStates.collectAsState()
                     val selectedLlm by viewModel.selectedLlm.collectAsState()
+                    val orphanedFileDetails by viewModel.orphanedFileDetails.collectAsState()
+                    val installedFileDetails by viewModel.installedFileDetails.collectAsState()
+                    LaunchedEffect(Unit) { viewModel.refreshModelStorage() }
+                    var importLlmTarget by remember { mutableStateOf<LocalLlmModel?>(null) }
+                    val importLlmLauncher =
+                        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                            val target = importLlmTarget
+                            importLlmTarget = null
+                            if (uri != null && target != null) viewModel.importLlmModel(target, uri)
+                        }
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
@@ -200,6 +213,19 @@ fun AIConfigScreen(
                                 description = { it.description },
                                 progressLabel = "Downloading",
                                 huggingFaceUrl = { it.huggingFacePageUrl },
+                                onImport = { model ->
+                                    importLlmTarget = model
+                                    importLlmLauncher.launch(arrayOf("*/*"))
+                                },
+                            )
+                        }
+                        item {
+                            ModelStorageSection(
+                                storageDirPath = viewModel.storageDirPath,
+                                installed = installedFileDetails,
+                                orphaned = orphanedFileDetails,
+                                onClearOrphaned = { viewModel.clearOrphanedStorage() },
+                                modifier = Modifier.padding(top = 12.dp),
                             )
                         }
                     }

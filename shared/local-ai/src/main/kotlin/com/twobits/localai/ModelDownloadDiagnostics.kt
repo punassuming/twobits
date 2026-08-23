@@ -17,6 +17,7 @@ import com.twobits.core.localmodels.LocalLlmModel
 fun interface ModelDownloadDiagnostics {
     fun record(
         model: LocalLlmModel,
+        op: String,
         success: Boolean,
         message: String?,
         stackTraceText: String?,
