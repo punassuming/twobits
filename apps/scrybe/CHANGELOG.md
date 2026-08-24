@@ -4,6 +4,8 @@
 
 ### Features
 
+**Favorite recordings** — star a recording from the home list or from inside a session to mark it; the star fills in and stays synced between both places.
+
 ### Improvements
 
 **Models tab** — one Import button instead of one per model:

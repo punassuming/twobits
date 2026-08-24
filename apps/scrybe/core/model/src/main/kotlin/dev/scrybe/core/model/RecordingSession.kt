@@ -16,6 +16,7 @@ data class RecordingSession(
     val waveformSamples: List<Float>,
     val status: SessionStatus,
     val isArchived: Boolean,
+    val isFavorite: Boolean = false,
     val estimatedTranscriptionCostUsd: Double?,
     val folderId: String? = null,
     val locationLat: Double? = null,

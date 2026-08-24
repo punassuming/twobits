@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -274,6 +275,21 @@ fun SessionDetailScreen(
                 },
                 actions = {
                     if (successState != null) {
+                        IconButton(
+                            onClick = { viewModel.setFavorite(!successState.session.isFavorite) },
+                        ) {
+                            Icon(
+                                if (successState.session.isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                contentDescription =
+                                    if (successState.session.isFavorite) "Unfavorite" else "Favorite",
+                                tint =
+                                    if (successState.session.isFavorite) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                            )
+                        }
                         IconButton(
                             onClick = viewModel::transcribe,
                             enabled = !successState.isTranscribing,

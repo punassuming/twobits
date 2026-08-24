@@ -27,6 +27,7 @@ data class RecordingSessionEntity(
     val topicsJson: String? = null,
     val mode: String = "JOURNAL",
     val customTypeId: String? = null,
+    val isFavorite: Boolean = false,
     val createdAt: Long,
     val updatedAt: Long,
 )

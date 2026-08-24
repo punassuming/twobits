@@ -60,6 +60,8 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.AlertDialog
@@ -432,6 +434,7 @@ fun CaptureScreen(
                                                 }
                                             },
                                             onLongClick = { viewModel.enterSelectionMode(session.id) },
+                                            onToggleFavorite = { viewModel.toggleFavorite(session.id, !session.isFavorite) },
                                         )
                                     }
                                 }
@@ -467,6 +470,7 @@ fun CaptureScreen(
                                                 }
                                             },
                                             onLongClick = { viewModel.enterSelectionMode(session.id) },
+                                            onToggleFavorite = { viewModel.toggleFavorite(session.id, !session.isFavorite) },
                                         )
                                     }
                                 }
@@ -485,6 +489,7 @@ fun CaptureScreen(
                                         }
                                     },
                                     onLongClick = { viewModel.enterSelectionMode(session.id) },
+                                    onToggleFavorite = { viewModel.toggleFavorite(session.id, !session.isFavorite) },
                                 )
                             }
                         }
@@ -1404,6 +1409,7 @@ private fun HomeSessionCard(
     isSelecting: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
+    onToggleFavorite: () -> Unit = {},
 ) {
     Card(
         modifier =
@@ -1430,10 +1436,10 @@ private fun HomeSessionCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = isSelected, onCheckedChange = null)
                     Spacer(Modifier.width(8.dp))
-                    HomeSessionCardHeader(session)
+                    HomeSessionCardHeader(session, onToggleFavorite)
                 }
             } else {
-                HomeSessionCardHeader(session)
+                HomeSessionCardHeader(session, onToggleFavorite)
             }
             MiniWaveform(samples = session.waveformSamples, modifier = Modifier.fillMaxWidth())
             HomeSessionCardFooter(session = session)
@@ -1451,7 +1457,10 @@ private fun HomeSessionCard(
 }
 
 @Composable
-private fun HomeSessionCardHeader(session: RecentCaptureSession) {
+private fun HomeSessionCardHeader(
+    session: RecentCaptureSession,
+    onToggleFavorite: () -> Unit = {},
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1495,6 +1504,22 @@ private fun HomeSessionCardHeader(session: RecentCaptureSession) {
             }
         }
         Column(horizontalAlignment = Alignment.End) {
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    imageVector = if (session.isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+                    contentDescription = if (session.isFavorite) "Unfavorite" else "Favorite",
+                    modifier = Modifier.size(18.dp),
+                    tint =
+                        if (session.isFavorite) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                )
+            }
             Text(
                 session.createdAtLabel,
                 style = MaterialTheme.typography.bodySmall,
