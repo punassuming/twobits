@@ -17,14 +17,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -34,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -69,6 +73,7 @@ import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import com.twobits.design.components.ModelStorageSection
 import dev.scrybe.core.common.ScrybeLayoutDefaults
+import dev.scrybe.core.localai.ModelFileDetector
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiTranscriptionModel
 import dev.scrybe.core.model.OpenAiTransformModel
@@ -108,20 +113,14 @@ fun AIConfigScreen(
         if (selectedTab == 1) viewModel.refreshModelStorage()
     }
 
-    var importWhisperTarget by remember { mutableStateOf<LocalWhisperModel?>(null) }
-    val importWhisperLauncher =
+    // A single picker for the whole Models tab — the target model is identified from the picked
+    // file's own name (ModelFileDetector, via viewModel.importModel) instead of requiring a
+    // pre-selected model row, so this replaces what used to be one launcher per model family.
+    val importLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            val target = importWhisperTarget
-            importWhisperTarget = null
-            if (uri != null && target != null) viewModel.importWhisperModel(target, uri)
+            uri?.let { viewModel.importModel(it) }
         }
-    var importLlmTarget by remember { mutableStateOf<LocalLlmModel?>(null) }
-    val importLlmLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            val target = importLlmTarget
-            importLlmTarget = null
-            if (uri != null && target != null) viewModel.importLlmModel(target, uri)
-        }
+    val unmatchedImportUri by viewModel.unmatchedImportUri.collectAsState()
 
     // Derived from uiState on every recomposition rather than captured once in rememberSaveable:
     // the old snapshot was taken before DataStore emitted the real values and never re-synced, so
@@ -179,6 +178,13 @@ fun AIConfigScreen(
                                 .widthIn(max = ScrybeLayoutDefaults.contentMaxWidth),
                         verticalArrangement = Arrangement.spacedBy(ScrybeLayoutDefaults.screenVerticalSpacing),
                     ) {
+                        ImportModelCard(onImport = { importLauncher.launch(arrayOf("*/*")) })
+                        ModelStorageSection(
+                            storageDirPath = viewModel.storageDirPath,
+                            installed = installedFileDetails,
+                            orphaned = orphanedFileDetails,
+                            onClearOrphaned = { viewModel.clearOrphanedStorage() },
+                        )
                         LocalModelPanel(
                             sectionLabel = "Whisper — speech-to-text",
                             models = LocalWhisperModel.entries.toList(),
@@ -193,10 +199,6 @@ fun AIConfigScreen(
                             sizeLabel = { it.sizeLabel },
                             description = { it.description },
                             progressLabel = "Downloading",
-                            onImport = { model ->
-                                importWhisperTarget = model
-                                importWhisperLauncher.launch(arrayOf("*/*"))
-                            },
                         )
                         LocalModelPanel(
                             sectionLabel = "On-device LLM",
@@ -213,16 +215,6 @@ fun AIConfigScreen(
                             description = { it.description },
                             progressLabel = "Downloading",
                             huggingFaceUrl = { it.huggingFacePageUrl },
-                            onImport = { model ->
-                                importLlmTarget = model
-                                importLlmLauncher.launch(arrayOf("*/*"))
-                            },
-                        )
-                        ModelStorageSection(
-                            storageDirPath = viewModel.storageDirPath,
-                            installed = installedFileDetails,
-                            orphaned = orphanedFileDetails,
-                            onClearOrphaned = { viewModel.clearOrphanedStorage() },
                         )
                     }
                     return@Box
@@ -396,6 +388,113 @@ fun AIConfigScreen(
             onDismiss = { showTransformModelPicker = false },
             onSelect = { viewModel.setTransformModel(it.apiName) },
         )
+    }
+
+    if (unmatchedImportUri != null) {
+        ManualModelImportDialog(
+            onDismiss = { viewModel.dismissUnmatchedImport() },
+            onSelectWhisper = { viewModel.importUnmatchedAsWhisper(it) },
+            onSelectLlm = { viewModel.importUnmatchedAsLlm(it) },
+        )
+    }
+}
+
+/**
+ * Fallback for a picked file [ModelFileDetector] couldn't identify from its name alone (a
+ * user-renamed copy, an unrecognized filename) — lets the user force the target model instead
+ * of the import silently failing.
+ */
+@Composable
+private fun ManualModelImportDialog(
+    onDismiss: () -> Unit,
+    onSelectWhisper: (LocalWhisperModel) -> Unit,
+    onSelectLlm: (LocalLlmModel) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Couldn't identify this file") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    "Pick which model to import it as:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                Text(
+                    "Whisper — speech-to-text",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                )
+                LocalWhisperModel.entries.forEach { model ->
+                    Text(
+                        text = model.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelectWhisper(model) }
+                                .padding(vertical = 10.dp),
+                    )
+                }
+                Text(
+                    "On-device LLM",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                )
+                LocalLlmModel.entries.forEach { model ->
+                    Text(
+                        text = model.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelectLlm(model) }
+                                .padding(vertical = 10.dp),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun ImportModelCard(
+    onImport: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(
+                    "Import a model file",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    "Already have a model downloaded elsewhere? Import it directly.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Button(onClick = onImport) {
+                Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Import")
+            }
+        }
     }
 }
 

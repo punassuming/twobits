@@ -3,6 +3,7 @@ package dev.scrybe.feature.settings
 import android.app.Activity
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -25,8 +26,10 @@ import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.localai.DetectedImportTarget
 import dev.scrybe.core.localai.LocalModelManager
 import dev.scrybe.core.localai.ModelDownloadWorker
+import dev.scrybe.core.localai.ModelFileDetector
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.LocalWhisperModel
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
@@ -223,6 +226,49 @@ class SettingsViewModel
                 refreshModelStorage()
             }
         }
+
+        private val _unmatchedImportUri = MutableStateFlow<Uri?>(null)
+        val unmatchedImportUri: StateFlow<Uri?> = _unmatchedImportUri.asStateFlow()
+
+        /**
+         * Entry point for the single top-level Import action — identifies the target model from
+         * the picked file's own name instead of requiring the caller to have pre-selected a model
+         * row, so there's one Import button instead of one per not-yet-downloaded model.
+         */
+        fun importModel(uri: Uri) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val displayName = queryDisplayName(uri)
+                when (val detected = displayName?.let { ModelFileDetector.detect(it) }) {
+                    is DetectedImportTarget.Whisper -> importWhisperModel(detected.model, uri)
+                    is DetectedImportTarget.Llm -> importLlmModel(detected.model, uri)
+                    null -> _unmatchedImportUri.value = uri
+                }
+            }
+        }
+
+        /** Called from the manual-fallback picker once the user names the model themselves. */
+        fun importUnmatchedAsWhisper(model: LocalWhisperModel) {
+            val uri = _unmatchedImportUri.value ?: return
+            _unmatchedImportUri.value = null
+            importWhisperModel(model, uri)
+        }
+
+        fun importUnmatchedAsLlm(model: LocalLlmModel) {
+            val uri = _unmatchedImportUri.value ?: return
+            _unmatchedImportUri.value = null
+            importLlmModel(model, uri)
+        }
+
+        fun dismissUnmatchedImport() {
+            _unmatchedImportUri.value = null
+        }
+
+        private fun queryDisplayName(uri: Uri): String? =
+            context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0) cursor.getString(index) else null
+            }
 
         val selectedLlmModel: StateFlow<LocalLlmModel> =
             preferencesDataStore.localLlmModel

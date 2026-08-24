@@ -6,6 +6,11 @@
 
 ### Improvements
 
+**Models tab** — one Import button instead of one per model:
+* Import now sits at the top of the tab, above the Storage section — pick a file and it's matched to the right model from its own filename, no need to know which row to tap first
+* if a picked file can't be identified, a dialog lets you pick the model yourself instead of failing silently
+* the Storage list is now expanded by default, right below Import, instead of collapsed behind a generic "View" tap
+
 ### Fixes
 
 **Cancel transcription** — tapping the X now actually stops it:

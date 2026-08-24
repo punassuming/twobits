@@ -1,8 +1,6 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -100,14 +98,6 @@ fun AIConfigScreen(
         if (selectedTab == 1) viewModel.refreshModelStorage()
     }
 
-    var importLlmTarget by remember { mutableStateOf<LocalLlmModel?>(null) }
-    val importLlmLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            val target = importLlmTarget
-            importLlmTarget = null
-            if (uri != null && target != null) viewModel.importLlmModel(target, uri)
-        }
-
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -148,10 +138,6 @@ fun AIConfigScreen(
                         description = { it.description },
                         progressLabel = "Downloading",
                         huggingFaceUrl = { it.huggingFacePageUrl },
-                        onImport = { model ->
-                            importLlmTarget = model
-                            importLlmLauncher.launch(arrayOf("*/*"))
-                        },
                     )
                     Spacer(Modifier.height(12.dp))
                     ModelStorageSection(

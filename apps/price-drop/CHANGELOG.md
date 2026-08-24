@@ -6,7 +6,11 @@
 
 ### Improvements
 
+**Models tab** — the Storage list is now expanded by default, right where it's needed, instead of collapsed behind a generic "View" tap.
+
 ### Fixes
+
+* the per-model Import button is temporarily removed while it's redesigned into a single top-level action (already done for Scrybe) — download remains the way to install a model in-app in the meantime
 
 ## 0.22.0 (2026-08-23)
 
