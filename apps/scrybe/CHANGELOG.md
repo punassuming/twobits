@@ -17,6 +17,8 @@
 * if a picked file can't be identified, a dialog lets you pick the model yourself instead of failing silently
 * the Storage list is now expanded by default, right below Import, instead of collapsed behind a generic "View" tap
 
+* no user-visible change: removed the unused `feature:history` module, unreachable since bottom navigation was removed in favor of the single-screen Capture home — it was still compiled into every build for no benefit
+
 ### Fixes
 
 **Cancel transcription** — tapping the X now actually stops it:

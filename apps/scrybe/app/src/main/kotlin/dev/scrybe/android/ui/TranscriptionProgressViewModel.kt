@@ -31,12 +31,12 @@ data class TranscriptionProgressUiState(
  * call (auto or manual — retry, batch, or the session-detail button all funnel through it), so
  * this reuses that existing, already-reactive signal instead of adding a parallel one.
  *
- * That signal alone undercounts a "transcribe selected" batch, though:
- * `HistoryViewModel.transcribeSelectedSessions()` processes one session at a time, so at most one
- * ever reports TRANSCRIBING — the rest of the batch is otherwise indistinguishable from "nothing
- * else pending." [BatchTranscriptionTracker] fills that specific gap; combined with the DB
- * signal, [queuedCount] covers both a same-batch backlog and any other transcription that happens
- * to be running concurrently (e.g. auto-transcribe firing while a manual retry is in flight).
+ * That signal alone undercounts a "transcribe selected" batch, though: such a batch processes
+ * one session at a time, so at most one ever reports TRANSCRIBING — the rest of the batch is
+ * otherwise indistinguishable from "nothing else pending." [BatchTranscriptionTracker] fills
+ * that specific gap; combined with the DB signal, [queuedCount] covers both a same-batch
+ * backlog and any other transcription that happens to be running concurrently (e.g.
+ * auto-transcribe firing while a manual retry is in flight).
  */
 @HiltViewModel
 class TranscriptionProgressViewModel
