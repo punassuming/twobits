@@ -176,6 +176,7 @@ private fun MainContentBox(
             visible = transcriptionProgressState.isTranscribing,
             label = transcriptionProgressState.label,
             queuedCount = transcriptionProgressState.queuedCount,
+            isCancelling = transcriptionProgressState.isCancelling,
             onCancel = onCancelTranscription,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
         )

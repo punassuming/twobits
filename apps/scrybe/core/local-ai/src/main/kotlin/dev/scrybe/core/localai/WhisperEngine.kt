@@ -57,6 +57,11 @@ internal class WhisperEngine(
     ): String {
         val chunkSize = CHUNK_SECONDS * sampleRate
         if (samples.size <= chunkSize) {
+            // Mirrors the between-chunk checkpoint below — a short recording is otherwise the
+            // one case with zero cancellation checkpoints at all, since it never enters the loop.
+            // This only catches a cancel requested before decode starts (e.g. queued behind other
+            // batch items); once decodeChunk's native call is running, nothing can interrupt it.
+            currentCoroutineContext().ensureActive()
             return decodeChunk(samples, sampleRate)
         }
         val parts = mutableListOf<String>()
@@ -93,8 +98,15 @@ internal class WhisperEngine(
     }
 
     private companion object {
-        // Comfortably under sherpa-onnx's ~29.5s (max_num_frames - 50 at 10ms/frame) hard cutoff.
-        const val CHUNK_SECONDS = 28
+        // Two constraints, not one: comfortably under sherpa-onnx's ~29.5s (max_num_frames - 50
+        // at 10ms/frame) hard cutoff, AND small enough to bound how long Cancel can be stuck
+        // waiting on native decode — the between-chunk ensureActive() checkpoint below is the
+        // only place a long recording's transcription can actually stop, so this value is the
+        // worst-case delay before it does. The recognizer/model is loaded once in init and reused
+        // across every decodeChunk() call, so smaller chunks cost a little more per-call overhead
+        // (stream create/release), not a model reload — cheap enough that this shouldn't be raised
+        // back toward 28 without a specific reason to.
+        const val CHUNK_SECONDS = 10
 
         fun resolveModelFile(
             modelDir: File,

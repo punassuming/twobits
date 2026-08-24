@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**Cancel transcription** — tapping the X now actually stops it:
+* on-device transcription had no way to notice a cancel request while decoding was in progress, so tapping Cancel silently did nothing
+* the toast now switches to "Cancelling…" immediately so a tap is never invisible, and cancellation now takes effect within a few seconds instead of only between very long gaps (or never, for short recordings)
+
 ## 1.52.0 (2026-08-23)
 
 ### Features
