@@ -6,6 +6,10 @@
 
 **Favorite recordings** — star a recording from the home list or from inside a session to mark it; the star fills in and stays synced between both places.
 
+**Per-speaker transcript rows** — the transcript view now shows each utterance as its own row with a colored speaker avatar and a timestamp, instead of one long paragraph of inline speaker labels:
+* tapping a row seeks playback to that moment
+* tapping the avatar or speaker name opens speaker management, where you can already merge two speaker labels into one to fix a diarization split
+
 ### Improvements
 
 **Models tab** — one Import button instead of one per model:
