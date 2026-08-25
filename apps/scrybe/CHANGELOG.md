@@ -4,26 +4,31 @@
 
 ### Features
 
-**Favorite recordings** — star a recording from the home list or from inside a session to mark it; the star fills in and stays synced between both places.
+**Favorite recordings** — star any recording to mark it:
+* star icon on the home list and inside the session screen
+* stays in sync between both places
 
-**Per-speaker transcript rows** — the transcript view now shows each utterance as its own row with a colored speaker avatar and a timestamp, instead of one long paragraph of inline speaker labels:
-* tapping a row seeks playback to that moment
-* tapping the avatar or speaker name opens speaker management, where you can already merge two speaker labels into one to fix a diarization split
+**Per-speaker transcript rows** — transcript now shows one row per utterance:
+* colored speaker avatar and a timestamp per row
+* tap a row to seek playback to that moment
+* tap the avatar or name to open speaker management
+* merge two speaker labels there to fix a diarization split
 
 ### Improvements
 
 **Models tab** — one Import button instead of one per model:
-* Import now sits at the top of the tab, above the Storage section — pick a file and it's matched to the right model from its own filename, no need to know which row to tap first
-* if a picked file can't be identified, a dialog lets you pick the model yourself instead of failing silently
-* the Storage list is now expanded by default, right below Import, instead of collapsed behind a generic "View" tap
+* pick a file and it's matched to the right model automatically
+* an unrecognized file opens a picker instead of failing silently
+* Storage list now expanded by default, right below Import
 
-* no user-visible change: removed the unused `feature:history` module, unreachable since bottom navigation was removed in favor of the single-screen Capture home — it was still compiled into every build for no benefit
+* no user-visible change: removed the unused `feature:history` module, dead since bottom navigation was dropped in favor of the single-screen Capture home
 
 ### Fixes
 
 **Cancel transcription** — tapping the X now actually stops it:
-* on-device transcription had no way to notice a cancel request while decoding was in progress, so tapping Cancel silently did nothing
-* the toast now switches to "Cancelling…" immediately so a tap is never invisible, and cancellation now takes effect within a few seconds instead of only between very long gaps (or never, for short recordings)
+* previously nothing happened until decoding finished — cancel silently failed
+* toast now shows "Cancelling…" immediately so a tap is never invisible
+* now takes effect within seconds instead of never or eventually
 
 ## 1.52.0 (2026-08-23)
 

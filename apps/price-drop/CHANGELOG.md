@@ -10,7 +10,9 @@
 
 ### Fixes
 
-* the per-model Import button is temporarily removed while it's redesigned into a single top-level action (already done for Scrybe) — download remains the way to install a model in-app in the meantime
+**Models tab** — Import button temporarily removed while it's redesigned:
+* download remains the way to install a model in-app for now
+* per-model Import returns as one top-level action, matching Scrybe
 
 ## 0.22.0 (2026-08-23)
 
