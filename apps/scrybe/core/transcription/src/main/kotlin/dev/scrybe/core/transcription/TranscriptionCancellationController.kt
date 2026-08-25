@@ -11,9 +11,9 @@ import javax.inject.Singleton
  * cancel. Registered/unregistered entirely inside that one method — every caller (auto-transcribe,
  * manual retry, batch) funnels through it, so no call site needs to know this exists.
  *
- * A batch run ([dev.scrybe.feature.history.HistoryViewModel.transcribeSelectedSessions]) calls
- * `transcribeSession()` directly inside a `forEach` within one launched coroutine — not via a
- * nested `launch`/`async` — so the [Job] captured there IS that outer batch coroutine's own job.
+ * A "transcribe selected" batch run calls `transcribeSession()` directly inside a `forEach`
+ * within one launched coroutine — not via a nested `launch`/`async` — so the [Job] captured
+ * there IS that outer batch coroutine's own job.
  * Cancelling it stops both the item currently in flight and every item still queued behind it,
  * not just the current one, which matches what a single visible Cancel action should do.
  */

@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -98,13 +99,10 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -275,6 +273,21 @@ fun SessionDetailScreen(
                 actions = {
                     if (successState != null) {
                         IconButton(
+                            onClick = { viewModel.setFavorite(!successState.session.isFavorite) },
+                        ) {
+                            Icon(
+                                if (successState.session.isFavorite) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                contentDescription =
+                                    if (successState.session.isFavorite) "Unfavorite" else "Favorite",
+                                tint =
+                                    if (successState.session.isFavorite) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                            )
+                        }
+                        IconButton(
                             onClick = viewModel::transcribe,
                             enabled = !successState.isTranscribing,
                         ) {
@@ -420,6 +433,8 @@ fun SessionDetailScreen(
                                     onEditTranscript = { isEditingTranscript = true },
                                     onDeleteTranscript = { deleteTranscriptTarget = it },
                                     onResumeTranscription = viewModel::transcribe,
+                                    onSeek = viewModel::seekPlayback,
+                                    onSpeakerRowClick = { showSpeakerManageSheet = true },
                                 )
                         }
                     }
@@ -1193,12 +1208,16 @@ private fun TranscriptTabContent(
     onEditTranscript: () -> Unit,
     onDeleteTranscript: (dev.scrybe.core.model.Transcript) -> Unit,
     onResumeTranscription: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onSpeakerRowClick: () -> Unit,
 ) {
     TranscriptSection(
         state = state,
         onEditTranscript = onEditTranscript,
         onDeleteTranscript = onDeleteTranscript,
         onResumeTranscription = onResumeTranscription,
+        onSeek = onSeek,
+        onSpeakerRowClick = onSpeakerRowClick,
     )
 }
 
@@ -1803,6 +1822,8 @@ private fun TranscriptSection(
     onEditTranscript: () -> Unit,
     onDeleteTranscript: (Transcript) -> Unit,
     onResumeTranscription: () -> Unit = {},
+    onSeek: (Long) -> Unit = {},
+    onSpeakerRowClick: () -> Unit = {},
 ) {
     val transcripts = state.transcripts
     if (state.currentTranscript == null && transcripts.isEmpty()) {
@@ -1896,6 +1917,8 @@ private fun TranscriptSection(
                     durationMs = state.session.durationMs,
                     onDelete = { onDeleteTranscript(transcript) },
                     onEdit = onEditTranscript,
+                    onSeek = onSeek,
+                    onSpeakerRowClick = onSpeakerRowClick,
                 )
             }
             state.originalTranscript
@@ -1942,6 +1965,8 @@ private fun TranscriptCard(transcript: Transcript) {
         durationMs = 0L,
         onDelete = null,
         onEdit = null,
+        onSeek = {},
+        onSpeakerRowClick = {},
     )
 }
 
@@ -1994,14 +2019,16 @@ private fun TranscriptCard(
     durationMs: Long,
     onEdit: (() -> Unit)?,
     onDelete: (() -> Unit)?,
+    onSeek: (Long) -> Unit = {},
+    onSpeakerRowClick: () -> Unit = {},
 ) {
     var expanded by remember(transcript.id) { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
-    val formattedText =
+    val utterances =
         remember(transcript.content, speakerSegments.size, durationMs) {
-            buildSpeakerAnnotatedString(transcript.content, speakerSegments, durationMs)
+            buildSpeakerUtterances(transcript.content, speakerSegments, durationMs)
         }
 
     Card(
@@ -2048,7 +2075,8 @@ private fun TranscriptCard(
                     expanded = expanded,
                     onCopy = {
                         // Copy what the user sees: paragraph breaks and speaker labels included.
-                        clipboardManager.setText(AnnotatedString(formattedText.text))
+                        val plainText = formatTranscriptPlainText(transcript.content, speakerSegments, durationMs)
+                        clipboardManager.setText(AnnotatedString(plainText))
                         Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
                     },
                     onToggleExpand = { expanded = !expanded },
@@ -2056,10 +2084,79 @@ private fun TranscriptCard(
                     onDelete = onDelete,
                 )
             }
+            val visibleUtterances = if (expanded) utterances else utterances.take(1)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                visibleUtterances.forEach { utterance ->
+                    TranscriptUtteranceRow(
+                        utterance = utterance,
+                        maxLines = if (expanded) Int.MAX_VALUE else 4,
+                        onSeek = { onSeek(utterance.startMs) },
+                        onSpeakerClick = onSpeakerRowClick,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranscriptUtteranceRow(
+    utterance: TranscriptUtterance,
+    maxLines: Int,
+    onSeek: () -> Unit,
+    onSpeakerClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onSeek),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (utterance.speakerLabel != null) {
+            val color = speakerColorForIndex(utterance.speakerIndex.coerceAtLeast(0))
+            Box(
+                modifier =
+                    Modifier
+                        .size(24.dp)
+                        .background(color, CircleShape)
+                        .clickable(onClick = onSpeakerClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = utterance.speakerLabel.filter { it.isDigit() }.ifBlank { "1" },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            if (utterance.speakerLabel != null) {
+                Row(
+                    modifier = Modifier.clickable(onClick = onSpeakerClick),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = utterance.speakerLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = speakerColorForIndex(utterance.speakerIndex.coerceAtLeast(0)),
+                    )
+                    Text(
+                        text = formatDuration(utterance.startMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
             Text(
-                text = formattedText,
+                text = utterance.text,
                 style = MaterialTheme.typography.bodySmall,
-                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                maxLines = maxLines,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -2103,14 +2200,22 @@ private fun formatTranscriptPlainText(
     return sb.toString()
 }
 
-private fun buildSpeakerAnnotatedString(
+private data class TranscriptUtterance(
+    val speakerId: String?,
+    val speakerLabel: String?,
+    val speakerIndex: Int,
+    val startMs: Long,
+    val text: String,
+)
+
+private fun buildSpeakerUtterances(
     content: String,
     speakerSegments: List<SpeakerSegment>,
     durationMs: Long,
-): AnnotatedString {
+): List<TranscriptUtterance> {
     val paragraphed = content.replace(Regex("([.?!])\\s+([A-Z])"), "$1\n\n$2")
     if (speakerSegments.isEmpty() || durationMs <= 0L) {
-        return AnnotatedString(paragraphed)
+        return listOf(TranscriptUtterance(speakerId = null, speakerLabel = null, speakerIndex = -1, startMs = 0L, text = paragraphed))
     }
     val speakerIds =
         speakerSegments
@@ -2119,34 +2224,49 @@ private fun buildSpeakerAnnotatedString(
             .sorted()
     val len = paragraphed.length
     var lastSpeakerId: String? = null
-    return buildAnnotatedString {
-        var pos = 0
-        for (segment in speakerSegments.sortedBy { it.startMs }) {
-            val rawStart = ((segment.startMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
-            val rawEnd = ((segment.endMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
-            val segEnd = rawEnd.coerceAtLeast(pos)
-            if (segEnd <= pos) continue
-            val segStart =
-                if (segment.speakerId != lastSpeakerId) {
-                    snapToWordBoundary(paragraphed, rawStart).coerceAtLeast(pos)
-                } else {
-                    rawStart.coerceAtLeast(pos)
-                }
-            if (segStart > pos) append(paragraphed.substring(pos, segStart))
-            if (segment.speakerId != lastSpeakerId) {
-                val color = speakerColorForIndex(speakerIds.indexOf(segment.speakerId).coerceAtLeast(0))
-                val speakerLabel = defaultSpeakerLabel(segment.speakerId, speakerIds.indexOf(segment.speakerId))
-                if (length > 0) append("\n\n")
-                withStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold)) {
-                    append("$speakerLabel: ")
-                }
-                lastSpeakerId = segment.speakerId
-            }
-            if (segStart < segEnd) append(paragraphed.substring(segStart, segEnd))
-            pos = segEnd
-        }
-        if (pos < len) append(paragraphed.substring(pos))
+    var currentStartMs = 0L
+    val currentText = StringBuilder()
+    val utterances = mutableListOf<TranscriptUtterance>()
+
+    fun flush() {
+        if (currentText.isEmpty()) return
+        val speakerId = lastSpeakerId
+        utterances.add(
+            TranscriptUtterance(
+                speakerId = speakerId,
+                speakerLabel = speakerId?.let { defaultSpeakerLabel(it, speakerIds.indexOf(it)) },
+                speakerIndex = speakerId?.let { speakerIds.indexOf(it) } ?: -1,
+                startMs = currentStartMs,
+                text = currentText.toString().trim(),
+            ),
+        )
+        currentText.clear()
     }
+
+    var pos = 0
+    for (segment in speakerSegments.sortedBy { it.startMs }) {
+        val rawStart = ((segment.startMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
+        val rawEnd = ((segment.endMs.toFloat() / durationMs) * len).toInt().coerceIn(0, len)
+        val segEnd = rawEnd.coerceAtLeast(pos)
+        if (segEnd <= pos) continue
+        val segStart =
+            if (segment.speakerId != lastSpeakerId) {
+                snapToWordBoundary(paragraphed, rawStart).coerceAtLeast(pos)
+            } else {
+                rawStart.coerceAtLeast(pos)
+            }
+        if (segStart > pos) currentText.append(paragraphed.substring(pos, segStart))
+        if (segment.speakerId != lastSpeakerId) {
+            flush()
+            lastSpeakerId = segment.speakerId
+            currentStartMs = segment.startMs
+        }
+        if (segStart < segEnd) currentText.append(paragraphed.substring(segStart, segEnd))
+        pos = segEnd
+    }
+    if (pos < len) currentText.append(paragraphed.substring(pos))
+    flush()
+    return utterances
 }
 
 private fun snapToWordBoundary(

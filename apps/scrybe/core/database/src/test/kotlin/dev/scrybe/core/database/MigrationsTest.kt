@@ -9,4 +9,10 @@ class MigrationsTest {
         assertEquals(4, MIGRATION_4_5.startVersion)
         assertEquals(5, MIGRATION_4_5.endVersion)
     }
+
+    @Test
+    fun `MIGRATION_16_17 migrates from version 16 to version 17`() {
+        assertEquals(16, MIGRATION_16_17.startVersion)
+        assertEquals(17, MIGRATION_16_17.endVersion)
+    }
 }

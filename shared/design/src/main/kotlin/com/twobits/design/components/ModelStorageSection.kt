@@ -56,7 +56,9 @@ fun ModelStorageSection(
 
     val totalBytes = items.sumOf { it.sizeBytes }
     val orphanedBytes = orphaned.sumOf { it.second }
-    var expanded by remember { mutableStateOf(false) }
+    // Expanded by default — this is now the answer to "what's actually installed," positioned
+    // right below the top-level Import action, not a secondary detail worth hiding behind a tap.
+    var expanded by remember { mutableStateOf(true) }
     var showConfirmClear by remember { mutableStateOf(false) }
 
     Surface(
@@ -84,7 +86,7 @@ fun ModelStorageSection(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide" else "View") }
+                TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide files" else "Show files") }
             }
             if (expanded) {
                 Spacer(Modifier.height(4.dp))

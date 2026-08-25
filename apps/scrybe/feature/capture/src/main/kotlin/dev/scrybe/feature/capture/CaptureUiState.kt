@@ -66,6 +66,7 @@ data class RecentCaptureSession(
     val locationLabel: String?,
     val transcriptPreview: String?,
     val isArchived: Boolean,
+    val isFavorite: Boolean = false,
     val folderId: String? = null,
     val speakerCount: Int = 0,
     val openTaskCount: Int = 0,

@@ -164,3 +164,10 @@ val MIGRATION_15_16: Migration =
             db.execSQL("ALTER TABLE custom_recording_types ADD COLUMN iconName TEXT DEFAULT NULL")
         }
     }
+
+val MIGRATION_16_17: Migration =
+    object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE recording_sessions ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0")
+        }
+    }

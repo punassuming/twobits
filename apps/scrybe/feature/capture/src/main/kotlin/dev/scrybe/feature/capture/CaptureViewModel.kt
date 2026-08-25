@@ -230,6 +230,7 @@ class CaptureViewModel
                                 locationLabel = session.locationLabel,
                                 transcriptPreview = transcriptLookup[session.id],
                                 isArchived = session.isArchived,
+                                isFavorite = session.isFavorite,
                                 folderId = session.folderId,
                                 speakerCount = speakerCounts[session.id] ?: 0,
                                 openTaskCount = taskCountMap[session.id] ?: 0,
@@ -537,6 +538,15 @@ class CaptureViewModel
                     )
                 }
                 clearSelection()
+            }
+        }
+
+        fun toggleFavorite(
+            id: String,
+            isFavorite: Boolean,
+        ) {
+            viewModelScope.launch {
+                recordingSessionDao.setFavorite(id, isFavorite, System.currentTimeMillis())
             }
         }
 

@@ -108,4 +108,14 @@ interface RecordingSessionDao {
         id: String,
         waveformSamples: String,
     )
+
+    @Query("SELECT * FROM recording_sessions WHERE isFavorite = 1 ORDER BY createdAt DESC")
+    fun getFavoriteSessions(): Flow<List<RecordingSessionEntity>>
+
+    @Query("UPDATE recording_sessions SET isFavorite = :isFavorite, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun setFavorite(
+        id: String,
+        isFavorite: Boolean,
+        updatedAt: Long,
+    )
 }

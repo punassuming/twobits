@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         SessionTaskEntity::class,
         CustomRecordingTypeEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

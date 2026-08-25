@@ -4,9 +4,31 @@
 
 ### Features
 
+**Favorite recordings** — star any recording to mark it:
+* star icon on the home list and inside the session screen
+* stays in sync between both places
+
+**Per-speaker transcript rows** — transcript now shows one row per utterance:
+* colored speaker avatar and a timestamp per row
+* tap a row to seek playback to that moment
+* tap the avatar or name to open speaker management
+* merge two speaker labels there to fix a diarization split
+
 ### Improvements
 
+**Models tab** — one Import button instead of one per model:
+* pick a file and it's matched to the right model automatically
+* an unrecognized file opens a picker instead of failing silently
+* Storage list now expanded by default, right below Import
+
+* no user-visible change: removed the unused `feature:history` module, dead since bottom navigation was dropped in favor of the single-screen Capture home
+
 ### Fixes
+
+**Cancel transcription** — tapping the X now actually stops it:
+* previously nothing happened until decoding finished — cancel silently failed
+* toast now shows "Cancelling…" immediately so a tap is never invisible
+* now takes effect within seconds instead of never or eventually
 
 ## 1.52.0 (2026-08-23)
 

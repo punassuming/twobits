@@ -48,6 +48,7 @@ fun TranscriptionProgressToast(
     visible: Boolean,
     label: String,
     queuedCount: Int,
+    isCancelling: Boolean,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -81,7 +82,7 @@ fun TranscriptionProgressToast(
                     // Two independent AnimatedContents (not one shared on the whole toast) so a
                     // queue-count change doesn't replay the label transition and vice versa.
                     AnimatedContent(
-                        targetState = "Transcribing…",
+                        targetState = if (isCancelling) "Cancelling…" else "Transcribing…",
                         transitionSpec = { contentSwapTransition() },
                         label = "transcriptionPhase",
                     ) { text ->
@@ -120,12 +121,23 @@ fun TranscriptionProgressToast(
                     }
                 }
                 Spacer(Modifier.width(4.dp))
-                IconButton(onClick = onCancel, modifier = Modifier.size(32.dp)) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Cancel transcription",
-                        modifier = Modifier.size(18.dp),
-                    )
+                // Disabled (not just visually, functionally) while cancelling — WhisperEngine's
+                // native decode can take up to one chunk to actually stop, so a second tap in that
+                // window would otherwise look like it's doing nothing, same as the original bug.
+                IconButton(onClick = onCancel, enabled = !isCancelling, modifier = Modifier.size(32.dp)) {
+                    if (isCancelling) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Cancel transcription",
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
         }

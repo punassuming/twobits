@@ -61,7 +61,6 @@ fun <T : Any> LocalModelPanel(
     sectionSubtitle: String? = null,
     progressLabel: String = "Loading",
     huggingFaceUrl: ((T) -> String)? = null,
-    onImport: ((T) -> Unit)? = null,
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -102,7 +101,6 @@ fun <T : Any> LocalModelPanel(
                     onSelect = { onSelect(model) },
                     onPrimaryAction = { onPrimaryAction(model) },
                     onDelete = { onDelete(model) },
-                    onImport = onImport?.let { { it(model) } },
                 )
             }
         }
@@ -123,7 +121,6 @@ private fun LocalModelRow(
     onSelect: () -> Unit,
     onPrimaryAction: () -> Unit,
     onDelete: () -> Unit,
-    onImport: (() -> Unit)? = null,
 ) {
     val isReady = modelStatus is LocalModelStatus.Ready
     val isSelectedAndReady = isSelected && isReady
@@ -229,7 +226,7 @@ private fun LocalModelRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 when {
-                    modelStatus is LocalModelStatus.NotAvailable -> {
+                    modelStatus is LocalModelStatus.NotAvailable ->
                         AssistChip(
                             onClick = onPrimaryAction,
                             label = {
@@ -243,15 +240,6 @@ private fun LocalModelRow(
                                 )
                             },
                         )
-                        if (onImport != null) {
-                            TextButton(
-                                onClick = onImport,
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            ) {
-                                Text("Import", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
                     isReady && !isSelected -> {
                         TextButton(
                             onClick = onSelect,

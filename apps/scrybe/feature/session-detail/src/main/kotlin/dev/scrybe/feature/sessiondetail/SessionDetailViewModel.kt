@@ -280,6 +280,7 @@ class SessionDetailViewModel
                                 waveformSamples = WaveformCodec.decode(sessionEntity.waveformSamples),
                                 status = SessionStatus.valueOf(sessionEntity.status),
                                 isArchived = sessionEntity.isArchived,
+                                isFavorite = sessionEntity.isFavorite,
                                 estimatedTranscriptionCostUsd = sessionEntity.estimatedTranscriptionCostUsd,
                                 locationLat = sessionEntity.locationLat,
                                 locationLng = sessionEntity.locationLng,
@@ -470,6 +471,12 @@ class SessionDetailViewModel
                     ),
                 )
                 _events.emit(SessionDetailEvent.Message(if (archived) "Recording archived" else "Recording restored"))
+            }
+        }
+
+        fun setFavorite(favorite: Boolean) {
+            viewModelScope.launch {
+                sessionDao.setFavorite(sessionId, favorite, System.currentTimeMillis())
             }
         }
 
