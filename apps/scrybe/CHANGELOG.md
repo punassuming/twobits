@@ -16,6 +16,10 @@
 * Whisper Base's size text ("~290 MB") wrapped one character per line
 * the model name now truncates instead of squeezing its neighbor
 
+* no user-visible change: File Manager's new model-file scan now runs off the main thread, avoiding a possible freeze on a large model directory
+
+* no user-visible change: the Models tab no longer resets to Configuration after a round trip through the new File Manager link
+
 ## 1.53.0 (2026-08-25)
 
 ### Features

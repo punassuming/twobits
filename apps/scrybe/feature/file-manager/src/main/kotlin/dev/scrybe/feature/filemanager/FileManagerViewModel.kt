@@ -72,8 +72,8 @@ class FileManagerViewModel
         }
 
         fun refresh() {
-            viewModelScope.launch {
-                _uiState.value = FileManagerUiState.Loading
+            _uiState.value = FileManagerUiState.Loading
+            viewModelScope.launch(Dispatchers.IO) {
                 runCatching { buildState() }
                     .onSuccess { _uiState.value = it }
                     .onFailure { _uiState.value = FileManagerUiState.Error(it.message ?: "Scan failed") }
