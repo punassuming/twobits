@@ -1,5 +1,6 @@
 package com.twobits.design.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,12 +46,14 @@ fun ModelStorageSection(
     orphaned: List<Pair<String, Long>>,
     onClearOrphaned: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenFileManager: (() -> Unit)? = null,
 ) {
     val items =
         remember(installed, orphaned) {
-            (installed.map { ModelStorageItem(it.first, it.second, isOrphaned = false) } +
-                orphaned.map { ModelStorageItem(it.first, it.second, isOrphaned = true) })
-                .sortedByDescending { it.sizeBytes }
+            (
+                installed.map { ModelStorageItem(it.first, it.second, isOrphaned = false) } +
+                    orphaned.map { ModelStorageItem(it.first, it.second, isOrphaned = true) }
+            ).sortedByDescending { it.sizeBytes }
         }
     if (items.isEmpty()) return
 
@@ -78,13 +81,22 @@ fun ModelStorageSection(
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                     )
-                    Text(
-                        text = storageDirPath,
-                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (onOpenFileManager != null) {
+                        Text(
+                            text = "Open in File Manager",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable(onClick = onOpenFileManager),
+                        )
+                    } else {
+                        Text(
+                            text = storageDirPath,
+                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "Hide files" else "Show files") }
             }
@@ -141,7 +153,10 @@ fun ModelStorageSection(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showConfirmClear = false; onClearOrphaned() }) { Text("Clear") }
+                TextButton(onClick = {
+                    showConfirmClear = false
+                    onClearOrphaned()
+                }) { Text("Clear") }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmClear = false }) { Text("Cancel") }
@@ -150,7 +165,11 @@ fun ModelStorageSection(
     }
 }
 
-private data class ModelStorageItem(val name: String, val sizeBytes: Long, val isOrphaned: Boolean)
+private data class ModelStorageItem(
+    val name: String,
+    val sizeBytes: Long,
+    val isOrphaned: Boolean,
+)
 
 private fun Long.toHumanBytes(): String {
     val gb = this / 1_073_741_824.0

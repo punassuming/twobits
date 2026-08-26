@@ -90,6 +90,7 @@ private fun LocalModelState.toStatus(): LocalModelStatus =
 @Composable
 fun AIConfigScreen(
     onBack: () -> Unit,
+    onNavigateToFileManager: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -184,6 +185,7 @@ fun AIConfigScreen(
                             installed = installedFileDetails,
                             orphaned = orphanedFileDetails,
                             onClearOrphaned = { viewModel.clearOrphanedStorage() },
+                            onOpenFileManager = onNavigateToFileManager,
                         )
                         LocalModelPanel(
                             sectionLabel = "Whisper — speech-to-text",

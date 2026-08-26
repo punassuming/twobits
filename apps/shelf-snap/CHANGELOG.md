@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**Models tab** — a long model name no longer wrecks its own row:
+* the size text could wrap one character per line next to a long name
+* the model name now truncates instead of squeezing its neighbor
+
 ## 1.32.0 (2026-08-25)
 
 ### Features
