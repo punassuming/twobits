@@ -34,13 +34,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 sealed class LocalModelStatus {
     data object NotAvailable : LocalModelStatus()
-    data class InProgress(val progressPercent: Int) : LocalModelStatus()
+
+    data class InProgress(
+        val progressPercent: Int,
+    ) : LocalModelStatus()
+
     data object Ready : LocalModelStatus()
-    data class Error(val message: String) : LocalModelStatus()
+
+    data class Error(
+        val message: String,
+    ) : LocalModelStatus()
 }
 
 @Composable
@@ -72,11 +80,12 @@ fun <T : Any> LocalModelPanel(
                 text = sectionLabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(
-                    start = 14.dp,
-                    top = 10.dp,
-                    bottom = if (sectionSubtitle != null) 0.dp else 2.dp,
-                ),
+                modifier =
+                    Modifier.padding(
+                        start = 14.dp,
+                        top = 10.dp,
+                        bottom = if (sectionSubtitle != null) 0.dp else 2.dp,
+                    ),
             )
             sectionSubtitle?.let {
                 Text(
@@ -130,10 +139,12 @@ private fun LocalModelRow(
             Modifier
                 .fillMaxWidth()
                 .background(
-                    if (isSelectedAndReady) MaterialTheme.colorScheme.primaryContainer
-                    else Color.Transparent,
-                )
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                    if (isSelectedAndReady) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        Color.Transparent
+                    },
+                ).padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -166,13 +177,23 @@ private fun LocalModelRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // modelSize must be measured at its natural width first (weight(fill = false)
+                    // on modelName achieves this) — otherwise a long model name can claim the
+                    // row's entire width on its own line, leaving modelSize almost no room and
+                    // forcing it to wrap one character per line.
                     Text(
                         text = modelName,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color =
-                            if (isSelectedAndReady) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface,
+                            if (isSelectedAndReady) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                     Text(
                         text = modelSize,

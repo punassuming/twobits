@@ -6,7 +6,21 @@
 
 ### Improvements
 
+**Models tab** — Storage now links straight to File Manager:
+* tap the link under Storage to see every installed model file
+* File Manager gained a new "AI Models" section listing them
+
 ### Fixes
+
+**Models tab** — a long model name no longer wrecks its own row:
+* Whisper Base's size text ("~290 MB") wrapped one character per line
+* the model name now truncates instead of squeezing its neighbor
+
+* no user-visible change: File Manager's new model-file scan now runs off the main thread, avoiding a possible freeze on a large model directory
+
+* no user-visible change: the Models tab no longer resets to Configuration after a round trip through the new File Manager link
+
+* no user-visible change: fixed a Kotlin compile error in the shared `LocalModelPanel` row-squeeze fix (a stray import shadowed `Modifier.weight()`) — caught by CI before merge, so this never shipped
 
 ## 1.53.0 (2026-08-25)
 

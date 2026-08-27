@@ -50,6 +50,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,6 +91,7 @@ private fun LocalModelState.toStatus(): LocalModelStatus =
 @Composable
 fun AIConfigScreen(
     onBack: () -> Unit,
+    onNavigateToFileManager: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -107,7 +109,7 @@ fun AIConfigScreen(
     val selectedTransformModel = OpenAiTransformModel.fromApiName(uiState.transformModel)
     val selectedTranscriptionModel = OpenAiTranscriptionModel.fromApiName(uiState.transcriptionModel)
     var showTransformModelPicker by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by rememberSaveable { mutableStateOf(0) }
 
     LaunchedEffect(selectedTab) {
         if (selectedTab == 1) viewModel.refreshModelStorage()
@@ -184,6 +186,7 @@ fun AIConfigScreen(
                             installed = installedFileDetails,
                             orphaned = orphanedFileDetails,
                             onClearOrphaned = { viewModel.clearOrphanedStorage() },
+                            onOpenFileManager = onNavigateToFileManager,
                         )
                         LocalModelPanel(
                             sectionLabel = "Whisper — speech-to-text",

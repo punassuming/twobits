@@ -160,7 +160,10 @@ fun ScrybeNavHost(
             )
         }
         composable(Screen.AiConfig.route) {
-            AIConfigScreen(onBack = { navController.popBackStack() })
+            AIConfigScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToFileManager = { navController.navigate(Screen.FileManager.route) },
+            )
         }
         composable(Screen.DebugLog.route) {
             DebugLogScreen(onBack = { navController.popBackStack() })

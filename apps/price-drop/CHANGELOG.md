@@ -8,6 +8,12 @@
 
 ### Fixes
 
+**Models tab** — a long model name no longer wrecks its own row:
+* the size text could wrap one character per line next to a long name
+* the model name now truncates instead of squeezing its neighbor
+
+* no user-visible change: fixed a Kotlin compile error in the shared `LocalModelPanel` row-squeeze fix (a stray import shadowed `Modifier.weight()`) — caught by CI before merge, so this never shipped
+
 ## 0.23.0 (2026-08-25)
 
 ### Features

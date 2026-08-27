@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":core:base"))
     implementation(project(":core:database"))
     implementation(project(":core:export"))
+    implementation(project(":core:local-ai"))
     implementation(project(":core:model"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

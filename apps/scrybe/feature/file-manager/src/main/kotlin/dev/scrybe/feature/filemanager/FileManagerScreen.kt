@@ -170,6 +170,20 @@ private fun FileManagerContent(
                 )
             }
         }
+        item {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SectionHeader(
+                title = "AI Models",
+                subtitle = "${state.models.size} files on disk — manage from Settings → AI configuration → Models",
+            )
+        }
+        if (state.models.isEmpty()) {
+            item { EmptyState("No on-device model files found") }
+        } else {
+            items(state.models.distinctBy { it.absolutePath }, key = { "model:${it.absolutePath}" }) { entry ->
+                ModelFileRow(entry = entry)
+            }
+        }
     }
 }
 
@@ -283,6 +297,26 @@ private fun OutputFileRow(
             onDismiss = { showDeleteDialog = false },
         )
     }
+}
+
+@Composable
+private fun ModelFileRow(entry: ModelFileEntry) {
+    ListItem(
+        headlineContent = {
+            Text(entry.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
+        supportingContent = {
+            Text(
+                formatSize(entry.sizeBytes) + if (entry.isOrphaned) " · unused" else "",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        },
+        leadingContent = {
+            if (entry.isOrphaned) {
+                AssistChip(onClick = {}, enabled = false, label = { Text("Orphaned") })
+            }
+        },
+    )
 }
 
 @Composable

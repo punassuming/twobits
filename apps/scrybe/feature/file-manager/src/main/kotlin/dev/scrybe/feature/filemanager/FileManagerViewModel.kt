@@ -18,6 +18,7 @@ import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.RecordingSessionEntity
 import dev.scrybe.core.database.TranscriptDao
 import dev.scrybe.core.export.MarkdownExporter
+import dev.scrybe.core.localai.LocalModelManager
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
@@ -53,6 +54,7 @@ class FileManagerViewModel
         private val transcriptDao: TranscriptDao,
         private val markdownExporter: MarkdownExporter,
         private val waveformExtractor: WaveformExtractor,
+        private val localModelManager: LocalModelManager,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<FileManagerUiState>(FileManagerUiState.Loading)
         val uiState: StateFlow<FileManagerUiState> = _uiState.asStateFlow()
@@ -70,8 +72,8 @@ class FileManagerViewModel
         }
 
         fun refresh() {
-            viewModelScope.launch {
-                _uiState.value = FileManagerUiState.Loading
+            _uiState.value = FileManagerUiState.Loading
+            viewModelScope.launch(Dispatchers.IO) {
                 runCatching { buildState() }
                     .onSuccess { _uiState.value = it }
                     .onFailure { _uiState.value = FileManagerUiState.Error(it.message ?: "Scan failed") }
@@ -81,7 +83,24 @@ class FileManagerViewModel
         private suspend fun buildState(): FileManagerUiState.Success {
             val recordings = scanRecordingEntries()
             val outputs = scanOutputFiles()
-            return FileManagerUiState.Success(recordings, outputs)
+            val models = scanModelFiles()
+            return FileManagerUiState.Success(recordings, outputs, models)
+        }
+
+        private fun scanModelFiles(): List<ModelFileEntry> {
+            val storageDir = localModelManager.storageDirPath()
+
+            fun List<Pair<String, Long>>.toEntries(isOrphaned: Boolean) =
+                map { (name, sizeBytes) ->
+                    ModelFileEntry(
+                        absolutePath = File(storageDir, name).absolutePath,
+                        displayName = name,
+                        sizeBytes = sizeBytes,
+                        isOrphaned = isOrphaned,
+                    )
+                }
+            return localModelManager.installedFileDetails().toEntries(isOrphaned = false) +
+                localModelManager.orphanedFileDetails().toEntries(isOrphaned = true)
         }
 
         private suspend fun scanRecordingEntries(): List<RecordingFileEntry> {

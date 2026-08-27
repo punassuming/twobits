@@ -25,12 +25,20 @@ data class OutputFileEntry(
     val category: String,
 )
 
+data class ModelFileEntry(
+    val absolutePath: String,
+    val displayName: String,
+    val sizeBytes: Long,
+    val isOrphaned: Boolean,
+)
+
 sealed interface FileManagerUiState {
     object Loading : FileManagerUiState
 
     data class Success(
         val recordings: List<RecordingFileEntry>,
         val outputs: List<OutputFileEntry>,
+        val models: List<ModelFileEntry>,
     ) : FileManagerUiState
 
     data class Error(
