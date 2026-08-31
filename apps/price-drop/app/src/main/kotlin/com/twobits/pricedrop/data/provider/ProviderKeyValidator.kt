@@ -35,6 +35,7 @@ class ProviderKeyValidator
                         PriceDropProvider.WEB_SEARCH -> testJina(trimmed)
                         PriceDropProvider.SHOPPING -> testSearchApi(trimmed)
                         PriceDropProvider.SERPER -> testSerper(trimmed)
+                        PriceDropProvider.FIRECRAWL -> testFirecrawl(trimmed)
                         PriceDropProvider.RAINFOREST -> testRainforest(trimmed)
                     }
                 }
@@ -138,6 +139,33 @@ class ProviderKeyValidator
                     response.code == 401 || response.code == 403 ->
                         throw IllegalStateException("Serper.dev rejected this key")
                     else -> throw IllegalStateException("Serper.dev returned HTTP ${response.code}")
+                }
+            }
+        }
+
+        private fun testFirecrawl(key: String): String {
+            // Firecrawl has no free account-ping endpoint, so verify with a minimal scrape of a
+            // stable, low-cost URL (consumes one scrape credit per Test).
+            val body =
+                JsonObject()
+                    .apply {
+                        addProperty("url", "https://example.com")
+                    }.toString()
+                    .toRequestBody("application/json; charset=utf-8".toMediaType())
+            val request =
+                Request
+                    .Builder()
+                    .url("https://api.firecrawl.dev/v2/scrape")
+                    .header("Authorization", "Bearer $key")
+                    .header("Content-Type", "application/json")
+                    .post(body)
+                    .build()
+            okHttpClient.newCall(request).execute().use { response ->
+                return when {
+                    response.isSuccessful -> "Connected to Firecrawl"
+                    response.code == 401 || response.code == 403 ->
+                        throw IllegalStateException("Firecrawl rejected this key")
+                    else -> throw IllegalStateException("Firecrawl returned HTTP ${response.code}")
                 }
             }
         }

@@ -24,6 +24,7 @@ import com.shelfsnap.app.data.remote.PriceResearchResult
 import com.shelfsnap.app.data.remote.PriceResearchService
 import com.shelfsnap.app.data.remote.ResearchProgress
 import com.shelfsnap.app.data.remote.VisionAnalysisService
+import com.shelfsnap.app.data.remote.search.ReaderProvider
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
@@ -57,6 +58,8 @@ class ItemRepository
             private val KEY_SEARCH_PROVIDER = stringPreferencesKey("search_provider")
             private val KEY_SEARCH_API_KEY = stringPreferencesKey("search_api_key") // legacy — migration fallback for Jina
             private val KEY_JINA_API_KEY = stringPreferencesKey("jina_search_api_key")
+            private val KEY_FIRECRAWL_API_KEY = stringPreferencesKey("firecrawl_api_key")
+            private val KEY_READER_PROVIDER = stringPreferencesKey("reader_provider")
             private val KEY_BRAVE_API_KEY = stringPreferencesKey("brave_search_api_key")
             private val KEY_SEARCHAPI_API_KEY = stringPreferencesKey("searchapi_search_api_key")
             private val KEY_SERPER_API_KEY = stringPreferencesKey("serper_search_api_key")
@@ -224,9 +227,11 @@ class ItemRepository
                         item = item,
                         modelFile = requireNotNull(localModelFile()) { "checked above" },
                         searchProviders = enabledSearchProviders(),
-                        // Same reasoning as the BYOK branch below: a saved Jina key enables page
-                        // reading regardless of whether Jina search itself is enabled.
-                        readerKey = getJinaApiKey().ifBlank { null },
+                        // Same reasoning as the BYOK branch below: a saved key for the active
+                        // reader provider enables page reading regardless of whether that
+                        // provider's own search is enabled.
+                        readerProvider = getReaderProvider(),
+                        readerKey = getActiveReaderKey().ifBlank { null },
                         onProgress = onProgress,
                     )
                 ExecutionMode.BYOK, ExecutionMode.OFF -> {
@@ -234,12 +239,14 @@ class ItemRepository
                         item = item,
                         openAiKey = getApiKey(),
                         searchProviders = enabledSearchProviders(),
-                        // Page reading (r.jina.ai) and Jina's own search engine (s.jina.ai) are
-                        // separate products behind the same key. A saved key enables reading —
-                        // opening the actual listing page for real price/condition/sold text —
-                        // even when Jina search itself is off, e.g. SearchAPI finds the listing
-                        // and Jina only verifies it. Brave/SearchAPI have no reader endpoint.
-                        readerKey = getJinaApiKey().ifBlank { null },
+                        // Page reading and a provider's own search engine (e.g. Jina's r.jina.ai
+                        // vs s.jina.ai) are separate products/keys. A saved reader key enables
+                        // reading — opening the actual listing page for real price/condition/sold
+                        // text — even when that provider's search is off, e.g. SearchAPI finds
+                        // the listing and the reader only verifies it. Brave/SearchAPI have no
+                        // reader endpoint of their own.
+                        readerProvider = getReaderProvider(),
+                        readerKey = getActiveReaderKey().ifBlank { null },
                         model = getReasoningModel().apiName,
                         onProgress = onProgress,
                     )
@@ -355,6 +362,36 @@ class ItemRepository
         suspend fun saveJinaApiKey(key: String) {
             dataStore.edit { it[KEY_JINA_API_KEY] = crypto.encrypt(key) }
         }
+
+        fun observeFirecrawlApiKey(): Flow<String> = dataStore.data.map { crypto.tryDecryptOrPassthrough(it[KEY_FIRECRAWL_API_KEY] ?: "") }
+
+        suspend fun getFirecrawlApiKey(): String {
+            val raw = dataStore.data.firstOrNull()?.get(KEY_FIRECRAWL_API_KEY) ?: ""
+            return crypto.tryDecryptOrPassthrough(raw)
+        }
+
+        suspend fun saveFirecrawlApiKey(key: String) {
+            dataStore.edit { it[KEY_FIRECRAWL_API_KEY] = crypto.encrypt(key) }
+        }
+
+        fun observeReaderProvider(): Flow<ReaderProvider> = dataStore.data.map { ReaderProvider.fromKey(it[KEY_READER_PROVIDER] ?: "") }
+
+        suspend fun getReaderProvider(): ReaderProvider = ReaderProvider.fromKey(dataStore.data.firstOrNull()?.get(KEY_READER_PROVIDER) ?: "")
+
+        suspend fun saveReaderProvider(provider: ReaderProvider) {
+            dataStore.edit { it[KEY_READER_PROVIDER] = provider.key }
+        }
+
+        /**
+         * Key for whichever reader provider is active, or blank if that provider has no key
+         * saved — mirrors the existing "a saved key enables reading" convention (previously
+         * Jina-only, now generalized across providers).
+         */
+        suspend fun getActiveReaderKey(): String =
+            when (getReaderProvider()) {
+                ReaderProvider.JINA -> getJinaApiKey()
+                ReaderProvider.FIRECRAWL -> getFirecrawlApiKey()
+            }
 
         suspend fun saveBraveApiKey(key: String) {
             dataStore.edit { it[KEY_BRAVE_API_KEY] = crypto.encrypt(key) }

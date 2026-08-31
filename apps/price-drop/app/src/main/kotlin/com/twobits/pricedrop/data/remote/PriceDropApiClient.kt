@@ -546,12 +546,17 @@ class PriceDropApiClient
             }
 
         /**
-         * Reads a product page via Jina Reader when [PriceDropProvider.WEB_SEARCH] is in BYOK mode.
-         * Returns empty string in Pro mode (the Worker handles page reading server-side) or on error.
+         * Reads a product page via the active reader provider ([ProviderSettingsStore.getPageReaderProvider])
+         * when it's in BYOK mode. Returns empty string in Pro mode (the Worker handles page reading
+         * server-side — Firecrawl has no Worker route, so this always returns "" for it in Pro) or on error.
          */
         suspend fun readPage(url: String): String {
-            if (!isByok(PriceDropProvider.WEB_SEARCH)) return ""
-            return readPageDirect(url, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
+            val reader = providerSettings.getPageReaderProvider()
+            if (!isByok(reader)) return ""
+            return when (reader) {
+                PriceDropProvider.FIRECRAWL -> readPageFirecrawl(url, providerSettings.getKey(PriceDropProvider.FIRECRAWL))
+                else -> readPageDirect(url, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
+            }
         }
 
         private suspend fun readPageDirect(
@@ -601,6 +606,73 @@ class PriceDropApiClient
                     )
                 }.getOrDefault("")
             }
+
+        private suspend fun readPageFirecrawl(
+            url: String,
+            apiKey: String,
+        ): String =
+            withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
+                runCatching {
+                    val body =
+                        JsonObject()
+                            .apply {
+                                addProperty("url", url)
+                                add("formats", JsonArray().apply { add("markdown") })
+                            }.toString()
+                            .toRequestBody(jsonMedia)
+                    val request =
+                        Request
+                            .Builder()
+                            .url("https://api.firecrawl.dev/v2/scrape")
+                            .addHeader("Authorization", "Bearer $apiKey")
+                            .addHeader("Content-Type", "application/json")
+                            .post(body)
+                            .build()
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) return@use ""
+                        parseFirecrawlMarkdown(response.body?.string().orEmpty())
+                    }
+                }.onSuccess {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "firecrawl-read",
+                            endpoint = "firecrawl-reader",
+                            requestSummary = url,
+                            success = it.isNotEmpty(),
+                            responseSnippet = "${it.length} chars",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
+                }.onFailure { e ->
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "firecrawl-read",
+                            endpoint = "firecrawl-reader",
+                            requestSummary = url,
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
+                }.getOrDefault("")
+            }
+
+        /**
+         * The scraped markdown's exact JSON location isn't consistently documented across
+         * Firecrawl's own examples (a top-level `markdown` field per its public repo's README,
+         * a nested `data.markdown` in older docs) — check both rather than assuming one.
+         */
+        private fun parseFirecrawlMarkdown(json: String): String =
+            runCatching {
+                val root = gson.fromJson(json, JsonObject::class.java)
+                val nested = root.getAsJsonObject("data") ?: root.getAsJsonObject("document")
+                (nested?.get("markdown") ?: root.get("markdown"))?.asString.orEmpty()
+            }.getOrDefault("")
 
         /**
          * Uses OpenAI to extract product title and price from Jina-read page content.

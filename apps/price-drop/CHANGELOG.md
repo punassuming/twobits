@@ -4,6 +4,10 @@
 
 ### Features
 
+**Firecrawl page reader** — an alternative to Jina AI for reading a pasted product URL:
+* bring your own Firecrawl API key in AI configuration
+* BYOK only, same as Jina today
+
 ### Improvements
 
 ### Fixes

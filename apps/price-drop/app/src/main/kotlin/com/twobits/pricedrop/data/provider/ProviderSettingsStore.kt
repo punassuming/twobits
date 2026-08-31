@@ -30,6 +30,28 @@ class ProviderSettingsStore
         private val crypto: CredentialCrypto,
     ) {
         private val couponProviderSchemaKey = stringPreferencesKey("schema_coupon_provider")
+        private val pageReaderProviderKey = stringPreferencesKey("page_reader_provider")
+
+        /**
+         * Which provider reads a pasted product URL's page content (paired with OpenAI to
+         * extract title/price) — a dedicated preference, not an [AiFeature], since it's a
+         * mutually-exclusive choice between readers rather than a multi-select "enable N
+         * simultaneously" feature toggle. Defaults to [PriceDropProvider.WEB_SEARCH] (Jina),
+         * preserving today's only-option behavior for existing users.
+         */
+        fun observePageReaderProvider(): Flow<PriceDropProvider> =
+            context.providerStore.data.map { prefs ->
+                prefs[pageReaderProviderKey]?.let { PriceDropProvider.fromKey(it) } ?: PriceDropProvider.WEB_SEARCH
+            }
+
+        suspend fun getPageReaderProvider(): PriceDropProvider {
+            val raw = context.providerStore.data.first()[pageReaderProviderKey]
+            return raw?.let { PriceDropProvider.fromKey(it) } ?: PriceDropProvider.WEB_SEARCH
+        }
+
+        suspend fun setPageReaderProvider(provider: PriceDropProvider) {
+            context.providerStore.edit { it[pageReaderProviderKey] = provider.key }
+        }
 
         private fun modeKey(p: PriceDropProvider) = stringPreferencesKey("mode_${p.key}")
 

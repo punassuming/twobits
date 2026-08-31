@@ -4,6 +4,10 @@
 
 ### Features
 
+**Firecrawl page reader** — an alternative to Jina AI for reading listing pages:
+* bring your own Firecrawl API key in Settings → Services
+* pick which reader does the reading when both are configured
+
 ### Improvements
 
 ### Fixes

@@ -21,7 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class JinaReaderService
     @Inject
-    constructor() {
+    constructor() : PageReaderService {
         private val client =
             OkHttpClient
                 .Builder()
@@ -39,10 +39,10 @@ class JinaReaderService
          *
          * @param apiKey Jina API key (required — the Reader free tier still needs a bearer token).
          */
-        suspend fun read(
+        override suspend fun read(
             pageUrl: String,
             apiKey: String,
-            maxChars: Int = MAX_CHARS,
+            maxChars: Int,
         ): String? =
             withContext(Dispatchers.IO) {
                 if (apiKey.isBlank() || pageUrl.isBlank()) return@withContext null
@@ -89,8 +89,5 @@ class JinaReaderService
 
         companion object {
             private const val TAG = "JinaReaderService"
-
-            /** Cap per-page text so a handful of pages don't blow the model's context budget. */
-            private const val MAX_CHARS = 2_000
         }
     }

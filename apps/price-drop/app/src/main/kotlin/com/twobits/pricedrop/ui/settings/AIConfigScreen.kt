@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageSearch
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.PriceCheck
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.TrendingDown
@@ -40,6 +41,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -120,6 +122,7 @@ private fun PriceDropProvider.icon(): ImageVector =
         PriceDropProvider.WEB_SEARCH -> Icons.Filled.Search
         PriceDropProvider.SHOPPING -> Icons.Filled.ShoppingCart
         PriceDropProvider.SERPER -> Icons.Filled.ShoppingCart
+        PriceDropProvider.FIRECRAWL -> Icons.Filled.Public
         PriceDropProvider.RAINFOREST -> Icons.Filled.Park
     }
 
@@ -134,6 +137,7 @@ private fun PriceDropProvider.requirement(): CredentialRequirement =
         PriceDropProvider.WEB_SEARCH -> CredentialRequirement.RECOMMENDED
         PriceDropProvider.SHOPPING -> CredentialRequirement.RECOMMENDED
         PriceDropProvider.SERPER -> CredentialRequirement.RECOMMENDED
+        PriceDropProvider.FIRECRAWL -> CredentialRequirement.OPTIONAL
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -304,6 +308,15 @@ private fun FeatureListContent(
                         provider = provider,
                         state = state,
                         viewModel = viewModel,
+                    )
+                }
+                // Only worth showing once there's an actual choice — with no validated
+                // Firecrawl key, Jina is the sole reader anyway (today's behavior, unchanged).
+                if (providerStates[PriceDropProvider.FIRECRAWL]?.isKeyValid == true) {
+                    val pageReaderProvider by viewModel.pageReaderProvider.collectAsState()
+                    PageReaderPicker(
+                        selected = pageReaderProvider,
+                        onSelect = viewModel::setPageReaderProvider,
                     )
                 }
             }
@@ -904,6 +917,28 @@ private fun CallEstimateCard(feature: AiFeature) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 6.dp),
             )
+        }
+    }
+}
+
+/** Which backend reads a pasted product URL's page content — separate from the credential rows above, since reading a page and holding its key are different concerns. */
+@Composable
+private fun PageReaderPicker(
+    selected: PriceDropProvider,
+    onSelect: (PriceDropProvider) -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+        Text("Page reader", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            listOf(PriceDropProvider.WEB_SEARCH, PriceDropProvider.FIRECRAWL).forEach { provider ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(end = 16.dp),
+                ) {
+                    RadioButton(selected = selected == provider, onClick = { onSelect(provider) })
+                    Text(provider.displayName, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
     }
 }
