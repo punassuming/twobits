@@ -12,6 +12,8 @@
 
 ### Fixes
 
+* no user-visible change: confirmed Firecrawl's scrape response nests markdown under `data` (verified against both official SDKs' own response parsing) and simplified the reader's parsing accordingly
+
 ## 1.32.1 (2026-08-27)
 
 ### Features

@@ -663,15 +663,15 @@ class PriceDropApiClient
             }
 
         /**
-         * The scraped markdown's exact JSON location isn't consistently documented across
-         * Firecrawl's own examples (a top-level `markdown` field per its public repo's README,
-         * a nested `data.markdown` in older docs) — check both rather than assuming one.
+         * `{"success": true, "data": {"markdown": "...", "metadata": {...}}}` — confirmed against
+         * both official SDKs' own response parsing (js-sdk's `res.data.data`, python-sdk's
+         * `body["data"]`) and Firecrawl's docs. The top-level fallback guards only a future API
+         * change, not present ambiguity.
          */
         private fun parseFirecrawlMarkdown(json: String): String =
             runCatching {
                 val root = gson.fromJson(json, JsonObject::class.java)
-                val nested = root.getAsJsonObject("data") ?: root.getAsJsonObject("document")
-                (nested?.get("markdown") ?: root.get("markdown"))?.asString.orEmpty()
+                (root.getAsJsonObject("data")?.get("markdown") ?: root.get("markdown"))?.asString.orEmpty()
             }.getOrDefault("")
 
         /**
