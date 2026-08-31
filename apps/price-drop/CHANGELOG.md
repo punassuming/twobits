@@ -16,6 +16,8 @@
 
 * no user-visible change: Firecrawl reads now pin a US location — live-tested against a real eBay listing, without it eBay served a GDPR cookie-consent shell instead of the actual page
 
+* no user-visible change: fixed Firecrawl page reads always silently returning nothing — Firecrawl has no BYOK/Pro mode toggle of its own, so the existing mode check could never pass; a saved key now enables it directly, caught by review before merge
+
 ## 0.23.1 (2026-08-27)
 
 ### Features

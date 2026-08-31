@@ -546,18 +546,28 @@ class PriceDropApiClient
             }
 
         /**
-         * Reads a product page via the active reader provider ([ProviderSettingsStore.getPageReaderProvider])
-         * when it's in BYOK mode. Returns empty string in Pro mode (the Worker handles page reading
-         * server-side — Firecrawl has no Worker route, so this always returns "" for it in Pro) or on error.
+         * Reads a product page via the active reader provider ([ProviderSettingsStore.getPageReaderProvider]).
+         *
+         * Firecrawl and Jina are gated differently: Firecrawl is never added to any [AiFeature],
+         * so it has no feature-picker UI that ever sets its [ProviderMode] to BYOK — a saved key is
+         * its only on/off signal (it has no Worker/Pro route to gate against anyway). Jina keeps the
+         * existing [PriceDropProvider.WEB_SEARCH] BYOK-mode gate, so Pro-mode users still get "" here
+         * (the Worker handles page reading server-side for them) exactly as before.
          */
-        suspend fun readPage(url: String): String {
-            val reader = providerSettings.getPageReaderProvider()
-            if (!isByok(reader)) return ""
-            return when (reader) {
-                PriceDropProvider.FIRECRAWL -> readPageFirecrawl(url, providerSettings.getKey(PriceDropProvider.FIRECRAWL))
-                else -> readPageDirect(url, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
+        suspend fun readPage(url: String): String =
+            when (providerSettings.getPageReaderProvider()) {
+                PriceDropProvider.FIRECRAWL -> {
+                    val key = providerSettings.getKey(PriceDropProvider.FIRECRAWL)
+                    if (key.isBlank()) "" else readPageFirecrawl(url, key)
+                }
+                else -> {
+                    if (!isByok(PriceDropProvider.WEB_SEARCH)) {
+                        ""
+                    } else {
+                        readPageDirect(url, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
+                    }
+                }
             }
-        }
 
         private suspend fun readPageDirect(
             url: String,
