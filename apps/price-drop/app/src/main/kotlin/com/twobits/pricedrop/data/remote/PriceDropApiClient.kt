@@ -619,6 +619,12 @@ class PriceDropApiClient
                             .apply {
                                 addProperty("url", url)
                                 add("formats", JsonArray().apply { add("markdown") })
+                                // Live-tested against a real eBay item page: without a US
+                                // location, eBay served a GDPR cookie-consent shell (~380 chars,
+                                // no listing content) instead of the actual page. Applied to
+                                // every read, not just eBay — both apps are US-market shopping
+                                // tools, so a US location is a safe default throughout.
+                                add("location", JsonObject().apply { addProperty("country", "US") })
                             }.toString()
                             .toRequestBody(jsonMedia)
                     val request =

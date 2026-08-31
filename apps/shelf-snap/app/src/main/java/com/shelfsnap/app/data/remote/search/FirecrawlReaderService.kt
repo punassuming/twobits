@@ -17,8 +17,15 @@ import javax.inject.Singleton
 /**
  * [PageReaderService] backed by Firecrawl (firecrawl.dev) — an alternative to Jina AI's Reader.
  * Firecrawl renders every page through a real headless browser by default, which may fare better
- * on JS-heavy or anti-bot listings than Jina's lighter default engine, at the cost of being
- * slower and more expensive per read.
+ * on JS-heavy listings than Jina's lighter default engine, at the cost of being slower and more
+ * expensive per read.
+ *
+ * Every call pins `location.country` to "US" (live-tested against a real eBay item page):
+ * without it, eBay served a GDPR cookie-consent shell (~380 chars, no listing content) instead
+ * of the actual page — a geo-triggered consent wall, not a bot-check, so the fix is a location
+ * hint rather than a rendering-engine override. Applied unconditionally rather than scoped to
+ * eBay the way Jina's bot-check workaround is: both apps are US-market shopping tools, so a US
+ * location is a safe default for every read, not a marketplace-specific quirk to branch on.
  *
  * @see <a href="https://docs.firecrawl.dev/features/scrape">Firecrawl scrape API</a>
  */
@@ -49,6 +56,7 @@ class FirecrawlReaderService
                         .apply {
                             addProperty("url", pageUrl)
                             add("formats", JsonArray().apply { add("markdown") })
+                            add("location", JsonObject().apply { addProperty("country", "US") })
                         }.toString()
                         .toRequestBody("application/json".toMediaType())
 

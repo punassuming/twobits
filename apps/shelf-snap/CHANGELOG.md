@@ -14,6 +14,8 @@
 
 * no user-visible change: confirmed Firecrawl's scrape response nests markdown under `data` (verified against both official SDKs' own response parsing) and simplified the reader's parsing accordingly
 
+* no user-visible change: Firecrawl reads now pin a US location — live-tested against a real eBay listing, without it eBay served a GDPR cookie-consent shell instead of the actual page
+
 ## 1.32.1 (2026-08-27)
 
 ### Features
