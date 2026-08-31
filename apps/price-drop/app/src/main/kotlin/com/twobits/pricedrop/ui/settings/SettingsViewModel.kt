@@ -394,6 +394,12 @@ class SettingsViewModel
             viewModelScope.launch {
                 providerStore.clearKey(p)
                 setValidation(p, ProviderValidation())
+                // Otherwise the reader picker (visible only while Firecrawl has a valid key)
+                // disappears with the selection still pointed at Firecrawl — reads silently go
+                // to a keyless provider with no visible way back to Jina.
+                if (p == PriceDropProvider.FIRECRAWL && providerStore.getPageReaderProvider() == PriceDropProvider.FIRECRAWL) {
+                    providerStore.setPageReaderProvider(PriceDropProvider.WEB_SEARCH)
+                }
             }
         }
 

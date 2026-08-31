@@ -18,6 +18,8 @@
 
 * no user-visible change: fixed Firecrawl page reads always silently returning nothing — Firecrawl has no BYOK/Pro mode toggle of its own, so the existing mode check could never pass; a saved key now enables it directly, caught by review before merge
 
+* no user-visible change: clearing a Firecrawl key while it's the active page reader now resets the selection back to Jina, so the reader picker can't disappear with a now-unusable reader still selected
+
 ## 0.23.1 (2026-08-27)
 
 ### Features
