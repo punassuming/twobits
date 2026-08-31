@@ -17,7 +17,9 @@ import com.shelfsnap.app.data.model.MarketResearch
 import com.shelfsnap.app.data.model.MarketResearchDebug
 import com.shelfsnap.app.data.model.PageReadOutcome
 import com.shelfsnap.app.data.model.Platform
-import com.shelfsnap.app.data.remote.search.JinaReaderService
+import com.shelfsnap.app.data.remote.search.PageReaderResolver
+import com.shelfsnap.app.data.remote.search.PageReaderService
+import com.shelfsnap.app.data.remote.search.ReaderProvider
 import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.data.remote.search.WebSearchResolver
 import com.shelfsnap.app.data.remote.search.WebSearchResult
@@ -130,7 +132,7 @@ class PriceResearchService
     constructor(
         @ApplicationContext private val context: Context,
         private val searchResolver: WebSearchResolver,
-        private val jinaReader: JinaReaderService,
+        private val pageReaderResolver: PageReaderResolver,
         private val debugLogStore: DebugLogStore,
     ) {
         private val client =
@@ -148,8 +150,8 @@ class PriceResearchService
          *
          * @param openAiKey OpenAI API key (required for BYOK; pass the RevenueCat user ID for Pro).
          * @param searchProviders list of (provider, key) pairs used to gather evidence; empty disables web search.
-         * @param readerKey Jina key used to *open* the top result pages (r.jina.ai) for richer
-         *   evidence; null/blank skips page reading. Jina-only — Brave has no reader.
+         * @param readerProvider which backend opens the top result pages for richer evidence.
+         * @param readerKey [readerProvider]'s API key; null/blank skips page reading.
          * @param model OpenAI model to use for price synthesis; defaults to [MODEL].
          * @param openAiBaseUrl Override to route LLM calls through the TwoBits Worker proxy.
          * @param openAiAuthHeader Override auth header (defaults to "Bearer $openAiKey").
@@ -166,6 +168,7 @@ class PriceResearchService
             item: Item,
             openAiKey: String,
             searchProviders: List<Pair<SearchProvider, String>> = emptyList(),
+            readerProvider: ReaderProvider? = null,
             readerKey: String? = null,
             model: String = MODEL,
             openAiBaseUrl: String = "https://api.openai.com",
@@ -186,7 +189,7 @@ class PriceResearchService
                     if (workerSearchUrl != null && workerAuthHeader != null) {
                         gatherWorkerEvidence(item, workerSearchUrl, workerAuthHeader, onProgress)
                     } else {
-                        gatherEvidence(item, searchProviders, readerKey, onProgress)
+                        gatherEvidence(item, searchProviders, readerProvider, readerKey, onProgress)
                     }
 
                 onProgress(
@@ -239,13 +242,15 @@ class PriceResearchService
                 // Attach transparency detail to a successful run.
                 if (result.error == null) {
                     // Every outbound call this run actually made: one per search query, one per
-                    // Jina Reader page (attempted, not just confirmed — a rejected read still
-                    // cost a call), and the synthesis call itself.
+                    // reader page (attempted, not just confirmed — a rejected read still cost a
+                    // call), and the synthesis call itself.
                     val totalApiCalls = evidence.queries.size + evidence.readAttempts + 1
                     val servicesUsed =
                         (
                             evidence.queries.map { it.label } +
-                                listOfNotNull(if (evidence.readAttempts > 0) "Jina Reader" else null) +
+                                listOfNotNull(
+                                    if (evidence.readAttempts > 0) "${readerProvider?.displayName ?: "Page"} Reader" else null,
+                                ) +
                                 listOf("OpenAI")
                         ).distinct()
                     Log.i(
@@ -286,12 +291,13 @@ class PriceResearchService
             item: Item,
             modelFile: File,
             searchProviders: List<Pair<SearchProvider, String>> = emptyList(),
+            readerProvider: ReaderProvider? = null,
             readerKey: String? = null,
             onProgress: (ResearchProgress) -> Unit = {},
         ): PriceResearchResult =
             withContext(Dispatchers.IO) {
                 val totalStart = System.currentTimeMillis()
-                val evidence = gatherEvidence(item, searchProviders, readerKey, onProgress)
+                val evidence = gatherEvidence(item, searchProviders, readerProvider, readerKey, onProgress)
 
                 onProgress(
                     ResearchProgress(
@@ -338,7 +344,9 @@ class PriceResearchService
                             servicesUsed =
                                 (
                                     evidence.queries.map { it.label } +
-                                        listOfNotNull(if (evidence.readAttempts > 0) "Jina Reader" else null) +
+                                        listOfNotNull(
+                                            if (evidence.readAttempts > 0) "${readerProvider?.displayName ?: "Page"} Reader" else null,
+                                        ) +
                                         listOf("On-device Gemma")
                                 ).distinct(),
                             searchMs = evidence.searchMs,
@@ -356,6 +364,7 @@ class PriceResearchService
         private suspend fun gatherEvidence(
             item: Item,
             providers: List<Pair<SearchProvider, String>>,
+            readerProvider: ReaderProvider?,
             readerKey: String?,
             onProgress: (ResearchProgress) -> Unit,
         ): SearchEvidence {
@@ -530,8 +539,8 @@ class PriceResearchService
             }
             val searchMs = System.currentTimeMillis() - searchStart
 
-            // Phase 2 — open result pages via Jina Reader so the model reads the actual listing
-            // (price, condition, sold status), not just a search snippet. Reads target
+            // Phase 2 — open result pages via the active reader provider so the model reads the
+            // actual listing (price, condition, sold status), not just a search snippet. Reads target
             // READS_PER_MARKETPLACE *confirmed* matches per distinct marketplace present in the
             // results, not just the first N candidates: the Reader returns page text on any
             // HTTP 200, including "listing removed"/bot-block pages, so a read that doesn't look
@@ -550,7 +559,12 @@ class PriceResearchService
                 merged.indices
                     .filter { merged[it].platformKey != null }
                     .groupBy { merged[it].platformKey }
-            if (!readerKey.isNullOrBlank() && candidatesByMarketplace.isNotEmpty()) {
+            // Resolved together (not just the service) so the debug log below can label calls
+            // by the active provider without a nullable smart-cast dance in the nested closures.
+            val activeReader: Pair<PageReaderService, ReaderProvider>? =
+                readerProvider?.let { pageReaderResolver.resolve(it) to it }
+            if (activeReader != null && !readerKey.isNullOrBlank() && candidatesByMarketplace.isNotEmpty()) {
+                val (reader, activeReaderProvider) = activeReader
                 val readStart = System.currentTimeMillis()
                 pagesTarget = candidatesByMarketplace.size * READS_PER_MARKETPLACE
                 val pagesConfirmed = AtomicInteger(0)
@@ -578,13 +592,13 @@ class PriceResearchService
                                                         val marketplaceName =
                                                             Platform.fromKey(merged[i].platformKey ?: "")?.displayName ?: "listing"
                                                         val readStartedAtMs = System.currentTimeMillis()
-                                                        val text = jinaReader.read(merged[i].url, readerKey) ?: ""
+                                                        val text = reader.read(merged[i].url, readerKey) ?: ""
                                                         debugLogStore.record(
                                                             DebugLogEntry(
                                                                 timestampMs = System.currentTimeMillis(),
                                                                 type = DebugLogEntryType.SERVICE_CALL,
-                                                                op = "jina-read",
-                                                                endpoint = "jina-reader",
+                                                                op = "${activeReaderProvider.key}-read",
+                                                                endpoint = "${activeReaderProvider.key}-reader",
                                                                 requestSummary = merged[i].url,
                                                                 success = text.isNotEmpty(),
                                                                 responseSnippet = "${text.length} chars",

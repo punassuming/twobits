@@ -546,13 +546,28 @@ class PriceDropApiClient
             }
 
         /**
-         * Reads a product page via Jina Reader when [PriceDropProvider.WEB_SEARCH] is in BYOK mode.
-         * Returns empty string in Pro mode (the Worker handles page reading server-side) or on error.
+         * Reads a product page via the active reader provider ([ProviderSettingsStore.getPageReaderProvider]).
+         *
+         * Firecrawl and Jina are gated differently: Firecrawl is never added to any [AiFeature],
+         * so it has no feature-picker UI that ever sets its [ProviderMode] to BYOK — a saved key is
+         * its only on/off signal (it has no Worker/Pro route to gate against anyway). Jina keeps the
+         * existing [PriceDropProvider.WEB_SEARCH] BYOK-mode gate, so Pro-mode users still get "" here
+         * (the Worker handles page reading server-side for them) exactly as before.
          */
-        suspend fun readPage(url: String): String {
-            if (!isByok(PriceDropProvider.WEB_SEARCH)) return ""
-            return readPageDirect(url, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
-        }
+        suspend fun readPage(url: String): String =
+            when (providerSettings.getPageReaderProvider()) {
+                PriceDropProvider.FIRECRAWL -> {
+                    val key = providerSettings.getKey(PriceDropProvider.FIRECRAWL)
+                    if (key.isBlank()) "" else readPageFirecrawl(url, key)
+                }
+                else -> {
+                    if (!isByok(PriceDropProvider.WEB_SEARCH)) {
+                        ""
+                    } else {
+                        readPageDirect(url, providerSettings.getKey(PriceDropProvider.WEB_SEARCH))
+                    }
+                }
+            }
 
         private suspend fun readPageDirect(
             url: String,
@@ -601,6 +616,79 @@ class PriceDropApiClient
                     )
                 }.getOrDefault("")
             }
+
+        private suspend fun readPageFirecrawl(
+            url: String,
+            apiKey: String,
+        ): String =
+            withContext(Dispatchers.IO) {
+                val startedAtMs = System.currentTimeMillis()
+                runCatching {
+                    val body =
+                        JsonObject()
+                            .apply {
+                                addProperty("url", url)
+                                add("formats", JsonArray().apply { add("markdown") })
+                                // Live-tested against a real eBay item page: without a US
+                                // location, eBay served a GDPR cookie-consent shell (~380 chars,
+                                // no listing content) instead of the actual page. Applied to
+                                // every read, not just eBay — both apps are US-market shopping
+                                // tools, so a US location is a safe default throughout.
+                                add("location", JsonObject().apply { addProperty("country", "US") })
+                            }.toString()
+                            .toRequestBody(jsonMedia)
+                    val request =
+                        Request
+                            .Builder()
+                            .url("https://api.firecrawl.dev/v2/scrape")
+                            .addHeader("Authorization", "Bearer $apiKey")
+                            .addHeader("Content-Type", "application/json")
+                            .post(body)
+                            .build()
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) return@use ""
+                        parseFirecrawlMarkdown(response.body?.string().orEmpty())
+                    }
+                }.onSuccess {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "firecrawl-read",
+                            endpoint = "firecrawl-reader",
+                            requestSummary = url,
+                            success = it.isNotEmpty(),
+                            responseSnippet = "${it.length} chars",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
+                }.onFailure { e ->
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.SERVICE_CALL,
+                            op = "firecrawl-read",
+                            endpoint = "firecrawl-reader",
+                            requestSummary = url,
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
+                }.getOrDefault("")
+            }
+
+        /**
+         * `{"success": true, "data": {"markdown": "...", "metadata": {...}}}` — confirmed against
+         * both official SDKs' own response parsing (js-sdk's `res.data.data`, python-sdk's
+         * `body["data"]`) and Firecrawl's docs. The top-level fallback guards only a future API
+         * change, not present ambiguity.
+         */
+        private fun parseFirecrawlMarkdown(json: String): String =
+            runCatching {
+                val root = gson.fromJson(json, JsonObject::class.java)
+                (root.getAsJsonObject("data")?.get("markdown") ?: root.get("markdown"))?.asString.orEmpty()
+            }.getOrDefault("")
 
         /**
          * Uses OpenAI to extract product title and price from Jina-read page content.

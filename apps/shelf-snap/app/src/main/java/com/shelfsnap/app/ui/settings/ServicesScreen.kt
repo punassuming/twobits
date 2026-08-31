@@ -17,6 +17,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.R
+import com.shelfsnap.app.data.remote.search.ReaderProvider
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.CredentialRequirement
@@ -145,6 +147,27 @@ fun ServicesScreen(
 
                 CollapsibleProviderRow(
                     icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    title = "Firecrawl",
+                    summary = "Optional — alternative page reader",
+                    description =
+                        "Optional alternative to Jina AI for opening a listing's full page. Renders every " +
+                            "page through a real headless browser, which may fare better on JS-heavy or " +
+                            "anti-bot listings than Jina's default engine, but is slower and costs more per read.",
+                    maskedKey = maskKey(uiState.savedFirecrawlApiKey),
+                    isKeyValid = uiState.firecrawlTestResult,
+                    isValidating = uiState.isFirecrawlTesting,
+                    validationMessage = uiState.firecrawlTestMessage,
+                    apiKey = uiState.editFirecrawlApiKey,
+                    onApiKeyChange = viewModel::onFirecrawlApiKeyChange,
+                    onSave = viewModel::saveFirecrawlKey,
+                    onTest = viewModel::testFirecrawlKey,
+                    onClear = viewModel::clearFirecrawlKey,
+                    signupUrl = "https://firecrawl.dev",
+                    requirement = CredentialRequirement.OPTIONAL,
+                )
+
+                CollapsibleProviderRow(
+                    icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     title = "Brave Search",
                     description = "Optional — a second search index with no unique capability. Safe to skip.",
                     maskedKey = maskKey(uiState.savedBraveApiKey),
@@ -159,6 +182,14 @@ fun ServicesScreen(
                     signupUrl = "https://brave.com/search/api/",
                     requirement = CredentialRequirement.OPTIONAL,
                 )
+
+                if (uiState.savedJinaApiKey.isNotBlank() || uiState.savedFirecrawlApiKey.isNotBlank()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    ReaderProviderPicker(
+                        selected = uiState.readerProvider,
+                        onSelect = viewModel::onReaderProviderChange,
+                    )
+                }
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 Text(
@@ -190,6 +221,28 @@ fun ServicesScreen(
                     hasKey = uiState.savedBraveApiKey.isNotBlank(),
                     onEnabledChange = viewModel::onBraveSearchEnabledChange,
                 )
+            }
+        }
+    }
+}
+
+/** Which backend opens listing pages — separate from the search toggles above, since reading a page and finding it are different jobs. */
+@Composable
+private fun ReaderProviderPicker(
+    selected: ReaderProvider,
+    onSelect: (ReaderProvider) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text("Page reader", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ReaderProvider.entries.forEach { provider ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(end = 16.dp),
+                ) {
+                    RadioButton(selected = selected == provider, onClick = { onSelect(provider) })
+                    Text(provider.displayName, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }

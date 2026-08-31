@@ -19,6 +19,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.SERPER -> providerStore.getKey(PriceDropProvider.SERPER).takeIf { it.isNotBlank() }
                 SharedCredentialId.COUPON -> null
                 SharedCredentialId.RAINFOREST -> providerStore.getKey(PriceDropProvider.RAINFOREST).takeIf { it.isNotBlank() }
+                SharedCredentialId.FIRECRAWL -> providerStore.getKey(PriceDropProvider.FIRECRAWL).takeIf { it.isNotBlank() }
                 else -> null
             }
 
@@ -33,6 +34,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.SERPER -> providerStore.setKey(PriceDropProvider.SERPER, value)
                 SharedCredentialId.COUPON -> Unit
                 SharedCredentialId.RAINFOREST -> providerStore.setKey(PriceDropProvider.RAINFOREST, value)
+                SharedCredentialId.FIRECRAWL -> providerStore.setKey(PriceDropProvider.FIRECRAWL, value)
                 else -> Unit
             }
         }
@@ -45,6 +47,7 @@ class PriceDropCredentialBridge
                 SharedCredentialId.SERPER -> providerStore.clearKey(PriceDropProvider.SERPER)
                 SharedCredentialId.COUPON -> Unit
                 SharedCredentialId.RAINFOREST -> providerStore.clearKey(PriceDropProvider.RAINFOREST)
+                SharedCredentialId.FIRECRAWL -> providerStore.clearKey(PriceDropProvider.FIRECRAWL)
                 else -> Unit
             }
         }

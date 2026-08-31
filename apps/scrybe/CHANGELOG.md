@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: added a shared `SharedCredentialId.FIRECRAWL` entry for Shelf Snap/PriceDrop's new Firecrawl page reader — Scrybe has no Firecrawl feature and ignores this credential
+
 ## 1.53.1 (2026-08-27)
 
 ### Features

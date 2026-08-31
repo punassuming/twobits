@@ -10,7 +10,9 @@ import com.shelfsnap.app.data.local.LocalModelManager
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.remote.search.BraveSearchService
+import com.shelfsnap.app.data.remote.search.FirecrawlReaderService
 import com.shelfsnap.app.data.remote.search.JinaAiSearchService
+import com.shelfsnap.app.data.remote.search.ReaderProvider
 import com.shelfsnap.app.data.remote.search.SearchApiService
 import com.shelfsnap.app.data.remote.search.SerperSearchService
 import com.shelfsnap.app.data.repository.ItemRepository
@@ -64,6 +66,12 @@ data class SettingsUiState(
     val isJinaTesting: Boolean = false,
     val jinaTestResult: Boolean? = null,
     val jinaTestMessage: String? = null,
+    val readerProvider: ReaderProvider = ReaderProvider.JINA,
+    val savedFirecrawlApiKey: String = "",
+    val editFirecrawlApiKey: String = "",
+    val isFirecrawlTesting: Boolean = false,
+    val firecrawlTestResult: Boolean? = null,
+    val firecrawlTestMessage: String? = null,
     val isBraveTesting: Boolean = false,
     val braveTestResult: Boolean? = null,
     val braveTestMessage: String? = null,
@@ -105,6 +113,7 @@ class SettingsViewModel
         private val billingManager: BillingManager,
         private val localModelManager: LocalModelManager,
         private val jinaSearchService: JinaAiSearchService,
+        private val firecrawlReaderService: FirecrawlReaderService,
         private val braveSearchService: BraveSearchService,
         private val searchapiService: SearchApiService,
         private val serperService: SerperSearchService,
@@ -118,6 +127,10 @@ class SettingsViewModel
         private val _isKeyVerified = MutableStateFlow<Boolean?>(null)
         private val _keyVerifyError = MutableStateFlow<String?>(null)
         private val _editJinaKey = MutableStateFlow("")
+        private val _editFirecrawlKey = MutableStateFlow("")
+        private val _isFirecrawlTesting = MutableStateFlow(false)
+        private val _firecrawlTestResult = MutableStateFlow<Boolean?>(null)
+        private val _firecrawlTestMessage = MutableStateFlow<String?>(null)
         private val _editBraveKey = MutableStateFlow("")
         private val _isSearchSaved = MutableStateFlow(false)
         private val _isJinaTesting = MutableStateFlow(false)
@@ -149,6 +162,11 @@ class SettingsViewModel
                 if (repository.getJinaApiKey().isBlank()) {
                     credentialClient.readThrough(SharedCredentialId.JINA)?.let { sibling ->
                         repository.saveJinaApiKey(sibling)
+                    }
+                }
+                if (repository.getFirecrawlApiKey().isBlank()) {
+                    credentialClient.readThrough(SharedCredentialId.FIRECRAWL)?.let { sibling ->
+                        repository.saveFirecrawlApiKey(sibling)
                     }
                 }
                 if (repository.getBraveApiKey().isBlank()) {
@@ -192,6 +210,21 @@ class SettingsViewModel
                 SearchTestState(testing, result, message)
             }
 
+        private val firecrawlTestFlow =
+            combine(_isFirecrawlTesting, _firecrawlTestResult, _firecrawlTestMessage) { testing, result, message ->
+                SearchTestState(testing, result, message)
+            }
+
+        private val readerFlow =
+            combine(
+                repository.observeReaderProvider(),
+                repository.observeFirecrawlApiKey(),
+                _editFirecrawlKey,
+                firecrawlTestFlow,
+            ) { provider, savedFirecrawl, editFirecrawl, firecrawlTest ->
+                ReaderState(provider, savedFirecrawl, editFirecrawl, firecrawlTest)
+            }
+
         private val braveTestFlow =
             combine(_isBraveTesting, _braveTestResult, _braveTestMessage) { testing, result, message ->
                 SearchTestState(testing, result, message)
@@ -223,10 +256,10 @@ class SettingsViewModel
                 serperTestFlow,
             ) { enabled, saved, edit, test -> SearchApiGroup(enabled, saved, edit, test) }
 
-        // combine() tops out at 5 flows directly — searchapi + serper are nested into one pair
-        // so the outer combine below stays within that limit.
+        // combine() tops out at 5 flows directly — searchapi + serper + reader are nested into
+        // one triple so the outer combine below stays within that limit.
         private val extraProvidersFlow =
-            combine(searchapiGroupFlow, serperGroupFlow) { sapi, serper -> sapi to serper }
+            combine(searchapiGroupFlow, serperGroupFlow, readerFlow) { sapi, serper, reader -> Triple(sapi, serper, reader) }
 
         private val searchFlow =
             combine(
@@ -238,7 +271,7 @@ class SettingsViewModel
                 combine(repository.observeBraveApiKey(), _editBraveKey) { saved, edit -> saved to edit },
                 combine(_isSearchSaved, jinaTestFlow, braveTestFlow) { saved, jina, brave -> Triple(saved, jina, brave) },
                 extraProvidersFlow,
-            ) { (jinaEnabled, braveEnabled), (savedJina, editJina), (savedBrave, editBrave), (saved, jinaTest, braveTest), (sapi, serper) ->
+            ) { (jinaEnabled, braveEnabled), (savedJina, editJina), (savedBrave, editBrave), (saved, jinaTest, braveTest), (sapi, serper, reader) ->
                 SearchState(
                     jinaEnabled,
                     braveEnabled,
@@ -257,6 +290,10 @@ class SettingsViewModel
                     serper.savedKey,
                     serper.editKey,
                     serper.test,
+                    reader.provider,
+                    reader.savedFirecrawlKey,
+                    reader.editFirecrawlKey,
+                    reader.firecrawlTest,
                 )
             }
 
@@ -322,6 +359,12 @@ class SettingsViewModel
                     isJinaTesting = search.jinaTest.isTesting,
                     jinaTestResult = search.jinaTest.result,
                     jinaTestMessage = search.jinaTest.message,
+                    readerProvider = search.readerProvider,
+                    savedFirecrawlApiKey = search.savedFirecrawlKey,
+                    editFirecrawlApiKey = search.editFirecrawlKey.ifBlank { search.savedFirecrawlKey },
+                    isFirecrawlTesting = search.firecrawlTest.isTesting,
+                    firecrawlTestResult = search.firecrawlTest.result,
+                    firecrawlTestMessage = search.firecrawlTest.message,
                     isBraveTesting = search.braveTest.isTesting,
                     braveTestResult = search.braveTest.result,
                     braveTestMessage = search.braveTest.message,
@@ -420,6 +463,17 @@ class SettingsViewModel
             _jinaTestMessage.update { null }
         }
 
+        fun onReaderProviderChange(provider: ReaderProvider) {
+            viewModelScope.launch { repository.saveReaderProvider(provider) }
+        }
+
+        fun onFirecrawlApiKeyChange(value: String) {
+            _editFirecrawlKey.update { value }
+            _isSearchSaved.update { false }
+            _firecrawlTestResult.update { null }
+            _firecrawlTestMessage.update { null }
+        }
+
         fun onBraveApiKeyChange(value: String) {
             _editBraveKey.update { value }
             _isSearchSaved.update { false }
@@ -459,6 +513,27 @@ class SettingsViewModel
             }
         }
 
+        fun saveFirecrawlKey() {
+            val key = _editFirecrawlKey.value.ifBlank { uiState.value.savedFirecrawlApiKey }.trim()
+            if (key.isBlank()) return
+            viewModelScope.launch {
+                repository.saveFirecrawlApiKey(key)
+                credentialClient.mirror(SharedCredentialId.FIRECRAWL, key)
+                _isSearchSaved.update { true }
+            }
+            validateFirecrawlKey(key)
+        }
+
+        fun clearFirecrawlKey() {
+            viewModelScope.launch {
+                repository.saveFirecrawlApiKey("")
+                _editFirecrawlKey.update { "" }
+                _isSearchSaved.update { false }
+                _firecrawlTestResult.update { null }
+                _firecrawlTestMessage.update { null }
+            }
+        }
+
         fun clearBraveKey() {
             viewModelScope.launch {
                 repository.saveBraveApiKey("")
@@ -473,6 +548,12 @@ class SettingsViewModel
             val key = _editJinaKey.value.ifBlank { uiState.value.savedJinaApiKey }.trim()
             if (key.isBlank()) return
             validateJinaKey(key)
+        }
+
+        fun testFirecrawlKey() {
+            val key = _editFirecrawlKey.value.ifBlank { uiState.value.savedFirecrawlApiKey }.trim()
+            if (key.isBlank()) return
+            validateFirecrawlKey(key)
         }
 
         fun testBraveKey() {
@@ -494,6 +575,23 @@ class SettingsViewModel
                 } else {
                     _jinaTestResult.update { false }
                     _jinaTestMessage.update { result.exceptionOrNull()?.message ?: "Connection failed" }
+                }
+            }
+        }
+
+        private fun validateFirecrawlKey(key: String) {
+            viewModelScope.launch {
+                _isFirecrawlTesting.update { true }
+                _firecrawlTestResult.update { null }
+                _firecrawlTestMessage.update { "Checking connection…" }
+                val result = runCatching { firecrawlReaderService.read("https://example.com", key, maxChars = 200) }
+                _isFirecrawlTesting.update { false }
+                if (result.isSuccess && !result.getOrNull().isNullOrBlank()) {
+                    _firecrawlTestResult.update { true }
+                    _firecrawlTestMessage.update { "Connected to Firecrawl" }
+                } else {
+                    _firecrawlTestResult.update { false }
+                    _firecrawlTestMessage.update { result.exceptionOrNull()?.message ?: "Connection failed" }
                 }
             }
         }
@@ -802,6 +900,17 @@ class SettingsViewModel
             val savedSerperKey: String = "",
             val editSerperKey: String = "",
             val serperTest: SearchTestState = SearchTestState(false, null, null),
+            val readerProvider: ReaderProvider = ReaderProvider.JINA,
+            val savedFirecrawlKey: String = "",
+            val editFirecrawlKey: String = "",
+            val firecrawlTest: SearchTestState = SearchTestState(false, null, null),
+        )
+
+        private data class ReaderState(
+            val provider: ReaderProvider,
+            val savedFirecrawlKey: String,
+            val editFirecrawlKey: String,
+            val firecrawlTest: SearchTestState,
         )
 
         private data class LocalModelsState(

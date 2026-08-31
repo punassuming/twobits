@@ -84,6 +84,29 @@ enum class PriceDropProvider(
         costEstimate = "Est. cost: ~\$0.30–1.00 per 1,000 searches · 2,500 free",
         capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS, ProviderCapability.PROMOTIONS),
     ),
+    FIRECRAWL(
+        key = "firecrawl",
+        displayName = "Firecrawl",
+        byokBaseUrl = "https://api.firecrawl.dev/",
+        summary = "Optional alternative page reader for URL-paste",
+        description =
+            "Optional alternative to Jina AI for turning a pasted product URL into a watchlist " +
+                "item. Renders every page through a real headless browser — JS-heavy or anti-bot " +
+                "pages may fare better, but it's slower and costs more per read than Jina's default " +
+                "engine. BYOK only; no Pro-tier route exists for it.",
+        setupHint =
+            "Sign up at firecrawl.dev → open API Keys → copy your key. Free tier included.",
+        signupUrl = "https://firecrawl.dev",
+        costEstimate = "Est. cost: free tier covers hundreds of page reads/month",
+        // Deliberately empty and never added to any AiFeature.providers list — Firecrawl only
+        // ever gets called directly from PriceDropApiClient.readPage(), the same way WEB_SEARCH's
+        // *reader* role works today (its SEARCH capability above is a separate, unrelated role:
+        // participating in ProviderRegistry's search fan-out). Reader-provider selection is its
+        // own dedicated preference (ProviderSettingsStore.getPageReaderProvider()), not a
+        // multi-select "enable N simultaneously" feature toggle, since reading the same URL twice
+        // wastes calls for no benefit.
+        capabilities = emptySet(),
+    ),
     RAINFOREST(
         key = "rainforest",
         displayName = "Rainforest API",

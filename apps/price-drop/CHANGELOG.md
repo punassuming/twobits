@@ -4,9 +4,21 @@
 
 ### Features
 
+**Firecrawl page reader** — an alternative to Jina AI for reading a pasted product URL:
+* bring your own Firecrawl API key in AI configuration
+* BYOK only, same as Jina today
+
 ### Improvements
 
 ### Fixes
+
+* no user-visible change: confirmed Firecrawl's scrape response nests markdown under `data` (verified against both official SDKs' own response parsing) and simplified the reader's parsing accordingly
+
+* no user-visible change: Firecrawl reads now pin a US location — live-tested against a real eBay listing, without it eBay served a GDPR cookie-consent shell instead of the actual page
+
+* no user-visible change: fixed Firecrawl page reads always silently returning nothing — Firecrawl has no BYOK/Pro mode toggle of its own, so the existing mode check could never pass; a saved key now enables it directly, caught by review before merge
+
+* no user-visible change: clearing a Firecrawl key while it's the active page reader now resets the selection back to Jina, so the reader picker can't disappear with a now-unusable reader still selected
 
 ## 0.23.1 (2026-08-27)
 

@@ -158,6 +158,7 @@ class SettingsViewModel
                         PriceDropProvider.SHOPPING to SharedCredentialId.SEARCHAPI,
                         PriceDropProvider.SERPER to SharedCredentialId.SERPER,
                         PriceDropProvider.RAINFOREST to SharedCredentialId.RAINFOREST,
+                        PriceDropProvider.FIRECRAWL to SharedCredentialId.FIRECRAWL,
                     )
                 readThroughPairs.forEach { (provider, credId) ->
                     if (providerStore.getKey(provider).isBlank()) {
@@ -266,6 +267,20 @@ class SettingsViewModel
                 }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+        /**
+         * Which provider reads a pasted product URL's page content — a mutually-exclusive
+         * choice, not a per-feature multi-select, so it's exposed separately from
+         * [featureStates] rather than folded into an [AiFeature].
+         */
+        val pageReaderProvider: StateFlow<PriceDropProvider> =
+            providerStore
+                .observePageReaderProvider()
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PriceDropProvider.WEB_SEARCH)
+
+        fun setPageReaderProvider(provider: PriceDropProvider) {
+            viewModelScope.launch { providerStore.setPageReaderProvider(provider) }
+        }
+
         val featureStates: StateFlow<Map<AiFeature, FeatureState>> =
             combine(
                 AiFeature.entries.map { f ->
@@ -332,6 +347,7 @@ class SettingsViewModel
                     PriceDropProvider.SHOPPING -> credentialClient.mirror(SharedCredentialId.SEARCHAPI, key)
                     PriceDropProvider.SERPER -> credentialClient.mirror(SharedCredentialId.SERPER, key)
                     PriceDropProvider.RAINFOREST -> credentialClient.mirror(SharedCredentialId.RAINFOREST, key)
+                    PriceDropProvider.FIRECRAWL -> credentialClient.mirror(SharedCredentialId.FIRECRAWL, key)
                 }
                 val formatCheck = CredentialCheck.check(p, key)
                 if (!formatCheck.isValid) {
@@ -378,6 +394,12 @@ class SettingsViewModel
             viewModelScope.launch {
                 providerStore.clearKey(p)
                 setValidation(p, ProviderValidation())
+                // Otherwise the reader picker (visible only while Firecrawl has a valid key)
+                // disappears with the selection still pointed at Firecrawl — reads silently go
+                // to a keyless provider with no visible way back to Jina.
+                if (p == PriceDropProvider.FIRECRAWL && providerStore.getPageReaderProvider() == PriceDropProvider.FIRECRAWL) {
+                    providerStore.setPageReaderProvider(PriceDropProvider.WEB_SEARCH)
+                }
             }
         }
 
