@@ -1,6 +1,8 @@
 package com.twobits.pricedrop.ui.settings
 
 import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -154,6 +156,13 @@ fun AIConfigScreen(
 
     var selectedFeature by remember { mutableStateOf<AiFeature?>(null) }
     var selectedTab by remember { mutableStateOf(0) }
+    var importTarget by remember { mutableStateOf<LocalLlmModel?>(null) }
+    val importLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val model = importTarget
+            importTarget = null
+            if (uri != null && model != null) viewModel.importLlmModel(model, uri)
+        }
 
     Scaffold(
         topBar = {
@@ -203,6 +212,10 @@ fun AIConfigScreen(
                                 primaryActionLabel = "Download",
                                 primaryActionIcon = Icons.Default.CloudDownload,
                                 onDelete = { viewModel.deleteLlmModel(it) },
+                                onImport = { model ->
+                                    importTarget = model
+                                    importLauncher.launch(arrayOf("application/octet-stream", "*/*"))
+                                },
                                 name = { it.displayName },
                                 sizeLabel = { it.sizeLabel },
                                 description = { it.description },

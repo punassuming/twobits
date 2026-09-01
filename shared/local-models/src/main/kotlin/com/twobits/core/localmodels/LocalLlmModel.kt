@@ -12,12 +12,11 @@ package com.twobits.core.localmodels
  * [TwoBitsLocalModels]'s doc comment): one spec avoids three copies of the same URLs/hashes
  * drifting out of sync.
  *
- * VERIFIED (GEMMA_4_E2B / GEMMA_4_E4B only): those two entries' URLs, file names, and [sha256]
- * checksums were confirmed against real downloads (this sandbox can't reach huggingface.co, so
- * that verification happened outside it). GEMMA_3_1B, GEMMA_3_270M, and QWEN_3_1_7B's URLs came
- * directly from the user as working "generic" (non-chip-specific) `litert-community` artifacts;
- * their [sha256] is left null since it hasn't been captured yet. `litertlm-android`'s Gradle
- * resolution and Scrybe's minSdk compatibility were confirmed the same way as GEMMA_4's checksums.
+ * VERIFIED: every catalog URL is an unauthenticated byte-range download from Hugging Face. Gemma
+ * 3's generic artifacts are deliberately not listed: their repository pages are public but their
+ * file bytes return HTTP 401 without accepting Google's license. The replacements below are
+ * generic (not chip-specific) `.litertlm` bundles intended for LiteRT-LM's CPU backend on ordinary
+ * Android devices. Only the Gemma 4 entries have captured SHA-256 values so far.
  *
  * [visionCapable] gates which entries [Shelf Snap's vision picker][LocalModelTask.VISION] offers:
  * only GEMMA_4_E2B/E4B have ever been used for on-device vision (`generateWithImage()`) and even
@@ -75,23 +74,27 @@ enum class LocalLlmModel(
         visionCapable = true,
         sha256 = "0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0",
     ),
-    GEMMA_3_1B(
-        displayName = "Gemma 3 1B",
-        description = "Small and fast — good default for lower-RAM devices",
-        fileName = "gemma3-1b-it-int4.litertlm",
-        sizeLabel = "~584 MB",
-        downloadUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.litertlm",
-        huggingFacePageUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT",
-        family = LocalModelFamily.GEMMA,
+    QWEN_3_0_6B(
+        displayName = "Qwen 3 0.6B",
+        description = "Small and fast — good for lower-RAM devices",
+        fileName = "qwen3_0.6b_q4_block32_ekv1280.litertlm",
+        sizeLabel = "~331 MB",
+        downloadUrl =
+            "https://huggingface.co/litert-community/Qwen3-0.6B-int4/resolve/main/" +
+                "qwen3_0.6b_q4_block32_ekv1280.litertlm",
+        huggingFacePageUrl = "https://huggingface.co/litert-community/Qwen3-0.6B-int4",
+        family = LocalModelFamily.QWEN,
     ),
-    GEMMA_3_270M(
-        displayName = "Gemma 3 270M",
-        description = "Smallest and fastest — lowest quality, for constrained devices",
-        fileName = "gemma3-270m-it-q8.litertlm",
-        sizeLabel = "~304 MB",
-        downloadUrl = "https://huggingface.co/litert-community/gemma-3-270m-it/resolve/main/gemma3-270m-it-q8.litertlm",
-        huggingFacePageUrl = "https://huggingface.co/litert-community/gemma-3-270m-it",
-        family = LocalModelFamily.GEMMA,
+    SMOLLM2_360M(
+        displayName = "SmolLM2 360M",
+        description = "Compact general-purpose alternative for constrained devices",
+        fileName = "SmolLM2_360M_instruct.litertlm",
+        sizeLabel = "~356 MB",
+        downloadUrl =
+            "https://huggingface.co/litert-community/SmolLM2-360M-Instruct/resolve/main/" +
+                "SmolLM2_360M_instruct.litertlm",
+        huggingFacePageUrl = "https://huggingface.co/litert-community/SmolLM2-360M-Instruct",
+        family = LocalModelFamily.QWEN,
     ),
     QWEN_3_1_7B(
         displayName = "Qwen 3 1.7B",

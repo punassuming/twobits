@@ -1,6 +1,8 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -84,6 +86,13 @@ fun AIConfigScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val searchSavedMessage = stringResource(R.string.search_settings_saved)
     var selectedTab by remember { mutableStateOf(0) }
+    var importTarget by remember { mutableStateOf<LocalLlmModel?>(null) }
+    val importLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val model = importTarget
+            importTarget = null
+            if (uri != null && model != null) viewModel.importLlmModel(model, uri)
+        }
 
     LaunchedEffect(uiState.isSearchSaved) {
         if (uiState.isSearchSaved) {
@@ -133,6 +142,10 @@ fun AIConfigScreen(
                         primaryActionLabel = "Download",
                         primaryActionIcon = Icons.Default.CloudDownload,
                         onDelete = { viewModel.deleteLlmModel(it) },
+                        onImport = { model ->
+                            importTarget = model
+                            importLauncher.launch(arrayOf("application/octet-stream", "*/*"))
+                        },
                         name = { it.displayName },
                         sizeLabel = { it.sizeLabel },
                         description = { it.description },

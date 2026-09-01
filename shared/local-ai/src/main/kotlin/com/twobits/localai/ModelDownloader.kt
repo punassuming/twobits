@@ -45,6 +45,13 @@ object ModelDownloader {
         val client =
             okHttpClient
                 .newBuilder()
+                // Apps receive the shared client, whose debug configuration includes OkHttp's
+                // BODY logging interceptor. That interceptor buffers an entire response in
+                // memory to log it; doing that for a multi-gigabyte model kills the process
+                // before this method's streaming byteStream() loop can write its first chunk.
+                // Downloads must retain the client's transport configuration but never inherit
+                // application interceptors that can consume the response body.
+                .apply { interceptors().clear() }
                 // No cap on the transfer as a whole — these are multi-gigabyte files and a
                 // healthy-but-slow connection can legitimately take many minutes. connectTimeout
                 // and readTimeout below are what actually detect a dead connection: a genuine

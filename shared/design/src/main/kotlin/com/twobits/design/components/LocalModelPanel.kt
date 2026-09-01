@@ -62,6 +62,7 @@ fun <T : Any> LocalModelPanel(
     primaryActionLabel: String,
     primaryActionIcon: ImageVector,
     onDelete: (T) -> Unit,
+    onImport: ((T) -> Unit)? = null,
     name: (T) -> String,
     sizeLabel: (T) -> String,
     description: (T) -> String,
@@ -110,6 +111,7 @@ fun <T : Any> LocalModelPanel(
                     onSelect = { onSelect(model) },
                     onPrimaryAction = { onPrimaryAction(model) },
                     onDelete = { onDelete(model) },
+                    onImport = onImport?.let { action -> { action(model) } },
                 )
             }
         }
@@ -130,6 +132,7 @@ private fun LocalModelRow(
     onSelect: () -> Unit,
     onPrimaryAction: () -> Unit,
     onDelete: () -> Unit,
+    onImport: (() -> Unit)?,
 ) {
     val isReady = modelStatus is LocalModelStatus.Ready
     val isSelectedAndReady = isSelected && isReady
@@ -248,19 +251,29 @@ private fun LocalModelRow(
             ) {
                 when {
                     modelStatus is LocalModelStatus.NotAvailable ->
-                        AssistChip(
-                            onClick = onPrimaryAction,
-                            label = {
-                                Text(primaryActionLabel, style = MaterialTheme.typography.labelSmall)
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    primaryActionIcon,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                )
-                            },
-                        )
+                        {
+                            if (onImport != null) {
+                                TextButton(
+                                    onClick = onImport,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                ) {
+                                    Text("Import", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                            AssistChip(
+                                onClick = onPrimaryAction,
+                                label = {
+                                    Text(primaryActionLabel, style = MaterialTheme.typography.labelSmall)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        primaryActionIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                },
+                            )
+                        }
                     isReady && !isSelected -> {
                         TextButton(
                             onClick = onSelect,
