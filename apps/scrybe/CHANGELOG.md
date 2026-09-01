@@ -6,6 +6,10 @@
 
 ### Improvements
 
+**Local AI** — generation now stays responsive while models load and run:
+* model setup and inference move off the main thread
+* local generation reports a clear timeout instead of hanging indefinitely
+
 ### Fixes
 
 ## 1.53.2 (2026-08-31)

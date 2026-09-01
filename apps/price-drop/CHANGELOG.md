@@ -4,7 +4,13 @@
 
 ### Features
 
+**Local models** — import downloaded model files directly from AI configuration:
+* choose a local model file instead of downloading it again
+
 ### Improvements
+
+**Local Ask** — the app stays responsive while local models initialize:
+* model loading and generation run away from the main thread
 
 ### Fixes
 

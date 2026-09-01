@@ -4,7 +4,13 @@
 
 ### Features
 
+**Local models** — import downloaded model files directly from AI settings:
+* choose a local model file instead of downloading it again
+
 ### Improvements
+
+**Local analysis** — progress now shows model loading and generation status:
+* elapsed time updates while native generation is waiting or running
 
 ### Fixes
 
