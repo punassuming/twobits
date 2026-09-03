@@ -12,6 +12,8 @@
 
 ### Fixes
 
+* no user-visible change: fixed a ktlint import-ordering violation in two local-ai files — caught by CI before merge, so this never shipped
+
 ## 1.53.2 (2026-08-31)
 
 ### Features

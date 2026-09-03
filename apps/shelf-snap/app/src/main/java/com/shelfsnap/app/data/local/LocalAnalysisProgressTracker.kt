@@ -42,7 +42,10 @@ class LocalAnalysisProgressTracker
         }
 
         /** Updates one running operation without disturbing concurrent local analyses. */
-        fun update(id: Long, label: String) {
+        fun update(
+            id: Long,
+            label: String,
+        ) {
             _active.update { list -> list.map { if (it.id == id) it.copy(label = label) else it } }
         }
     }

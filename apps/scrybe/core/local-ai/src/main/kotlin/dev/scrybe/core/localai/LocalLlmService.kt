@@ -6,8 +6,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.transforms.ClusterSuggestion
 import dev.scrybe.core.transforms.SessionSummary
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton

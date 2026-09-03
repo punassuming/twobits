@@ -14,6 +14,8 @@
 
 ### Fixes
 
+* no user-visible change: fixed a ktlint formatting violation (unwrapped multi-param function signature) — caught by CI before merge, so this never shipped
+
 ## 1.32.2 (2026-08-31)
 
 ### Features
