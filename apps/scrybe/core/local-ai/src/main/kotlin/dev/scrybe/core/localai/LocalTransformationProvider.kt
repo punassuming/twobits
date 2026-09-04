@@ -8,7 +8,9 @@ import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.transforms.TransformInput
 import dev.scrybe.core.transforms.TransformResult
 import dev.scrybe.core.transforms.TransformationProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,12 +35,14 @@ class LocalTransformationProvider
                 val transcript = input.combinedTranscriptText ?: input.transcriptText
                 val prompt = "Transcript:\n$transcript\n\nOutput only the result."
 
-                LiteRtLmEngine(context, modelFile, systemInstruction = input.systemPrompt).use { engine ->
-                    val response = engine.generate(prompt)
-                    TransformResult(
-                        transformedText = response.trim(),
-                        modelName = selectedModel.displayName,
-                    )
+                withContext(Dispatchers.Default) {
+                    LiteRtLmEngine(context, modelFile, systemInstruction = input.systemPrompt).use { engine ->
+                        val response = engine.generate(prompt)
+                        TransformResult(
+                            transformedText = response.trim(),
+                            modelName = selectedModel.displayName,
+                        )
+                    }
                 }
             }
     }

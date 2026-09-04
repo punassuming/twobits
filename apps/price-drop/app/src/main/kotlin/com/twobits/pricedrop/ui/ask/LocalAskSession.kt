@@ -6,6 +6,8 @@ import com.twobits.pricedrop.data.local.DebugLogEntry
 import com.twobits.pricedrop.data.local.DebugLogEntryType
 import com.twobits.pricedrop.data.local.DebugLogStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -59,7 +61,13 @@ class LocalAskSession
             return try {
                 if (engine == null || engineModelFile != modelFile) {
                     close()
-                    engine = LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt)
+                    // Engine construction synchronously opens and prepares the native model. On
+                    // a cold start that takes seconds, so never do it from AskViewModel's main
+                    // dispatcher or Android will treat the app as unresponsive.
+                    engine =
+                        withContext(Dispatchers.Default) {
+                            LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt)
+                        }
                     engineModelFile = modelFile
                 }
                 val response = requireNotNull(engine).generate(prompt)

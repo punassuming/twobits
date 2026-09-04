@@ -7,11 +7,19 @@ import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
+import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import java.io.Closeable
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Public stand-in for `com.google.ai.edge.litertlm.Backend`, which callers outside this module
@@ -23,6 +31,12 @@ import java.io.File
 enum class LiteRtBackend {
     CPU,
 }
+
+/** A non-content heartbeat emitted while a native LiteRT-LM request is still running. */
+data class LiteRtGenerationProgress(
+    val elapsedMs: Long,
+    val receivedMessageCount: Int,
+)
 
 private fun LiteRtBackend.toEngineBackend(): Backend =
     when (this) {
@@ -71,32 +85,110 @@ class LiteRtLmEngine(
             ),
         )
 
-    suspend fun generate(prompt: String): String =
-        withContext(Dispatchers.Default) {
-            // Message has no `.text` — the response's Content.Text is unwrapped via
-            // Message.toString() -> Contents.toString() -> Content.Text.toString() (confirmed
-            // against the real com.google.ai.edge.litertlm.Message source, not the getting-started
-            // doc, whose `.text` example doesn't match the actual class).
-            conversation.sendMessage(prompt).toString()
-        }
+    /**
+     * Generates one response with a hard deadline. LiteRT-LM's synchronous API blocks inside
+     * JNI and ignores coroutine cancellation; its callback API plus [Conversation.cancelProcess]
+     * is required to actually stop native generation when the deadline expires.
+     */
+    suspend fun generate(
+        prompt: String,
+        timeoutMs: Long = DEFAULT_GENERATION_TIMEOUT_MS,
+        onProgress: (LiteRtGenerationProgress) -> Unit = {},
+    ): String = generateAsync(timeoutMs, onProgress) { callback -> conversation.sendMessageAsync(prompt, callback) }
 
     /** EXPERIMENTAL — see class doc. [imageFile] is sent as a single image alongside [prompt]. */
     suspend fun generateWithImage(
         imageFile: File,
         prompt: String,
+        timeoutMs: Long = DEFAULT_GENERATION_TIMEOUT_MS,
+        onProgress: (LiteRtGenerationProgress) -> Unit = {},
     ): String =
-        withContext(Dispatchers.Default) {
-            conversation
-                .sendMessage(
-                    Contents.of(
-                        Content.ImageFile(imageFile.absolutePath),
-                        Content.Text(prompt),
-                    ),
-                ).toString()
+        generateAsync(timeoutMs, onProgress) { callback ->
+            conversation.sendMessageAsync(
+                Contents.of(
+                    Content.ImageFile(imageFile.absolutePath),
+                    Content.Text(prompt),
+                ),
+                callback,
+            )
         }
+
+    private suspend fun generateAsync(
+        timeoutMs: Long,
+        onProgress: (LiteRtGenerationProgress) -> Unit,
+        start: (MessageCallback) -> Unit,
+    ): String {
+        require(timeoutMs > 0) { "timeoutMs must be positive" }
+        val startedAtMs = System.currentTimeMillis()
+        val result = CompletableDeferred<String>()
+        val accumulatedResponse = StringBuilder()
+        val messageCount = AtomicInteger(0)
+        val callback =
+            object : MessageCallback {
+                override fun onMessage(message: Message) {
+                    synchronized(accumulatedResponse) { accumulatedResponse.append(message.toString()) }
+                    onProgress(
+                        LiteRtGenerationProgress(
+                            System.currentTimeMillis() - startedAtMs,
+                            messageCount.incrementAndGet(),
+                        ),
+                    )
+                }
+
+                override fun onDone() {
+                    val response = synchronized(accumulatedResponse) { accumulatedResponse.toString() }
+                    if (response.isEmpty()) {
+                        result.completeExceptionally(IllegalStateException("LiteRT-LM completed without a response"))
+                    } else {
+                        result.complete(response)
+                    }
+                }
+
+                override fun onError(throwable: Throwable) {
+                    result.completeExceptionally(throwable)
+                }
+            }
+        return coroutineScope {
+            val heartbeat =
+                launch {
+                    while (isActive) {
+                        delay(PROGRESS_HEARTBEAT_MS)
+                        onProgress(
+                            LiteRtGenerationProgress(
+                                System.currentTimeMillis() - startedAtMs,
+                                messageCount.get(),
+                            ),
+                        )
+                    }
+                }
+            try {
+                onProgress(LiteRtGenerationProgress(elapsedMs = 0, receivedMessageCount = 0))
+                start(callback)
+                withTimeout(timeoutMs) { result.await() }
+            } catch (timeout: TimeoutCancellationException) {
+                throw LocalGenerationTimeoutException(timeoutMs, timeout)
+            } finally {
+                // Covers both the timeout above and the caller's own coroutine being cancelled
+                // (e.g. a ViewModel cleared mid-generation): either way, if the deferred never
+                // completed, native generation is still running and must be told to stop.
+                if (!result.isCompleted) conversation.cancelProcess()
+                heartbeat.cancel()
+            }
+        }
+    }
 
     override fun close() {
         conversation.close()
         engine.close()
     }
+
+    companion object {
+        const val DEFAULT_GENERATION_TIMEOUT_MS = 90_000L
+        private const val PROGRESS_HEARTBEAT_MS = 5_000L
+    }
 }
+
+class LocalGenerationTimeoutException(
+    timeoutMs: Long,
+    cause: Throwable,
+) : RuntimeException("Local generation timed out after ${timeoutMs / 1_000}s and was cancelled", cause)

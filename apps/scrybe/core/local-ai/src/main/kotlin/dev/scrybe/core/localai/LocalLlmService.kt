@@ -6,7 +6,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.transforms.ClusterSuggestion
 import dev.scrybe.core.transforms.SessionSummary
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,8 +26,10 @@ class LocalLlmService
                 modelManager.llmModelFile(model)
                     ?: modelManager.anyLlmReady()?.let { modelManager.llmModelFile(it) }
                     ?: error("No local model downloaded. Go to Settings → Provider → Local to download one.")
-            return LiteRtLmEngine(context, modelFile).use { engine ->
-                engine.generate(prompt)
+            return withContext(Dispatchers.Default) {
+                LiteRtLmEngine(context, modelFile).use { engine ->
+                    engine.generate(prompt)
+                }
             }
         }
 

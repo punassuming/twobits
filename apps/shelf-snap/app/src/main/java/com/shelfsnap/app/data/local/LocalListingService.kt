@@ -50,8 +50,20 @@ class LocalListingService
                     // at every call site (same fix already applied to Scrybe's
                     // WhisperTranscriptionProvider).
                     withContext(Dispatchers.IO) {
+                        progressTracker.update(progressId, "Loading local model…")
                         LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt).use { engine ->
-                            val response = engine.generate(userMessage)
+                            progressTracker.update(progressId, "Generating listing locally…")
+                            val response =
+                                engine.generate(userMessage) { progress ->
+                                    val elapsedSeconds = progress.elapsedMs / 1_000
+                                    val detail =
+                                        if (progress.receivedMessageCount == 0) {
+                                            "Waiting for local model… ${elapsedSeconds}s"
+                                        } else {
+                                            "Generating listing locally… ${elapsedSeconds}s"
+                                        }
+                                    progressTracker.update(progressId, detail)
+                                }
                             debugLogStore.record(
                                 DebugLogEntry(
                                     timestampMs = System.currentTimeMillis(),
