@@ -6,6 +6,7 @@
 
 **Local models** — import downloaded model files directly from AI configuration:
 * choose a local model file instead of downloading it again
+* the small-model catalog changed: Gemma 3 1B and Gemma 3 270M are no longer offered (their generic download requires accepting Google's license, which a direct link can't do) — Qwen 3 0.6B and SmolLM2 360M take their place
 
 ### Improvements
 
@@ -13,6 +14,10 @@
 * model loading and generation run away from the main thread
 
 ### Fixes
+
+* no user-visible change: fixed two bugs in this PR's own new local-ai streaming/cancellation code (shared by all three apps) — multi-chunk responses were truncated to their last streamed fragment, and cancelling generation mid-flight left native generation running — caught by review before merge, so neither ever shipped
+
+* no user-visible change: fixed the new Import button crowding the model details column on narrow phones in the shared Local Models panel — caught by review before merge, so this never shipped
 
 ## 0.23.2 (2026-08-31)
 

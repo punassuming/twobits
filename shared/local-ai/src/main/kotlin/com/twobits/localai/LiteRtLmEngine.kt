@@ -20,7 +20,6 @@ import kotlinx.coroutines.withTimeout
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Public stand-in for `com.google.ai.edge.litertlm.Backend`, which callers outside this module
@@ -122,12 +121,12 @@ class LiteRtLmEngine(
         require(timeoutMs > 0) { "timeoutMs must be positive" }
         val startedAtMs = System.currentTimeMillis()
         val result = CompletableDeferred<String>()
-        val latestMessage = AtomicReference<Message?>(null)
+        val accumulatedResponse = StringBuilder()
         val messageCount = AtomicInteger(0)
         val callback =
             object : MessageCallback {
                 override fun onMessage(message: Message) {
-                    latestMessage.set(message)
+                    synchronized(accumulatedResponse) { accumulatedResponse.append(message.toString()) }
                     onProgress(
                         LiteRtGenerationProgress(
                             System.currentTimeMillis() - startedAtMs,
@@ -137,8 +136,8 @@ class LiteRtLmEngine(
                 }
 
                 override fun onDone() {
-                    val response = latestMessage.get()?.toString()
-                    if (response.isNullOrEmpty()) {
+                    val response = synchronized(accumulatedResponse) { accumulatedResponse.toString() }
+                    if (response.isEmpty()) {
                         result.completeExceptionally(IllegalStateException("LiteRT-LM completed without a response"))
                     } else {
                         result.complete(response)
@@ -167,9 +166,12 @@ class LiteRtLmEngine(
                 start(callback)
                 withTimeout(timeoutMs) { result.await() }
             } catch (timeout: TimeoutCancellationException) {
-                conversation.cancelProcess()
                 throw LocalGenerationTimeoutException(timeoutMs, timeout)
             } finally {
+                // Covers both the timeout above and the caller's own coroutine being cancelled
+                // (e.g. a ViewModel cleared mid-generation): either way, if the deferred never
+                // completed, native generation is still running and must be told to stop.
+                if (!result.isCompleted) conversation.cancelProcess()
                 heartbeat.cancel()
             }
         }

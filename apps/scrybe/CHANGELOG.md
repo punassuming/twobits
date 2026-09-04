@@ -10,9 +10,15 @@
 * model setup and inference move off the main thread
 * local generation reports a clear timeout instead of hanging indefinitely
 
+**Local models** — the small-model catalog changed:
+* Gemma 3 1B and Gemma 3 270M are no longer offered — their generic (non-chip-specific) download requires accepting Google's license, which a direct link can't do
+* Qwen 3 0.6B and SmolLM2 360M take their place as fast, low-RAM options
+
 ### Fixes
 
 * no user-visible change: fixed a ktlint import-ordering violation in two local-ai files — caught by CI before merge, so this never shipped
+
+* no user-visible change: fixed two bugs in this PR's own new streaming/cancellation code — multi-chunk responses were truncated to their last streamed fragment, and cancelling a caller mid-generation left native generation running — caught by review before merge, so neither ever shipped
 
 ## 1.53.2 (2026-08-31)
 
