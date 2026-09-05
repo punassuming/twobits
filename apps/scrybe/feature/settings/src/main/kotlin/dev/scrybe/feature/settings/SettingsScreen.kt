@@ -7,8 +7,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,11 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Group
@@ -65,7 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -75,6 +70,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
 import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
+import com.twobits.design.components.SettingsEntryCard
 import com.twobits.design.components.SettingsProStatusCard
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.model.AudioFormat
@@ -169,39 +165,37 @@ fun SettingsScreen(
                     onDetails = onNavigateToPro,
                 )
 
-                AppLabeledSectionCard(title = "Recording setup", icon = Icons.Filled.Tune) {
-                    SettingsNavRow(
-                        icon = Icons.Filled.Tune,
-                        iconTint = MaterialTheme.colorScheme.primary,
-                        title = "Profiles",
-                        subtitle = "Pipeline recipes for recording + AI transforms + destinations",
-                        onClick = onNavigateToProfiles,
-                    )
-                    HorizontalDivider()
-                    SettingsNavRow(
-                        icon = Icons.Filled.Label,
-                        iconTint = MaterialTheme.colorScheme.secondary,
-                        title = "Recording types",
-                        subtitle = "Rename, change icons, or delete your custom types",
-                        onClick = onNavigateToRecordingTypes,
-                    )
-                    HorizontalDivider()
-                    SettingsNavRow(
-                        icon = Icons.Filled.Group,
-                        iconTint = MaterialTheme.colorScheme.secondary,
-                        title = "People",
-                        subtitle = "Rename, merge, or delete speaker profiles",
-                        onClick = onNavigateToPeople,
-                    )
-                    HorizontalDivider()
-                    SettingsNavRow(
-                        icon = Icons.Filled.AutoAwesome,
-                        iconTint = MaterialTheme.colorScheme.primary,
-                        title = "AI configuration",
-                        subtitle = "Transcription · transforms · local models · API key",
-                        onClick = onNavigateToAiConfig,
-                    )
-                }
+                SettingsEntryCard(
+                    icon = Icons.Filled.Tune,
+                    title = "Profiles",
+                    subtitle = "Pipeline recipes for recording + AI transforms + destinations",
+                    onClick = onNavigateToProfiles,
+                )
+
+                SettingsEntryCard(
+                    icon = Icons.Filled.Label,
+                    title = "Recording types",
+                    subtitle = "Rename, change icons, or delete your custom types",
+                    onClick = onNavigateToRecordingTypes,
+                    accentColor = MaterialTheme.colorScheme.secondary,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                )
+
+                SettingsEntryCard(
+                    icon = Icons.Filled.Group,
+                    title = "People",
+                    subtitle = "Rename, merge, or delete speaker profiles",
+                    onClick = onNavigateToPeople,
+                    accentColor = MaterialTheme.colorScheme.secondary,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                )
+
+                SettingsEntryCard(
+                    icon = Icons.Filled.AutoAwesome,
+                    title = "AI configuration",
+                    subtitle = "Transcription · transforms · local models · API key",
+                    onClick = onNavigateToAiConfig,
+                )
 
                 AppLabeledSectionCard(
                     title = "Capture quality",
@@ -731,47 +725,6 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { showFormatPicker = false }) { Text("Cancel") }
             },
-        )
-    }
-}
-
-/** A tappable row inside a section card that navigates to another screen. */
-@Composable
-private fun SettingsNavRow(
-    icon: ImageVector,
-    iconTint: Color,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(iconTint.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Icon(
-            Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
         )
     }
 }

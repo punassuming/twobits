@@ -6,7 +6,14 @@
 
 ### Improvements
 
+**Settings layout** — Profiles, Recording types, People, and AI configuration are now standalone cards instead of one grouped list:
+* matches the settings-entry style already used in Shelf Snap and PriceDrop
+
+**Call budget** — API calls per session now shows as a proportional bar with a computed total, replacing the old fixed dot-row display
+
 ### Fixes
+
+* no user-visible change: AiNoKeyWarning gained an optional message parameter (used by PriceDrop) — Scrybe's call sites are unaffected and render identically
 
 ## 1.53.3 (2026-09-04)
 

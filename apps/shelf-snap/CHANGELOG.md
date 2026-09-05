@@ -6,7 +6,13 @@
 
 ### Improvements
 
+**Call budget estimate** — AI configuration now shows an estimated per-item call breakdown across vision, listing, and market research
+
 ### Fixes
+
+* no user-visible change: migrated the AI configuration and Services entry cards onto a new shared SettingsEntryCard component — same look, now shared with PriceDrop and Scrybe
+
+* no user-visible change: AiNoKeyWarning gained an optional message parameter (used by PriceDrop) — Shelf Snap's call sites are unaffected and render identically
 
 ## 1.32.3 (2026-09-04)
 

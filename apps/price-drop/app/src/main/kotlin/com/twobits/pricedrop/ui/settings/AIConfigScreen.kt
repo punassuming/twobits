@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,11 +27,7 @@ import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageSearch
-import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.PriceCheck
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
@@ -43,7 +38,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -57,7 +51,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,11 +65,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.design.components.AI_LOCAL_COLOR
+import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AppSectionLabel
-import com.twobits.design.components.CollapsibleProviderRow
-import com.twobits.design.components.CredentialRequirement
+import com.twobits.design.components.CallBudgetCard
+import com.twobits.design.components.CallBudgetEntry
 import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
@@ -116,30 +110,6 @@ private fun AiFeature.budgetColor(scheme: androidx.compose.material3.ColorScheme
         AiFeature.COUPON -> scheme.tertiary
         AiFeature.DROPS -> PD_PRO_COLOR
         AiFeature.ASK -> Color(0xFFC6A0F6)
-    }
-
-private fun PriceDropProvider.icon(): ImageVector =
-    when (this) {
-        PriceDropProvider.OPENAI -> Icons.Filled.AutoAwesome
-        PriceDropProvider.WEB_SEARCH -> Icons.Filled.Search
-        PriceDropProvider.SHOPPING -> Icons.Filled.ShoppingCart
-        PriceDropProvider.SERPER -> Icons.Filled.ShoppingCart
-        PriceDropProvider.FIRECRAWL -> Icons.Filled.Public
-        PriceDropProvider.RAINFOREST -> Icons.Filled.Park
-    }
-
-/**
- * Overall importance of this provider's key across the whole app (not one feature) — see each
- * provider's [PriceDropProvider.description] for exactly what breaks vs degrades without it.
- */
-private fun PriceDropProvider.requirement(): CredentialRequirement =
-    when (this) {
-        PriceDropProvider.OPENAI -> CredentialRequirement.REQUIRED
-        PriceDropProvider.RAINFOREST -> CredentialRequirement.RECOMMENDED
-        PriceDropProvider.WEB_SEARCH -> CredentialRequirement.RECOMMENDED
-        PriceDropProvider.SHOPPING -> CredentialRequirement.RECOMMENDED
-        PriceDropProvider.SERPER -> CredentialRequirement.RECOMMENDED
-        PriceDropProvider.FIRECRAWL -> CredentialRequirement.OPTIONAL
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -315,7 +285,7 @@ private fun FeatureListContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                PriceDropProvider.entries.forEach { provider ->
+                PriceDropProvider.entries.filter { it.isAiModelProvider() }.forEach { provider ->
                     val state = providerStates[provider] ?: ProviderState(ProviderMode.PRO, "")
                     ProviderCredentialItem(
                         provider = provider,
@@ -323,20 +293,15 @@ private fun FeatureListContent(
                         viewModel = viewModel,
                     )
                 }
-                // Only worth showing once there's an actual choice — with no validated
-                // Firecrawl key, Jina is the sole reader anyway (today's behavior, unchanged).
-                if (providerStates[PriceDropProvider.FIRECRAWL]?.isKeyValid == true) {
-                    val pageReaderProvider by viewModel.pageReaderProvider.collectAsState()
-                    PageReaderPicker(
-                        selected = pageReaderProvider,
-                        onSelect = viewModel::setPageReaderProvider,
-                    )
-                }
             }
         }
 
         item {
-            CallBudgetCard()
+            val scheme = MaterialTheme.colorScheme
+            CallBudgetCard(
+                entries = AiFeature.entries.map { f -> CallBudgetEntry(f.label, f.callWeight, f.budgetColor(scheme)) },
+                footnote = "Estimate per user-triggered event. Background checks (price polling) cost 1–2 calls per item.",
+            )
         }
 
         item {
@@ -360,7 +325,6 @@ private fun FeatureListContent(
                             feature = feature,
                             source = source,
                             modelName = modelName,
-                            providerStates = providerStates,
                             onClick = { onSelectFeature(feature) },
                         )
                     }
@@ -379,16 +343,8 @@ private fun FeatureRow(
     feature: AiFeature,
     source: ProviderMode,
     modelName: String?,
-    providerStates: Map<PriceDropProvider, ProviderState>,
     onClick: () -> Unit,
 ) {
-    // Best-effort signal only: "at least one of this feature's providers has a saved key",
-    // not a precise per-sub-path check (e.g. SEARCH lists OPENAI, which alone only unlocks
-    // URL-paste, not keyword search) — see FeatureRow's doc for the full caveat.
-    val needsKey =
-        source == ProviderMode.BYOK &&
-            feature.providers.isNotEmpty() &&
-            feature.providers.none { providerStates[it]?.key?.isNotBlank() == true }
     Row(
         modifier =
             Modifier
@@ -424,9 +380,6 @@ private fun FeatureRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (needsKey) {
-            NeedsKeyChip()
-        }
         SourceBadge(source)
         Icon(
             Icons.Filled.ChevronRight,
@@ -434,34 +387,6 @@ private fun FeatureRow(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
-    }
-}
-
-/** Flags a BYOK feature whose providers have no saved key — it will error, not just degrade. */
-@Composable
-private fun NeedsKeyChip() {
-    Surface(
-        shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.error.copy(alpha = 0.18f),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(5.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.error),
-            )
-            Text(
-                text = "No key",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
     }
 }
 
@@ -494,87 +419,6 @@ private fun SourceBadge(source: ProviderMode) {
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
                 color = color,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CallBudgetCard() {
-    val scheme = MaterialTheme.colorScheme
-    val total = AiFeature.entries.sumOf { it.callWeight }
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(
-                    Icons.Filled.Functions,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = "Call budget estimate",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = "~$total calls/event",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                AiFeature.entries.forEach { feature ->
-                    Box(
-                        modifier =
-                            Modifier
-                                .weight(feature.callWeight.toFloat())
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(feature.budgetColor(scheme)),
-                    )
-                }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                AiFeature.entries.forEach { feature ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(7.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(feature.budgetColor(scheme)),
-                        )
-                        Text(
-                            text = "${feature.label} ${feature.callWeight}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-            Text(
-                text = "Estimate per user-triggered event. Background checks (price polling) cost 1–2 calls per item.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp),
             )
         }
     }
@@ -718,6 +562,15 @@ private fun FeatureDetailContent(
                     item {
                         AppSectionLabel("Providers")
                     }
+                    val hasConfiguredKey =
+                        feature.providers.any { p ->
+                            p.key in enabledProviders && providerStates[p]?.isKeyValid == true
+                        }
+                    if (feature.providers.isNotEmpty() && !hasConfiguredKey) {
+                        item {
+                            AiNoKeyWarning(text = noKeyMessage(feature))
+                        }
+                    }
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -741,7 +594,7 @@ private fun FeatureDetailContent(
                     }
                     item {
                         Text(
-                            text = "Manage keys for each provider in the Credentials section.",
+                            text = "Manage keys in ${providerKeyLocation(feature)}.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -932,88 +785,4 @@ private fun CallEstimateCard(feature: AiFeature) {
             )
         }
     }
-}
-
-/** Which backend reads a pasted product URL's page content — separate from the credential rows above, since reading a page and holding its key are different concerns. */
-@Composable
-private fun PageReaderPicker(
-    selected: PriceDropProvider,
-    onSelect: (PriceDropProvider) -> Unit,
-) {
-    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-        Text("Page reader", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            listOf(PriceDropProvider.WEB_SEARCH, PriceDropProvider.FIRECRAWL).forEach { provider ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(end = 16.dp),
-                ) {
-                    RadioButton(selected = selected == provider, onClick = { onSelect(provider) })
-                    Text(provider.displayName, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProviderCredentialItem(
-    provider: PriceDropProvider,
-    state: ProviderState,
-    viewModel: SettingsViewModel,
-) {
-    var draft by rememberSaveable(provider) { mutableStateOf(state.key) }
-    LaunchedEffect(state.key) { if (draft != state.key) draft = state.key }
-
-    val maskedKey =
-        when {
-            state.key.length > 8 -> "${state.key.take(4)}${"•".repeat(7)}${state.key.takeLast(4)}"
-            state.key.isNotBlank() -> "••••"
-            else -> null
-        }
-
-    CollapsibleProviderRow(
-        icon = {
-            Box(
-                modifier =
-                    Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (state.isKeyValid == true) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            },
-                        ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    provider.icon(),
-                    contentDescription = null,
-                    tint = if (state.isKeyValid == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(14.dp),
-                )
-            }
-        },
-        title = provider.displayName,
-        description = provider.description,
-        summary = provider.summary,
-        maskedKey = maskedKey,
-        isKeyValid = state.isKeyValid,
-        isValidating = state.isValidating,
-        validationMessage = state.validationMessage,
-        apiKey = draft,
-        onApiKeyChange = { draft = it },
-        onSave = { viewModel.setProviderKey(provider, draft) },
-        onTest = { viewModel.testProviderKey(provider, draft) },
-        onClear = {
-            draft = ""
-            viewModel.clearProviderKey(provider)
-        },
-        setupHint = provider.setupHint,
-        signupUrl = provider.signupUrl,
-        costEstimate = provider.costEstimate,
-        requirement = provider.requirement(),
-    )
 }

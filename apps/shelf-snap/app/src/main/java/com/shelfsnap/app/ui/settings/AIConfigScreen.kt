@@ -58,6 +58,8 @@ import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AiSourceSegment
+import com.twobits.design.components.CallBudgetCard
+import com.twobits.design.components.CallBudgetEntry
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.CredentialRequirement
 import com.twobits.design.components.LocalModelPanel
@@ -174,6 +176,19 @@ fun AIConfigScreen(
                     viewModel = viewModel,
                     hasPro = hasPro,
                     onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
+                )
+
+                val scheme = MaterialTheme.colorScheme
+                CallBudgetCard(
+                    entries =
+                        listOf(
+                            CallBudgetEntry("Vision", 1, scheme.primary),
+                            CallBudgetEntry("Listing", 1, scheme.secondary),
+                            CallBudgetEntry("Market research", 2, scheme.tertiary),
+                        ),
+                    footnote =
+                        "Estimate per analyzed item. Exact provider calls vary by which web search " +
+                            "providers are enabled in Settings → Services.",
                 )
 
                 AiSectionCard(icon = Icons.Default.ImageSearch, title = "Vision — item identification") {
