@@ -1,10 +1,7 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Public
@@ -25,7 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -45,6 +40,7 @@ import com.shelfsnap.app.R
 import com.twobits.billing.SubscriptionTier
 import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
+import com.twobits.design.components.SettingsEntryCard
 import com.twobits.design.components.SettingsProStatusCard
 
 @Composable
@@ -95,9 +91,21 @@ fun SettingsScreen(
                 onDetails = onNavigateToPro,
             )
 
-            AiConfigCard(onClick = onAiConfig)
+            SettingsEntryCard(
+                icon = Icons.Default.AutoAwesome,
+                title = "AI configuration",
+                subtitle = "Vision model · pricing · web search · local models · API key",
+                onClick = onAiConfig,
+            )
 
-            ServicesCard(onClick = onNavigateToServices)
+            SettingsEntryCard(
+                icon = Icons.Default.Public,
+                title = "Services",
+                subtitle = "Web search providers used by market research",
+                onClick = onNavigateToServices,
+                accentColor = MaterialTheme.colorScheme.secondary,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            )
 
             // ── Capture & storage ──────────────────────────────────────────
             AppLabeledSectionCard(
@@ -119,112 +127,6 @@ fun SettingsScreen(
                 subtitle = stringResource(R.string.about_privacy),
                 onWhatsNew = onWhatsNew,
                 onDebugLog = onNavigateToDebugLog,
-            )
-        }
-    }
-}
-
-@Composable
-private fun AiConfigCard(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.27f)),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Default.AutoAwesome,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "AI configuration",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "Vision model · pricing · web search · local models · API key",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
-/** Web-search providers market research optionally uses — its own row since they're supporting
- * infrastructure, not AI providers, so they don't belong inside AI configuration. */
-@Composable
-private fun ServicesCard(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.27f)),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.13f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Default.Public,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Services",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "Web search providers used by market research",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(20.dp),
             )
         }
     }
