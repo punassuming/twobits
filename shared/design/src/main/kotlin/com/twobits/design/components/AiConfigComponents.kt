@@ -363,7 +363,10 @@ fun AiProManagedCard(
 }
 
 @Composable
-fun AiNoKeyWarning(modifier: Modifier = Modifier) {
+fun AiNoKeyWarning(
+    modifier: Modifier = Modifier,
+    text: String = "No API key configured. Add your OpenAI key in the credentials panel above.",
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -380,7 +383,7 @@ fun AiNoKeyWarning(modifier: Modifier = Modifier) {
             modifier = Modifier.size(18.dp),
         )
         Text(
-            text = "No API key configured. Add your OpenAI key in the credentials panel above.",
+            text = text,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onTertiaryContainer,
         )

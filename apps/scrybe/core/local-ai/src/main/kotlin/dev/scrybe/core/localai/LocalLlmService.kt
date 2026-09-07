@@ -1,7 +1,7 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
-import com.twobits.localai.LiteRtLmEngine
+import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.transforms.ClusterSuggestion
@@ -27,7 +27,7 @@ class LocalLlmService
                     ?: modelManager.anyLlmReady()?.let { modelManager.llmModelFile(it) }
                     ?: error("No local model downloaded. Go to Settings → Provider → Local to download one.")
             return withContext(Dispatchers.Default) {
-                LiteRtLmEngine(context, modelFile).use { engine ->
+                withLocalLlmEngine(context, modelFile) { engine ->
                     engine.generate(prompt)
                 }
             }

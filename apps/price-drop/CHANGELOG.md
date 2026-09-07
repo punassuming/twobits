@@ -8,16 +8,35 @@
 * choose a local model file instead of downloading it again
 * the small-model catalog changed: Gemma 3 1B and Gemma 3 270M are no longer offered (their generic download requires accepting Google's license, which a direct link can't do) — Qwen 3 0.6B and SmolLM2 360M take their place
 
+**Services** — search, shopping, and page-reading providers now live in their own Settings screen:
+* OpenAI stays in AI configuration → Credentials
+* Jina AI, SearchAPI.io, Serper.dev, Firecrawl, and Rainforest API moved to Settings → Services, alongside per-feature "which provider" toggles for the providers that support one
+
 ### Improvements
 
 **Local Ask** — the app stays responsive while local models initialize:
 * model loading and generation run away from the main thread
 
+**Settings** — the AI configuration entry card now matches the shared design system:
+* larger icon chip, bordered card, and an arrow icon consistent with the rest of the app
+
+**AI configuration** — a clearer missing-key warning for each feature:
+* now a full-width banner naming the actual missing provider
+* replaces the old small "No key" chip
+
 ### Fixes
+
+* no user-visible change: Local Ask's on-device engine now goes through the shared memory check and one-at-a-time gate added for Shelf Snap/Scrybe
 
 * no user-visible change: fixed two bugs in this PR's own new local-ai streaming/cancellation code (shared by all three apps) — multi-chunk responses were truncated to their last streamed fragment, and cancelling generation mid-flight left native generation running — caught by review before merge, so neither ever shipped
 
 * no user-visible change: fixed the new Import button crowding the model details column on narrow phones in the shared Local Models panel — caught by review before merge, so this never shipped
+
+* no user-visible change: Call budget estimate migrated onto a new shared component — same bar+legend layout, no behavior change
+
+* no user-visible change: fixed the new missing-key banner showing "No API key configured" for a key imported from a sibling app, which is real and usable but hadn't been Test-verified yet — caught by review before merge, so this never shipped
+
+* no user-visible change: removed the new Rainforest "Enabled for Price checking" toggle in Settings → Services — price checking, history, and barcode lookups route entirely off Rainforest's own connection mode and never read that toggle, so it would have silently done nothing — caught by review before merge, so this never shipped
 
 ## 0.23.2 (2026-08-31)
 

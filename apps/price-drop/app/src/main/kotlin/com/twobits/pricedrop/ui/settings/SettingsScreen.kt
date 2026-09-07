@@ -2,26 +2,17 @@ package com.twobits.pricedrop.ui.settings
 
 import android.app.Activity
 import android.content.Intent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -38,15 +29,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
+import com.twobits.design.components.SettingsEntryCard
 import com.twobits.design.components.SettingsProStatusCard
 import com.twobits.pricedrop.BuildConfig
 import com.twobits.pricedrop.data.settings.SettingsPrefs
@@ -58,6 +47,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPro: () -> Unit,
     onNavigateToAiConfig: () -> Unit,
+    onNavigateToServices: () -> Unit,
     onNavigateToWhatsNew: () -> Unit,
     onNavigateToDebugLog: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
@@ -117,7 +107,22 @@ fun SettingsScreen(
                 )
             }
             item {
-                AiConfigEntry(onClick = onNavigateToAiConfig)
+                SettingsEntryCard(
+                    icon = Icons.Default.AutoAwesome,
+                    title = "AI configuration",
+                    subtitle = "Providers · models · API keys · call budget",
+                    onClick = onNavigateToAiConfig,
+                )
+            }
+            item {
+                SettingsEntryCard(
+                    icon = Icons.Default.Public,
+                    title = "Services",
+                    subtitle = "Search, page-reading, and shopping providers",
+                    onClick = onNavigateToServices,
+                    accentColor = MaterialTheme.colorScheme.secondary,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                )
             }
             item {
                 AppLabeledSectionCard(
@@ -204,55 +209,6 @@ fun SettingsScreen(
                     onDebugLog = onNavigateToDebugLog,
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun AiConfigEntry(onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.Filled.AutoAwesome,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "AI configuration",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "Providers · models · API keys · call budget",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(
-                Icons.Filled.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
-            )
         }
     }
 }

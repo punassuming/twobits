@@ -63,10 +63,11 @@ fun TranscriptionProgressToast(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp,
-            // Bottom margin trimmed relative to the other sides — this sits above
-            // navigationBarsPadding() already applied by the caller, so a full 16dp here on top
-            // of that read as an oversized gap below the toast ("offset from the bottom").
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp).fillMaxWidth(),
+            // Symmetric padding — this now sits in a Scaffold bottomBar slot that genuinely
+            // reserves space for it (see ScrybeApp's MainContentBox), not floating over content
+            // that doesn't know it's there, so there's no stacking-with-navigationBarsPadding gap
+            // to compensate for with an uneven bottom margin like before.
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),

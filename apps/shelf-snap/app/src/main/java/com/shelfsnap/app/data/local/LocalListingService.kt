@@ -8,7 +8,7 @@ import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.remote.buildListingSystemPrompt
 import com.shelfsnap.app.data.remote.buildListingUserMessage
 import com.shelfsnap.app.data.remote.parseListingJson
-import com.twobits.localai.LiteRtLmEngine
+import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,7 +19,7 @@ import javax.inject.Singleton
 /**
  * On-device counterpart to [com.shelfsnap.app.data.remote.ListingGenerationService] — same
  * prompt/parsing logic (shared via [buildListingSystemPrompt]/[buildListingUserMessage]/
- * [parseListingJson]), routed through [LiteRtLmEngine] instead of OpenAI. Returns [current]
+ * [parseListingJson]), routed through [withLocalLlmEngine] instead of OpenAI. Returns [current]
  * unchanged on any failure, matching the cloud path's never-lose-data contract.
  */
 @Singleton
@@ -42,7 +42,7 @@ class LocalListingService
                     val systemPrompt = buildListingSystemPrompt(platform)
                     val userMessage = buildListingUserMessage(item, current, platform)
                     val startedAtMs = System.currentTimeMillis()
-                    // Constructing LiteRtLmEngine is a synchronous, blocking native model load —
+                    // Loading the local engine is a synchronous, blocking native model load —
                     // it doesn't hop dispatchers on its own, so a caller that launches this from a
                     // bare viewModelScope.launch {} (main-thread by default) would ANR. Every
                     // current caller happens to launch this off-main already, but that's an easy
@@ -51,7 +51,7 @@ class LocalListingService
                     // WhisperTranscriptionProvider).
                     withContext(Dispatchers.IO) {
                         progressTracker.update(progressId, "Loading local model…")
-                        LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt).use { engine ->
+                        withLocalLlmEngine(context, modelFile, systemInstruction = systemPrompt) { engine ->
                             progressTracker.update(progressId, "Generating listing locally…")
                             val response =
                                 engine.generate(userMessage) { progress ->

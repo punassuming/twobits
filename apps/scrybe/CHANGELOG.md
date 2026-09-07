@@ -6,7 +6,32 @@
 
 ### Improvements
 
+**Settings layout** — Profiles, Recording types, People, and AI configuration are now standalone cards instead of one grouped list:
+* matches the settings-entry style already used in Shelf Snap and PriceDrop
+
+**Call budget** — a clearer API-calls-per-session display:
+* now a proportional bar with a computed total
+* replaces the old fixed dot-row display
+
 ### Fixes
+
+* no user-visible change: AiNoKeyWarning gained an optional message parameter (used by PriceDrop) — Scrybe's call sites are unaffected and render identically
+
+* no user-visible change: fixed a CI compile failure from a missing import left behind by the Settings entry-card migration — caught by CI before merge, so this never shipped
+
+**Local transcription** — fixed the real cause of on-device Whisper runs taking forever:
+* audio is decoded in 28-second windows again instead of 10 — Whisper pads every window to 30s, so the 10s setting did nearly 3× the work and fed mostly silence to the model
+* large recordings no longer get split as if for a cloud upload, so WAV/MP3/OGG files over 20 MB transcribe locally instead of failing with an upload-related error
+* the Debug Log's transcribe entry now records chunk count and per-chunk timing
+
+* no user-visible change: local Gemma/Qwen engines now go through a shared memory check and one-at-a-time gate, and the Debug Log records why the previous run ended — same fix as Shelf Snap
+
+**Local transcription** — on-device Whisper transcription no longer gets stuck on "Transcribing…" forever:
+* audio decoding and the native Whisper decode step each now fail with a clear timeout instead of hanging indefinitely if the device's media decoder or the on-device model never returns
+* tapping Cancel during a local transcription now actually stops it and marks the recording as failed, instead of silently doing nothing
+* the recording notification now stays visible and shows "Transcribing…" through the whole transcription phase instead of disappearing the moment recording stops, so a transcription in progress is never invisible or unprotected in the background — this also means swiping the app away no longer leaves a stuck transcription silently running
+
+**Transcribing footer** — the "Transcribing…" footer no longer leaves a dead strip of untappable UI below it: * it now properly resizes the screen instead of floating on top of it
 
 ## 1.53.3 (2026-09-04)
 

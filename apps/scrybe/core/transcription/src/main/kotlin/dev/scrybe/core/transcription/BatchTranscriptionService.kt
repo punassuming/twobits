@@ -31,10 +31,22 @@ class BatchTranscriptionService
             providerType: ProviderType,
             options: TranscriptionOptions = TranscriptionOptions(),
         ): Result<BatchTranscriptResult> {
+            // OpenAiAudioChunker exists for one reason its name gives away: OpenAI's per-request
+            // upload cap (~25 MB, split at 20 MB here). An on-device run uploads nothing, and
+            // WhisperEngine already sub-chunks the decoded samples into 30s windows in memory, so
+            // routing LOCAL through the file chunker was pure harm: every chunk constructed a fresh
+            // WhisperEngine (a full model load from disk each time), and any format the chunker
+            // can't split (WAV/MP3/OGG — all offered as recording formats; WAV at the default
+            // 48 kHz crosses 20 MB in about 3.5 minutes) failed a local transcription with a
+            // "re-record in M4A for upload" error for an upload that was never going to happen.
             val audioChunks =
-                withContext(Dispatchers.IO) {
-                    runCatching { audioChunker.createChunksIfNeeded(audioFile) }
-                }.getOrElse { e -> return Result.failure(e) }
+                if (providerType == ProviderType.LOCAL) {
+                    listOf(audioFile)
+                } else {
+                    withContext(Dispatchers.IO) {
+                        runCatching { audioChunker.createChunksIfNeeded(audioFile) }
+                    }.getOrElse { e -> return Result.failure(e) }
+                }
             val totalChunks = audioChunks.size
             val isSingleChunk = totalChunks == 1 && audioChunks.first().absolutePath == audioFile.absolutePath
 

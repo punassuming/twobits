@@ -162,22 +162,24 @@ fun ItemDetailScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
-        ItemDetailScaffold(
-            uiState = uiState,
-            viewModel = viewModel,
-            snackbarHostState = snackbarHostState,
-            onBack = onBack,
-            onAddPhoto = onAddPhoto,
-            onNavigateToListingSummary = onNavigateToListingSummary,
-            onDeleteRequested = { showDeleteDialog = true },
-        )
-        ResearchProgressToast(
-            visible = uiState.isResearching,
-            progress = researchProgress,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
-    }
+    ItemDetailScaffold(
+        uiState = uiState,
+        viewModel = viewModel,
+        snackbarHostState = snackbarHostState,
+        onBack = onBack,
+        onAddPhoto = onAddPhoto,
+        onNavigateToListingSummary = onNavigateToListingSummary,
+        onDeleteRequested = { showDeleteDialog = true },
+        researchProgressToast = {
+            // Passed into Scaffold's own bottomBar slot below instead of floating as a Box
+            // overlay on top of this screen's content — that previously left a gap of visible
+            // content below the toast (its own padding stacked with no reserved space) and could
+            // block touches to whatever sat underneath its bounds. A real bottomBar slot reserves
+            // exactly its measured height (zero when AnimatedVisibility's `visible` is false) and
+            // folds it into Scaffold's own inset math, same as topBar already does above.
+            ResearchProgressToast(visible = uiState.isResearching, progress = researchProgress)
+        },
+    )
 }
 
 @Composable
@@ -189,9 +191,11 @@ private fun ItemDetailScaffold(
     onAddPhoto: () -> Unit,
     onNavigateToListingSummary: () -> Unit,
     onDeleteRequested: () -> Unit,
+    researchProgressToast: @Composable () -> Unit,
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = researchProgressToast,
         topBar = {
             TopAppBar(
                 title = {

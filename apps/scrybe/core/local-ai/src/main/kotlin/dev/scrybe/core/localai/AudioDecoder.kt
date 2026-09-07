@@ -3,18 +3,33 @@ package dev.scrybe.core.localai
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.os.SystemClock
+import kotlinx.coroutines.ensureActive
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.coroutines.coroutineContext
 
 internal data class DecodedAudio(
     val samples: FloatArray,
     val sampleRateHz: Int,
 )
 
+internal class AudioDecodeTimeoutException(
+    fileName: String,
+    timeoutMs: Long,
+) : RuntimeException(
+        "Decoding $fileName timed out after ${timeoutMs / 1_000}s (MediaCodec never signaled end-of-stream)",
+    )
+
 internal object AudioDecoder {
     private const val TIMEOUT_US = 10_000L
+
+    // Audio-only decode throughput is far faster than real time even on old/software codecs —
+    // there's no frame-rate-bound rendering step like video has — so this only exists to bound a
+    // genuine infinite spin (see the loop below), not to cap legitimate long recordings.
+    private const val DECODE_TIMEOUT_MS = 180_000L
 
     /**
      * Returns PCM samples at the source file's own sample rate — Scrybe's recorder is
@@ -22,7 +37,7 @@ internal object AudioDecoder {
      * callers must resample or pass [DecodedAudio.sampleRateHz] through to whatever expects a
      * fixed rate (e.g. [WhisperEngine], which needs 16kHz) rather than assuming 16kHz here.
      */
-    fun decode(audioFile: File): DecodedAudio {
+    suspend fun decode(audioFile: File): DecodedAudio {
         val extractor = MediaExtractor()
         extractor.setDataSource(audioFile.absolutePath)
 
@@ -49,41 +64,55 @@ internal object AudioDecoder {
         val bufferInfo = MediaCodec.BufferInfo()
         var inputDone = false
         var outputDone = false
+        val decodeStartedAtMs = SystemClock.elapsedRealtime()
 
-        while (!outputDone) {
-            if (!inputDone) {
-                val inputIdx = codec.dequeueInputBuffer(TIMEOUT_US)
-                if (inputIdx >= 0) {
-                    val inputBuffer = codec.getInputBuffer(inputIdx)!!
-                    val sampleSize = extractor.readSampleData(inputBuffer, 0)
-                    if (sampleSize < 0) {
-                        codec.queueInputBuffer(inputIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                        inputDone = true
-                    } else {
-                        codec.queueInputBuffer(inputIdx, 0, sampleSize, extractor.sampleTime, 0)
-                        extractor.advance()
+        try {
+            while (!outputDone) {
+                // A device whose codec never signals BUFFER_FLAG_END_OF_STREAM (a known
+                // MediaCodec quirk, or a truncated/corrupt recording) would otherwise spin here
+                // forever — this loop already re-enters every ~10-20ms via the bounded
+                // dequeueInputBuffer/dequeueOutputBuffer waits below, so both checks are cheap.
+                coroutineContext.ensureActive()
+                if (SystemClock.elapsedRealtime() - decodeStartedAtMs > DECODE_TIMEOUT_MS) {
+                    throw AudioDecodeTimeoutException(audioFile.name, DECODE_TIMEOUT_MS)
+                }
+
+                if (!inputDone) {
+                    val inputIdx = codec.dequeueInputBuffer(TIMEOUT_US)
+                    if (inputIdx >= 0) {
+                        val inputBuffer = codec.getInputBuffer(inputIdx)!!
+                        val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                        if (sampleSize < 0) {
+                            codec.queueInputBuffer(inputIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                            inputDone = true
+                        } else {
+                            codec.queueInputBuffer(inputIdx, 0, sampleSize, extractor.sampleTime, 0)
+                            extractor.advance()
+                        }
+                    }
+                }
+
+                val outputIdx = codec.dequeueOutputBuffer(bufferInfo, TIMEOUT_US)
+                if (outputIdx >= 0) {
+                    val outputBuffer = codec.getOutputBuffer(outputIdx)
+                    if (outputBuffer != null && bufferInfo.size > 0) {
+                        val chunk = ByteArray(bufferInfo.size)
+                        outputBuffer.get(chunk)
+                        pcmBytes.write(chunk)
+                    }
+                    codec.releaseOutputBuffer(outputIdx, false)
+                    if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                        outputDone = true
                     }
                 }
             }
-
-            val outputIdx = codec.dequeueOutputBuffer(bufferInfo, TIMEOUT_US)
-            if (outputIdx >= 0) {
-                val outputBuffer = codec.getOutputBuffer(outputIdx)
-                if (outputBuffer != null && bufferInfo.size > 0) {
-                    val chunk = ByteArray(bufferInfo.size)
-                    outputBuffer.get(chunk)
-                    pcmBytes.write(chunk)
-                }
-                codec.releaseOutputBuffer(outputIdx, false)
-                if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                    outputDone = true
-                }
-            }
+        } finally {
+            // Was previously only reached on the loop's normal exit path — cancellation or the
+            // timeout above would otherwise leak the codec instance.
+            codec.stop()
+            codec.release()
+            extractor.release()
         }
-
-        codec.stop()
-        codec.release()
-        extractor.release()
 
         return DecodedAudio(convertToFloat(pcmBytes.toByteArray(), channelCount), sourceSampleRate)
     }

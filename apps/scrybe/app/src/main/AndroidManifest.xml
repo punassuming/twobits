@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- For RecordingForegroundService staying foreground through the transcribing phase after
+         recording stops (native/CPU work, no microphone capture) — matches the mediaProcessing
+         type declared on that service. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROCESSING" />
     <!-- For the on-device model download's foreground worker (ModelDownloadWorker) — required
          since Android 14 to justify each foreground service type actually used, matching the
          dataSync type declared where WorkManager promotes that worker (see runLlmDownload). -->

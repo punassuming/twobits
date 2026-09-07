@@ -26,7 +26,7 @@ import com.shelfsnap.app.data.remote.search.WebSearchResult
 import com.shelfsnap.app.data.remote.search.WebSearchService
 import com.shelfsnap.app.data.remote.search.marketplaceKeyFromUrl
 import com.shelfsnap.app.util.ApiKeyValidator
-import com.twobits.localai.LiteRtLmEngine
+import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -324,7 +324,7 @@ class PriceResearchService
                                 ),
                             )
                         val text =
-                            LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt).use { engine ->
+                            withLocalLlmEngine(context, modelFile, systemInstruction = systemPrompt) { engine ->
                                 engine.generate(userMessage)
                             }
                         parseContentJson(text, evidence)

@@ -58,6 +58,8 @@ import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AiSourceSegment
+import com.twobits.design.components.CallBudgetCard
+import com.twobits.design.components.CallBudgetEntry
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.CredentialRequirement
 import com.twobits.design.components.LocalModelPanel
@@ -174,6 +176,27 @@ fun AIConfigScreen(
                     viewModel = viewModel,
                     hasPro = hasPro,
                     onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
+                )
+
+                val scheme = MaterialTheme.colorScheme
+                CallBudgetCard(
+                    // Market research is deliberately not a weighted entry here: it issues at
+                    // least 6 search queries (PriceResearchService's core + structuredExtra query
+                    // plan) plus page reads plus a synthesis call — PriceResearchService itself
+                    // records the real total as queries.size + readAttempts + 1, routinely well
+                    // into double digits. Any single fixed weight next to Vision/Listing's exact
+                    // 1-call cost would misrepresent it as similarly small and precise, so its
+                    // variable cost is covered in the footnote instead of a wrong number.
+                    entries =
+                        listOf(
+                            CallBudgetEntry("Vision", 1, scheme.primary),
+                            CallBudgetEntry("Listing", 1, scheme.secondary),
+                        ),
+                    footnote =
+                        "Estimate per analyzed item for vision and listing generation. Market " +
+                            "research issues several search queries plus page reads and a " +
+                            "synthesis call, so its own cost varies by item and by which " +
+                            "providers are enabled in Settings → Services.",
                 )
 
                 AiSectionCard(icon = Icons.Default.ImageSearch, title = "Vision — item identification") {
