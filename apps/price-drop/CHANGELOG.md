@@ -10,7 +10,7 @@
 
 **Services** — search, shopping, and page-reading providers now live in their own Settings screen:
 * OpenAI stays in AI configuration → Credentials
-* Jina AI, SearchAPI.io, Serper.dev, Firecrawl, and Rainforest API moved to Settings → Services, alongside per-feature "which provider" toggles
+* Jina AI, SearchAPI.io, Serper.dev, Firecrawl, and Rainforest API moved to Settings → Services, alongside per-feature "which provider" toggles for the providers that support one
 
 ### Improvements
 
@@ -20,7 +20,9 @@
 **Settings** — the AI configuration entry card now matches the shared design system:
 * larger icon chip, bordered card, and an arrow icon consistent with the rest of the app
 
-**AI configuration** — a missing-key warning for a feature now shows as a full-width banner naming the actual missing provider, replacing the old small "No key" chip
+**AI configuration** — a clearer missing-key warning for each feature:
+* now a full-width banner naming the actual missing provider
+* replaces the old small "No key" chip
 
 ### Fixes
 
@@ -29,6 +31,10 @@
 * no user-visible change: fixed the new Import button crowding the model details column on narrow phones in the shared Local Models panel — caught by review before merge, so this never shipped
 
 * no user-visible change: Call budget estimate migrated onto a new shared component — same bar+legend layout, no behavior change
+
+* no user-visible change: fixed the new missing-key banner showing "No API key configured" for a key imported from a sibling app, which is real and usable but hadn't been Test-verified yet — caught by review before merge, so this never shipped
+
+* no user-visible change: removed the new Rainforest "Enabled for Price checking" toggle in Settings → Services — price checking, history, and barcode lookups route entirely off Rainforest's own connection mode and never read that toggle, so it would have silently done nothing — caught by review before merge, so this never shipped
 
 ## 0.23.2 (2026-08-31)
 

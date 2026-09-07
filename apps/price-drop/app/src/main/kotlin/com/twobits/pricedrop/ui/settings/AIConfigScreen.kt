@@ -562,9 +562,14 @@ private fun FeatureDetailContent(
                     item {
                         AppSectionLabel("Providers")
                     }
+                    // Presence, not validity: a key mirrored in from a sibling app (or one the
+                    // user pasted but hasn't tapped Test on yet) has a real, usable key with
+                    // isKeyValid still null — isValid only ever becomes true after an explicit
+                    // successful Test. Basing this on isKeyValid would show "no key" for a
+                    // feature that's actually configured and would route calls just fine.
                     val hasConfiguredKey =
                         feature.providers.any { p ->
-                            p.key in enabledProviders && providerStates[p]?.isKeyValid == true
+                            p.key in enabledProviders && !providerStates[p]?.key.isNullOrBlank()
                         }
                     if (feature.providers.isNotEmpty() && !hasConfiguredKey) {
                         item {

@@ -83,7 +83,14 @@ fun ServicesScreen(
                             viewModel = viewModel,
                         )
 
-                        val servedFeatures = AiFeature.entries.filter { provider in it.providers }
+                        // Rainforest is deliberately excluded even though it's PRICE_CHECK's sole
+                        // provider: PriceDropApiClient.price()/history()/barcode() and
+                        // ProviderRegistry.rainforestIfEnabled() both route purely off Rainforest's
+                        // provider MODE, never this per-feature enabled-providers set — showing a
+                        // toggle here would tell the user it stops billed Rainforest calls when it
+                        // does nothing at all.
+                        val servedFeatures =
+                            AiFeature.entries.filter { provider in it.providers && provider != PriceDropProvider.RAINFOREST }
                         if (servedFeatures.isNotEmpty()) {
                             Column(modifier = Modifier.padding(start = 14.dp, bottom = 8.dp)) {
                                 servedFeatures.forEach { feature ->

@@ -6,7 +6,9 @@
 
 ### Improvements
 
-**Call budget estimate** — AI configuration now shows an estimated per-item call breakdown across vision, listing, and market research
+**Call budget estimate** — AI configuration now shows an estimated per-item API call cost:
+* a precise breakdown for vision and listing generation
+* a note that market research's own cost varies by item and enabled providers, instead of a misleadingly small fixed number
 
 ### Fixes
 

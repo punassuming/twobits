@@ -9,7 +9,9 @@
 **Settings layout** — Profiles, Recording types, People, and AI configuration are now standalone cards instead of one grouped list:
 * matches the settings-entry style already used in Shelf Snap and PriceDrop
 
-**Call budget** — API calls per session now shows as a proportional bar with a computed total, replacing the old fixed dot-row display
+**Call budget** — a clearer API-calls-per-session display:
+* now a proportional bar with a computed total
+* replaces the old fixed dot-row display
 
 ### Fixes
 

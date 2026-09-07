@@ -180,14 +180,22 @@ fun AIConfigScreen(
 
                 val scheme = MaterialTheme.colorScheme
                 CallBudgetCard(
+                    // Market research is deliberately not a weighted entry here: it issues at
+                    // least 6 search queries (PriceResearchService's core + structuredExtra query
+                    // plan) plus page reads plus a synthesis call — PriceResearchService itself
+                    // records the real total as queries.size + readAttempts + 1, routinely well
+                    // into double digits. Any single fixed weight next to Vision/Listing's exact
+                    // 1-call cost would misrepresent it as similarly small and precise, so its
+                    // variable cost is covered in the footnote instead of a wrong number.
                     entries =
                         listOf(
                             CallBudgetEntry("Vision", 1, scheme.primary),
                             CallBudgetEntry("Listing", 1, scheme.secondary),
-                            CallBudgetEntry("Market research", 2, scheme.tertiary),
                         ),
                     footnote =
-                        "Estimate per analyzed item. Exact provider calls vary by which web search " +
+                        "Estimate per analyzed item for vision and listing generation. Market " +
+                            "research issues several search queries plus page reads and a " +
+                            "synthesis call, so its own cost varies by item and by which " +
                             "providers are enabled in Settings → Services.",
                 )
 
