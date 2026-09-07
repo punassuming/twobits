@@ -99,8 +99,20 @@ class WhisperTranscriptionProvider
                         )
                     }
                     WhisperEngine(modelDir, model.filePrefix).use { engine ->
-                        val text = engine.transcribe(decoded.samples, decoded.sampleRateHz)
-                        record(success = true, snippet = "${text.length} chars", durationMs = System.currentTimeMillis() - startedAtMs)
+                        // Per-window timings are the one measurement that separates "the model
+                        // is slow on this device" from "a window is stuck" — a run that hangs
+                        // leaves no trace otherwise, and a run that finishes says nothing about
+                        // how the time was spent. Only collected when the debug log is on.
+                        val chunkTimingsMs = mutableListOf<Long>()
+                        val text =
+                            engine.transcribe(decoded.samples, decoded.sampleRateHz) { _, _, elapsedMs ->
+                                if (debugEnabled) chunkTimingsMs += elapsedMs
+                            }
+                        record(
+                            success = true,
+                            snippet = "${text.length} chars${chunkTimingSummary(chunkTimingsMs)}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        )
                         TranscriptResult(
                             text = text,
                             language = "en",
@@ -111,5 +123,17 @@ class WhisperTranscriptionProvider
             }.onFailure { error ->
                 record(success = false, snippet = "${error.javaClass.simpleName}: ${error.message}")
             }
+        }
+
+        /** e.g. ` · 11 chunks · avg 4.2s/chunk · max 6.1s`; empty when nothing was collected. */
+        private fun chunkTimingSummary(chunkTimingsMs: List<Long>): String {
+            if (chunkTimingsMs.isEmpty()) return ""
+            val avgSeconds = chunkTimingsMs.average() / MS_PER_SECOND
+            val maxSeconds = chunkTimingsMs.max() / MS_PER_SECOND
+            return " · ${chunkTimingsMs.size} chunks · avg ${"%.1f".format(avgSeconds)}s/chunk · max ${"%.1f".format(maxSeconds)}s"
+        }
+
+        private companion object {
+            const val MS_PER_SECOND = 1_000.0
         }
     }

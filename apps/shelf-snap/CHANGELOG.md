@@ -12,6 +12,11 @@
 
 ### Fixes
 
+**Local AI** — on-device Gemma analysis no longer silently kills the app when the device can't fit the model:
+* checks free memory before loading and shows a clear error instead of crashing
+* only one local model runs at a time, instead of several loading at once
+* the Debug Log now records why the previous run ended (out of memory, native crash, etc.) and how long the model took to load
+
 * no user-visible change: migrated the AI configuration and Services entry cards onto a new shared SettingsEntryCard component — same look, now shared with PriceDrop and Scrybe
 
 * no user-visible change: AiNoKeyWarning gained an optional message parameter (used by PriceDrop) — Shelf Snap's call sites are unaffected and render identically
