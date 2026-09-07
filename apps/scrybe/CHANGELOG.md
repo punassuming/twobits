@@ -15,6 +15,13 @@
 
 * no user-visible change: AiNoKeyWarning gained an optional message parameter (used by PriceDrop) — Scrybe's call sites are unaffected and render identically
 
+**Local transcription** — on-device Whisper transcription no longer gets stuck on "Transcribing…" forever:
+* audio decoding and the native Whisper decode step each now fail with a clear timeout instead of hanging indefinitely if the device's media decoder or the on-device model never returns
+* tapping Cancel during a local transcription now actually stops it and marks the recording as failed, instead of silently doing nothing
+* the recording notification now stays visible and shows "Transcribing…" through the whole transcription phase instead of disappearing the moment recording stops, so a transcription in progress is never invisible or unprotected in the background — this also means swiping the app away no longer leaves a stuck transcription silently running
+
+**Transcribing footer** — the "Transcribing…" footer no longer leaves a dead strip of untappable UI below it: * it now properly resizes the screen instead of floating on top of it
+
 ## 1.53.3 (2026-09-04)
 
 ### Features

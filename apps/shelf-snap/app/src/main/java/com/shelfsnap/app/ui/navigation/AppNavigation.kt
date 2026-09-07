@@ -5,10 +5,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -69,188 +72,205 @@ fun AppNavigation(
     val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
     val popSlideExit = slideOutHorizontally { it } + fadeOut()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            modifier = Modifier.fillMaxSize(),
-            enterTransition = { slideEnter },
-            exitTransition = { slideExit },
-            popEnterTransition = { popSlideEnter },
-            popExitTransition = { popSlideExit },
-        ) {
-            composable(Screen.Onboarding.route) {
-                OnboardingScreen(
-                    onFinish = {
-                        onboardingViewModel.markComplete()
-                        navController.navigate(Screen.Inventory.route) {
-                            popUpTo(Screen.Onboarding.route) { inclusive = true }
-                        }
-                    },
-                )
-            }
-
-            composable(Screen.Inventory.route) {
-                InventoryScreen(
-                    onAddItem = { navController.navigate(Screen.Camera.createRoute()) },
-                    onItemClick = { itemId ->
-                        navController.navigate(Screen.ItemDetail.createRoute(itemId))
-                    },
-                    onSummaryClick = { navController.navigate(Screen.Summary.route) },
-                    onSettingsClick = { navController.navigate(Screen.Settings.route) },
-                )
-            }
-
-            composable(
-                route = Screen.Camera.route,
-                arguments =
-                    listOf(
-                        navArgument("itemId") {
-                            type = NavType.LongType
-                            defaultValue = -1L
+    // contentWindowInsets is zeroed out deliberately: individual screens under NavHost already
+    // manage their own top/side system-bar insets (there's no topBar here for Scaffold to reserve
+    // space for), so this Scaffold's only job is reserving bottom space for the toast — letting it
+    // also fold system-bar insets into innerPadding would double up with what each screen and the
+    // toast itself (navigationBarsPadding() below) already apply.
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            // AnimatedVisibility inside this toast collapses to zero height when not showing, so
+            // innerPadding's bottom value shrinks back to zero the moment it disappears, and grows
+            // to exactly its measured height while visible — this is what actually reduces the
+            // content area and makes the toast come up from the real bottom edge, instead of
+            // floating over content that has no idea it exists (the previous Box+align(BottomCenter)
+            // overlay).
+            LocalAnalysisProgressToast(
+                label = localAnalysisProgressState.label,
+                otherActiveCount = localAnalysisProgressState.otherActiveCount,
+                modifier = Modifier.navigationBarsPadding(),
+            )
+        },
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = { slideEnter },
+                exitTransition = { slideExit },
+                popEnterTransition = { popSlideEnter },
+                popExitTransition = { popSlideExit },
+            ) {
+                composable(Screen.Onboarding.route) {
+                    OnboardingScreen(
+                        onFinish = {
+                            onboardingViewModel.markComplete()
+                            navController.navigate(Screen.Inventory.route) {
+                                popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            }
                         },
-                    ),
-            ) { backStackEntry ->
-                val cameraItemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
-                CameraScreen(
-                    onItemSaved = { itemId ->
-                        navController.navigate(Screen.ItemDetail.createRoute(itemId)) {
-                            popUpTo(Screen.Camera.route) { inclusive = true }
-                        }
+                    )
+                }
+
+                composable(Screen.Inventory.route) {
+                    InventoryScreen(
+                        onAddItem = { navController.navigate(Screen.Camera.createRoute()) },
+                        onItemClick = { itemId ->
+                            navController.navigate(Screen.ItemDetail.createRoute(itemId))
+                        },
+                        onSummaryClick = { navController.navigate(Screen.Summary.route) },
+                        onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                    )
+                }
+
+                composable(
+                    route = Screen.Camera.route,
+                    arguments =
+                        listOf(
+                            navArgument("itemId") {
+                                type = NavType.LongType
+                                defaultValue = -1L
+                            },
+                        ),
+                ) { backStackEntry ->
+                    val cameraItemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
+                    CameraScreen(
+                        onItemSaved = { itemId ->
+                            navController.navigate(Screen.ItemDetail.createRoute(itemId)) {
+                                popUpTo(Screen.Camera.route) { inclusive = true }
+                            }
+                        },
+                        onBack = { navController.popBackStack() },
+                        onOpenSettings = { navController.navigate(Screen.Settings.route) },
+                        itemId = cameraItemId,
+                    )
+                }
+
+                composable(
+                    route = Screen.ItemDetail.route,
+                    arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
+                ) { backStackEntry ->
+                    val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
+                    val openListTab by backStackEntry.savedStateHandle
+                        .getStateFlow("open_list_tab", false)
+                        .collectAsState()
+                    ItemDetailScreen(
+                        itemId = itemId,
+                        onBack = { navController.popBackStack() },
+                        onDeleted = {
+                            navController.navigate(Screen.Inventory.route) {
+                                popUpTo(Screen.Inventory.route) { inclusive = false }
+                            }
+                        },
+                        onAddPhoto = { navController.navigate(Screen.Camera.createRoute(itemId)) },
+                        onNavigateToMarketResearch = {
+                            navController.navigate(Screen.MarketResearch.createRoute(itemId))
+                        },
+                        onNavigateToListingSummary = {
+                            navController.navigate(Screen.ListingSummary.createRoute(itemId))
+                        },
+                        openListTabRequested = openListTab,
+                        onOpenListTabConsumed = { backStackEntry.savedStateHandle["open_list_tab"] = false },
+                    )
+                }
+
+                composable(
+                    route = Screen.MarketResearch.route,
+                    arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
+                ) { backStackEntry ->
+                    val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
+                    MarketResearchScreen(
+                        itemId = itemId,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(
+                    route = Screen.ListingSummary.route,
+                    arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
+                ) { backStackEntry ->
+                    val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
+                    ListingSummaryScreen(
+                        itemId = itemId,
+                        onBack = { navController.popBackStack() },
+                        onGoToList = {
+                            try {
+                                navController
+                                    .getBackStackEntry(Screen.ItemDetail.route)
+                                    .savedStateHandle["open_list_tab"] = true
+                            } catch (_: IllegalArgumentException) {
+                            }
+                            navController.popBackStack()
+                        },
+                    )
+                }
+
+                composable(Screen.Pro.route) {
+                    ProScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(Screen.Summary.route) {
+                    SummaryScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(Screen.Settings.route) {
+                    SettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
+                        onAiConfig = { navController.navigate(Screen.AiConfig.route) },
+                        onNavigateToServices = { navController.navigate(Screen.Services.route) },
+                        onNavigateToPro = { navController.navigate(Screen.Pro.route) },
+                        onNavigateToDebugLog = { navController.navigate(Screen.DebugLog.route) },
+                    )
+                }
+
+                composable(Screen.WhatsNew.route) {
+                    WhatsNewScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(Screen.AiConfig.route) {
+                    com.shelfsnap.app.ui.settings.AIConfigScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(Screen.Services.route) {
+                    ServicesScreen(onBack = { navController.popBackStack() })
+                }
+
+                composable(Screen.DebugLog.route) {
+                    DebugLogScreen(onBack = { navController.popBackStack() })
+                }
+            }
+            if (whatsNewState.isVisible && !suppressWhatsNew) {
+                AppWhatsNewDialog(
+                    title = whatsNewState.title,
+                    categories = whatsNewState.categories,
+                    confirmLabel = whatsNewState.confirmLabel,
+                    onDismiss = whatsNewViewModel::dismiss,
+                    onViewHistory = { navController.navigate(Screen.WhatsNew.route) },
+                )
+            }
+
+            staleStartWarning?.let { entry ->
+                CrashWarningDialog(
+                    opLabel = entry.op.orEmpty().removeSuffix("-start"),
+                    onViewDebugLog = {
+                        crashWarningViewModel.dismiss()
+                        navController.navigate(Screen.DebugLog.route)
                     },
-                    onBack = { navController.popBackStack() },
-                    onOpenSettings = { navController.navigate(Screen.Settings.route) },
-                    itemId = cameraItemId,
+                    onDismiss = crashWarningViewModel::dismiss,
                 )
             }
-
-            composable(
-                route = Screen.ItemDetail.route,
-                arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
-            ) { backStackEntry ->
-                val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
-                val openListTab by backStackEntry.savedStateHandle
-                    .getStateFlow("open_list_tab", false)
-                    .collectAsState()
-                ItemDetailScreen(
-                    itemId = itemId,
-                    onBack = { navController.popBackStack() },
-                    onDeleted = {
-                        navController.navigate(Screen.Inventory.route) {
-                            popUpTo(Screen.Inventory.route) { inclusive = false }
-                        }
-                    },
-                    onAddPhoto = { navController.navigate(Screen.Camera.createRoute(itemId)) },
-                    onNavigateToMarketResearch = {
-                        navController.navigate(Screen.MarketResearch.createRoute(itemId))
-                    },
-                    onNavigateToListingSummary = {
-                        navController.navigate(Screen.ListingSummary.createRoute(itemId))
-                    },
-                    openListTabRequested = openListTab,
-                    onOpenListTabConsumed = { backStackEntry.savedStateHandle["open_list_tab"] = false },
-                )
-            }
-
-            composable(
-                route = Screen.MarketResearch.route,
-                arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
-            ) { backStackEntry ->
-                val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
-                MarketResearchScreen(
-                    itemId = itemId,
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable(
-                route = Screen.ListingSummary.route,
-                arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
-            ) { backStackEntry ->
-                val itemId = backStackEntry.arguments?.getLong("itemId") ?: -1L
-                ListingSummaryScreen(
-                    itemId = itemId,
-                    onBack = { navController.popBackStack() },
-                    onGoToList = {
-                        try {
-                            navController
-                                .getBackStackEntry(Screen.ItemDetail.route)
-                                .savedStateHandle["open_list_tab"] = true
-                        } catch (_: IllegalArgumentException) {
-                        }
-                        navController.popBackStack()
-                    },
-                )
-            }
-
-            composable(Screen.Pro.route) {
-                ProScreen(onBack = { navController.popBackStack() })
-            }
-
-            composable(Screen.Summary.route) {
-                SummaryScreen(
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable(Screen.Settings.route) {
-                SettingsScreen(
-                    onBack = { navController.popBackStack() },
-                    onWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
-                    onAiConfig = { navController.navigate(Screen.AiConfig.route) },
-                    onNavigateToServices = { navController.navigate(Screen.Services.route) },
-                    onNavigateToPro = { navController.navigate(Screen.Pro.route) },
-                    onNavigateToDebugLog = { navController.navigate(Screen.DebugLog.route) },
-                )
-            }
-
-            composable(Screen.WhatsNew.route) {
-                WhatsNewScreen(
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable(Screen.AiConfig.route) {
-                com.shelfsnap.app.ui.settings.AIConfigScreen(
-                    onBack = { navController.popBackStack() },
-                )
-            }
-
-            composable(Screen.Services.route) {
-                ServicesScreen(onBack = { navController.popBackStack() })
-            }
-
-            composable(Screen.DebugLog.route) {
-                DebugLogScreen(onBack = { navController.popBackStack() })
-            }
-        }
-        if (whatsNewState.isVisible && !suppressWhatsNew) {
-            AppWhatsNewDialog(
-                title = whatsNewState.title,
-                categories = whatsNewState.categories,
-                confirmLabel = whatsNewState.confirmLabel,
-                onDismiss = whatsNewViewModel::dismiss,
-                onViewHistory = { navController.navigate(Screen.WhatsNew.route) },
-            )
-        }
-
-        staleStartWarning?.let { entry ->
-            CrashWarningDialog(
-                opLabel = entry.op.orEmpty().removeSuffix("-start"),
-                onViewDebugLog = {
-                    crashWarningViewModel.dismiss()
-                    navController.navigate(Screen.DebugLog.route)
-                },
-                onDismiss = crashWarningViewModel::dismiss,
-            )
-        }
-
-        LocalAnalysisProgressToast(
-            label = localAnalysisProgressState.label,
-            otherActiveCount = localAnalysisProgressState.otherActiveCount,
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
-        )
-    } // Box
+        } // Box
+    } // Scaffold
 }
 
 /**

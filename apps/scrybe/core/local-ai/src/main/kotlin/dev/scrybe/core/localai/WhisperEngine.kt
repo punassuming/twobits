@@ -4,18 +4,42 @@ import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.Closeable
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
+
+internal class LocalTranscriptionTimeoutException(
+    timeoutMs: Long,
+) : RuntimeException(
+        "Local Whisper decode timed out after ${timeoutMs / 1_000}s and was abandoned " +
+            "(sherpa-onnx has no cancel/interrupt API for a blocking decode() call)",
+    )
 
 internal class WhisperEngine(
     modelDir: File,
     filePrefix: String = "tiny",
 ) : Closeable {
     private val recognizer: OfflineRecognizer
+
+    // Deliberately NOT a child of any caller's coroutine — sherpa-onnx's OfflineRecognizer.decode()
+    // is a synchronous JNI call with no cancel/interrupt/timeout API of its own (confirmed against
+    // its actual Kotlin API surface: createStream/getResult/decode/setConfig/release only), so
+    // once it's running, nothing can stop it. Running it here instead lets decodeChunk() stop
+    // *awaiting* a hung call (via withTimeoutOrNull below) without needing to — impossibly —
+    // interrupt it; the abandoned call simply keeps running on this scope until it returns on its
+    // own or the process dies.
+    private val nativeCallScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val outstandingNativeCalls = AtomicInteger(0)
+
+    @Volatile
+    private var releasePending = false
 
     init {
         // sherpa-onnx's asr-models release only ships int8-quantized encoder/decoder pairs for
@@ -83,18 +107,44 @@ internal class WhisperEngine(
     private suspend fun decodeChunk(
         samples: FloatArray,
         sampleRate: Int,
-    ): String =
-        withContext(Dispatchers.Default) {
-            val stream = recognizer.createStream()
-            stream.acceptWaveform(samples, sampleRate)
-            recognizer.decode(stream)
-            val result = recognizer.getResult(stream)
-            stream.release()
-            result.text.trim()
+    ): String {
+        outstandingNativeCalls.incrementAndGet()
+        val deferred =
+            nativeCallScope.async {
+                val stream = recognizer.createStream()
+                try {
+                    stream.acceptWaveform(samples, sampleRate)
+                    recognizer.decode(stream)
+                    recognizer.getResult(stream).text.trim()
+                } finally {
+                    stream.release()
+                }
+            }
+        deferred.invokeOnCompletion {
+            if (outstandingNativeCalls.decrementAndGet() == 0 && releasePending) {
+                recognizer.release()
+            }
         }
+        // await() is a real suspension point, unlike the native decode() call itself — it responds
+        // immediately to both this timeout and the caller's own Job being cancelled, regardless of
+        // whether the abandoned native call ever returns.
+        return withTimeoutOrNull(CHUNK_DECODE_TIMEOUT_MS) { deferred.await() }
+            ?: throw LocalTranscriptionTimeoutException(CHUNK_DECODE_TIMEOUT_MS)
+    }
 
     override fun close() {
-        recognizer.release()
+        // If an abandoned decode (above) is still running when close() is called (e.g. this
+        // engine's `.use { }` block exiting via the timeout exception), releasing the recognizer
+        // now would free native memory that call is still touching inside JNI — a use-after-free
+        // that crashes the whole process, not a catchable Kotlin exception. Defer release() to
+        // that call's own eventual completion instead: a bounded memory leak only for as long as
+        // the abandoned call keeps running, never blocking a later transcription (a fresh
+        // WhisperEngine is constructed per attempt regardless).
+        if (outstandingNativeCalls.get() == 0) {
+            recognizer.release()
+        } else {
+            releasePending = true
+        }
     }
 
     private companion object {
@@ -107,6 +157,12 @@ internal class WhisperEngine(
         // (stream create/release), not a model reload — cheap enough that this shouldn't be raised
         // back toward 28 without a specific reason to.
         const val CHUNK_SECONDS = 10
+
+        // ~10-40x headroom over worst-case observed decode time for a 10s chunk on low-end/
+        // throttled hardware — bounds the worst case wait after a hung native call to this, once
+        // per remaining chunk is aborted (transcribe()'s loop doesn't catch/retry, so only one
+        // timeout is ever paid per attempt).
+        const val CHUNK_DECODE_TIMEOUT_MS = 45_000L
 
         fun resolveModelFile(
             modelDir: File,

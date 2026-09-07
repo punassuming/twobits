@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -142,44 +144,60 @@ private fun MainContentBox(
     startDestination: String,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier) {
-        ScrybeNavHost(navController = navController, startDestination = startDestination)
-
-        AnimatedVisibility(
-            visible = activeRecordingState.isRecording,
-            modifier =
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { -it / 2 }) + fadeOut(),
-        ) {
-            ActiveRecordingBanner(
-                elapsedMs = activeRecordingState.elapsedMs,
-                amplitudeRatio = activeRecordingState.amplitudeRatio,
-                onOpen = {
-                    try {
-                        navController
-                            .getBackStackEntry(Screen.Capture.route)
-                            .savedStateHandle["unminimize"] = true
-                    } catch (_: IllegalArgumentException) {
-                    }
-                    navController.navigate(Screen.Capture.route) {
-                        launchSingleTop = true
-                    }
-                },
+    // contentWindowInsets is zeroed out deliberately: individual screens under ScrybeNavHost
+    // already manage their own top/side system-bar insets (there's no topBar here for Scaffold to
+    // reserve space for), so this Scaffold's only job is reserving bottom space for the toast —
+    // letting it also fold system-bar insets into innerPadding would double up with what each
+    // screen and the toast itself (navigationBarsPadding() below) already apply.
+    Scaffold(
+        modifier = modifier,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            // AnimatedVisibility(visible = false) collapses to zero height, so innerPadding's
+            // bottom value below shrinks back to zero the moment this isn't showing, and grows to
+            // exactly its measured height while it is — this is what actually reduces the content
+            // area and makes the toast come up from the real bottom edge, instead of floating over
+            // content that has no idea it exists (the previous Box+align(BottomCenter) overlay).
+            TranscriptionProgressToast(
+                visible = transcriptionProgressState.isTranscribing,
+                label = transcriptionProgressState.label,
+                queuedCount = transcriptionProgressState.queuedCount,
+                isCancelling = transcriptionProgressState.isCancelling,
+                onCancel = onCancelTranscription,
+                modifier = Modifier.navigationBarsPadding(),
             )
-        }
+        },
+    ) { innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding)) {
+            ScrybeNavHost(navController = navController, startDestination = startDestination)
 
-        TranscriptionProgressToast(
-            visible = transcriptionProgressState.isTranscribing,
-            label = transcriptionProgressState.label,
-            queuedCount = transcriptionProgressState.queuedCount,
-            isCancelling = transcriptionProgressState.isCancelling,
-            onCancel = onCancelTranscription,
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
-        )
+            AnimatedVisibility(
+                visible = activeRecordingState.isRecording,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it / 2 }) + fadeOut(),
+            ) {
+                ActiveRecordingBanner(
+                    elapsedMs = activeRecordingState.elapsedMs,
+                    amplitudeRatio = activeRecordingState.amplitudeRatio,
+                    onOpen = {
+                        try {
+                            navController
+                                .getBackStackEntry(Screen.Capture.route)
+                                .savedStateHandle["unminimize"] = true
+                        } catch (_: IllegalArgumentException) {
+                        }
+                        navController.navigate(Screen.Capture.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+        }
     }
 }
 

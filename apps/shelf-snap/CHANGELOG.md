@@ -14,6 +14,8 @@
 
 * no user-visible change: AiNoKeyWarning gained an optional message parameter (used by PriceDrop) — Shelf Snap's call sites are unaffected and render identically
 
+**Progress footers** — the market-research and local-analysis progress footers no longer leave a dead strip of untappable UI below them: * they now properly resize the screen instead of floating on top of it, matching the same fix in Scrybe
+
 ## 1.32.3 (2026-09-04)
 
 ### Features
