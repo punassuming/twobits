@@ -15,6 +15,8 @@
 
 * no user-visible change: AiNoKeyWarning gained an optional message parameter (used by PriceDrop) — Scrybe's call sites are unaffected and render identically
 
+* no user-visible change: fixed a CI compile failure from a missing import left behind by the Settings entry-card migration — caught by CI before merge, so this never shipped
+
 **Local transcription** — on-device Whisper transcription no longer gets stuck on "Transcribing…" forever:
 * audio decoding and the native Whisper decode step each now fail with a clear timeout instead of hanging indefinitely if the device's media decoder or the on-device model never returns
 * tapping Cancel during a local transcription now actually stops it and marks the recording as failed, instead of silently doing nothing
