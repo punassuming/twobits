@@ -3,9 +3,16 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application>
+        <!-- mediaProcessing covers the transcribing phase after recording stops (native/CPU
+             work, no microphone capture) — this service now stays foreground through that phase
+             instead of tearing itself down before it starts, so it needs a type that actually
+             matches. Declaring both is safe on minSdk 26: the OS only enforces types it knows
+             about (mediaProcessing is API 34+; older platforms ignore what they don't recognize),
+             and no call-site change is needed since startForeground()'s 2-arg overload already
+             applies every type declared here. -->
         <service
             android:name=".RecordingForegroundService"
-            android:foregroundServiceType="microphone"
+            android:foregroundServiceType="microphone|mediaProcessing"
             android:exported="false" />
     </application>
 </manifest>

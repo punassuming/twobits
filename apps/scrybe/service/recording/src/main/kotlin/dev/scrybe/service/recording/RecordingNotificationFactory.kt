@@ -57,11 +57,42 @@ class RecordingNotificationFactory
                     )
                 }
 
-            return NotificationCompat.Builder(context, CHANNEL_ID)
+            return NotificationCompat
+                .Builder(context, CHANNEL_ID)
                 .setContentTitle("Recording in progress")
                 .setContentText("Elapsed ${formatElapsed(elapsedMs)} · ${formatLevel(amplitudeRatio)}")
                 .setSmallIcon(R.drawable.ic_recording_notification)
                 .addAction(R.drawable.ic_recording_notification, "Stop", stopPendingIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(contentPendingIntent)
+                .build()
+        }
+
+        /**
+         * Shown while auto-transcription runs, replacing the recording-phase notification (same
+         * channel/id) rather than leaving the user with no notification at all between "recording
+         * stopped" and "transcription finished" — previously nothing covered this phase, since the
+         * service used to tear itself (and the recording notification) down immediately once
+         * recording stopped, regardless of whether transcription had even started.
+         */
+        fun buildTranscribingNotification(context: Context): Notification {
+            val contentIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val contentPendingIntent =
+                contentIntent?.let {
+                    PendingIntent.getActivity(
+                        context,
+                        1,
+                        it,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    )
+                }
+
+            return NotificationCompat
+                .Builder(context, CHANNEL_ID)
+                .setContentTitle("Transcribing…")
+                .setContentText("Turning your recording into text")
+                .setSmallIcon(R.drawable.ic_recording_notification)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(contentPendingIntent)

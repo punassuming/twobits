@@ -79,7 +79,6 @@ class RecordingForegroundService : Service() {
     @Inject lateinit var debugLogStore: DebugLogStore
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val transcriptionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val streamingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var lastNotifiedSecond: Long = -1L
     private var telemetryJob: Job? = null
@@ -294,65 +293,93 @@ class RecordingForegroundService : Service() {
 
     private fun handleStop() {
         serviceScope.launch {
-            val streamedText = closeRealtimeStreamingIfActive()
-            playRecordingFeedback()
-            audioRecorder
-                .stopRecording()
-                .onSuccess { recordedAudio ->
-                    runCatching {
-                        withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
-                    }.onSuccess { sessionId ->
-                        recordingSessionEvents.onSessionCompleted(sessionId)
-                        transcriptionScope.launch {
-                            if (!preferencesDataStore.autoTranscribe.first()) {
-                                return@launch
-                            }
-                            if (recordedAudio.durationMs < MIN_AUTO_TRANSCRIBE_DURATION_MS) {
-                                recordingSessionEvents.onRecordingError(SHORT_AUTO_TRANSCRIBE_MESSAGE)
-                                return@launch
-                            }
-                            val transcriptionResult =
-                                if (!streamedText.isNullOrBlank()) {
-                                    sessionTranscriptionCoordinator
-                                        .acceptRealtimeTranscript(sessionId, streamedText)
-                                        .map { true }
-                                } else {
-                                    sessionTranscriptionCoordinator
-                                        .autoTranscribeIfEnabled(sessionId)
-                                }
-                            transcriptionResult.onFailure {
-                                android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
-                                debugLogStore.record(it)
-                                recordingSessionEvents.onRecordingError(
-                                    it.message ?: "Auto-transcription failed",
-                                )
-                            }
-                            if (transcriptionResult.isSuccess && !pendingSkipTransform) {
-                                val customTypeId = pendingCustomTypeId
-                                if (customTypeId != null) {
-                                    val defaultProfileId =
-                                        customRecordingTypeDao.getById(customTypeId)?.defaultProfileId
-                                    if (defaultProfileId != null) {
-                                        sessionTransformCoordinator
-                                            .transformLatestRawTranscript(sessionId, defaultProfileId)
-                                            .onFailure {
-                                                android.util.Log.w(TAG, "Auto-transform failed for session $sessionId", it)
-                                            }
-                                    }
-                                }
-                            }
+            // Cleanup (tears down the foreground notification/service) must run exactly once no
+            // matter how this coroutine ends — including via cancellation. Auto-transcription
+            // below now runs inline on this same coroutine (see runAutoTranscription's doc) rather
+            // than a detached scope, so an in-app Cancel of a local/cloud transcription cancels
+            // this whole coroutine, not just the transcription part — without this `finally`, that
+            // would skip cleanup entirely and leave the service and its notification stuck.
+            try {
+                val streamedText = closeRealtimeStreamingIfActive()
+                playRecordingFeedback()
+                audioRecorder
+                    .stopRecording()
+                    .onSuccess { recordedAudio ->
+                        runCatching {
+                            withContext(Dispatchers.IO) { persistRecording(recordedAudio) }
+                        }.onSuccess { sessionId ->
+                            recordingSessionEvents.onSessionCompleted(sessionId)
+                            runAutoTranscription(sessionId, recordedAudio, streamedText)
+                        }.onFailure { error ->
+                            android.util.Log.e(TAG, "Failed to save recording", error)
+                            debugLogStore.record(error)
+                            recordingSessionEvents.onRecordingError(error.message ?: "Failed to save recording")
+                            runCatching { File(recordedAudio.filePath).takeIf { it.exists() }?.delete() }
                         }
                     }.onFailure { error ->
-                        android.util.Log.e(TAG, "Failed to save recording", error)
-                        debugLogStore.record(error)
-                        recordingSessionEvents.onRecordingError(error.message ?: "Failed to save recording")
-                        runCatching { File(recordedAudio.filePath).takeIf { it.exists() }?.delete() }
+                        android.util.Log.e(TAG, "Failed to stop recording", error)
+                        recordingSessionEvents.onRecordingError(error.message ?: "Failed to stop recording")
                     }
-                }.onFailure { error ->
-                    android.util.Log.e(TAG, "Failed to stop recording", error)
-                    recordingSessionEvents.onRecordingError(error.message ?: "Failed to stop recording")
+            } finally {
+                cleanupAfterRecordingCommand()
+            }
+        }
+    }
+
+    /**
+     * Runs auto-transcription (and, on success, the auto-transform follow-up) sequentially on the
+     * caller's own coroutine — deliberately NOT launched into a separate detached scope, unlike
+     * before. The previous fire-and-forget `transcriptionScope.launch { }` let this work outlive
+     * the recording notification and the service's own foreground status (both torn down by
+     * `cleanupAfterRecordingCommand()` immediately after the launch, regardless of whether
+     * transcription had even started), so a hung or slow transcription kept running invisibly,
+     * unprotected, in the background after the app was closed. Running it inline here means
+     * `handleStop()`'s `finally` naturally waits for this to finish before tearing anything down,
+     * and the notification (see [updateTranscribingNotification]) stays accurate for as long as
+     * this function is actually running.
+     */
+    private suspend fun runAutoTranscription(
+        sessionId: String,
+        recordedAudio: RecordedAudio,
+        streamedText: String?,
+    ) {
+        if (!preferencesDataStore.autoTranscribe.first()) {
+            return
+        }
+        if (recordedAudio.durationMs < MIN_AUTO_TRANSCRIBE_DURATION_MS) {
+            recordingSessionEvents.onRecordingError(SHORT_AUTO_TRANSCRIBE_MESSAGE)
+            return
+        }
+        updateTranscribingNotification()
+        val transcriptionResult =
+            if (!streamedText.isNullOrBlank()) {
+                sessionTranscriptionCoordinator
+                    .acceptRealtimeTranscript(sessionId, streamedText)
+                    .map { true }
+            } else {
+                sessionTranscriptionCoordinator
+                    .autoTranscribeIfEnabled(sessionId)
+            }
+        transcriptionResult.onFailure {
+            android.util.Log.e(TAG, "Auto-transcription failed for session $sessionId", it)
+            debugLogStore.record(it)
+            recordingSessionEvents.onRecordingError(
+                it.message ?: "Auto-transcription failed",
+            )
+        }
+        if (transcriptionResult.isSuccess && !pendingSkipTransform) {
+            val customTypeId = pendingCustomTypeId
+            if (customTypeId != null) {
+                val defaultProfileId =
+                    customRecordingTypeDao.getById(customTypeId)?.defaultProfileId
+                if (defaultProfileId != null) {
+                    sessionTransformCoordinator
+                        .transformLatestRawTranscript(sessionId, defaultProfileId)
+                        .onFailure {
+                            android.util.Log.w(TAG, "Auto-transform failed for session $sessionId", it)
+                        }
                 }
-            cleanupAfterRecordingCommand()
+            }
         }
     }
 
@@ -474,6 +501,21 @@ class RecordingForegroundService : Service() {
                     elapsedMs = elapsedMs,
                     amplitudeRatio = amplitudeRatio,
                 ),
+            )
+    }
+
+    // Same notification id as the recording-phase one — this replaces it rather than posting a
+    // second notification, keeping the foreground status (and the user-visible status text)
+    // continuous across the recording-to-transcribing handoff instead of a gap where nothing is
+    // shown at all.
+    @SuppressLint("MissingPermission")
+    private fun updateTranscribingNotification() {
+        if (!hasNotificationPermission()) return
+        NotificationManagerCompat
+            .from(this)
+            .notify(
+                RecordingNotificationFactory.NOTIFICATION_ID,
+                notificationFactory.buildTranscribingNotification(this),
             )
     }
 

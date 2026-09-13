@@ -1,7 +1,7 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
-import com.twobits.localai.LiteRtLmEngine
+import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
@@ -36,7 +36,7 @@ class LocalTransformationProvider
                 val prompt = "Transcript:\n$transcript\n\nOutput only the result."
 
                 withContext(Dispatchers.Default) {
-                    LiteRtLmEngine(context, modelFile, systemInstruction = input.systemPrompt).use { engine ->
+                    withLocalLlmEngine(context, modelFile, systemInstruction = input.systemPrompt) { engine ->
                         val response = engine.generate(prompt)
                         TransformResult(
                             transformedText = response.trim(),

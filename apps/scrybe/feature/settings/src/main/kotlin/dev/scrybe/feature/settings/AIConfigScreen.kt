@@ -2,7 +2,6 @@ package dev.scrybe.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -28,7 +26,6 @@ import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,7 +51,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,6 +64,8 @@ import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.AiSourceSegment
+import com.twobits.design.components.CallBudgetCard
+import com.twobits.design.components.CallBudgetEntry
 import com.twobits.design.components.LocalModelPanel
 import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
@@ -252,9 +250,28 @@ fun AIConfigScreen(
                         onUpgrade = { activity?.let { viewModel.startProPurchase(it) } },
                     )
 
+                    val scheme = MaterialTheme.colorScheme
+                    val callBudgetEntries =
+                        buildList {
+                            add(CallBudgetEntry("Transcription", 1, scheme.primary))
+                            if (uiState.enableSpeakerIdentification) add(CallBudgetEntry("Speakers", 2, scheme.tertiary))
+                            if (uiState.enableInsightAnalysis) add(CallBudgetEntry("Insights", 2, scheme.secondary))
+                            add(CallBudgetEntry("Transforms", 2, scheme.onSurfaceVariant))
+                        }
                     CallBudgetCard(
-                        speakerIdEnabled = uiState.enableSpeakerIdentification,
-                        insightsEnabled = uiState.enableInsightAnalysis,
+                        entries = callBudgetEntries,
+                        title = "API calls per session",
+                        totalLabel = { "~$it calls/session" },
+                        footnote =
+                            "Per session. " +
+                                buildList {
+                                    add("Transcription = 1 call")
+                                    if (uiState.enableSpeakerIdentification) {
+                                        add("Speaker ID = 2 (timestamped re-transcription + assignment)")
+                                    }
+                                    if (uiState.enableInsightAnalysis) add("Insights = 2 (sentiment + topics)")
+                                    add("Transforms = 1–2 per transform applied")
+                                }.joinToString(" · ") + ".",
                     )
 
                     AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
@@ -574,67 +591,5 @@ private fun AiToggleRow(
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@Composable
-private fun CallBudgetCard(
-    speakerIdEnabled: Boolean,
-    insightsEnabled: Boolean,
-) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                "API calls per session",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                CallBudgetRow("Transcription", calls = 1, color = MaterialTheme.colorScheme.primary)
-                if (speakerIdEnabled) {
-                    CallBudgetRow("Speakers", calls = 2, color = MaterialTheme.colorScheme.tertiary)
-                }
-                if (insightsEnabled) {
-                    CallBudgetRow("Insights", calls = 2, color = MaterialTheme.colorScheme.secondary)
-                }
-                CallBudgetRow("Transforms", calls = 2, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            val parts =
-                buildList {
-                    add("Transcription = 1 call")
-                    if (speakerIdEnabled) add("Speaker ID = 2 (timestamped re-transcription + assignment)")
-                    if (insightsEnabled) add("Insights = 2 (sentiment + topics)")
-                    add("Transforms = 1–2 per transform applied")
-                }
-            Text(
-                "Per session. ${parts.joinToString(" · ")}.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CallBudgetRow(
-    label: String,
-    calls: Int,
-    color: Color,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            repeat(calls) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(10.dp)
-                            .background(color.copy(alpha = 0.6f + it * 0.2f), CircleShape),
-                )
-            }
-        }
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

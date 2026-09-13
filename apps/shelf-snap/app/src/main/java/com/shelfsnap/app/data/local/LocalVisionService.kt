@@ -8,7 +8,8 @@ import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.parseDraftItemJson
 import com.twobits.localai.LiteRtBackend
-import com.twobits.localai.LiteRtLmEngine
+import com.twobits.localai.LocalInferenceMemoryGuard
+import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,11 +20,11 @@ import javax.inject.Singleton
 
 /**
  * On-device counterpart to [VisionAnalysisService] — same JSON schema/parsing (shared via
- * [parseDraftItemJson]), routed through [LiteRtLmEngine.generateWithImage] instead of OpenAI.
+ * [parseDraftItemJson]), routed through [com.twobits.localai.LiteRtLmEngine.generateWithImage] instead of OpenAI.
  *
  * EXPERIMENTAL: relies on Gemma 4 E2B/E4B actually supporting image input via LiteRT-LM's
  * vision path, which is evidenced (litert-community lists these repos under "Multi-Modality
- * Models") but not independently verified end-to-end — see [LiteRtLmEngine]'s doc comment.
+ * Models") but not independently verified end-to-end — see [com.twobits.localai.LiteRtLmEngine]'s doc comment.
  * Only sends a single photo regardless of the user's multi-photo-analysis setting; multi-image
  * local vision is a separate, untested question.
  */
@@ -42,8 +43,8 @@ class LocalVisionService
             val progressId = progressTracker.start("Analyzing photo…")
             return try {
                 runCatching {
-                    // Constructing LiteRtLmEngine is a synchronous, blocking native model load —
-                    // it doesn't hop dispatchers on its own, so a caller that launches this from a
+                    // Loading the engine is a synchronous, blocking native model load — it
+                    // doesn't hop dispatchers on its own, so a caller that launches this from a
                     // bare viewModelScope.launch {} (main-thread by default) would ANR. Every
                     // current caller happens to launch this off-main already, but that's an easy
                     // contract to break for a new one, so it's enforced here instead of trusted
@@ -52,20 +53,21 @@ class LocalVisionService
                     //
                     // visionBackend must be set for generateWithImage() to work at all — LiteRT-LM's
                     // own docs only demonstrate sending Content.ImageFile with visionBackend
-                    // configured, and leaving it null (the previous state here) while sending an
-                    // image is undocumented, unsupported usage. That mismatch — not a Kotlin-level
-                    // bug — is the leading suspect for this path's crash-with-nothing-in-the-log:
-                    // native ML runtimes tend to hard-abort (SIGABRT) rather than throw a catchable
-                    // exception for unsupported configurations, which no runCatching here can see.
+                    // configured; leaving it null while sending an image is unsupported usage that
+                    // a native runtime answers with an abort, not an exception.
                     withContext(Dispatchers.IO) {
                         val downscaledPath = downscaleForLocalInference(photoPath)
                         val startedAtMs = System.currentTimeMillis()
                         // Recorded — and awaited — immediately before the risky native call below,
-                        // not after: a native crash in LiteRT-LM's vision path kills the process
-                        // with zero chance for any Kotlin try/catch to run, so this entry already
-                        // being safely on disk is the only way to later see, from the AI call log
-                        // alone, which specific call (model, photo size) was in flight when it
-                        // crashed — there is no matching "vision-analyze" entry after it if so.
+                        // not after: a native crash or low-memory kill in LiteRT-LM's vision path
+                        // ends the process with zero chance for any Kotlin try/catch to run, so
+                        // this entry already being safely on disk is the only way to later see,
+                        // from the AI call log alone, which call (model, photo size, and how much
+                        // memory the device had) was in flight when it died — there is no matching
+                        // "vision-analyze" entry after it if so. The "vision-engine-loaded" entry
+                        // below then splits that window in two: a death before it is the model
+                        // load, a death after it is the image prompt itself.
+                        val memorySummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown"
                         debugLogStore.record(
                             DebugLogEntry(
                                 timestampMs = startedAtMs,
@@ -73,18 +75,43 @@ class LocalVisionService
                                 op = "vision-analyze-start",
                                 endpoint = "on-device",
                                 model = modelFile.name,
-                                requestSummary = "photo=${File(downscaledPath).name} (${File(downscaledPath).length()} bytes)",
+                                requestSummary =
+                                    "photo=${File(downscaledPath).name} (${File(downscaledPath).length()} bytes) · $memorySummary",
                                 success = true,
                             ),
                         )
                         try {
-                            LiteRtLmEngine(
+                            progressTracker.update(progressId, "Loading local model…")
+                            withLocalLlmEngine(
                                 context,
                                 modelFile,
                                 systemInstruction = VisionAnalysisService.SYSTEM_PROMPT,
                                 visionBackend = LiteRtBackend.CPU,
-                            ).use { engine ->
-                                val response = engine.generateWithImage(File(downscaledPath), VisionAnalysisService.USER_PROMPT)
+                            ) { engine ->
+                                debugLogStore.record(
+                                    DebugLogEntry(
+                                        timestampMs = System.currentTimeMillis(),
+                                        type = DebugLogEntryType.AI_CALL,
+                                        op = "vision-engine-loaded",
+                                        endpoint = "on-device",
+                                        model = modelFile.name,
+                                        requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                                        success = true,
+                                        durationMs = System.currentTimeMillis() - startedAtMs,
+                                    ),
+                                )
+                                progressTracker.update(progressId, "Analyzing photo…")
+                                val response =
+                                    engine.generateWithImage(File(downscaledPath), VisionAnalysisService.USER_PROMPT) { progress ->
+                                        val elapsedSeconds = progress.elapsedMs / 1_000
+                                        val detail =
+                                            if (progress.receivedMessageCount == 0) {
+                                                "Waiting for local model… ${elapsedSeconds}s"
+                                            } else {
+                                                "Analyzing photo… ${elapsedSeconds}s"
+                                            }
+                                        progressTracker.update(progressId, detail)
+                                    }
                                 debugLogStore.record(
                                     DebugLogEntry(
                                         timestampMs = System.currentTimeMillis(),
@@ -136,7 +163,7 @@ class LocalVisionService
          * out-of-memory risk this engine has no guardrail against on its own — mirrors the same
          * downscale-before-send precaution [VisionAnalysisService] already applies for the cloud
          * path (see its `encodeImageToBase64`), just writing the result to a temp file since
-         * [LiteRtLmEngine.generateWithImage] takes a file path, not bytes. [MAX_DIM] is smaller
+         * [com.twobits.localai.LiteRtLmEngine.generateWithImage] takes a file path, not bytes. [MAX_DIM] is smaller
          * than the cloud path's 2048px cap since this competes with the model for the device's
          * own memory rather than a server's. Falls back to the original [photoPath] if decoding
          * fails for any reason, so a failure here doesn't block the analysis attempt outright.

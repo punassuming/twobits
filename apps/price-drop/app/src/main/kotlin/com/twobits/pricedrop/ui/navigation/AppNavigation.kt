@@ -35,6 +35,7 @@ import com.twobits.pricedrop.ui.product.ProductDetailScreen
 import com.twobits.pricedrop.ui.search.SearchScreen
 import com.twobits.pricedrop.ui.settings.AIConfigScreen
 import com.twobits.pricedrop.ui.settings.DebugLogScreen
+import com.twobits.pricedrop.ui.settings.ServicesScreen
 import com.twobits.pricedrop.ui.settings.SettingsScreen
 import com.twobits.pricedrop.ui.watch.WatchScreen
 import com.twobits.pricedrop.ui.whatsnew.WhatsNewPopupViewModel
@@ -135,12 +136,16 @@ fun AppNavigation(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToPro = { navController.navigate(Screen.Pro.route) },
                     onNavigateToAiConfig = { navController.navigate(Screen.AiConfig.route) },
+                    onNavigateToServices = { navController.navigate(Screen.Services.route) },
                     onNavigateToWhatsNew = { navController.navigate(Screen.WhatsNew.route) },
                     onNavigateToDebugLog = { navController.navigate(Screen.DebugLog.route) },
                 )
             }
             composable(Screen.AiConfig.route) {
                 AIConfigScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.Services.route) {
+                ServicesScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(Screen.DebugLog.route) {
                 DebugLogScreen(onBack = { navController.popBackStack() })

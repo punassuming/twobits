@@ -63,10 +63,13 @@ class LocalAskSession
                     close()
                     // Engine construction synchronously opens and prepares the native model. On
                     // a cold start that takes seconds, so never do it from AskViewModel's main
-                    // dispatcher or Android will treat the app as unresponsive.
+                    // dispatcher or Android will treat the app as unresponsive. acquire() also
+                    // refuses up front when the device can't fit the model, and holds the
+                    // process-wide one-engine gate until close() — which is fine here, since
+                    // Ask is PriceDrop's only on-device inference.
                     engine =
                         withContext(Dispatchers.Default) {
-                            LiteRtLmEngine(context, modelFile, systemInstruction = systemPrompt)
+                            LiteRtLmEngine.acquire(context, modelFile, systemInstruction = systemPrompt)
                         }
                     engineModelFile = modelFile
                 }
