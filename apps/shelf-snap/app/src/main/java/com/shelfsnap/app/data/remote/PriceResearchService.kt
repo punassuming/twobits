@@ -38,6 +38,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.IOException
+import java.io.InterruptedIOException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -716,7 +717,7 @@ class PriceResearchService
                                         endpoint = service.provider.key,
                                         requestSummary = query,
                                         success = false,
-                                        responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                                        responseSnippet = describeSearchFailure(e),
                                         durationMs = System.currentTimeMillis() - startedAtMs,
                                         stackTrace = e.stackTraceToString(),
                                     ),
@@ -776,6 +777,23 @@ class PriceResearchService
             val lower = text.lowercase()
             val matchedPhrase = DEAD_PAGE_PHRASES.firstOrNull { lower.contains(it) }
             return matchedPhrase?.let { "page text matched dead-page phrase \"$it\"" }
+        }
+
+        /**
+         * A per-provider OkHttp `callTimeout` firing (see e.g. `JinaAiSearchService`'s 20s
+         * ceiling) surfaces here as `InterruptedIOException("timeout")` caused by
+         * `IOException("Canceled")` — OkHttp's own internal shape for "the call's time budget
+         * ran out", not a crash or a network-level read timeout. Accurate, but unreadable in the
+         * Debug Log next to `durationMs`, which already shows how long the call actually ran —
+         * recognized here and described in plain terms instead of the raw exception class/message.
+         */
+        private fun describeSearchFailure(e: Throwable): String {
+            val cause = e.cause
+            return if (e is InterruptedIOException && e.message == "timeout" && cause is IOException && cause.message == "Canceled") {
+                "Timed out — provider didn't respond in time"
+            } else {
+                "${e.javaClass.simpleName}: ${e.message}"
+            }
         }
 
         /**
@@ -886,7 +904,7 @@ class PriceResearchService
                                 endpoint = "worker-managed-search",
                                 requestSummary = query,
                                 success = false,
-                                responseSnippet = "${it.javaClass.simpleName}: ${it.message}",
+                                responseSnippet = describeSearchFailure(it),
                                 durationMs = System.currentTimeMillis() - startedAtMs,
                                 stackTrace = it.stackTraceToString(),
                             ),

@@ -8,6 +8,9 @@
 
 ### Fixes
 
+**Debug Log** — a search provider timing out now reads as a plain timeout, not a cryptic crash-looking stack trace:
+* affects the "web-search" entries recorded during market research
+
 ## 1.32.4 (2026-09-13)
 
 ### Features
