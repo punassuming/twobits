@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.shelfsnap.app.data.listing.ListingCopy
 import com.shelfsnap.app.data.local.ItemDao
+import com.shelfsnap.app.data.local.LocalListingResult
 import com.shelfsnap.app.data.local.LocalListingService
 import com.shelfsnap.app.data.local.LocalModelManager
 import com.shelfsnap.app.data.local.LocalVisionService
@@ -282,27 +283,35 @@ class ItemRepository
             item: Item,
             platform: Platform,
             current: ListingCopy,
-        ): ListingCopy {
+        ): LocalListingResult {
             val sourceKey = dataStore.data.firstOrNull()?.get(KEY_LISTING_SOURCE) ?: "byok"
             val model = getReasoningModel().apiName
             return when (executionModeFromSourceKey(sourceKey)) {
                 ExecutionMode.PRO -> {
                     val appUserId = subscriptionRepository.getAppUserId()
-                    listingGenerationService.refine(
-                        item = item,
-                        platform = platform,
-                        current = current,
-                        openAiKey = appUserId,
-                        openAiBaseUrl = WORKER_BASE,
-                        openAiAuthHeader = "Bearer $appUserId",
-                        model = model,
+                    LocalListingResult(
+                        listing =
+                            listingGenerationService.refine(
+                                item = item,
+                                platform = platform,
+                                current = current,
+                                openAiKey = appUserId,
+                                openAiBaseUrl = WORKER_BASE,
+                                openAiAuthHeader = "Bearer $appUserId",
+                                model = model,
+                            ),
                     )
                 }
                 ExecutionMode.LOCAL -> {
                     val modelFile = localModelFile()
-                    if (modelFile != null) localListingService.refine(item, platform, current, modelFile) else current
+                    if (modelFile != null) {
+                        localListingService.refine(item, platform, current, modelFile)
+                    } else {
+                        LocalListingResult(listing = current)
+                    }
                 }
-                ExecutionMode.BYOK, ExecutionMode.OFF -> listingGenerationService.refine(item, platform, current, getApiKey(), model = model)
+                ExecutionMode.BYOK, ExecutionMode.OFF ->
+                    LocalListingResult(listing = listingGenerationService.refine(item, platform, current, getApiKey(), model = model))
             }
         }
 

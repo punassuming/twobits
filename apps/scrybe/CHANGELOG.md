@@ -8,6 +8,15 @@
 
 ### Fixes
 
+**Stuck transcriptions** — force-closing the app mid-transcription no longer leaves it stuck forever:
+* now marked failed automatically the next time you open the app
+* a still-running transcription is unaffected — only abandoned ones are cleared
+
+**Transcribing footer** — the footer now reaches the true bottom of the screen everywhere:
+* now matches Shelf Snap, instead of sitting short of the edge
+
+* no user-visible change: on-device diarization/insight failures now log to the Debug Log for diagnosis
+
 ## 1.53.4 (2026-09-13)
 
 ### Features

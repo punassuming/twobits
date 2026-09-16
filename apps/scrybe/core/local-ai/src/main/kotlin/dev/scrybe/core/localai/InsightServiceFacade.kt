@@ -26,7 +26,7 @@ class InsightServiceFacade
             providerType: ProviderType,
         ): Result<String> =
             if (routedLocal("insight-sentiment")) {
-                localService.analyzeSentiment(transcriptText, durationMs, providerType)
+                localService.analyzeSentiment(transcriptText, durationMs, providerType).onFailure { logFailure("insight-sentiment", it) }
             } else {
                 openAiService.analyzeSentiment(transcriptText, durationMs, providerType)
             }
@@ -37,7 +37,7 @@ class InsightServiceFacade
             providerType: ProviderType,
         ): Result<String> =
             if (routedLocal("insight-topics")) {
-                localService.extractTopics(transcriptText, durationMs, providerType)
+                localService.extractTopics(transcriptText, durationMs, providerType).onFailure { logFailure("insight-topics", it) }
             } else {
                 openAiService.extractTopics(transcriptText, durationMs, providerType)
             }
@@ -61,5 +61,30 @@ class InsightServiceFacade
                 )
             }
             return local
+        }
+
+        // The caller (SessionTranscriptionCoordinator's automatic post-transcription follow-up)
+        // discards a failure here with .getOrNull() ?: return — by design, this stays a silent
+        // skip in the main UI (insights are a non-blocking enhancement, not core to the
+        // recording). Recording the failure — including an InsufficientMemoryException's
+        // specific reason — here is the only way it's ever diagnosable at all.
+        private suspend fun logFailure(
+            op: String,
+            error: Throwable,
+        ) {
+            if (!preferencesDataStore.debugDiarization.first()) return
+            debugLogStore.record(
+                DebugLogEntry(
+                    timestampMs = System.currentTimeMillis(),
+                    type = DebugLogEntryType.AI_CALL,
+                    op = op,
+                    endpoint = "on-device",
+                    model = "local",
+                    requestSummary = "AI features source is Local — routed to on-device model, not OpenAI",
+                    success = false,
+                    responseSnippet = "${error.javaClass.simpleName}: ${error.message}",
+                    stackTrace = error.stackTraceToString(),
+                ),
+            )
         }
     }

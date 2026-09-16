@@ -168,7 +168,12 @@ private fun MainContentBox(
             )
         },
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
+        // fillMaxSize() here (and on ScrybeNavHost's own NavHost below) was dropped when this
+        // Box's modifier was replaced during the Scaffold conversion above — without it, this
+        // content box has no guarantee of actually filling the space the Scaffold reserves for
+        // it, which is what let the toast (this Scaffold's bottomBar) visually sit short of the
+        // true screen edge on some screens instead of flush against it, as intended.
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             ScrybeNavHost(navController = navController, startDestination = startDestination)
 
             AnimatedVisibility(

@@ -37,6 +37,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
@@ -78,7 +80,21 @@ fun ListingSummaryScreen(
             it.status == ListingStatus.DRAFT || it.status == ListingStatus.ACTIVE
         } ?: emptyList()
 
+    // Refine/"Refine all" are only ever triggered from this screen, but this screen's
+    // ItemDetailViewModel instance (default hiltViewModel(), scoped to this nav destination) is
+    // a different instance from ItemDetailScreen's — that screen's snackbar can't show an error
+    // set here. Same pattern as ItemDetailScreen's own snackbar, duplicated because the state it
+    // reads belongs to a separate ViewModel instance, not because the pattern itself differs.
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {

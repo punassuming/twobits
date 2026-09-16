@@ -46,6 +46,23 @@ interface RecordingSessionDao {
         updatedAt: Long,
     )
 
+    /**
+     * Like [updateSessionsByStatus], but only for rows whose `updatedAt` predates
+     * [staleBefore] — for reconciling sessions stuck at a transient status ([oldStatus]) by a
+     * killed process, without also catching one this same process just legitimately put into
+     * that status after [staleBefore] was captured. See `ScrybeApplication`'s app-start sweep.
+     */
+    @Query(
+        "UPDATE recording_sessions SET status = :newStatus, updatedAt = :updatedAt " +
+            "WHERE status = :oldStatus AND updatedAt < :staleBefore",
+    )
+    suspend fun updateSessionsByStatusIfStaleBefore(
+        oldStatus: String,
+        newStatus: String,
+        staleBefore: Long,
+        updatedAt: Long,
+    )
+
     @Query("SELECT audioFilePath FROM recording_sessions")
     suspend fun getAllAudioFilePaths(): List<String>
 

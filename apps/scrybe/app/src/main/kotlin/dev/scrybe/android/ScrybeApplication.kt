@@ -3,9 +3,11 @@ package dev.scrybe.android
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 import dev.scrybe.core.common.TransformStepsCodec
+import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transforms.DefaultProfiles
 import dev.scrybe.service.recording.WaveformBackfiller
@@ -20,6 +22,8 @@ import javax.inject.Inject
 class ScrybeApplication : Application() {
     @Inject lateinit var transformProfileDao: TransformProfileDao
 
+    @Inject lateinit var recordingSessionDao: RecordingSessionDao
+
     @Inject lateinit var preferencesDataStore: AppPreferencesDataStore
 
     @Inject lateinit var waveformBackfiller: WaveformBackfiller
@@ -31,8 +35,15 @@ class ScrybeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         debugLogStore.install()
+        // Captured synchronously, before any launch{} below can be delayed by the dispatcher —
+        // see reconcileOrphanedTranscribingSessions()'s doc comment for why this exact ordering
+        // is what makes that sweep safe.
+        val appStartTimeMs = System.currentTimeMillis()
         applicationScope.launch {
             waveformBackfiller.backfillMissingWaveforms()
+        }
+        applicationScope.launch {
+            reconcileOrphanedTranscribingSessions(appStartTimeMs)
         }
         applicationScope.launch {
             val deletedIds = preferencesDataStore.deletedDefaultProfileIds.first()
@@ -64,6 +75,38 @@ class ScrybeApplication : Application() {
                 }
             }
         }
+    }
+
+    /**
+     * A session left at [SessionStatus.TRANSCRIBING] by a killed process (force-stop, low-memory
+     * kill, native crash — see [DebugLogStore]'s own exit-reason capture for the same failure
+     * class) has no live coroutine backing it in this fresh process:
+     * `TranscriptionCancellationController`'s job map is populated only while
+     * `SessionTranscriptionCoordinator.transcribeSession()` is actually running, and starts empty
+     * on every launch. Left alone, such a session shows "Transcribing…" on the global toast
+     * forever, and Cancel is a no-op against it (nothing in the map to cancel), cycling between
+     * "Cancelling…" and "Transcribing…" without ever resolving — until, coincidentally, the user
+     * opens that exact session's detail screen, the only other place a stuck TRANSCRIBING row
+     * gets corrected today.
+     *
+     * This runs asynchronously on [applicationScope] — `onCreate()` returns immediately, so the
+     * Activity or recording service can start a genuinely new transcription before this
+     * coroutine actually gets scheduled. An unconditional "every TRANSCRIBING row" sweep would
+     * then wrongly fail that live session. [appStartTimeMs] (captured synchronously in
+     * `onCreate()`, before this — or any — `launch{}`) rules that out: a session this process
+     * itself just started transcribing necessarily has `updatedAt >= appStartTimeMs`, since
+     * nothing in this process could have touched it before that timestamp was taken, so
+     * [RecordingSessionDao.updateSessionsByStatusIfStaleBefore]'s `staleBefore` cutoff excludes
+     * it regardless of how delayed this sweep runs. A row genuinely orphaned by a *previous*
+     * process necessarily has an older `updatedAt`, so it's still caught.
+     */
+    private suspend fun reconcileOrphanedTranscribingSessions(appStartTimeMs: Long) {
+        recordingSessionDao.updateSessionsByStatusIfStaleBefore(
+            oldStatus = SessionStatus.TRANSCRIBING.name,
+            newStatus = SessionStatus.FAILED.name,
+            staleBefore = appStartTimeMs,
+            updatedAt = System.currentTimeMillis(),
+        )
     }
 
     private companion object {

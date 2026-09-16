@@ -63,11 +63,12 @@ fun TranscriptionProgressToast(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp,
-            // Symmetric padding — this now sits in a Scaffold bottomBar slot that genuinely
-            // reserves space for it (see ScrybeApp's MainContentBox), not floating over content
-            // that doesn't know it's there, so there's no stacking-with-navigationBarsPadding gap
-            // to compensate for with an uneven bottom margin like before.
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            // Asymmetric bottom margin, not the symmetric 16dp this briefly became: a smaller
+            // bottom value here still stacks with the caller's navigationBarsPadding() (this
+            // Surface has no way to know whether its Scaffold bottomBar slot is actually filling
+            // the space reserved for it further up the tree), and a full 16dp on top of that
+            // read as an oversized gap below the toast — the same report this fixed once before.
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp).fillMaxWidth(),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),

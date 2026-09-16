@@ -346,45 +346,71 @@ class ItemDetailViewModel
 
         /** AI-refines the listing copy for one platform using the current item fields. */
         fun refineListing(platformKey: String) {
-            val item = _uiState.value.item ?: return
-            val platform = Platform.fromKey(platformKey) ?: return
-            val listing = item.listings.firstOrNull { it.platformKey == platformKey } ?: return
             viewModelScope.launch {
-                _uiState.update { it.copy(refiningPlatforms = it.refiningPlatforms + platformKey) }
-                val current =
-                    ListingCopy(
-                        title = listing.title ?: "",
-                        description = listing.description ?: "",
-                        condition = listing.condition ?: "",
-                        shipping = listing.shipping ?: "",
-                    )
-                val refined = repository.refineListing(item, platform, current)
-                val updatedItem =
-                    item.copy(
-                        listings =
-                            item.listings.map { l ->
-                                if (l.platformKey == platformKey) {
-                                    l.copy(title = refined.title, description = refined.description, condition = refined.condition, shipping = refined.shipping)
-                                } else {
-                                    l
-                                }
-                            },
-                        updatedAt = System.currentTimeMillis(),
-                    )
-                repository.update(updatedItem)
-                _uiState.update { it.copy(item = updatedItem, refiningPlatforms = it.refiningPlatforms - platformKey) }
+                _uiState.update { it.copy(error = null) }
+                val error = refineListingInternal(platformKey)
+                if (error != null) _uiState.update { it.copy(error = error) }
             }
         }
 
-        /** AI-refines listing copy for all DRAFT listings sequentially. */
+        /**
+         * Does the actual refine for one platform: reads the current item/listing fresh from
+         * [_uiState] (so a call from [refineAllListings]'s loop sees the previous platform's
+         * update already applied, not a value captured once before the loop started), calls the
+         * engine, persists the result. Returns the failure message, or null on success — the
+         * caller decides how to surface it, rather than this function writing `error` itself:
+         * [refineListing] sets it directly for one tap, [refineAllListings] aggregates it across
+         * every platform in the batch. Letting each call in a loop set `error` independently
+         * would mean a later platform's success silently overwrites an earlier one's failure
+         * with null.
+         */
+        private suspend fun refineListingInternal(platformKey: String): String? {
+            val item = _uiState.value.item ?: return null
+            val platform = Platform.fromKey(platformKey) ?: return null
+            val listing = item.listings.firstOrNull { it.platformKey == platformKey } ?: return null
+            _uiState.update { it.copy(refiningPlatforms = it.refiningPlatforms + platformKey) }
+            val current =
+                ListingCopy(
+                    title = listing.title ?: "",
+                    description = listing.description ?: "",
+                    condition = listing.condition ?: "",
+                    shipping = listing.shipping ?: "",
+                )
+            val refined = repository.refineListing(item, platform, current)
+            val refinedCopy = refined.listing
+            val updatedItem =
+                item.copy(
+                    listings =
+                        item.listings.map { l ->
+                            if (l.platformKey == platformKey) {
+                                l.copy(
+                                    title = refinedCopy.title,
+                                    description = refinedCopy.description,
+                                    condition = refinedCopy.condition,
+                                    shipping = refinedCopy.shipping,
+                                )
+                            } else {
+                                l
+                            }
+                        },
+                    updatedAt = System.currentTimeMillis(),
+                )
+            repository.update(updatedItem)
+            _uiState.update { it.copy(item = updatedItem, refiningPlatforms = it.refiningPlatforms - platformKey) }
+            return refined.error
+        }
+
+        /** AI-refines listing copy for all DRAFT listings, one at a time, aggregating any failures. */
         fun refineAllListings() {
             val item = _uiState.value.item ?: return
             val draftKeys = item.listings.filter { it.status == ListingStatus.DRAFT }.map { it.platformKey }
             if (draftKeys.isEmpty()) return
             viewModelScope.launch {
-                _uiState.update { it.copy(isRefiningAll = true) }
-                draftKeys.forEach { key -> refineListing(key) }
-                _uiState.update { it.copy(isRefiningAll = false) }
+                _uiState.update { it.copy(isRefiningAll = true, error = null) }
+                val errors = mutableListOf<String>()
+                draftKeys.forEach { key -> refineListingInternal(key)?.let { errors += it } }
+                val errorSummary = errors.distinct().joinToString("\n").ifBlank { null }
+                _uiState.update { it.copy(isRefiningAll = false, error = errorSummary) }
             }
         }
 

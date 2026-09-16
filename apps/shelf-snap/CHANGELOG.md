@@ -8,6 +8,13 @@
 
 ### Fixes
 
+**Local AI errors** — on-device AI failures now show the real reason, not one generic message:
+* a memory shortage now names the model and free space needed
+* a failed local listing refinement now shows an error instead of nothing
+
+**Debug Log** — a search provider timing out now reads as a plain timeout, not a cryptic crash-looking stack trace:
+* affects the "web-search" entries recorded during market research
+
 ## 1.32.4 (2026-09-13)
 
 ### Features

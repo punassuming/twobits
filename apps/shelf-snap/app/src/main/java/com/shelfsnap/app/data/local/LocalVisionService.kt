@@ -150,7 +150,9 @@ class LocalVisionService
                             stackTrace = it.stackTraceToString(),
                         ),
                     )
-                    DraftItemResult(error = "On-device vision analysis failed. Try Pro or BYOK instead.")
+                    DraftItemResult(
+                        error = localAiFailureMessage(it, genericMessage = "On-device vision analysis failed. Try Pro or BYOK instead."),
+                    )
                 }
             } finally {
                 progressTracker.finish(progressId)
