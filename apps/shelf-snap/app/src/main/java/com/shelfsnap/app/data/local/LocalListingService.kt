@@ -17,6 +17,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * [LocalListingService.refine]'s result — [listing] is always present ([current] unchanged on
+ * any failure, matching the cloud path's never-lose-data contract), [error] is only non-null on
+ * failure, carrying a user-facing reason (e.g. an [com.twobits.localai.InsufficientMemoryException]'s
+ * message) instead of leaving the caller with no way to tell "refined" from "silently failed".
+ */
+data class LocalListingResult(
+    val listing: ListingCopy,
+    val error: String? = null,
+)
+
+/**
  * On-device counterpart to [com.shelfsnap.app.data.remote.ListingGenerationService] — same
  * prompt/parsing logic (shared via [buildListingSystemPrompt]/[buildListingUserMessage]/
  * [parseListingJson]), routed through [withLocalLlmEngine] instead of OpenAI. Returns [current]
@@ -35,7 +46,7 @@ class LocalListingService
             platform: Platform,
             current: ListingCopy,
             modelFile: File,
-        ): ListingCopy {
+        ): LocalListingResult {
             val progressId = progressTracker.start("Refining listing…")
             return try {
                 runCatching {
@@ -77,7 +88,7 @@ class LocalListingService
                                     durationMs = System.currentTimeMillis() - startedAtMs,
                                 ),
                             )
-                            parseListingJson(response, current, platform.titleCharLimit)
+                            LocalListingResult(listing = parseListingJson(response, current, platform.titleCharLimit))
                         }
                     }
                 }.getOrElse {
@@ -99,7 +110,10 @@ class LocalListingService
                             stackTrace = it.stackTraceToString(),
                         ),
                     )
-                    current
+                    LocalListingResult(
+                        listing = current,
+                        error = localAiFailureMessage(it, genericMessage = "On-device listing refinement failed. Try Pro or BYOK instead."),
+                    )
                 }
             } finally {
                 progressTracker.finish(progressId)

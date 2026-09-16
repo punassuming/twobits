@@ -350,7 +350,7 @@ class ItemDetailViewModel
             val platform = Platform.fromKey(platformKey) ?: return
             val listing = item.listings.firstOrNull { it.platformKey == platformKey } ?: return
             viewModelScope.launch {
-                _uiState.update { it.copy(refiningPlatforms = it.refiningPlatforms + platformKey) }
+                _uiState.update { it.copy(refiningPlatforms = it.refiningPlatforms + platformKey, error = null) }
                 val current =
                     ListingCopy(
                         title = listing.title ?: "",
@@ -359,12 +359,18 @@ class ItemDetailViewModel
                         shipping = listing.shipping ?: "",
                     )
                 val refined = repository.refineListing(item, platform, current)
+                val refinedCopy = refined.listing
                 val updatedItem =
                     item.copy(
                         listings =
                             item.listings.map { l ->
                                 if (l.platformKey == platformKey) {
-                                    l.copy(title = refined.title, description = refined.description, condition = refined.condition, shipping = refined.shipping)
+                                    l.copy(
+                                        title = refinedCopy.title,
+                                        description = refinedCopy.description,
+                                        condition = refinedCopy.condition,
+                                        shipping = refinedCopy.shipping,
+                                    )
                                 } else {
                                     l
                                 }
@@ -372,7 +378,9 @@ class ItemDetailViewModel
                         updatedAt = System.currentTimeMillis(),
                     )
                 repository.update(updatedItem)
-                _uiState.update { it.copy(item = updatedItem, refiningPlatforms = it.refiningPlatforms - platformKey) }
+                _uiState.update {
+                    it.copy(item = updatedItem, refiningPlatforms = it.refiningPlatforms - platformKey, error = refined.error)
+                }
             }
         }
 

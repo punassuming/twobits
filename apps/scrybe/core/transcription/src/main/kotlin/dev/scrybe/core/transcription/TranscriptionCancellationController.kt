@@ -44,4 +44,14 @@ class TranscriptionCancellationController
         fun cancelAll() {
             jobsBySessionId.values.toSet().forEach { it.cancel() }
         }
+
+        /**
+         * Whether [sessionId] has a live, still-running transcription job in *this* process.
+         * A session's `TRANSCRIBING` status in the database can otherwise not be told apart from
+         * a stale row left by a killed process (see `ScrybeApplication`'s app-start reconciliation
+         * for that case) — this is the check a caller needs before treating `TRANSCRIBING` as
+         * definitely-stale, so it doesn't wrongly stomp a transcription that's actually running
+         * right now just because it observed the status mid-flight.
+         */
+        fun isActive(sessionId: String): Boolean = jobsBySessionId[sessionId]?.isActive == true
     }

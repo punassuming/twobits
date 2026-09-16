@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**Local AI errors** — vision analysis, listing refinement, and market research now show the actual reason a local (on-device) AI action failed, instead of the same generic message every time:
+* a memory shortage now names the model and the free/needed amounts, instead of a one-size-fits-all "try Pro or BYOK" message
+* a failed local listing refinement now surfaces an error instead of silently doing nothing
+
 **Debug Log** — a search provider timing out now reads as a plain timeout, not a cryptic crash-looking stack trace:
 * affects the "web-search" entries recorded during market research
 

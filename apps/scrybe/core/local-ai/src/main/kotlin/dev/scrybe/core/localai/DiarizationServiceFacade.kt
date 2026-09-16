@@ -29,10 +29,11 @@ class DiarizationServiceFacade
             providerType: ProviderType,
         ): Result<List<SpeakerSegment>> =
             if (preferencesDataStore.aiFeaturesProvider.first() == ProviderType.LOCAL.name) {
+                val debugEnabled = preferencesDataStore.debugDiarization.first()
                 // Record the routing decision itself: an on-device run makes no network calls, so
                 // without this the AI call log shows nothing at all for the whole diarization —
                 // indistinguishable from diarization never running.
-                if (preferencesDataStore.debugDiarization.first()) {
+                if (debugEnabled) {
                     debugLogStore.record(
                         DebugLogEntry(
                             timestampMs = System.currentTimeMillis(),
@@ -45,7 +46,29 @@ class DiarizationServiceFacade
                         ),
                     )
                 }
-                localService.diarize(sessionId, audioFile, transcriptText, providerType)
+                // The caller (SessionTranscriptionCoordinator's automatic post-transcription
+                // follow-up) discards a failure here with .getOrNull() ?: return — by design,
+                // this stays a silent skip in the main UI (diarization is a non-blocking
+                // enhancement, not core to the recording). Recording the failure — including an
+                // InsufficientMemoryException's specific reason — here is the only way it's ever
+                // diagnosable at all.
+                localService.diarize(sessionId, audioFile, transcriptText, providerType).onFailure { error ->
+                    if (debugEnabled) {
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.AI_CALL,
+                                op = "diarize",
+                                endpoint = "on-device",
+                                model = "local",
+                                requestSummary = "AI features source is Local — routed to on-device model, not OpenAI",
+                                success = false,
+                                responseSnippet = "${error.javaClass.simpleName}: ${error.message}",
+                                stackTrace = error.stackTraceToString(),
+                            ),
+                        )
+                    }
+                }
             } else {
                 openAiService.diarize(sessionId, audioFile, transcriptText, providerType)
             }

@@ -47,6 +47,7 @@ import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transcription.DiarizationDebugInfo
 import dev.scrybe.core.transcription.DiarizationDebugStore
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
+import dev.scrybe.core.transcription.TranscriptionCancellationController
 import dev.scrybe.core.transforms.OpenAiTagSuggestionService
 import dev.scrybe.core.transforms.OpenAiTaskExtractionService
 import dev.scrybe.core.transforms.RecordingModeSuggestionService
@@ -92,6 +93,7 @@ class SessionDetailViewModel
         private val preferencesDataStore: AppPreferencesDataStore,
         private val diarizationDebugStore: DiarizationDebugStore,
         private val sessionTranscriptionCoordinator: SessionTranscriptionCoordinator,
+        private val transcriptionCancellationController: TranscriptionCancellationController,
         private val sessionTransformCoordinator: SessionTransformCoordinator,
         private val autoRenameService: AutoRenameServiceFacade,
         private val tagSuggestionService: OpenAiTagSuggestionService,
@@ -172,7 +174,16 @@ class SessionDetailViewModel
             }
             viewModelScope.launch {
                 val session = sessionDao.getSessionByIdOnce(sessionId)
-                if (session?.status == SessionStatus.TRANSCRIBING.name) {
+                // A session's own detail screen is also the one accidental escape hatch for a
+                // TRANSCRIBING row orphaned by a killed process (see ScrybeApplication's
+                // app-start reconciliation, which handles the common case at launch already) —
+                // kept as a safety net for a row that predates that fix, or slips through it for
+                // any other reason. Gated on isActive() so this never stomps a transcription
+                // that's genuinely still running in this process, which the unconditional
+                // version before this check did not rule out.
+                if (session?.status == SessionStatus.TRANSCRIBING.name &&
+                    !transcriptionCancellationController.isActive(sessionId)
+                ) {
                     sessionDao.updateSession(
                         session.copy(
                             status = SessionStatus.FAILED.name,

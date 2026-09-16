@@ -9,6 +9,7 @@ import com.google.gson.JsonParser
 import com.shelfsnap.app.data.local.DebugLogEntry
 import com.shelfsnap.app.data.local.DebugLogEntryType
 import com.shelfsnap.app.data.local.DebugLogStore
+import com.shelfsnap.app.data.local.localAiFailureMessage
 import com.shelfsnap.app.data.model.Citation
 import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.data.model.MarketComp
@@ -330,8 +331,10 @@ class PriceResearchService
                             }
                         parseContentJson(text, evidence)
                     }.getOrElse { e ->
-                        Log.w(TAG, "Local price research failed: ${e.javaClass.simpleName}")
-                        PriceResearchResult(error = "On-device market research failed. Try Pro or BYOK instead.")
+                        Log.w(TAG, "Local price research failed: ${e.javaClass.simpleName}: ${e.message}")
+                        PriceResearchResult(
+                            error = localAiFailureMessage(e, genericMessage = "On-device market research failed. Try Pro or BYOK instead."),
+                        )
                     }
                 val now = System.currentTimeMillis()
 

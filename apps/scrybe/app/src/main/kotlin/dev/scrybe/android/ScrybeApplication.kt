@@ -3,9 +3,11 @@ package dev.scrybe.android
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 import dev.scrybe.core.common.TransformStepsCodec
+import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transforms.DefaultProfiles
 import dev.scrybe.service.recording.WaveformBackfiller
@@ -20,6 +22,8 @@ import javax.inject.Inject
 class ScrybeApplication : Application() {
     @Inject lateinit var transformProfileDao: TransformProfileDao
 
+    @Inject lateinit var recordingSessionDao: RecordingSessionDao
+
     @Inject lateinit var preferencesDataStore: AppPreferencesDataStore
 
     @Inject lateinit var waveformBackfiller: WaveformBackfiller
@@ -33,6 +37,9 @@ class ScrybeApplication : Application() {
         debugLogStore.install()
         applicationScope.launch {
             waveformBackfiller.backfillMissingWaveforms()
+        }
+        applicationScope.launch {
+            reconcileOrphanedTranscribingSessions()
         }
         applicationScope.launch {
             val deletedIds = preferencesDataStore.deletedDefaultProfileIds.first()
@@ -64,6 +71,30 @@ class ScrybeApplication : Application() {
                 }
             }
         }
+    }
+
+    /**
+     * A session left at [SessionStatus.TRANSCRIBING] by a killed process (force-stop, low-memory
+     * kill, native crash — see [DebugLogStore]'s own exit-reason capture for the same failure
+     * class) has no live coroutine backing it in this fresh process:
+     * `TranscriptionCancellationController`'s job map is populated only while
+     * `SessionTranscriptionCoordinator.transcribeSession()` is actually running, and starts empty
+     * on every launch. Left alone, such a session shows "Transcribing…" on the global toast
+     * forever, and Cancel is a no-op against it (nothing in the map to cancel), cycling between
+     * "Cancelling…" and "Transcribing…" without ever resolving — until, coincidentally, the user
+     * opens that exact session's detail screen, the only other place a stuck TRANSCRIBING row
+     * gets corrected today.
+     *
+     * Called once per process start, before any screen is reachable: any `TRANSCRIBING` row seen
+     * here is unconditionally stale, because this process has never yet run a transcription of
+     * its own — there is no race with a genuinely in-flight transcription to guard against.
+     */
+    private suspend fun reconcileOrphanedTranscribingSessions() {
+        recordingSessionDao.updateSessionsByStatus(
+            oldStatus = SessionStatus.TRANSCRIBING.name,
+            newStatus = SessionStatus.FAILED.name,
+            updatedAt = System.currentTimeMillis(),
+        )
     }
 
     private companion object {
