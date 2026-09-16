@@ -8,13 +8,14 @@
 
 ### Fixes
 
-**Stuck transcriptions** — a recording whose transcription was interrupted by force-closing the app no longer shows "Transcribing…" forever:
-* it's now correctly marked failed the next time you open the app, instead of only when you happen to open that specific recording
-* Cancel on a transcription that's still genuinely running is unaffected — this only clears out ones abandoned by a killed app
+**Stuck transcriptions** — force-closing the app mid-transcription no longer leaves it stuck forever:
+* now marked failed automatically the next time you open the app
+* a still-running transcription is unaffected — only abandoned ones are cleared
 
-**Transcribing footer** — the "Transcribing…"/"Cancelling…" footer now reaches the true bottom of the screen on every screen, matching Shelf Snap, instead of sitting slightly short of it on some screens
+**Transcribing footer** — the footer now reaches the true bottom of the screen everywhere:
+* now matches Shelf Snap, instead of sitting short of the edge
 
-* no user-visible change: on-device diarization and insight failures (including a memory refusal) are now recorded to the Debug Log — they were previously silently discarded with no trace at all, even for diagnosis
+* no user-visible change: on-device diarization/insight failures now log to the Debug Log for diagnosis
 
 ## 1.53.4 (2026-09-13)
 

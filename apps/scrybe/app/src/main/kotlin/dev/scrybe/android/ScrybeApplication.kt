@@ -35,11 +35,15 @@ class ScrybeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         debugLogStore.install()
+        // Captured synchronously, before any launch{} below can be delayed by the dispatcher —
+        // see reconcileOrphanedTranscribingSessions()'s doc comment for why this exact ordering
+        // is what makes that sweep safe.
+        val appStartTimeMs = System.currentTimeMillis()
         applicationScope.launch {
             waveformBackfiller.backfillMissingWaveforms()
         }
         applicationScope.launch {
-            reconcileOrphanedTranscribingSessions()
+            reconcileOrphanedTranscribingSessions(appStartTimeMs)
         }
         applicationScope.launch {
             val deletedIds = preferencesDataStore.deletedDefaultProfileIds.first()
@@ -85,14 +89,22 @@ class ScrybeApplication : Application() {
      * opens that exact session's detail screen, the only other place a stuck TRANSCRIBING row
      * gets corrected today.
      *
-     * Called once per process start, before any screen is reachable: any `TRANSCRIBING` row seen
-     * here is unconditionally stale, because this process has never yet run a transcription of
-     * its own — there is no race with a genuinely in-flight transcription to guard against.
+     * This runs asynchronously on [applicationScope] — `onCreate()` returns immediately, so the
+     * Activity or recording service can start a genuinely new transcription before this
+     * coroutine actually gets scheduled. An unconditional "every TRANSCRIBING row" sweep would
+     * then wrongly fail that live session. [appStartTimeMs] (captured synchronously in
+     * `onCreate()`, before this — or any — `launch{}`) rules that out: a session this process
+     * itself just started transcribing necessarily has `updatedAt >= appStartTimeMs`, since
+     * nothing in this process could have touched it before that timestamp was taken, so
+     * [RecordingSessionDao.updateSessionsByStatusIfStaleBefore]'s `staleBefore` cutoff excludes
+     * it regardless of how delayed this sweep runs. A row genuinely orphaned by a *previous*
+     * process necessarily has an older `updatedAt`, so it's still caught.
      */
-    private suspend fun reconcileOrphanedTranscribingSessions() {
-        recordingSessionDao.updateSessionsByStatus(
+    private suspend fun reconcileOrphanedTranscribingSessions(appStartTimeMs: Long) {
+        recordingSessionDao.updateSessionsByStatusIfStaleBefore(
             oldStatus = SessionStatus.TRANSCRIBING.name,
             newStatus = SessionStatus.FAILED.name,
+            staleBefore = appStartTimeMs,
             updatedAt = System.currentTimeMillis(),
         )
     }
