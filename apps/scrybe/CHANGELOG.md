@@ -8,6 +8,9 @@
 
 ### Fixes
 
+**Transcribing footer** — the card now reaches the true bottom edge, no gap below it:
+* the card's background fills edge to edge instead of floating above a strip of screen background
+
 ## 1.53.5 (2026-09-16)
 
 ### Features

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -58,20 +59,26 @@ fun TranscriptionProgressToast(
         exit = slideOutVertically(animationSpec = tween(180)) { fullHeight -> fullHeight } + fadeOut(tween(180)),
         modifier = modifier,
     ) {
+        // No bottom margin on the card itself, and rounded only at the top: every earlier fix
+        // here (44c90ca's margin trim, a90aec1's fillMaxSize + margin combo) tried to size a gap
+        // below the card to exactly match the caller's navigationBarsPadding() — but that gap is
+        // real screen background showing through beneath a card that stops short, not a spacing
+        // value to tune. The card now goes all the way to the true bottom edge unconditionally
+        // (nothing above ever adds padding it would need to stop short for); the gesture-nav
+        // clearance moves onto the Row below instead, so it's the *content* that stays clear of
+        // the gesture area, while the card's own background fills behind it, edge to edge.
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp,
-            // Asymmetric bottom margin, not the symmetric 16dp this briefly became: a smaller
-            // bottom value here still stacks with the caller's navigationBarsPadding() (this
-            // Surface has no way to know whether its Scaffold bottomBar slot is actually filling
-            // the space reserved for it further up the tree), and a full 16dp on top of that
-            // read as an oversized gap below the toast — the same report this fixed once before.
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp).fillMaxWidth(),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp).fillMaxWidth(),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                modifier =
+                    Modifier
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .navigationBarsPadding(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CircularProgressIndicator(

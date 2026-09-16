@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -56,15 +57,24 @@ fun LocalAnalysisProgressToast(
         exit = slideOutVertically(animationSpec = tween(180)) { fullHeight -> fullHeight } + fadeOut(tween(180)),
         modifier = modifier,
     ) {
+        // No bottom margin on the card itself, and rounded only at the top: a fixed bottom margin
+        // here reads as a gap of real screen background below a card that stops short of the true
+        // edge (Scrybe's TranscriptionProgressToast had exactly this reported, twice, before this
+        // shape was found). The card now reaches the true bottom edge unconditionally; gesture-nav
+        // clearance moves onto the Row below instead, so the card's background fills edge to edge
+        // while only its content stays clear of the gesture area.
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp,
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp).fillMaxWidth(),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                modifier =
+                    Modifier
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .navigationBarsPadding(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CircularProgressIndicator(

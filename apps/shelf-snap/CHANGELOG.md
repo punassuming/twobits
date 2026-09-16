@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: the local-analysis footer's card now reaches the true bottom edge the same way Scrybe's does — this app's version wasn't visibly broken, fixed for consistency
+
 ## 1.32.5 (2026-09-16)
 
 ### Features
