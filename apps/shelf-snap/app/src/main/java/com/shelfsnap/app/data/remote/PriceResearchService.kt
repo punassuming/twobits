@@ -27,6 +27,7 @@ import com.shelfsnap.app.data.remote.search.WebSearchResult
 import com.shelfsnap.app.data.remote.search.WebSearchService
 import com.shelfsnap.app.data.remote.search.marketplaceKeyFromUrl
 import com.shelfsnap.app.util.ApiKeyValidator
+import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -314,6 +315,26 @@ class PriceResearchService
 
                 val synthesisStart = System.currentTimeMillis()
                 val systemPrompt = buildSystemPrompt(item)
+                // Recorded — and awaited — immediately before the risky native call below, not
+                // after: a native crash or low-memory kill in LiteRT-LM's synthesis step ends the
+                // process with zero chance for any Kotlin try/catch to run, so this entry already
+                // being safely on disk is the only way to later see, from the AI call log alone,
+                // that a local synthesis was in flight when it died — evidence-gathering (queries,
+                // page reads) already succeeded by this point and would show as OK right before
+                // it. The "market-research-engine-loaded" entry below then splits that window in
+                // two: a death before it is the model load, a death after it is the synthesis
+                // call itself. Same pattern as LocalVisionService's vision-analyze-start.
+                debugLogStore.record(
+                    DebugLogEntry(
+                        timestampMs = synthesisStart,
+                        type = DebugLogEntryType.AI_CALL,
+                        op = "market-research-start",
+                        endpoint = "on-device",
+                        model = modelFile.name,
+                        requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                        success = true,
+                    ),
+                )
                 val result =
                     runCatching {
                         val userMessage =
@@ -325,13 +346,48 @@ class PriceResearchService
                                     maxSnippetChars = LOCAL_MAX_SNIPPET_CHARS,
                                 ),
                             )
-                        val text =
-                            withLocalLlmEngine(context, modelFile, systemInstruction = systemPrompt) { engine ->
-                                engine.generate(userMessage)
-                            }
-                        parseContentJson(text, evidence)
+                        withLocalLlmEngine(context, modelFile, systemInstruction = systemPrompt) { engine ->
+                            debugLogStore.record(
+                                DebugLogEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    type = DebugLogEntryType.AI_CALL,
+                                    op = "market-research-engine-loaded",
+                                    endpoint = "on-device",
+                                    model = modelFile.name,
+                                    requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                                    success = true,
+                                    durationMs = System.currentTimeMillis() - synthesisStart,
+                                ),
+                            )
+                            val text = engine.generate(userMessage)
+                            debugLogStore.record(
+                                DebugLogEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    type = DebugLogEntryType.AI_CALL,
+                                    op = "market-research-synthesize",
+                                    endpoint = "on-device",
+                                    model = modelFile.name,
+                                    success = true,
+                                    responseSnippet = "${text.length} chars",
+                                    durationMs = System.currentTimeMillis() - synthesisStart,
+                                ),
+                            )
+                            parseContentJson(text, evidence)
+                        }
                     }.getOrElse { e ->
                         Log.w(TAG, "Local price research failed: ${e.javaClass.simpleName}: ${e.message}")
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.AI_CALL,
+                                op = "market-research-synthesize",
+                                endpoint = "on-device",
+                                model = modelFile.name,
+                                success = false,
+                                responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                                stackTrace = e.stackTraceToString(),
+                            ),
+                        )
                         PriceResearchResult(
                             error = localAiFailureMessage(e, genericMessage = "On-device market research failed. Try Pro or BYOK instead."),
                         )

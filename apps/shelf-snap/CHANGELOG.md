@@ -12,6 +12,8 @@
 
 * no user-visible change: the local-analysis and market-research footers now both use a shared `ProgressFooter` component (also used by Scrybe) instead of two separate one-off composables — same look and behavior
 
+* no user-visible change: market research's on-device synthesis step now logs memory and a model-loaded marker to the Debug Log, matching local vision analysis, so a native crash there is diagnosable instead of leaving no trace
+
 ## 1.32.5 (2026-09-16)
 
 ### Features
