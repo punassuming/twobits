@@ -10,6 +10,8 @@
 
 * no user-visible change: the local-analysis footer's card now reaches the true bottom edge the same way Scrybe's does — this app's version wasn't visibly broken, fixed for consistency
 
+* no user-visible change: the local-analysis and market-research footers now both use a shared `ProgressFooter` component (also used by Scrybe) instead of two separate one-off composables — same look and behavior
+
 ## 1.32.5 (2026-09-16)
 
 ### Features

@@ -1,4 +1,4 @@
-package dev.scrybe.android.ui
+package com.twobits.design.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -32,26 +32,44 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-/** Shared crossfade+slide transition for text that updates while the toast stays visible. */
-private fun contentSwapTransition() =
+/** Shared crossfade+slide transition for one line of text that updates while the footer stays visible. */
+private fun progressFooterTextTransition() =
     (slideInVertically(animationSpec = tween(180)) { it / 3 } + fadeIn(tween(180)))
         .togetherWith(slideOutVertically(animationSpec = tween(140)) { -it / 3 } + fadeOut(tween(140)))
 
 /**
- * Live status toast shown while a recording is being transcribed, sliding up from the bottom of
- * the screen — same pattern as Shelf Snap's `ResearchProgressToast`. Lives at the app level (see
- * [ScrybeApp]) rather than inside any one screen, since transcription can be triggered from the
- * Records list, a session's detail screen, or automatically after recording, and keeps running if
- * the user navigates elsewhere while it's in progress.
+ * The one bottom progress footer for a long-running background task, shared by all three apps —
+ * local transcription (Scrybe), local vision/listing analysis and market research (Shelf Snap).
+ * Before this, each app defined its own near-identical composable (`TranscriptionProgressToast`,
+ * `LocalAnalysisProgressToast`, `ResearchProgressToast`) — same shape, same bugs to fix three
+ * times over. Lives at the app's navigation root, in its own `Scaffold`'s `bottomBar` slot (see
+ * call sites) — not inside any one screen, since the task it reports on can be triggered from
+ * more than one screen and keeps running while the user navigates elsewhere.
+ *
+ * Deliberately reaches the true bottom edge of the screen with no gap below it: the `Surface`
+ * carries no bottom margin of its own and only rounds its top corners, so its background fills
+ * all the way to the edge; gesture-navigation clearance is applied to the content [Row] instead
+ * of around the whole card. Wrapping `navigationBarsPadding()` around the *whole* card (the
+ * predecessors' approach) leaves a strip of plain screen background below the card's rounded
+ * edge no matter how its own margin is tuned — that's what repeatedly read as "a gap at the
+ * bottom" across three separate fix attempts on the old, per-app composables.
+ *
+ * [primaryText] is the bold, always-shown headline (e.g. "Transcribing…"). [secondaryText] and
+ * [tertiaryText] are optional detail lines, each animated independently so updating one doesn't
+ * replay the others' transition. [onCancel] is optional — omit it for a task with no cancel
+ * affordance (market research, local vision/listing analysis); when present, the button swaps to
+ * a spinner and disables itself while [isCancelling] is true, so a second tap can't look like a
+ * no-op while the underlying task is still working out how to stop.
  */
 @Composable
-fun TranscriptionProgressToast(
+fun ProgressFooter(
     visible: Boolean,
-    label: String,
-    queuedCount: Int,
-    isCancelling: Boolean,
-    onCancel: () -> Unit,
+    primaryText: String,
     modifier: Modifier = Modifier,
+    secondaryText: String? = null,
+    tertiaryText: String? = null,
+    onCancel: (() -> Unit)? = null,
+    isCancelling: Boolean = false,
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -59,14 +77,6 @@ fun TranscriptionProgressToast(
         exit = slideOutVertically(animationSpec = tween(180)) { fullHeight -> fullHeight } + fadeOut(tween(180)),
         modifier = modifier,
     ) {
-        // No bottom margin on the card itself, and rounded only at the top: every earlier fix
-        // here (44c90ca's margin trim, a90aec1's fillMaxSize + margin combo) tried to size a gap
-        // below the card to exactly match the caller's navigationBarsPadding() — but that gap is
-        // real screen background showing through beneath a card that stops short, not a spacing
-        // value to tune. The card now goes all the way to the true bottom edge unconditionally
-        // (nothing above ever adds padding it would need to stop short for); the gesture-nav
-        // clearance moves onto the Row below instead, so it's the *content* that stays clear of
-        // the gesture area, while the card's own background fills behind it, edge to edge.
         Surface(
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -88,12 +98,10 @@ fun TranscriptionProgressToast(
                 )
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    // Two independent AnimatedContents (not one shared on the whole toast) so a
-                    // queue-count change doesn't replay the label transition and vice versa.
                     AnimatedContent(
-                        targetState = if (isCancelling) "Cancelling…" else "Transcribing…",
-                        transitionSpec = { contentSwapTransition() },
-                        label = "transcriptionPhase",
+                        targetState = primaryText,
+                        transitionSpec = { progressFooterTextTransition() },
+                        label = "progressFooterPrimary",
                     ) { text ->
                         Text(
                             text = text,
@@ -101,11 +109,11 @@ fun TranscriptionProgressToast(
                             fontWeight = FontWeight.Bold,
                         )
                     }
-                    if (label.isNotBlank()) {
+                    if (!secondaryText.isNullOrBlank()) {
                         AnimatedContent(
-                            targetState = label,
-                            transitionSpec = { contentSwapTransition() },
-                            label = "transcriptionLabel",
+                            targetState = secondaryText,
+                            transitionSpec = { progressFooterTextTransition() },
+                            label = "progressFooterSecondary",
                         ) { text ->
                             Text(
                                 text = text,
@@ -115,11 +123,11 @@ fun TranscriptionProgressToast(
                             )
                         }
                     }
-                    if (queuedCount > 0) {
+                    if (!tertiaryText.isNullOrBlank()) {
                         AnimatedContent(
-                            targetState = "$queuedCount more queued",
-                            transitionSpec = { contentSwapTransition() },
-                            label = "transcriptionQueue",
+                            targetState = tertiaryText,
+                            transitionSpec = { progressFooterTextTransition() },
+                            label = "progressFooterTertiary",
                         ) { text ->
                             Text(
                                 text = text,
@@ -129,23 +137,26 @@ fun TranscriptionProgressToast(
                         }
                     }
                 }
-                Spacer(Modifier.width(4.dp))
-                // Disabled (not just visually, functionally) while cancelling — WhisperEngine's
-                // native decode can take up to one chunk to actually stop, so a second tap in that
-                // window would otherwise look like it's doing nothing, same as the original bug.
-                IconButton(onClick = onCancel, enabled = !isCancelling, modifier = Modifier.size(32.dp)) {
-                    if (isCancelling) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Cancel transcription",
-                            modifier = Modifier.size(18.dp),
-                        )
+                if (onCancel != null) {
+                    Spacer(Modifier.width(4.dp))
+                    // Disabled (not just visually, functionally) while cancelling — the
+                    // underlying native call (e.g. WhisperEngine's decode) can take up to one
+                    // chunk to actually stop, so a second tap in that window would otherwise
+                    // look like it's doing nothing.
+                    IconButton(onClick = onCancel, enabled = !isCancelling, modifier = Modifier.size(32.dp)) {
+                        if (isCancelling) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Cancel",
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
             }

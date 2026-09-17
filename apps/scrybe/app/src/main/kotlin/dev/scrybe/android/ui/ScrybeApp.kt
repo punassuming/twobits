@@ -35,6 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.twobits.design.components.AppWhatsNewDialog
+import com.twobits.design.components.ProgressFooter
 import dev.scrybe.android.navigation.Screen
 import dev.scrybe.android.navigation.ScrybeNavHost
 import dev.scrybe.feature.capture.OnboardingScreen
@@ -155,17 +156,21 @@ private fun MainContentBox(
             // AnimatedVisibility(visible = false) collapses to zero height, so innerPadding's
             // bottom value below shrinks back to zero the moment this isn't showing, and grows to
             // exactly its measured height while it is — this is what actually reduces the content
-            // area and makes the toast come up from the real bottom edge, instead of floating over
-            // content that has no idea it exists (the previous Box+align(BottomCenter) overlay).
-            // No navigationBarsPadding() here — TranscriptionProgressToast now applies gesture-nav
+            // area and makes the footer come up from the real bottom edge, instead of floating
+            // over content that has no idea it exists (the previous Box+align(BottomCenter)
+            // overlay). No navigationBarsPadding() here — ProgressFooter applies gesture-nav
             // clearance to its own inner content instead, so its card can reach the true bottom
             // edge unconditionally. See its own doc comment for why.
-            TranscriptionProgressToast(
+            ProgressFooter(
                 visible = transcriptionProgressState.isTranscribing,
-                label = transcriptionProgressState.label,
-                queuedCount = transcriptionProgressState.queuedCount,
-                isCancelling = transcriptionProgressState.isCancelling,
+                primaryText = if (transcriptionProgressState.isCancelling) "Cancelling…" else "Transcribing…",
+                secondaryText = transcriptionProgressState.label.takeIf { it.isNotBlank() },
+                tertiaryText =
+                    transcriptionProgressState.queuedCount
+                        .takeIf { it > 0 }
+                        ?.let { "$it more queued" },
                 onCancel = onCancelTranscription,
+                isCancelling = transcriptionProgressState.isCancelling,
             )
         },
     ) { innerPadding ->

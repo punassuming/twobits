@@ -11,6 +11,8 @@
 **Transcribing footer** — the card now reaches the true bottom edge, no gap below it:
 * the card's background fills edge to edge instead of floating above a strip of screen background
 
+* no user-visible change: the transcribing footer now uses a shared `ProgressFooter` component (also used by Shelf Snap) instead of its own one-off composable — same look and behavior
+
 ## 1.53.5 (2026-09-16)
 
 ### Features

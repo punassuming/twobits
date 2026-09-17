@@ -26,7 +26,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.shelfsnap.app.ui.CrashWarningViewModel
 import com.shelfsnap.app.ui.camera.CameraScreen
-import com.shelfsnap.app.ui.components.LocalAnalysisProgressToast
 import com.shelfsnap.app.ui.components.LocalAnalysisProgressViewModel
 import com.shelfsnap.app.ui.inventory.InventoryScreen
 import com.shelfsnap.app.ui.itemdetail.ItemDetailScreen
@@ -42,6 +41,7 @@ import com.shelfsnap.app.ui.summary.SummaryScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewViewModel
 import com.twobits.design.components.AppWhatsNewDialog
+import com.twobits.design.components.ProgressFooter
 
 @Composable
 fun AppNavigation(
@@ -80,18 +80,22 @@ fun AppNavigation(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            // AnimatedVisibility inside this toast collapses to zero height when not showing, so
+            // AnimatedVisibility inside this footer collapses to zero height when not showing, so
             // innerPadding's bottom value shrinks back to zero the moment it disappears, and grows
             // to exactly its measured height while visible — this is what actually reduces the
-            // content area and makes the toast come up from the real bottom edge, instead of
+            // content area and makes the footer come up from the real bottom edge, instead of
             // floating over content that has no idea it exists (the previous Box+align(BottomCenter)
             // overlay).
-            // No navigationBarsPadding() here — LocalAnalysisProgressToast now applies gesture-nav
-            // clearance to its own inner content instead, so its card can reach the true bottom
-            // edge unconditionally. See its own doc comment for why.
-            LocalAnalysisProgressToast(
-                label = localAnalysisProgressState.label,
-                otherActiveCount = localAnalysisProgressState.otherActiveCount,
+            // No navigationBarsPadding() here — ProgressFooter applies gesture-nav clearance to
+            // its own inner content instead, so its card can reach the true bottom edge
+            // unconditionally. See its own doc comment for why.
+            ProgressFooter(
+                visible = localAnalysisProgressState.label != null,
+                primaryText = localAnalysisProgressState.label ?: "",
+                tertiaryText =
+                    localAnalysisProgressState.otherActiveCount
+                        .takeIf { it > 0 }
+                        ?.let { "and $it more also running" },
             )
         },
     ) { innerPadding ->
