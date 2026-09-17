@@ -17,6 +17,8 @@
 * a second Stop tap could kill the service mid-transcription — fixed
 * the recording notification's Stop button now disappears the moment you tap Stop
 
+* no user-visible change: every on-device AI call (title/tag/cluster suggestions, transforms) now logs memory and a model-loaded marker to the Debug Log, matching local transcription — a native crash in any of them is now diagnosable
+
 ## 1.53.5 (2026-09-16)
 
 ### Features

@@ -1,9 +1,13 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
+import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
+import dev.scrybe.core.transcription.DebugLogEntry
+import dev.scrybe.core.transcription.DebugLogEntryType
+import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transforms.ClusterSuggestion
 import dev.scrybe.core.transforms.SessionSummary
 import kotlinx.coroutines.Dispatchers
@@ -19,17 +23,87 @@ class LocalLlmService
         @ApplicationContext private val context: Context,
         private val modelManager: LocalModelManager,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val debugLogStore: DebugLogStore,
     ) {
-        private suspend fun generate(prompt: String): String {
+        /**
+         * Shared by every local-LLM call this service makes — [opLabel] names the specific
+         * feature (e.g. "suggest-title") so a Debug Log reader can tell them apart. Records the
+         * same three-stage diagnostic every other local-inference call site in the app uses: a
+         * "-start" entry (with a memory snapshot) immediately before the risky native call, an
+         * "-engine-loaded" entry once the model finishes loading — splitting a future native
+         * crash's window into "died during load" vs. "died during generation" — and a final
+         * success/failure entry. A native crash or low-memory kill has zero chance to run any
+         * Kotlin try/catch, so the "-start" entry already being safely on disk beforehand is the
+         * only way to see, after the fact, which call (and how much memory was free) was in
+         * flight when it died.
+         */
+        private suspend fun generate(
+            prompt: String,
+            opLabel: String,
+        ): String {
             val model = preferencesDataStore.localLlmModel.first()
             val modelFile =
                 modelManager.llmModelFile(model)
                     ?: modelManager.anyLlmReady()?.let { modelManager.llmModelFile(it) }
                     ?: error("No local model downloaded. Go to Settings → Provider → Local to download one.")
-            return withContext(Dispatchers.Default) {
-                withLocalLlmEngine(context, modelFile) { engine ->
-                    engine.generate(prompt)
+            val startedAtMs = System.currentTimeMillis()
+            debugLogStore.record(
+                DebugLogEntry(
+                    timestampMs = startedAtMs,
+                    type = DebugLogEntryType.AI_CALL,
+                    op = "$opLabel-start",
+                    endpoint = "on-device",
+                    model = modelFile.name,
+                    requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                    success = true,
+                ),
+            )
+            return try {
+                withContext(Dispatchers.Default) {
+                    withLocalLlmEngine(context, modelFile) { engine ->
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.AI_CALL,
+                                op = "$opLabel-engine-loaded",
+                                endpoint = "on-device",
+                                model = modelFile.name,
+                                requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                                success = true,
+                                durationMs = System.currentTimeMillis() - startedAtMs,
+                            ),
+                        )
+                        val response = engine.generate(prompt)
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.AI_CALL,
+                                op = opLabel,
+                                endpoint = "on-device",
+                                model = modelFile.name,
+                                success = true,
+                                responseSnippet = "${response.length} chars",
+                                durationMs = System.currentTimeMillis() - startedAtMs,
+                            ),
+                        )
+                        response
+                    }
                 }
+            } catch (e: Throwable) {
+                debugLogStore.record(
+                    DebugLogEntry(
+                        timestampMs = System.currentTimeMillis(),
+                        type = DebugLogEntryType.AI_CALL,
+                        op = opLabel,
+                        endpoint = "on-device",
+                        model = modelFile.name,
+                        success = false,
+                        responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                        durationMs = System.currentTimeMillis() - startedAtMs,
+                        stackTrace = e.stackTraceToString(),
+                    ),
+                )
+                throw e
             }
         }
 
@@ -46,7 +120,7 @@ class LocalLlmService
                     Transcript: ${transcriptText.take(600)}
                     Respond with ONLY the title text, nothing else.
                     """.trimIndent()
-                generate(prompt).trim().removeSurrounding("\"")
+                generate(prompt, "suggest-title").trim().removeSurrounding("\"")
             }
 
         suspend fun suggestClusters(
@@ -69,7 +143,7 @@ class LocalLlmService
                     Recordings:
                     $sessionLines
                     """.trimIndent()
-                val raw = generate(prompt)
+                val raw = generate(prompt, "suggest-clusters")
                 raw
                     .lines()
                     .filter { it.contains("|") }
@@ -100,7 +174,7 @@ class LocalLlmService
                     Existing tags: ${existingTags.joinToString()}
                     Transcript: ${transcriptText.take(400)}
                     """.trimIndent()
-                generate(prompt)
+                generate(prompt, "suggest-tags")
                     .split(",")
                     .map { it.trim().lowercase().removePrefix("#") }
                     .filter { it.isNotBlank() }
@@ -117,7 +191,7 @@ class LocalLlmService
                     Example: SPEAKER_1,SPEAKER_2,SPEAKER_1,SPEAKER_2
                     Transcript: ${transcriptText.take(800)}
                     """.trimIndent()
-                generate(prompt)
+                generate(prompt, "identify-speakers")
                     .split(",")
                     .map { it.trim().uppercase() }
                     .filter { it.startsWith("SPEAKER_") }
@@ -138,7 +212,7 @@ class LocalLlmService
                     Transcript: ${transcriptText.take(600)}
                     """.trimIndent()
                 val raw =
-                    generate(prompt)
+                    generate(prompt, "sentiment")
                         .trim()
                         .removePrefix("```json")
                         .removePrefix("```")
@@ -161,7 +235,7 @@ class LocalLlmService
                     Transcript: ${transcriptText.take(1200)}
                     """.trimIndent()
                 val raw =
-                    generate(prompt)
+                    generate(prompt, "topics")
                         .trim()
                         .removePrefix("```json")
                         .removePrefix("```")

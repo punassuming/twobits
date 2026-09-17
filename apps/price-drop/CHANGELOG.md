@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: local Ask now logs a model-loaded marker to the Debug Log too, closing the last gap in on-device crash diagnostics shared with Scrybe and Shelf Snap
+
 ## 0.23.3 (2026-09-13)
 
 ### Features

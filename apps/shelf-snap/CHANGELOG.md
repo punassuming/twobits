@@ -14,6 +14,8 @@
 
 * no user-visible change: market research's on-device synthesis step now logs memory and a model-loaded marker to the Debug Log, matching local vision analysis, so a native crash there is diagnosable instead of leaving no trace
 
+* no user-visible change: local listing refinement now logs memory and a model-loaded marker to the Debug Log too, closing the same gap for the last remaining on-device call
+
 ## 1.32.5 (2026-09-16)
 
 ### Features

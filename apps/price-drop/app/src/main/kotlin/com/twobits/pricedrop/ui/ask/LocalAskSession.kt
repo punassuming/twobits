@@ -2,6 +2,7 @@ package com.twobits.pricedrop.ui.ask
 
 import android.content.Context
 import com.twobits.localai.LiteRtLmEngine
+import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.pricedrop.data.local.DebugLogEntry
 import com.twobits.pricedrop.data.local.DebugLogEntryType
 import com.twobits.pricedrop.data.local.DebugLogStore
@@ -54,7 +55,8 @@ class LocalAskSession
                     op = "ask-start",
                     endpoint = "on-device",
                     model = modelFile.name,
-                    requestSummary = "prompt ${prompt.length} chars",
+                    requestSummary =
+                        "prompt ${prompt.length} chars · ${LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown"}",
                     success = true,
                 ),
             )
@@ -72,6 +74,23 @@ class LocalAskSession
                             LiteRtLmEngine.acquire(context, modelFile, systemInstruction = systemPrompt)
                         }
                     engineModelFile = modelFile
+                    // Only reached when a fresh engine was actually just constructed above (a
+                    // reused engine from an earlier turn in the same conversation has no load
+                    // step to report) — splits a future native crash's window into "died during
+                    // load" vs. "died during generation", same as every other local-inference
+                    // call site in the app.
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.AI_CALL,
+                            op = "ask-engine-loaded",
+                            endpoint = "on-device",
+                            model = modelFile.name,
+                            requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                            success = true,
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                        ),
+                    )
                 }
                 val response = requireNotNull(engine).generate(prompt)
                 debugLogStore.record(
