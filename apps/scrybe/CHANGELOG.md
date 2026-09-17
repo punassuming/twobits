@@ -19,6 +19,9 @@
 
 * no user-visible change: every on-device AI call (title/tag/cluster suggestions, transforms) now logs memory and a model-loaded marker to the Debug Log, matching local transcription — a native crash in any of them is now diagnosable
 
+* no user-visible change: local transcription/diarization/insight failures are now logged to the Debug Log with a full stack trace even when "AI call debug" is off, since a failure is the one case that always needs diagnosing
+* no user-visible change: a "Previous run ended in a crash" Debug Log entry now includes the OS's own native trace when available, not just the coarse crash reason
+
 ## 1.53.5 (2026-09-16)
 
 ### Features

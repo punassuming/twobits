@@ -612,6 +612,7 @@ class PriceDropApiClient
                             success = false,
                             responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
                             durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
                         ),
                     )
                 }.getOrDefault("")
@@ -673,6 +674,7 @@ class PriceDropApiClient
                             success = false,
                             responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
                             durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
                         ),
                     )
                 }.getOrDefault("")

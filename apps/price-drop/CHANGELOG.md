@@ -10,6 +10,9 @@
 
 * no user-visible change: local Ask now logs a model-loaded marker to the Debug Log too, closing the last gap in on-device crash diagnostics shared with Scrybe and Shelf Snap
 
+* no user-visible change: the Debug Log now also records why the app's last run ended (crash, low memory, ANR) with the OS's own native trace when available — this app never had that check at all before, unlike Scrybe and Shelf Snap
+* no user-visible change: product-search and page-read failures now include a full stack trace in the Debug Log, not just a one-line message
+
 ## 0.23.3 (2026-09-13)
 
 ### Features

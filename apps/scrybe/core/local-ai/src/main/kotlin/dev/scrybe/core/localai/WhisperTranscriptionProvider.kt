@@ -35,14 +35,20 @@ class WhisperTranscriptionProvider
             // once for diarization/insights via DiarizationServiceFacade/InsightServiceFacade,
             // but missed here since this provider has no equivalent local/cloud facade to carry
             // the fix — it's the local branch of TranscriptionOrchestrator's provider map).
+            //
+            // Only the success-path detail (and per-chunk timings below) stays behind this
+            // toggle — a failure is rare enough that logging it unconditionally costs nothing,
+            // and it's the only way a crash or error here is ever diagnosable at all for someone
+            // who never thought to flip on "AI call debug" before hitting it.
             val debugEnabled = preferencesDataStore.debugDiarization.first()
 
             suspend fun record(
                 success: Boolean,
                 snippet: String,
                 durationMs: Long? = null,
+                stackTrace: String? = null,
             ) {
-                if (!debugEnabled) return
+                if (success && !debugEnabled) return
                 debugLogStore.record(
                     DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
@@ -54,6 +60,7 @@ class WhisperTranscriptionProvider
                         success = success,
                         responseSnippet = snippet,
                         durationMs = durationMs,
+                        stackTrace = stackTrace,
                     ),
                 )
             }
@@ -85,19 +92,19 @@ class WhisperTranscriptionProvider
                     // already being safely on disk is the only way to later see, from the debug
                     // log alone, that a transcription was in flight when it crashed — there's no
                     // matching "transcribe" entry after it if so (see DebugLogStore.staleStartWarning).
-                    if (debugEnabled) {
-                        debugLogStore.record(
-                            DebugLogEntry(
-                                timestampMs = startedAtMs,
-                                type = DebugLogEntryType.AI_CALL,
-                                op = "transcribe-start",
-                                endpoint = "on-device",
-                                model = model.filePrefix,
-                                requestSummary = "file=${audioFile.name}",
-                                success = true,
-                            ),
-                        )
-                    }
+                    // Written unconditionally, not gated on debugEnabled like the detail below —
+                    // a native crash gives no chance to flip a setting first.
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = startedAtMs,
+                            type = DebugLogEntryType.AI_CALL,
+                            op = "transcribe-start",
+                            endpoint = "on-device",
+                            model = model.filePrefix,
+                            requestSummary = "file=${audioFile.name}",
+                            success = true,
+                        ),
+                    )
                     WhisperEngine(modelDir, model.filePrefix).use { engine ->
                         // Per-window timings are the one measurement that separates "the model
                         // is slow on this device" from "a window is stuck" — a run that hangs
@@ -121,7 +128,11 @@ class WhisperTranscriptionProvider
                     }
                 }
             }.onFailure { error ->
-                record(success = false, snippet = "${error.javaClass.simpleName}: ${error.message}")
+                record(
+                    success = false,
+                    snippet = "${error.javaClass.simpleName}: ${error.message}",
+                    stackTrace = error.stackTraceToString(),
+                )
             }
         }
 

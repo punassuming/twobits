@@ -115,6 +115,7 @@ class ProductDiscoveryCoordinator
                                                 success = false,
                                                 responseSnippet = failure.message,
                                                 durationMs = latency,
+                                                stackTrace = failure.cause?.stackTraceToString(),
                                             ),
                                         )
                                         ProviderOutcome(

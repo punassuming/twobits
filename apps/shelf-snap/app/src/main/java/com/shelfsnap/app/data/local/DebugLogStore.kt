@@ -197,12 +197,38 @@ class DebugLogStore
                                 message =
                                     "Previous run ended: $reasonName — ${exit.description ?: "no description"} " +
                                         "(importance ${exit.importance}, pss ${exit.pss / KB_PER_MB} MB)",
+                                stackTrace = readExitTrace(exit),
                             ),
                         )
                     }
                 }
             }.onFailure { Log.w(TAG, "Failed to record previous process exit reason: ${it.javaClass.simpleName}") }
         }
+
+        /**
+         * The actual native trace/tombstone data behind [ApplicationExitInfo], when the platform
+         * makes one available — a real stack trace for the crash or ANR, not just the coarse
+         * reason enum above. Available on API 30+ (same floor as [recordPreviousExitReasonIfNew]
+         * itself) for `REASON_CRASH_NATIVE`, `REASON_CRASH`, and `REASON_ANR` on most OEMs/OS
+         * versions, though the platform is free to return null (older devices, some OEM skins, or
+         * simply no trace captured for this exit) — this is best-effort. Nothing can read this
+         * *at* the moment of a native crash, only afterward from the OS's own record — read once
+         * here on the next launch, which is the entire point of it. Capped well under any
+         * realistic trace size so one huge tombstone can't bloat the rolling debug log file.
+         */
+        private fun readExitTrace(exit: ApplicationExitInfo): String? =
+            runCatching {
+                exit.traceInputStream?.use { stream ->
+                    val buffer = ByteArray(MAX_TRACE_BYTES)
+                    var totalRead = 0
+                    while (totalRead < buffer.size) {
+                        val read = stream.read(buffer, totalRead, buffer.size - totalRead)
+                        if (read == -1) break
+                        totalRead += read
+                    }
+                    String(buffer, 0, totalRead, Charsets.UTF_8).takeIf { it.isNotBlank() }
+                }
+            }.getOrNull()
 
         /**
          * One-time upgrade path: entries recorded by the old, separate CrashLogStore/
@@ -346,5 +372,6 @@ class DebugLogStore
             const val KEY_LAST_RECORDED_EXIT_TIMESTAMP = "last_recorded_exit_timestamp"
             const val PROCESS_EXIT_TYPE = "ProcessExit"
             const val KB_PER_MB = 1024L
+            const val MAX_TRACE_BYTES = 16 * 1024
         }
     }

@@ -16,6 +16,8 @@
 
 * no user-visible change: local listing refinement now logs memory and a model-loaded marker to the Debug Log too, closing the same gap for the last remaining on-device call
 
+* no user-visible change: a "Previous run ended in a crash" Debug Log entry now includes the OS's own native trace when available, not just the coarse crash reason
+
 ## 1.32.5 (2026-09-16)
 
 ### Features

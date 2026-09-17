@@ -1,6 +1,9 @@
 package com.twobits.pricedrop.data.local
 
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -137,7 +140,13 @@ class DebugLogStore
         fun install() {
             if (previousHandler != null) return
             migrateLegacyLogsIfPresent()
-            _staleStartWarning.value = readAll().lastOrNull()?.takeIf { it.op?.endsWith("-start") == true }
+            // Process-exit entries (below) are appended after the fact and must not hide a
+            // still-undismissed "-start" marker from an earlier launch.
+            _staleStartWarning.value =
+                readAll()
+                    .lastOrNull { it.exceptionType != PROCESS_EXIT_TYPE }
+                    ?.takeIf { it.op?.endsWith("-start") == true }
+            recordPreviousExitReasonIfNew()
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                 runCatching { write(crashEntry(thread, throwable)) }
@@ -145,6 +154,82 @@ class DebugLogStore
                 previousHandler?.uncaughtException(thread, throwable)
             }
         }
+
+        /**
+         * The OS's own record of why this process last died — the one signal that tells a
+         * low-memory kill apart from a native abort or an ANR, none of which ever reach
+         * [Thread.setDefaultUncaughtExceptionHandler]. Read once per launch and de-duplicated
+         * by the exit's own timestamp, so each death is recorded exactly once. Only abnormal
+         * exits are recorded: a user swiping the app away, or the system trimming an idle
+         * cached process, would otherwise bury the interesting ones. Pairs with the dangling
+         * "-start" marker (see [DebugLogEntry]): that entry says what was running, this one
+         * says why the process died.
+         */
+        private fun recordPreviousExitReasonIfNew() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+            runCatching {
+                val exit =
+                    context
+                        .getSystemService(ActivityManager::class.java)
+                        ?.getHistoricalProcessExitReasons(context.packageName, 0, 1)
+                        ?.firstOrNull()
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                if (exit != null && exit.timestamp > prefs.getLong(KEY_LAST_RECORDED_EXIT_TIMESTAMP, 0L)) {
+                    prefs.edit().putLong(KEY_LAST_RECORDED_EXIT_TIMESTAMP, exit.timestamp).apply()
+                    val reasonName =
+                        when (exit.reason) {
+                            ApplicationExitInfo.REASON_LOW_MEMORY -> "LOW_MEMORY (killed by the low-memory killer)"
+                            ApplicationExitInfo.REASON_CRASH_NATIVE -> "CRASH_NATIVE (native abort or segfault)"
+                            ApplicationExitInfo.REASON_CRASH -> "CRASH (uncaught exception)"
+                            ApplicationExitInfo.REASON_ANR -> "ANR"
+                            ApplicationExitInfo.REASON_SIGNALED -> "SIGNALED (killed by signal ${exit.status})"
+                            ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "EXCESSIVE_RESOURCE_USAGE"
+                            ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "INITIALIZATION_FAILURE"
+                            ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "DEPENDENCY_DIED"
+                            else -> null
+                        }
+                    if (reasonName != null) {
+                        write(
+                            DebugLogEntry(
+                                timestampMs = exit.timestamp,
+                                type = DebugLogEntryType.CRASH,
+                                threadName = "process",
+                                exceptionType = PROCESS_EXIT_TYPE,
+                                message =
+                                    "Previous run ended: $reasonName — ${exit.description ?: "no description"} " +
+                                        "(importance ${exit.importance}, pss ${exit.pss / KB_PER_MB} MB)",
+                                stackTrace = readExitTrace(exit),
+                            ),
+                        )
+                    }
+                }
+            }.onFailure { Log.w(TAG, "Failed to record previous process exit reason: ${it.javaClass.simpleName}") }
+        }
+
+        /**
+         * The actual native trace/tombstone data behind [ApplicationExitInfo], when the platform
+         * makes one available — a real stack trace for the crash or ANR, not just the coarse
+         * reason enum above. Available on API 30+ (same floor as [recordPreviousExitReasonIfNew]
+         * itself) for `REASON_CRASH_NATIVE`, `REASON_CRASH`, and `REASON_ANR` on most OEMs/OS
+         * versions, though the platform is free to return null (older devices, some OEM skins, or
+         * simply no trace captured for this exit) — this is best-effort. Nothing can read this
+         * *at* the moment of a native crash, only afterward from the OS's own record — read once
+         * here on the next launch, which is the entire point of it. Capped well under any
+         * realistic trace size so one huge tombstone can't bloat the rolling debug log file.
+         */
+        private fun readExitTrace(exit: ApplicationExitInfo): String? =
+            runCatching {
+                exit.traceInputStream?.use { stream ->
+                    val buffer = ByteArray(MAX_TRACE_BYTES)
+                    var totalRead = 0
+                    while (totalRead < buffer.size) {
+                        val read = stream.read(buffer, totalRead, buffer.size - totalRead)
+                        if (read == -1) break
+                        totalRead += read
+                    }
+                    String(buffer, 0, totalRead, Charsets.UTF_8).takeIf { it.isNotBlank() }
+                }
+            }.getOrNull()
 
         /**
          * One-time upgrade path: entries recorded by the old, separate CrashLogStore/
@@ -282,5 +367,10 @@ class DebugLogStore
             const val LEGACY_CRASH_FILE_NAME = "crash_log.json"
             const val LEGACY_AI_CALL_FILE_NAME = "ai_call_debug.json"
             const val MAX_ENTRIES = 150
+            const val PREFS_NAME = "debug_log_store"
+            const val KEY_LAST_RECORDED_EXIT_TIMESTAMP = "last_recorded_exit_timestamp"
+            const val PROCESS_EXIT_TYPE = "ProcessExit"
+            const val KB_PER_MB = 1024L
+            const val MAX_TRACE_BYTES = 16 * 1024
         }
     }
