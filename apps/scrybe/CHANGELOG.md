@@ -13,6 +13,10 @@
 
 * no user-visible change: the transcribing footer now uses a shared `ProgressFooter` component (also used by Shelf Snap) instead of its own one-off composable — same look and behavior
 
+**Auto-transcription** — fixed a real cause of a just-finished recording failing to transcribe:
+* a second Stop tap could kill the service mid-transcription — fixed
+* the recording notification's Stop button now disappears the moment you tap Stop
+
 ## 1.53.5 (2026-09-16)
 
 ### Features
