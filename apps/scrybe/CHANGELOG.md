@@ -21,6 +21,7 @@
 
 * no user-visible change: local transcription/diarization/insight failures are now logged to the Debug Log with a full stack trace even when "AI call debug" is off, since a failure is the one case that always needs diagnosing
 * no user-visible change: a "Previous run ended in a crash" Debug Log entry now includes the OS's own native trace when available, not just the coarse crash reason
+* no user-visible change: the Debug Log now records a device fingerprint (model, Android version, CPU, RAM) once per launch, since on-device crashes vary a lot by device
 
 ## 1.53.5 (2026-09-16)
 

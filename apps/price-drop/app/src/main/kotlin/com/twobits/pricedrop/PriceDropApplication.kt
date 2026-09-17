@@ -1,6 +1,10 @@
 package com.twobits.pricedrop
 
 import android.app.Application
+import com.twobits.localai.DeviceDiagnostics
+import com.twobits.localai.LocalInferenceMemoryGuard
+import com.twobits.pricedrop.data.local.DebugLogEntry
+import com.twobits.pricedrop.data.local.DebugLogEntryType
 import com.twobits.pricedrop.data.local.DebugLogStore
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.settings.SettingsPrefs
@@ -33,6 +37,19 @@ class PriceDropApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         debugLogStore.install()
+        // A device fingerprint once per launch — on-device inference crashes are heavily
+        // device/chipset dependent, so a crash entry with no idea which device it happened on is
+        // far harder to reproduce or triage than one timestamped next to this.
+        debugLogStore.record(
+            DebugLogEntry(
+                timestampMs = System.currentTimeMillis(),
+                type = DebugLogEntryType.AI_CALL,
+                op = "app-start",
+                endpoint = "device-info",
+                requestSummary = DeviceDiagnostics.summary(LocalInferenceMemoryGuard.snapshot(this)?.totalMb),
+                success = true,
+            ),
+        )
         val deps = EntryPointAccessors.fromApplication(this, PriceCheckWorker.Deps::class.java)
         deps.notifier().ensureChannels()
         appScope.launch {

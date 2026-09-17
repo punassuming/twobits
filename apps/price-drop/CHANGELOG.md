@@ -12,6 +12,7 @@
 
 * no user-visible change: the Debug Log now also records why the app's last run ended (crash, low memory, ANR) with the OS's own native trace when available — this app never had that check at all before, unlike Scrybe and Shelf Snap
 * no user-visible change: product-search and page-read failures now include a full stack trace in the Debug Log, not just a one-line message
+* no user-visible change: the Debug Log now records a device fingerprint (model, Android version, CPU, RAM) once per launch, since on-device crashes vary a lot by device
 
 ## 0.23.3 (2026-09-13)
 

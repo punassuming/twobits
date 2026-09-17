@@ -1,6 +1,8 @@
 package dev.scrybe.android
 
 import android.app.Application
+import com.twobits.localai.DeviceDiagnostics
+import com.twobits.localai.LocalInferenceMemoryGuard
 import dagger.hilt.android.HiltAndroidApp
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.database.RecordingSessionDao
@@ -8,6 +10,8 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.SessionStatus
+import dev.scrybe.core.transcription.DebugLogEntry
+import dev.scrybe.core.transcription.DebugLogEntryType
 import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transforms.DefaultProfiles
 import dev.scrybe.service.recording.WaveformBackfiller
@@ -35,6 +39,19 @@ class ScrybeApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         debugLogStore.install()
+        // A device fingerprint once per launch — on-device inference crashes are heavily
+        // device/chipset dependent, so a crash entry with no idea which device it happened on is
+        // far harder to reproduce or triage than one timestamped next to this.
+        debugLogStore.record(
+            DebugLogEntry(
+                timestampMs = System.currentTimeMillis(),
+                type = DebugLogEntryType.AI_CALL,
+                op = "app-start",
+                endpoint = "device-info",
+                requestSummary = DeviceDiagnostics.summary(LocalInferenceMemoryGuard.snapshot(this)?.totalMb),
+                success = true,
+            ),
+        )
         // Captured synchronously, before any launch{} below can be delayed by the dispatcher —
         // see reconcileOrphanedTranscribingSessions()'s doc comment for why this exact ordering
         // is what makes that sweep safe.

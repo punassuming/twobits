@@ -18,6 +18,8 @@
 
 * no user-visible change: a "Previous run ended in a crash" Debug Log entry now includes the OS's own native trace when available, not just the coarse crash reason
 
+* no user-visible change: the Debug Log now records a device fingerprint (model, Android version, CPU, RAM) once per launch, since on-device crashes vary a lot by device
+
 ## 1.32.5 (2026-09-16)
 
 ### Features
