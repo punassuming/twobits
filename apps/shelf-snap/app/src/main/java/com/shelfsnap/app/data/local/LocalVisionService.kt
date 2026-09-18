@@ -73,6 +73,7 @@ class LocalVisionService
                                 timestampMs = startedAtMs,
                                 type = DebugLogEntryType.AI_CALL,
                                 op = "vision-analyze-start",
+                                startMarker = true,
                                 endpoint = "on-device",
                                 model = modelFile.name,
                                 requestSummary =

@@ -52,6 +52,7 @@ class LocalLlmService
                     timestampMs = startedAtMs,
                     type = DebugLogEntryType.AI_CALL,
                     op = "$opLabel-start",
+                    startMarker = true,
                     endpoint = "on-device",
                     model = modelFile.name,
                     requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",

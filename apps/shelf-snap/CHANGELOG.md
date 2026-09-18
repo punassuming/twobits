@@ -8,6 +8,11 @@
 
 ### Fixes
 
+**False crash warnings** — the app no longer reports a crash that never happened:
+* a normal launch with no AI activity no longer triggers the warning
+
+* no user-visible change: the Debug Log file is now size-capped, and its launch entry is written off the main thread
+
 * no user-visible change: the local-analysis footer's card now reaches the true bottom edge the same way Scrybe's does — this app's version wasn't visibly broken, fixed for consistency
 
 * no user-visible change: the local-analysis and market-research footers now both use a shared `ProgressFooter` component (also used by Scrybe) instead of two separate one-off composables — same look and behavior

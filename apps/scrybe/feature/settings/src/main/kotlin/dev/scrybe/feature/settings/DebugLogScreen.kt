@@ -225,7 +225,7 @@ private fun CrashEntryCard(entry: DebugLogEntry) {
 
 @Composable
 private fun CallEntryCard(entry: DebugLogEntry) {
-    val isStartMarker = entry.op?.endsWith("-start") == true
+    val isStartMarker = entry.startMarker
     val isService = entry.type == DebugLogEntryType.SERVICE_CALL
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(

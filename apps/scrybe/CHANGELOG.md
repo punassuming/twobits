@@ -8,6 +8,12 @@
 
 ### Fixes
 
+**False crash warnings** — the app no longer reports a crash that never happened:
+* a normal launch with no AI activity no longer triggers the warning
+* a successful local transcription no longer looks like a crash
+
+* no user-visible change: the Debug Log file is now size-capped, and its launch entry is written off the main thread
+
 **Transcribing footer** — the card now reaches the true bottom edge, no gap below it:
 * the card's background fills edge to edge instead of floating above a strip of screen background
 

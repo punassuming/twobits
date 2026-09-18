@@ -53,6 +53,7 @@ class LocalAskSession
                     timestampMs = startedAtMs,
                     type = DebugLogEntryType.AI_CALL,
                     op = "ask-start",
+                    startMarker = true,
                     endpoint = "on-device",
                     model = modelFile.name,
                     requestSummary =

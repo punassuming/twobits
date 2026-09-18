@@ -8,6 +8,11 @@
 
 ### Fixes
 
+**False crash warnings** — the app no longer reports a crash that never happened:
+* a normal launch with no AI activity no longer triggers the warning
+
+* no user-visible change: the Debug Log file is now size-capped, and its launch entry is written off the main thread
+
 * no user-visible change: local Ask now logs a model-loaded marker to the Debug Log too, closing the last gap in on-device crash diagnostics shared with Scrybe and Shelf Snap
 
 * no user-visible change: the Debug Log now also records why the app's last run ended (crash, low memory, ANR) with the OS's own native trace when available — this app never had that check at all before, unlike Scrybe and Shelf Snap

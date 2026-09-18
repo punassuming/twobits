@@ -41,17 +41,21 @@ class ScrybeApplication : Application() {
         debugLogStore.install()
         // A device fingerprint once per launch — on-device inference crashes are heavily
         // device/chipset dependent, so a crash entry with no idea which device it happened on is
-        // far harder to reproduce or triage than one timestamped next to this.
-        debugLogStore.record(
-            DebugLogEntry(
-                timestampMs = System.currentTimeMillis(),
-                type = DebugLogEntryType.AI_CALL,
-                op = "app-start",
-                endpoint = "device-info",
-                requestSummary = DeviceDiagnostics.summary(LocalInferenceMemoryGuard.snapshot(this)?.totalMb),
-                success = true,
-            ),
-        )
+        // far harder to reproduce or triage than one timestamped next to this. Written off the
+        // main thread: every DebugLogStore write re-reads, re-parses and rewrites the whole log
+        // file, and install() above has already done that twice before this point.
+        applicationScope.launch {
+            debugLogStore.record(
+                DebugLogEntry(
+                    timestampMs = System.currentTimeMillis(),
+                    type = DebugLogEntryType.AI_CALL,
+                    op = "app-launch",
+                    endpoint = "device-info",
+                    requestSummary = DeviceDiagnostics.summary(LocalInferenceMemoryGuard.snapshot(this@ScrybeApplication)?.totalMb),
+                    success = true,
+                ),
+            )
+        }
         // Captured synchronously, before any launch{} below can be delayed by the dispatcher —
         // see reconcileOrphanedTranscribingSessions()'s doc comment for why this exact ordering
         // is what makes that sweep safe.

@@ -76,6 +76,7 @@ class LocalListingService
                                 timestampMs = startedAtMs,
                                 type = DebugLogEntryType.AI_CALL,
                                 op = "listing-refine-start",
+                                startMarker = true,
                                 endpoint = "on-device",
                                 model = modelFile.name,
                                 requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",

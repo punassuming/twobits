@@ -39,17 +39,21 @@ class PriceDropApplication : Application() {
         debugLogStore.install()
         // A device fingerprint once per launch — on-device inference crashes are heavily
         // device/chipset dependent, so a crash entry with no idea which device it happened on is
-        // far harder to reproduce or triage than one timestamped next to this.
-        debugLogStore.record(
-            DebugLogEntry(
-                timestampMs = System.currentTimeMillis(),
-                type = DebugLogEntryType.AI_CALL,
-                op = "app-start",
-                endpoint = "device-info",
-                requestSummary = DeviceDiagnostics.summary(LocalInferenceMemoryGuard.snapshot(this)?.totalMb),
-                success = true,
-            ),
-        )
+        // far harder to reproduce or triage than one timestamped next to this. Written off the
+        // main thread: every DebugLogStore write re-reads, re-parses and rewrites the whole log
+        // file, and install() above has already done that twice before this point.
+        appScope.launch(Dispatchers.IO) {
+            debugLogStore.record(
+                DebugLogEntry(
+                    timestampMs = System.currentTimeMillis(),
+                    type = DebugLogEntryType.AI_CALL,
+                    op = "app-launch",
+                    endpoint = "device-info",
+                    requestSummary = DeviceDiagnostics.summary(LocalInferenceMemoryGuard.snapshot(this@PriceDropApplication)?.totalMb),
+                    success = true,
+                ),
+            )
+        }
         val deps = EntryPointAccessors.fromApplication(this, PriceCheckWorker.Deps::class.java)
         deps.notifier().ensureChannels()
         appScope.launch {

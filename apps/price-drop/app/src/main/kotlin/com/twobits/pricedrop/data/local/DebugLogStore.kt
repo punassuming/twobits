@@ -31,10 +31,10 @@ enum class DebugLogEntryType { CRASH, AI_CALL, SERVICE_CALL }
  * polymorphic-serialization ceremony while keeping [DebugLogStore] itself type-agnostic. Matches
  * Scrybe/Shelf Snap's identical entry shape.
  *
- * [op] values ending in "-start" are written *before* a risky call (a native model load or
+ * [startMarker] entries are written *before* a risky call (a native model load or
  * inference that could crash the process outright) with no matching [success]/[durationMs] yet —
  * [DebugLogStore.record] returning means the entry is already on disk, so if the process dies
- * before the matching completed entry is ever written, a dangling "-start" entry with no
+ * before the matching completed entry is ever written, a dangling marker with no
  * successor is itself the diagnostic: it pinpoints exactly which call was in flight, with what
  * model/inputs, at the moment of the crash — the only way to see that at all for a native fault,
  * since no Kotlin exception handler runs in time to catch it.
@@ -45,6 +45,14 @@ data class DebugLogEntry(
     val type: DebugLogEntryType,
     // AI_CALL / SERVICE_CALL
     val op: String? = null,
+    /**
+     * Set only by an entry written *before* a risky native call, to be matched by a later
+     * completion entry. Declared explicitly rather than inferred from an "-start" suffix on
+     * [op]: that inference silently captured any unrelated op that happened to end in "-start"
+     * (a per-launch "app-start" fingerprint entry did exactly that) and reported it to the user
+     * as an unfinished call from a crashed run.
+     */
+    val startMarker: Boolean = false,
     val endpoint: String? = null,
     val model: String? = null,
     val requestSummary: String? = null,
@@ -145,7 +153,7 @@ class DebugLogStore
             _staleStartWarning.value =
                 readAll()
                     .lastOrNull { it.exceptionType != PROCESS_EXIT_TYPE }
-                    ?.takeIf { it.op?.endsWith("-start") == true }
+                    ?.takeIf { it.startMarker }
             recordPreviousExitReasonIfNew()
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -344,6 +352,23 @@ class DebugLogStore
             )
         }
 
+        /**
+         * [MAX_ENTRIES] alone bounds the *count*, not the size: one entry can carry a
+         * [MAX_TRACE_BYTES] native trace, so a full log can reach several megabytes — and every
+         * read and write re-parses the whole file, on exactly the crashing devices least able to
+         * afford it. Drops oldest-first until the encoded document fits, always keeping the entry
+         * just recorded.
+         */
+        private fun trimToByteBudget(entries: List<DebugLogEntry>): List<DebugLogEntry> {
+            var candidate = entries
+            while (candidate.size > 1 && encodedSize(candidate) > MAX_FILE_BYTES) {
+                candidate = candidate.drop(1)
+            }
+            return candidate
+        }
+
+        private fun encodedSize(entries: List<DebugLogEntry>): Int = json.encodeToString(ListSerializer(DebugLogEntry.serializer()), entries).length
+
         private fun write(entry: DebugLogEntry) {
             synchronized(lock) {
                 runCatching {
@@ -355,7 +380,7 @@ class DebugLogStore
                                 json.decodeFromString(ListSerializer(DebugLogEntry.serializer()), file.readText())
                             }
                         }.getOrElse { emptyList() }
-                    val updated = (existing + entry).takeLast(MAX_ENTRIES)
+                    val updated = trimToByteBudget((existing + entry).takeLast(MAX_ENTRIES))
                     file.writeText(json.encodeToString(ListSerializer(DebugLogEntry.serializer()), updated))
                 }.onFailure { Log.w(TAG, "Failed to record debug log entry: ${it.javaClass.simpleName}") }
             }
@@ -372,5 +397,6 @@ class DebugLogStore
             const val PROCESS_EXIT_TYPE = "ProcessExit"
             const val KB_PER_MB = 1024L
             const val MAX_TRACE_BYTES = 16 * 1024
+            const val MAX_FILE_BYTES = 1024 * 1024
         }
     }

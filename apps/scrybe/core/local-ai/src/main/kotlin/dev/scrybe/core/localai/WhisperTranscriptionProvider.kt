@@ -36,10 +36,11 @@ class WhisperTranscriptionProvider
             // but missed here since this provider has no equivalent local/cloud facade to carry
             // the fix — it's the local branch of TranscriptionOrchestrator's provider map).
             //
-            // Only the success-path detail (and per-chunk timings below) stays behind this
-            // toggle — a failure is rare enough that logging it unconditionally costs nothing,
-            // and it's the only way a crash or error here is ever diagnosable at all for someone
-            // who never thought to flip on "AI call debug" before hitting it.
+            // Start and completion entries are both written unconditionally, and must stay that
+            // way: the start entry is what a crashed run leaves behind as its only evidence, and
+            // an unmatched one raises a crash warning to the user. Gating only the completion
+            // behind this toggle made every successful transcription look like a crash. Only the
+            // per-chunk timing detail below is optional.
             val debugEnabled = preferencesDataStore.debugDiarization.first()
 
             suspend fun record(
@@ -48,7 +49,6 @@ class WhisperTranscriptionProvider
                 durationMs: Long? = null,
                 stackTrace: String? = null,
             ) {
-                if (success && !debugEnabled) return
                 debugLogStore.record(
                     DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
@@ -99,6 +99,7 @@ class WhisperTranscriptionProvider
                             timestampMs = startedAtMs,
                             type = DebugLogEntryType.AI_CALL,
                             op = "transcribe-start",
+                            startMarker = true,
                             endpoint = "on-device",
                             model = model.filePrefix,
                             requestSummary = "file=${audioFile.name}",
@@ -109,7 +110,8 @@ class WhisperTranscriptionProvider
                         // Per-window timings are the one measurement that separates "the model
                         // is slow on this device" from "a window is stuck" — a run that hangs
                         // leaves no trace otherwise, and a run that finishes says nothing about
-                        // how the time was spent. Only collected when the debug log is on.
+                        // how the time was spent. The one piece of detail still gated on the
+                        // toggle, since collecting it costs work on every decode window.
                         val chunkTimingsMs = mutableListOf<Long>()
                         val text =
                             engine.transcribe(decoded.samples, decoded.sampleRateHz) { _, _, elapsedMs ->
