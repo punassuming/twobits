@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: fixed a build-breaking API-level error in the previous commit's native-crash-trace capture — caught by CI, so it never shipped
+
 * no user-visible change: the rule that decides "the last run crashed" is now a plain function covered by unit tests, and shared-module tests finally run in CI instead of being skipped silently
 
 **False crash warnings** — the app no longer reports a crash that never happened:

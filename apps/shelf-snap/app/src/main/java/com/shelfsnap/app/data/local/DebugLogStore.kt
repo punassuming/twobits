@@ -241,19 +241,26 @@ class DebugLogStore
          * here on the next launch, which is the entire point of it. Capped well under any
          * realistic trace size so one huge tombstone can't bloat the rolling debug log file.
          */
-        private fun readExitTrace(exit: ApplicationExitInfo): String? =
-            runCatching {
-                exit.traceInputStream?.use { stream ->
-                    val buffer = ByteArray(MAX_TRACE_BYTES)
-                    var totalRead = 0
+        private fun readExitTrace(exit: ApplicationExitInfo): String? {
+            // Repeated from the caller rather than relied on: `getTraceInputStream` is API 30 and
+            // minSdk is 26, and lint only follows an SDK_INT guard within the one function that
+            // states it — so without this the build fails, and any future caller is guarded too.
+            // Read outside the runCatching lambda below for the same reason.
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+            val stream = exit.traceInputStream ?: return null
+            return runCatching {
+                val buffer = ByteArray(MAX_TRACE_BYTES)
+                var totalRead = 0
+                stream.use {
                     while (totalRead < buffer.size) {
-                        val read = stream.read(buffer, totalRead, buffer.size - totalRead)
+                        val read = it.read(buffer, totalRead, buffer.size - totalRead)
                         if (read == -1) break
                         totalRead += read
                     }
-                    String(buffer, 0, totalRead, Charsets.UTF_8).takeIf { it.isNotBlank() }
                 }
+                String(buffer, 0, totalRead, Charsets.UTF_8).takeIf { text -> text.isNotBlank() }
             }.getOrNull()
+        }
 
         /**
          * One-time upgrade path: entries recorded by the old, separate CrashLogStore/
