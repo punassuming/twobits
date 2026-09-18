@@ -8,6 +8,9 @@
 
 ### Fixes
 
+**Stuck on-device tasks** — a jammed local model now reports instead of hanging forever:
+* previously every later on-device task waited with no error and no log
+
 **Market research on small models** — no longer crashes the app partway through:
 * the evidence sent to the model now fits the model you picked
 * Qwen 3 0.6B holds far less than the other options

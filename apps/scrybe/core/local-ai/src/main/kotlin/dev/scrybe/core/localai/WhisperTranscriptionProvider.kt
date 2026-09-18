@@ -1,5 +1,6 @@
 package dev.scrybe.core.localai
 
+import com.twobits.localai.LocalInferenceGate
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.transcription.DebugLogEntry
@@ -106,27 +107,36 @@ class WhisperTranscriptionProvider
                             success = true,
                         ),
                     )
-                    WhisperEngine(modelDir, model.filePrefix).use { engine ->
-                        // Per-window timings are the one measurement that separates "the model
-                        // is slow on this device" from "a window is stuck" — a run that hangs
-                        // leaves no trace otherwise, and a run that finishes says nothing about
-                        // how the time was spent. The one piece of detail still gated on the
-                        // toggle, since collecting it costs work on every decode window.
-                        val chunkTimingsMs = mutableListOf<Long>()
-                        val text =
-                            engine.transcribe(decoded.samples, decoded.sampleRateHz) { _, _, elapsedMs ->
-                                if (debugEnabled) chunkTimingsMs += elapsedMs
-                            }
-                        record(
-                            success = true,
-                            snippet = "${text.length} chars${chunkTimingSummary(chunkTimingsMs)}",
-                            durationMs = System.currentTimeMillis() - startedAtMs,
-                        )
-                        TranscriptResult(
-                            text = text,
-                            language = "en",
-                            durationSeconds = null,
-                        )
+                    // Whisper is a native model like any other, and until now it was the one
+                    // engine that ignored the process-wide gate — so a transcription could hold a
+                    // Whisper model resident while a diarization or insight pass loaded a
+                    // multi-gigabyte LiteRT-LM model alongside it, which is exactly the combined
+                    // footprint the gate exists to prevent. Safe to wait here: the LiteRT follow-up
+                    // work takes the finished transcript as input, so it never runs inside this
+                    // block and the two can only ever queue, never deadlock.
+                    LocalInferenceGate.withGate {
+                        WhisperEngine(modelDir, model.filePrefix).use { engine ->
+                            // Per-window timings are the one measurement that separates "the
+                            // model is slow on this device" from "a window is stuck" — a run that
+                            // hangs leaves no trace otherwise, and a run that finishes says
+                            // nothing about how the time was spent. The one piece of detail still
+                            // gated on the toggle, since it costs work on every decode window.
+                            val chunkTimingsMs = mutableListOf<Long>()
+                            val text =
+                                engine.transcribe(decoded.samples, decoded.sampleRateHz) { _, _, elapsedMs ->
+                                    if (debugEnabled) chunkTimingsMs += elapsedMs
+                                }
+                            record(
+                                success = true,
+                                snippet = "${text.length} chars${chunkTimingSummary(chunkTimingsMs)}",
+                                durationMs = System.currentTimeMillis() - startedAtMs,
+                            )
+                            TranscriptResult(
+                                text = text,
+                                language = "en",
+                                durationSeconds = null,
+                            )
+                        }
                     }
                 }
             }.onFailure { error ->

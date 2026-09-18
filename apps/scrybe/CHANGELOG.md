@@ -8,6 +8,11 @@
 
 ### Fixes
 
+**Stuck on-device tasks** — a jammed local model now reports instead of hanging forever:
+* previously every later on-device task waited with no error and no log
+
+* no user-visible change: local transcription now shares the one-model-at-a-time gate with the on-device LLM, so a transcription and a diarization can no longer both hold a model in memory
+
 * no user-visible change: on-device models are no longer asked for a larger context window than they were built for, which a native runtime answers by killing the app
 
 * no user-visible change: fixed a build-breaking API-level error in the previous commit's native-crash-trace capture — caught by CI, so it never shipped

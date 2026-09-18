@@ -18,7 +18,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withTimeout
 import java.io.Closeable
 import java.io.File
@@ -226,15 +225,6 @@ class LiteRtLmEngine internal constructor(
         private const val CACHE_SUBDIR = "litertlm"
 
         /**
-         * At most one engine resident per process. Overlapping local calls are a documented,
-         * intended pattern for the apps (Shelf Snap fans out listing refinement per platform
-         * while a vision analysis can still be running), and each of them would otherwise load
-         * its own multi-GB copy of the model at the same time. The second caller now simply
-         * waits for the first engine to close.
-         */
-        private val residentEngineGate = Mutex()
-
-        /**
          * The context window to actually ask for, never larger than the bundle can serve. A
          * `.litertlm` file bakes its KV cache size in at conversion time (Qwen 3 0.6B's file name
          * says `ekv1280` outright), and requesting more is answered with a process abort rather
@@ -269,15 +259,22 @@ class LiteRtLmEngine internal constructor(
         ): LiteRtLmEngine {
             require(maxNumTokens > 0) { "maxNumTokens must be positive" }
             val effectiveMaxNumTokens = contextBudgetFor(modelFile, maxNumTokens)
-            residentEngineGate.lock()
+            // Not withGate {}: this hands the engine back to its caller, so the release belongs
+            // to close(), not to the end of this function.
+            LocalInferenceGate.acquire()
             return runCatching {
                 // Checked after taking the gate, not before: the previous engine releasing its
                 // memory is exactly the event that can turn a refusal into a pass.
-                LocalInferenceMemoryGuard.requireHeadroom(context, modelFile, vision = visionBackend != null)
+                LocalInferenceMemoryGuard.requireHeadroom(
+                    context,
+                    modelFile,
+                    vision = visionBackend != null,
+                    contextTokens = effectiveMaxNumTokens,
+                )
                 LiteRtLmEngine(context, modelFile, systemInstruction, visionBackend, effectiveMaxNumTokens) {
-                    residentEngineGate.unlock()
+                    LocalInferenceGate.release()
                 }
-            }.onFailure { residentEngineGate.unlock() }.getOrThrow()
+            }.onFailure { LocalInferenceGate.release() }.getOrThrow()
         }
     }
 }
