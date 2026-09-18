@@ -156,7 +156,7 @@ jobs:
       - name: Build, lint & test
         working-directory: apps/scrybe
         shell: bash
-        run: bash ../../scripts/ci-gradle-retry.sh assembleRelease testDebugUnitTest lint ktlintCheck detekt
+        run: bash ../../scripts/ci-gradle-retry.sh assembleRelease testDebugUnitTest sharedUnitTest lint ktlintCheck detekt
 
       - name: Upload lint report
         if: always()
@@ -172,7 +172,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scrybe-test-results-${{ github.run_number }}
-          path: apps/scrybe/app/build/reports/tests/
+          path: |
+            apps/scrybe/app/build/reports/tests/
+            shared/*/build/reports/tests/
           if-no-files-found: ignore
           retention-days: 14
 

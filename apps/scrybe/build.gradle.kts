@@ -99,3 +99,12 @@ tasks.register("detekt") {
     group = "verification"
     dependsOn(subprojects.map { "${it.path}:detekt" })
 }
+
+tasks.register("sharedUnitTest") {
+    description = "Runs unit tests in the composite `shared` build, which app-side test tasks never reach."
+    group = "verification"
+    // An included build only runs the tasks needed to produce the artifacts it substitutes, so
+    // `testDebugUnitTest` here never descends into `shared`. Without this, a test added under
+    // shared/ passes locally and gates nothing in CI.
+    dependsOn(gradle.includedBuild("shared").task(":local-models:test"))
+}

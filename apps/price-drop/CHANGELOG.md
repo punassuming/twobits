@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: the rule that decides "the last run crashed" is now a plain function covered by unit tests, and shared-module tests finally run in CI instead of being skipped silently
+
 **False crash warnings** — the app no longer reports a crash that never happened:
 * a normal launch with no AI activity no longer triggers the warning
 

@@ -92,6 +92,26 @@ private data class LegacyAiCallDebugEntry(
 )
 
 /**
+ * The entry, if any, that a crashed previous run left unfinished: the newest entry overall must be
+ * an unmatched [DebugLogEntry.startMarker], because anything newer means the app went on to do
+ * something else and therefore did not die there.
+ *
+ * Process-exit entries are skipped rather than counted: they are appended after the fact, on the
+ * *next* launch, and would otherwise hide the very marker they describe.
+ *
+ * Pure and top-level so the rule can be tested directly — an earlier version inferred "unfinished"
+ * from an "-start" suffix on the op name and so reported a per-launch "app-start" bookkeeping
+ * entry as a crash.
+ */
+internal fun selectStaleStartMarker(entries: List<DebugLogEntry>): DebugLogEntry? =
+    entries
+        .lastOrNull { it.exceptionType != PROCESS_EXIT_TYPE }
+        ?.takeIf { it.startMarker }
+
+/** [DebugLogEntry.exceptionType] of the synthetic entry describing how the previous run ended. */
+internal const val PROCESS_EXIT_TYPE = "ProcessExit"
+
+/**
  * Rolling, file-backed log merging what were previously two separate signals — uncaught crashes
  * ([install]) and AI call outcomes ([record]) — into one chronological timeline, so cause and
  * effect can actually be seen together instead of cross-referencing two different screens by eye.
@@ -150,10 +170,7 @@ class DebugLogStore
             migrateLegacyLogsIfPresent()
             // Process-exit entries (below) are appended after the fact and must not hide a
             // still-undismissed "-start" marker from an earlier launch.
-            _staleStartWarning.value =
-                readAll()
-                    .lastOrNull { it.exceptionType != PROCESS_EXIT_TYPE }
-                    ?.takeIf { it.startMarker }
+            _staleStartWarning.value = selectStaleStartMarker(readAll())
             recordPreviousExitReasonIfNew()
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -394,7 +411,6 @@ class DebugLogStore
             const val MAX_ENTRIES = 150
             const val PREFS_NAME = "debug_log_store"
             const val KEY_LAST_RECORDED_EXIT_TIMESTAMP = "last_recorded_exit_timestamp"
-            const val PROCESS_EXIT_TYPE = "ProcessExit"
             const val KB_PER_MB = 1024L
             const val MAX_TRACE_BYTES = 16 * 1024
             const val MAX_FILE_BYTES = 1024 * 1024
