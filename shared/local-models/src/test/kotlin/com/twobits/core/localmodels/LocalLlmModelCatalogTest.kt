@@ -48,6 +48,36 @@ class LocalLlmModelCatalogTest {
             }
     }
 
+    /**
+     * The regression this catches: Qwen 3 0.6B ships as `qwen3_0.6b_q4_block32_ekv1280.litertlm`,
+     * whose `ekv1280` states a 1280-token KV cache, while every model was being asked for 4096 —
+     * a mismatch the native runtime answers by aborting the process. Where a bundle states its own
+     * limit in its file name, the catalog may not claim more.
+     */
+    @Test
+    fun `a model never claims more context than its own file name states`() {
+        val ekv = Regex("""ekv(\d+)""")
+        LocalLlmModel.entries.forEach { model ->
+            val stated =
+                ekv
+                    .find(model.fileName)
+                    ?.groupValues
+                    ?.get(1)
+                    ?.toInt() ?: return@forEach
+            assertTrue(
+                "${model.name}: file name states ekv$stated but maxContextTokens is ${model.maxContextTokens}",
+                model.maxContextTokens <= stated,
+            )
+        }
+    }
+
+    @Test
+    fun `every model declares a positive context budget`() {
+        LocalLlmModel.entries.forEach { model ->
+            assertTrue("${model.name} maxContextTokens", model.maxContextTokens > 0)
+        }
+    }
+
     private companion object {
         const val HEX_DIGEST_LENGTH = 64
     }

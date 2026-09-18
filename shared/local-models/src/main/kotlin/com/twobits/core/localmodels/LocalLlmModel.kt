@@ -1,5 +1,8 @@
 package com.twobits.core.localmodels
 
+/** What every model was implicitly given before [LocalLlmModel.maxContextTokens] was per-model. */
+const val DEFAULT_MAX_CONTEXT_TOKENS = 4096
+
 /**
  * `litert-community` on HuggingFace hosts pre-converted `.litertlm` bundles published for direct
  * app consumption (unlike Google's own `google/gemma-*` repos, which sit behind a license
@@ -47,6 +50,16 @@ enum class LocalLlmModel(
     override val family: LocalModelFamily,
     val visionCapable: Boolean = false,
     val sha256: String? = null,
+    /**
+     * The largest context window (prompt + image soft tokens + response) this bundle can actually
+     * serve. A `.litertlm` bundle bakes its KV cache size in at conversion time — `ekv1280` in a
+     * file name states it outright — and asking for more than it was built for is answered by the
+     * native runtime with a process abort, not an exception. [DEFAULT_MAX_CONTEXT_TOKENS] is the
+     * value every model was implicitly given before this was per-model; it is kept for the bundles
+     * whose real limit has not been confirmed against their published config, so their behavior is
+     * unchanged.
+     */
+    val maxContextTokens: Int = DEFAULT_MAX_CONTEXT_TOKENS,
 ) : LocalModelSpec {
     GEMMA_4_E2B(
         displayName = "Gemma 4 E2B",
@@ -84,6 +97,8 @@ enum class LocalLlmModel(
                 "qwen3_0.6b_q4_block32_ekv1280.litertlm",
         huggingFacePageUrl = "https://huggingface.co/litert-community/Qwen3-0.6B-int4",
         family = LocalModelFamily.QWEN,
+        // `ekv1280` in the file name: this bundle is built for a 1280-token KV cache.
+        maxContextTokens = 1280,
     ),
     SMOLLM2_360M(
         displayName = "SmolLM2 360M",
@@ -118,5 +133,12 @@ enum class LocalLlmModel(
         val default: LocalLlmModel = GEMMA_4_E2B
 
         fun fromName(name: String): LocalLlmModel = entries.firstOrNull { it.name == name } ?: default
+
+        /**
+         * The catalog entry a downloaded file belongs to, or null for a model the user imported
+         * themselves. The file name is the only identity a `File` on disk carries, and it is what
+         * [maxContextTokens] has to be recovered from at the point a model is actually loaded.
+         */
+        fun forFileName(fileName: String): LocalLlmModel? = entries.firstOrNull { it.fileName == fileName }
     }
 }

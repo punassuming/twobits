@@ -27,6 +27,8 @@ import com.shelfsnap.app.data.remote.search.WebSearchResult
 import com.shelfsnap.app.data.remote.search.WebSearchService
 import com.shelfsnap.app.data.remote.search.marketplaceKeyFromUrl
 import com.shelfsnap.app.util.ApiKeyValidator
+import com.twobits.core.localmodels.DEFAULT_MAX_CONTEXT_TOKENS
+import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -338,13 +340,14 @@ class PriceResearchService
                 )
                 val result =
                     runCatching {
+                        val (localMaxResults, localMaxSnippetChars) = localEvidenceLimits(modelFile.name)
                         val userMessage =
                             gson.toJson(
                                 buildUserPayload(
                                     item,
                                     evidence,
-                                    maxResults = LOCAL_MAX_RESULTS,
-                                    maxSnippetChars = LOCAL_MAX_SNIPPET_CHARS,
+                                    maxResults = localMaxResults,
+                                    maxSnippetChars = localMaxSnippetChars,
                                 ),
                             )
                         withLocalLlmEngine(context, modelFile, systemInstruction = systemPrompt) { engine ->
@@ -1486,6 +1489,30 @@ class PriceResearchService
              */
             private const val LOCAL_MAX_RESULTS = 6
             private const val LOCAL_MAX_SNIPPET_CHARS = 400
+
+            /**
+             * Floors for the scaling below. Below these the evidence payload stops being worth
+             * sending at all, and refusing is better than asking a model to price an item from
+             * nothing.
+             */
+            private const val LOCAL_MIN_RESULTS = 2
+            private const val LOCAL_MIN_SNIPPET_CHARS = 150
+
+            /**
+             * [LOCAL_MAX_RESULTS]/[LOCAL_MAX_SNIPPET_CHARS] were sized for a 4096-token window and
+             * then applied to every local model regardless of what it could hold. Qwen 3 0.6B ships
+             * a 1280-token bundle, so the same payload plus this path's JSON-schema system prompt
+             * overruns it — and an overrun is a native abort that takes the whole app down, not an
+             * error. Scaling keeps the tuned values exactly as they are for a full-size window and
+             * only shrinks them for a model that genuinely cannot hold them.
+             */
+            private fun localEvidenceLimits(modelFileName: String): Pair<Int, Int> {
+                val budget = LocalLlmModel.forFileName(modelFileName)?.maxContextTokens ?: DEFAULT_MAX_CONTEXT_TOKENS
+                if (budget >= DEFAULT_MAX_CONTEXT_TOKENS) return LOCAL_MAX_RESULTS to LOCAL_MAX_SNIPPET_CHARS
+                val scale = budget.toDouble() / DEFAULT_MAX_CONTEXT_TOKENS
+                return maxOf(LOCAL_MIN_RESULTS, (LOCAL_MAX_RESULTS * scale).toInt()) to
+                    maxOf(LOCAL_MIN_SNIPPET_CHARS, (LOCAL_MAX_SNIPPET_CHARS * scale).toInt())
+            }
 
             internal const val ERROR_INVALID_KEY =
                 "Invalid or missing OpenAI API key. Check Settings."

@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**Market research on small models** — no longer crashes the app partway through:
+* the evidence sent to the model now fits the model you picked
+* Qwen 3 0.6B holds far less than the other options
+
 * no user-visible change: fixed a build-breaking API-level error in the previous commit's native-crash-trace capture — caught by CI, so it never shipped
 
 * no user-visible change: the rule that decides "the last run crashed" is now a plain function covered by unit tests, and shared-module tests finally run in CI instead of being skipped silently

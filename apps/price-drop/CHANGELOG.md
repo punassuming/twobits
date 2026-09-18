@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: on-device models are no longer asked for a larger context window than they were built for, which a native runtime answers by killing the app
+
 * no user-visible change: fixed a build-breaking API-level error in the previous commit's native-crash-trace capture — caught by CI, so it never shipped
 
 * no user-visible change: the rule that decides "the last run crashed" is now a plain function covered by unit tests, and shared-module tests finally run in CI instead of being skipped silently

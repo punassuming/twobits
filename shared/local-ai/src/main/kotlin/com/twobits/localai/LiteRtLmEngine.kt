@@ -11,6 +11,7 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.twobits.core.localmodels.LocalLlmModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
@@ -234,6 +235,25 @@ class LiteRtLmEngine internal constructor(
         private val residentEngineGate = Mutex()
 
         /**
+         * The context window to actually ask for, never larger than the bundle can serve. A
+         * `.litertlm` file bakes its KV cache size in at conversion time (Qwen 3 0.6B's file name
+         * says `ekv1280` outright), and requesting more is answered with a process abort rather
+         * than an exception — so a caller's request is a ceiling, not a promise.
+         *
+         * Resolved from the file name here rather than threaded through every call site: the six
+         * existing callers cannot each be relied on to remember, and a seventh would silently
+         * reintroduce the crash. A file that matches no catalog entry (a user-imported model) is
+         * left to the caller's own value, which is the best information available for it.
+         */
+        private fun contextBudgetFor(
+            modelFile: File,
+            requested: Int,
+        ): Int {
+            val declared = LocalLlmModel.forFileName(modelFile.name)?.maxContextTokens
+            return declared?.coerceAtMost(requested) ?: requested
+        }
+
+        /**
          * The only way to obtain an engine. Takes the process-wide gate, checks free memory
          * against the model on disk, then performs the blocking native load — the caller is
          * responsible for being off the main thread, exactly as with the old constructor. The
@@ -248,12 +268,13 @@ class LiteRtLmEngine internal constructor(
             maxNumTokens: Int = DEFAULT_MAX_NUM_TOKENS,
         ): LiteRtLmEngine {
             require(maxNumTokens > 0) { "maxNumTokens must be positive" }
+            val effectiveMaxNumTokens = contextBudgetFor(modelFile, maxNumTokens)
             residentEngineGate.lock()
             return runCatching {
                 // Checked after taking the gate, not before: the previous engine releasing its
                 // memory is exactly the event that can turn a refusal into a pass.
                 LocalInferenceMemoryGuard.requireHeadroom(context, modelFile, vision = visionBackend != null)
-                LiteRtLmEngine(context, modelFile, systemInstruction, visionBackend, maxNumTokens) {
+                LiteRtLmEngine(context, modelFile, systemInstruction, visionBackend, effectiveMaxNumTokens) {
                     residentEngineGate.unlock()
                 }
             }.onFailure { residentEngineGate.unlock() }.getOrThrow()
