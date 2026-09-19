@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: fixed a compile error and a double-write hazard in the previous commit's debug-log locking — caught by CI, so neither shipped
+
 * no user-visible change: each on-device model now states its own context window explicitly instead of inheriting an unverified default, so the four that have never been measured are visible rather than hidden
 
 * no user-visible change: the Debug Log file is now safe against two processes writing it at once, and is replaced atomically — a torn write used to make the whole log parse as empty

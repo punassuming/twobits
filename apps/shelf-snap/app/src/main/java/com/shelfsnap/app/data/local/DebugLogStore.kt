@@ -12,8 +12,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.Closeable
 import java.io.File
 import java.io.PrintWriter
+import java.io.RandomAccessFile
 import java.io.StringWriter
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -436,8 +438,13 @@ class DebugLogStore
         fun readAll(): List<DebugLogEntry> =
             withFileLock {
                 runCatching {
-                    if (!file.exists()) return emptyList()
-                    gson.fromJson<List<DebugLogEntry>>(file.readText(), entryListType) ?: emptyList()
+                    // Not `return emptyList()`: withFileLock is not an inline function, so a
+                    // non-local return out of its lambda is a compile error.
+                    if (!file.exists()) {
+                        emptyList()
+                    } else {
+                        gson.fromJson<List<DebugLogEntry>>(file.readText(), entryListType) ?: emptyList()
+                    }
                 }.getOrElse { emptyList() }
             }
 
@@ -493,16 +500,33 @@ class DebugLogStore
          */
         private fun <T> withFileLock(block: () -> T): T =
             synchronized(lock) {
-                runCatching {
-                    java.io.RandomAccessFile(File(context.filesDir, LOCK_FILE_NAME), "rw").use { handle ->
-                        handle.channel.lock().use { block() }
+                // Acquisition is separated from running [block] so that [block] is invoked exactly
+                // once on every path. Wrapping both in one runCatching would re-run it after any
+                // failure of its own — which for a write means writing twice.
+                val crossProcessLock = acquireCrossProcessLock()
+                if (crossProcessLock == null) block() else crossProcessLock.use { block() }
+            }
+
+        /**
+         * Null when no lock can be taken, in which case the caller proceeds unsynchronised: a
+         * device that cannot give us a lock file is still better served by an unguarded write than
+         * by dropping diagnostics entirely.
+         */
+        private fun acquireCrossProcessLock(): Closeable? =
+            runCatching {
+                val handle = RandomAccessFile(File(context.filesDir, LOCK_FILE_NAME), "rw")
+                val fileLock =
+                    runCatching { handle.channel.lock() }.getOrElse {
+                        handle.close()
+                        throw it
                     }
-                }.getOrElse {
-                    // A device that cannot give us a lock file is still better served by an
-                    // unsynchronised write than by silently dropping diagnostics.
-                    Log.w(TAG, "Debug log file lock unavailable: ${it.javaClass.simpleName}")
-                    block()
+                Closeable {
+                    fileLock.close()
+                    handle.close()
                 }
+            }.getOrElse {
+                Log.w(TAG, "Debug log file lock unavailable: ${it.javaClass.simpleName}")
+                null
             }
 
         /**
