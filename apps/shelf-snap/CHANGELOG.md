@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: when an on-device model ends the process, the Debug Log now marks the next attempt at that same model and feature, instead of each retry looking like a first occurrence
+
 **Stuck on-device tasks** — a jammed local model now reports instead of hanging forever:
 * previously every later on-device task waited with no error and no log
 

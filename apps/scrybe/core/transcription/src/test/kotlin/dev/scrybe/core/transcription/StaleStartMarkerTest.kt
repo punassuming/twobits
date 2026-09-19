@@ -1,7 +1,9 @@
 package dev.scrybe.core.transcription
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -60,5 +62,23 @@ class StaleStartMarkerTest {
     @Test
     fun `an empty log reports nothing`() {
         assertNull(selectStaleStartMarker(emptyList()))
+    }
+
+    @Test
+    fun `a retry of the crashed pair matches despite the start suffix`() {
+        assertTrue(isRememberedCrashPair("market-research-start", "qwen3.litertlm", "market-research", "qwen3.litertlm"))
+        assertTrue(isRememberedCrashPair("market-research", "qwen3.litertlm", "market-research", "qwen3.litertlm"))
+    }
+
+    @Test
+    fun `a different model or op is not the remembered pair`() {
+        assertFalse(isRememberedCrashPair("market-research-start", "gemma.litertlm", "market-research", "qwen3.litertlm"))
+        assertFalse(isRememberedCrashPair("transcribe-start", "qwen3.litertlm", "market-research", "qwen3.litertlm"))
+    }
+
+    @Test
+    fun `nothing remembered matches nothing`() {
+        assertFalse(isRememberedCrashPair("market-research-start", "qwen3.litertlm", null, null))
+        assertFalse(isRememberedCrashPair(null, null, "market-research", "qwen3.litertlm"))
     }
 }

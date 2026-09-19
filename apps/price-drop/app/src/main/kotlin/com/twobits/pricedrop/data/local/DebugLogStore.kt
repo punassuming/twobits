@@ -3,6 +3,7 @@ package com.twobits.pricedrop.data.local
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -108,6 +109,23 @@ internal fun selectStaleStartMarker(entries: List<DebugLogEntry>): DebugLogEntry
         .lastOrNull { it.exceptionType != PROCESS_EXIT_TYPE }
         ?.takeIf { it.startMarker }
 
+/**
+ * Whether an entry describes the same model-and-operation pair that ended the process on a previous
+ * run. The op of a start marker carries a "-start" suffix its completion does not, so the suffix is
+ * stripped before comparing — otherwise a retry would never match the pair remembered from the
+ * crash, and the memory would never fire or never clear.
+ */
+internal fun isRememberedCrashPair(
+    op: String?,
+    model: String?,
+    crashedOp: String?,
+    crashedModel: String?,
+): Boolean {
+    if (op == null || crashedOp == null) return false
+    return op.removeSuffix("-start") == crashedOp.removeSuffix("-start") &&
+        model.orEmpty() == crashedModel.orEmpty()
+}
+
 /** [DebugLogEntry.exceptionType] of the synthetic entry describing how the previous run ended. */
 internal const val PROCESS_EXIT_TYPE = "ProcessExit"
 
@@ -171,6 +189,7 @@ class DebugLogStore
             // Process-exit entries (below) are appended after the fact and must not hide a
             // still-undismissed "-start" marker from an earlier launch.
             _staleStartWarning.value = selectStaleStartMarker(readAll())
+            _staleStartWarning.value?.let { rememberCrashedCall(it) }
             recordPreviousExitReasonIfNew()
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -198,7 +217,7 @@ class DebugLogStore
                         .getSystemService(ActivityManager::class.java)
                         ?.getHistoricalProcessExitReasons(context.packageName, 0, 1)
                         ?.firstOrNull()
-                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val prefs = prefs()
                 if (exit != null && exit.timestamp > prefs.getLong(KEY_LAST_RECORDED_EXIT_TIMESTAMP, 0L)) {
                     prefs.edit().putLong(KEY_LAST_RECORDED_EXIT_TIMESTAMP, exit.timestamp).apply()
                     val reasonName =
@@ -347,7 +366,60 @@ class DebugLogStore
             write(crashEntry(Thread.currentThread(), throwable))
         }
 
-        fun record(entry: DebugLogEntry) = write(entry)
+        fun record(entry: DebugLogEntry) = write(annotateIfPreviouslyCrashed(entry))
+
+        /**
+         * Remembers the model and operation that were in flight when a previous run died, so the
+         * *next* attempt at that same pair is not silently identical to the one that killed the
+         * app. Without this, a model that reliably aborts is retried on every tap with nothing in
+         * the log tying the attempts together — each one looks like a first occurrence, which is a
+         * large part of why a single crashing model can absorb days of guessing.
+         *
+         * Kept in the same preferences file as the exit-reason bookmark rather than in the log
+         * itself: the log is a rolling window and the entry that proves the crash is exactly the
+         * one that scrolls away.
+         */
+        private fun rememberCrashedCall(marker: DebugLogEntry) {
+            val op = marker.op?.removeSuffix("-start") ?: return
+            runCatching {
+                prefs()
+                    .edit()
+                    .putString(KEY_CRASHED_OP, op)
+                    .putString(KEY_CRASHED_MODEL, marker.model.orEmpty())
+                    .apply()
+            }.onFailure { Log.w(TAG, "Failed to remember crashed call: ${it.javaClass.simpleName}") }
+        }
+
+        /**
+         * Marks a start entry that repeats a pair which ended the process last time, and clears the
+         * memory once that pair completes successfully — "crashed and has not succeeded since" is
+         * the only claim worth making, and a success is what disproves it.
+         */
+        private fun annotateIfPreviouslyCrashed(entry: DebugLogEntry): DebugLogEntry {
+            val op = entry.op ?: return entry
+            val remembered = runCatching { prefs() }.getOrNull() ?: return entry
+            val crashedOp = remembered.getString(KEY_CRASHED_OP, null) ?: return entry
+            val crashedModel = remembered.getString(KEY_CRASHED_MODEL, null).orEmpty()
+            if (!isRememberedCrashPair(op, entry.model, crashedOp, crashedModel)) return entry
+            if (entry.startMarker) {
+                val note = "this model ended the process on a previous run of $crashedOp"
+                return entry.copy(
+                    responseSnippet = entry.responseSnippet?.let { "$it · $note" } ?: note,
+                )
+            }
+            if (entry.success == true) {
+                runCatching {
+                    remembered
+                        .edit()
+                        .remove(KEY_CRASHED_OP)
+                        .remove(KEY_CRASHED_MODEL)
+                        .apply()
+                }
+            }
+            return entry
+        }
+
+        private fun prefs(): SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         fun readAll(): List<DebugLogEntry> =
             synchronized(lock) {
@@ -418,6 +490,8 @@ class DebugLogStore
             const val MAX_ENTRIES = 150
             const val PREFS_NAME = "debug_log_store"
             const val KEY_LAST_RECORDED_EXIT_TIMESTAMP = "last_recorded_exit_timestamp"
+            const val KEY_CRASHED_OP = "crashed_op"
+            const val KEY_CRASHED_MODEL = "crashed_model"
             const val KB_PER_MB = 1024L
             const val MAX_TRACE_BYTES = 16 * 1024
             const val MAX_FILE_BYTES = 1024 * 1024
