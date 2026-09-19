@@ -8,6 +8,15 @@
 
 ### Fixes
 
+**Sharing the Debug Log** — a shared log now carries what the screen shows:
+* every entry, not just the ones the current filter leaves visible
+* whether each call succeeded, its HTTP status, and its stack trace
+* the device and how the previous run ended, at the top
+
+**Cloud AI failures** — a failed transcription, diarization or insight is now always logged:
+* previously it recorded nothing unless "AI call debug" happened to be on
+* the failure entry now carries a stack trace too
+
 * no user-visible change: fixed a compile error and a double-write hazard in the previous commit's debug-log locking — caught by CI, so neither shipped
 
 * no user-visible change: each on-device model now states its own context window explicitly instead of inheriting an unverified default, so the four that have never been measured are visible rather than hidden

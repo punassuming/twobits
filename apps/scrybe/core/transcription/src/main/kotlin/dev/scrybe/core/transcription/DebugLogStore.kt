@@ -136,8 +136,12 @@ internal fun isRememberedCrashPair(
     return baseOp(op) == baseOp(crashedOp) && model.orEmpty() == crashedModel.orEmpty()
 }
 
-/** [DebugLogEntry.exceptionType] of the synthetic entry describing how the previous run ended. */
-internal const val PROCESS_EXIT_TYPE = "ProcessExit"
+/**
+ * [DebugLogEntry.exceptionType] of the synthetic entry describing how the previous run ended.
+ * Public because the Debug Log screen surfaces it in its shared export, and in Scrybe that screen
+ * lives in a different Gradle module from this store.
+ */
+const val PROCESS_EXIT_TYPE = "ProcessExit"
 
 /**
  * Rolling, file-backed log merging what were previously two separate signals — uncaught crashes

@@ -8,6 +8,11 @@
 
 ### Fixes
 
+**Sharing the Debug Log** — a shared log now carries what the screen shows:
+* every entry, not just the ones the current filter leaves visible
+* whether each call succeeded, its HTTP status, and its stack trace
+* the device and how the previous run ended, at the top
+
 * no user-visible change: fixed a compile error and a double-write hazard in the previous commit's debug-log locking — caught by CI, so neither shipped
 
 * no user-visible change: each on-device model now states its own context window explicitly instead of inheriting an unverified default, so the four that have never been measured are visible rather than hidden
@@ -21,9 +26,7 @@
 **Stuck on-device tasks** — a jammed local model now reports instead of hanging forever:
 * previously every later on-device task waited with no error and no log
 
-**Market research on small models** — no longer crashes the app partway through:
-* the evidence sent to the model now fits the model you picked
-* Qwen 3 0.6B holds far less than the other options
+* no user-visible change: market research now sizes its evidence to the context window of the model you picked, instead of one figure chosen for the largest — a real defect, but on-device crashes are not resolved by it
 
 * no user-visible change: fixed a build-breaking API-level error in the previous commit's native-crash-trace capture — caught by CI, so it never shipped
 

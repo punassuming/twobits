@@ -140,8 +140,14 @@ class OpenAiTranscriptionProvider
                 success: Boolean,
                 httpStatus: Int?,
                 snippet: String,
+                stackTrace: String? = null,
             ) {
-                if (!debugEnabled || recorded) return
+                if (recorded) return
+                // A failure is recorded whether or not "AI call debug" is on: it is rare, and it is
+                // the one outcome anyone debugging needs to see. Only the success path stays opt-in.
+                // This is the same gap that was closed for the on-device paths, left here in the
+                // cloud ones — a failed cloud transcription used to log nothing at all by default.
+                if (success && !debugEnabled) return
                 recorded = true
                 debugLogStore.record(
                     DebugLogEntry(
@@ -154,6 +160,7 @@ class OpenAiTranscriptionProvider
                         success = success,
                         httpStatus = httpStatus,
                         responseSnippet = snippet,
+                        stackTrace = stackTrace,
                         durationMs = System.currentTimeMillis() - startedAtMs,
                     ),
                 )
@@ -185,7 +192,12 @@ class OpenAiTranscriptionProvider
                     text
                 }
             }.getOrElse { error ->
-                recordOnce(success = false, httpStatus = null, snippet = "${error.javaClass.simpleName}: ${error.message}")
+                recordOnce(
+                    success = false,
+                    httpStatus = null,
+                    snippet = "${error.javaClass.simpleName}: ${error.message}",
+                    stackTrace = error.stackTraceToString(),
+                )
                 throw error
             }
         }
