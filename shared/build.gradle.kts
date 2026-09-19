@@ -1,35 +1,19 @@
-import io.gitlab.arturbosch.detekt.extensions.DetektExtension
-
 /**
- * Root build file for the composite `shared` build. It exists only to apply static analysis.
+ * Root build file for the composite `shared` build. It exists only to aggregate static analysis.
  *
- * Until now `shared/` was unlinted: ktlint and detekt are configured in each app's `subprojects {}`
- * block, and an included build is not a subproject of anything, so code moved out of an app into
- * `shared/` silently left the checks behind. That is the wrong direction for the one place three
- * apps depend on — a defect here reaches all three.
+ * Until recently `shared/` was unlinted: ktlint and detekt are configured in each app's
+ * `subprojects {}` block, and an included build is not a subproject of anything, so code moved out
+ * of an app into `shared/` silently left the checks behind. That is the wrong direction for the one
+ * place three apps depend on — a defect here reaches all three.
  *
- * detekt only, for now. ktlint follows separately: `shared/` accumulated real formatting drift while
- * unchecked, and mixing ~160 formatting fixes into the same commit as the wiring would make both
- * unreviewable.
+ * Note what this file does *not* do. Applying detekt from here via `subprojects { apply(...) }` —
+ * the way each app does it — fails the whole build with
+ * `NoClassDefFoundError: com/android/build/gradle/BaseExtension`. The apps get away with it because
+ * their root build file also puts the Android plugin on the root's buildscript classpath, so detekt
+ * and AGP share one classloader. Here each module declares its own plugin versions inline, leaving
+ * the root classpath without AGP, and detekt's Android source-set integration cannot resolve it.
+ * So each module applies and configures detekt itself, next to the AGP declaration it needs.
  */
-plugins {
-    alias(libs.plugins.detekt) apply false
-}
-
-subprojects {
-    apply(plugin = "io.gitlab.arturbosch.detekt")
-
-    extensions.configure<DetektExtension> {
-        // One config for the whole repo, at its root. The three apps each kept a byte-identical
-        // copy of this file; a fourth here would have been the same mistake a fourth time, and the
-        // pre-commit hook already assumed a single config by running every app's staged files
-        // through Scrybe's.
-        config.setFrom(rootProject.file("../detekt.yml"))
-        basePath = rootProject.projectDir.absolutePath
-        parallel = true
-    }
-}
-
 tasks.register("detekt") {
     description = "Runs detekt across all shared modules."
     group = "verification"

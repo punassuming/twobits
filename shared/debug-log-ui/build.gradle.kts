@@ -14,6 +14,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.0"
     id("com.google.dagger.hilt.android") version "2.58"
     id("com.google.devtools.ksp") version "2.3.0"
+    id("io.gitlab.arturbosch.detekt") version "1.23.7"
 }
 
 group = "com.twobits.core"
@@ -53,4 +54,12 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     implementation(libs.kotlinx.coroutines.android)
+}
+
+// Applied per module, not from the root build file: see the comment there on why
+// `subprojects { apply(...) }` cannot work in this build.
+detekt {
+    config.setFrom(rootProject.file("../detekt.yml"))
+    basePath = rootProject.projectDir.absolutePath
+    parallel = true
 }
