@@ -78,7 +78,29 @@ class LocalLlmModelCatalogTest {
         }
     }
 
+    /**
+     * Guards the gap in the assertion above it: `ekv` only appears in one bundle's file name, so a
+     * filename check alone passes vacuously for the rest. This records how many entries are still
+     * carrying the unmeasured [DEFAULT_MAX_CONTEXT_TOKENS] — a value with no provenance that is not
+     * known to be right for any model. The count is asserted so that *reducing* it is a deliberate
+     * act with a test change attached, and so that a newly added model cannot quietly inherit it
+     * without anyone noticing.
+     */
+    @Test
+    fun `unmeasured context budgets are accounted for`() {
+        val unmeasured = LocalLlmModel.entries.filter { it.maxContextTokens == DEFAULT_MAX_CONTEXT_TOKENS }
+        assertEquals(
+            "models still on the unmeasured default: ${unmeasured.map { it.name }} — " +
+                "update this count when one is measured against its published config",
+            EXPECTED_UNMEASURED,
+            unmeasured.size,
+        )
+    }
+
     private companion object {
         const val HEX_DIGEST_LENGTH = 64
+
+        /** Gemma 4 E2B/E4B, SmolLM2 360M, Qwen 3 1.7B. Only Qwen 3 0.6B states its own limit. */
+        const val EXPECTED_UNMEASURED = 4
     }
 }

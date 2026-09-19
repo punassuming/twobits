@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: each on-device model now states its own context window explicitly instead of inheriting an unverified default, so the four that have never been measured are visible rather than hidden
+
 * no user-visible change: the Debug Log file is now safe against two processes writing it at once, and is replaced atomically — a torn write used to make the whole log parse as empty
 
 * no user-visible change: a crash *during* on-device generation is now detected too, not only one during model load — the reported failure was the former, and it previously left no warning and no record at all

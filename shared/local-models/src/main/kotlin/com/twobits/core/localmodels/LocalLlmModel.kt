@@ -1,6 +1,14 @@
 package com.twobits.core.localmodels
 
-/** What every model was implicitly given before [LocalLlmModel.maxContextTokens] was per-model. */
+/**
+ * The value every model was implicitly given before [LocalLlmModel.maxContextTokens] existed.
+ *
+ * It has no provenance: it was picked to be larger than whatever the library's own default was, not
+ * from any bundle's published configuration, and on the evidence so far it is **not known to be
+ * correct for any model here**. It stays only as a named reference point for entries that have not
+ * been measured — [LocalLlmModel.maxContextTokens] has no default, so choosing it is deliberate at
+ * each site rather than inherited silently.
+ */
 const val DEFAULT_MAX_CONTEXT_TOKENS = 4096
 
 /**
@@ -59,7 +67,7 @@ enum class LocalLlmModel(
      * whose real limit has not been confirmed against their published config, so their behavior is
      * unchanged.
      */
-    val maxContextTokens: Int = DEFAULT_MAX_CONTEXT_TOKENS,
+    val maxContextTokens: Int,
 ) : LocalModelSpec {
     GEMMA_4_E2B(
         displayName = "Gemma 4 E2B",
@@ -73,6 +81,8 @@ enum class LocalLlmModel(
         family = LocalModelFamily.GEMMA,
         visionCapable = true,
         sha256 = "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c",
+        // Not measured against this bundle's published config — see DEFAULT_MAX_CONTEXT_TOKENS.
+        maxContextTokens = DEFAULT_MAX_CONTEXT_TOKENS,
     ),
     GEMMA_4_E4B(
         displayName = "Gemma 4 E4B",
@@ -86,6 +96,8 @@ enum class LocalLlmModel(
         family = LocalModelFamily.GEMMA,
         visionCapable = true,
         sha256 = "0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0",
+        // Not measured against this bundle's published config — see DEFAULT_MAX_CONTEXT_TOKENS.
+        maxContextTokens = DEFAULT_MAX_CONTEXT_TOKENS,
     ),
     QWEN_3_0_6B(
         displayName = "Qwen 3 0.6B",
@@ -110,6 +122,8 @@ enum class LocalLlmModel(
                 "SmolLM2_360M_instruct.litertlm",
         huggingFacePageUrl = "https://huggingface.co/litert-community/SmolLM2-360M-Instruct",
         family = LocalModelFamily.QWEN,
+        // Not measured against this bundle's published config — see DEFAULT_MAX_CONTEXT_TOKENS.
+        maxContextTokens = DEFAULT_MAX_CONTEXT_TOKENS,
     ),
     QWEN_3_1_7B(
         displayName = "Qwen 3 1.7B",
@@ -121,6 +135,8 @@ enum class LocalLlmModel(
                 "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm",
         huggingFacePageUrl = "https://huggingface.co/litert-community/Qwen3-1.7B",
         family = LocalModelFamily.QWEN,
+        // Not measured against this bundle's published config — see DEFAULT_MAX_CONTEXT_TOKENS.
+        maxContextTokens = DEFAULT_MAX_CONTEXT_TOKENS,
     ),
     ;
 
