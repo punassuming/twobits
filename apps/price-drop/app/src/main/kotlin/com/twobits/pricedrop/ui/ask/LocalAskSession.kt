@@ -85,6 +85,7 @@ class LocalAskSession
                             timestampMs = System.currentTimeMillis(),
                             type = DebugLogEntryType.AI_CALL,
                             op = "ask-engine-loaded",
+                            startMarker = true,
                             endpoint = "on-device",
                             model = modelFile.name,
                             requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",

@@ -68,6 +68,7 @@ class LocalTransformationProvider
                                     timestampMs = System.currentTimeMillis(),
                                     type = DebugLogEntryType.AI_CALL,
                                     op = "transform-engine-loaded",
+                                    startMarker = true,
                                     endpoint = "on-device",
                                     model = modelFile.name,
                                     requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",

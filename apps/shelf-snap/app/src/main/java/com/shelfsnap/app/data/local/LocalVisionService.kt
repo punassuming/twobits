@@ -94,6 +94,7 @@ class LocalVisionService
                                         timestampMs = System.currentTimeMillis(),
                                         type = DebugLogEntryType.AI_CALL,
                                         op = "vision-engine-loaded",
+                                        startMarker = true,
                                         endpoint = "on-device",
                                         model = modelFile.name,
                                         requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",

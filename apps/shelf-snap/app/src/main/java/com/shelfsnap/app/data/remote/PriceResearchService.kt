@@ -356,6 +356,7 @@ class PriceResearchService
                                     timestampMs = System.currentTimeMillis(),
                                     type = DebugLogEntryType.AI_CALL,
                                     op = "market-research-engine-loaded",
+                                    startMarker = true,
                                     endpoint = "on-device",
                                     model = modelFile.name,
                                     requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",

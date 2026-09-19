@@ -81,4 +81,51 @@ class StaleStartMarkerTest {
         assertFalse(isRememberedCrashPair("market-research-start", "qwen3.litertlm", null, null))
         assertFalse(isRememberedCrashPair(null, null, "market-research", "qwen3.litertlm"))
     }
+
+    /**
+     * The gap this closes: a crash during generation — after the model loaded — leaves the
+     * "-engine-loaded" entry last, not "-start". That is the shape of the reported Qwen failure,
+     * and before these entries were marked it produced no warning and no crash memory at all.
+     */
+    @Test
+    fun `a crash after the model loaded is still detected`() {
+        val entries =
+            listOf(
+                call("market-research-start", startMarker = true),
+                call("market-research-engine-loaded", startMarker = true),
+            )
+        assertEquals("market-research-engine-loaded", selectStaleStartMarker(entries)?.op)
+    }
+
+    @Test
+    fun `a call that completes after loading reports nothing`() {
+        val entries =
+            listOf(
+                call("market-research-start", startMarker = true),
+                call("market-research-engine-loaded", startMarker = true),
+                call("market-research-synthesize"),
+            )
+        assertNull(selectStaleStartMarker(entries))
+    }
+
+    /** A crash remembered at one stage must match the retry that begins at another. */
+    @Test
+    fun `a crash remembered at engine-load matches the next attempt's start`() {
+        assertTrue(
+            isRememberedCrashPair(
+                "market-research-start",
+                "qwen3.litertlm",
+                "market-research-engine-loaded",
+                "qwen3.litertlm",
+            ),
+        )
+    }
+
+    @Test
+    fun `baseOp strips every stage suffix`() {
+        assertEquals("market-research", baseOp("market-research-start"))
+        assertEquals("market-research", baseOp("market-research-engine-loaded"))
+        assertEquals("market-research", baseOp("market-research"))
+        assertEquals("app-launch", baseOp("app-launch"))
+    }
 }

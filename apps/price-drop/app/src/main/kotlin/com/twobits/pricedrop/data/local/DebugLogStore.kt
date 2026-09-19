@@ -110,10 +110,20 @@ internal fun selectStaleStartMarker(entries: List<DebugLogEntry>): DebugLogEntry
         ?.takeIf { it.startMarker }
 
 /**
+ * The feature an op belongs to, with its stage suffix removed. A single call writes
+ * `<op>-start`, `<op>-engine-loaded` and then `<op>`, so comparing raw op strings across stages
+ * would never match — a crash remembered at one stage has to be recognised when the next attempt
+ * starts at another.
+ */
+internal fun baseOp(op: String): String = STAGE_SUFFIXES.firstOrNull { op.endsWith(it) }?.let { op.removeSuffix(it) } ?: op
+
+private val STAGE_SUFFIXES = listOf("-engine-loaded", "-start")
+
+/**
  * Whether an entry describes the same model-and-operation pair that ended the process on a previous
- * run. The op of a start marker carries a "-start" suffix its completion does not, so the suffix is
- * stripped before comparing — otherwise a retry would never match the pair remembered from the
- * crash, and the memory would never fire or never clear.
+ * run. Compared on [baseOp], because the crash may be remembered at one stage (`-engine-loaded`,
+ * a death during generation) and the retry recognised at another (`-start`) — comparing raw op
+ * strings would mean the memory never fires or never clears.
  */
 internal fun isRememberedCrashPair(
     op: String?,
@@ -122,8 +132,7 @@ internal fun isRememberedCrashPair(
     crashedModel: String?,
 ): Boolean {
     if (op == null || crashedOp == null) return false
-    return op.removeSuffix("-start") == crashedOp.removeSuffix("-start") &&
-        model.orEmpty() == crashedModel.orEmpty()
+    return baseOp(op) == baseOp(crashedOp) && model.orEmpty() == crashedModel.orEmpty()
 }
 
 /** [DebugLogEntry.exceptionType] of the synthetic entry describing how the previous run ended. */
@@ -171,7 +180,7 @@ class DebugLogStore
                 DebugLogEntry(
                     timestampMs = System.currentTimeMillis(),
                     type = entry.type,
-                    op = entry.op?.removeSuffix("-start"),
+                    op = entry.op?.let { baseOp(it) },
                     endpoint = entry.endpoint,
                     model = entry.model,
                     requestSummary = entry.requestSummary,
@@ -380,7 +389,7 @@ class DebugLogStore
          * one that scrolls away.
          */
         private fun rememberCrashedCall(marker: DebugLogEntry) {
-            val op = marker.op?.removeSuffix("-start") ?: return
+            val op = marker.op?.let { baseOp(it) } ?: return
             runCatching {
                 prefs()
                     .edit()
