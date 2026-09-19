@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: the Debug Log store now exists once in a shared module instead of three hand-synced copies — nothing uses it yet, so behaviour is unchanged; each app moves over in its own commit
+
 **Sharing the Debug Log** — a shared log now carries what the screen shows:
 * every entry, not just the ones the current filter leaves visible
 * whether each call succeeded, its HTTP status, and its stack trace

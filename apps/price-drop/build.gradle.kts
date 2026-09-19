@@ -61,4 +61,5 @@ tasks.register("sharedUnitTest") {
     // `testDebugUnitTest` here never descends into `shared`. Without this, a test added under
     // shared/ passes locally and gates nothing in CI.
     dependsOn(gradle.includedBuild("shared").task(":local-models:test"))
+    dependsOn(gradle.includedBuild("shared").task(":debug-log:testDebugUnitTest"))
 }
