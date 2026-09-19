@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: two of the three apps now share one Debug Log implementation; this app still has its own copy and moves over next
+
 * no user-visible change: restored an annotation on the shared Debug Log's entry-type enum that was dropped when the code moved into its own module — this app still uses its own copy, so nothing changes here yet
 
 * no user-visible change: the Debug Log store now exists once in a shared module instead of three hand-synced copies — nothing uses it yet, so behaviour is unchanged; each app moves over in its own commit

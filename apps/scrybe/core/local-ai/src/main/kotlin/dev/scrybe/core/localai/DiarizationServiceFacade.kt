@@ -1,11 +1,11 @@
 package dev.scrybe.core.localai
 
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.SpeakerSegment
-import dev.scrybe.core.transcription.DebugLogEntry
-import dev.scrybe.core.transcription.DebugLogEntryType
-import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.DiarizationService
 import dev.scrybe.core.transcription.OpenAiDiarizationService
 import kotlinx.coroutines.flow.first

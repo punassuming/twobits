@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: Scrybe now reads and writes the Debug Log through the shared module rather than its own copy of the same code — the stored file's format is unchanged, so existing logs are kept
+
 * no user-visible change: restored an annotation on the shared Debug Log's entry-type enum that was dropped when the code moved into its own module — this app still uses its own copy, so nothing changes here yet
 
 * no user-visible change: the Debug Log store now exists once in a shared module instead of three hand-synced copies — nothing uses it yet, so behaviour is unchanged; each app moves over in its own commit

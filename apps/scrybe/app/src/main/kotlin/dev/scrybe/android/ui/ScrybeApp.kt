@@ -106,7 +106,7 @@ private fun ScrybeMainContent(
 }
 
 /**
- * [DebugLogStore.staleStartWarning][dev.scrybe.core.transcription.DebugLogStore.staleStartWarning]
+ * [DebugLogStore.staleStartWarning][com.twobits.debuglog.DebugLogStore.staleStartWarning]
  * surfaced as a one-time dialog — a native crash (a bad model file, an ONNX/LiteRT abort) has no
  * catchable Kotlin exception to report through the usual error paths, so without this the app
  * would just silently relaunch with no explanation for what happened last time.

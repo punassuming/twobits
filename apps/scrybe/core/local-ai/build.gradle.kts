@@ -27,6 +27,7 @@ kotlin {
 }
 
 dependencies {
+    implementation("com.twobits.core:debug-log")
     implementation("com.twobits.core:local-models")
     // api, not implementation: LocalModelManager publicly implements LlmDownloadSource, so
     // consumers of this module (e.g. feature:settings, which references LocalModelManager

@@ -15,6 +15,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.twobits.debuglog.DebugLogStore
 import dagger.hilt.android.AndroidEntryPoint
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.audio.RealtimeAudioSource
@@ -28,7 +29,6 @@ import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
-import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transcription.realtime.OpenAiRealtimeTranscriptionProvider
 import dev.scrybe.core.transcription.realtime.RealtimeTranscriptSession

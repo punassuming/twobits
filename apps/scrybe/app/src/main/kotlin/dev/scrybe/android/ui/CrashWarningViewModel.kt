@@ -1,9 +1,9 @@
 package dev.scrybe.android.ui
 
 import androidx.lifecycle.ViewModel
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogStore
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.scrybe.core.transcription.DebugLogEntry
-import dev.scrybe.core.transcription.DebugLogStore
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 

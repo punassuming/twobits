@@ -2,6 +2,9 @@ package dev.scrybe.android
 
 import android.app.Application
 import com.twobits.common.ProcessInfo
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.DeviceDiagnostics
 import com.twobits.localai.LocalInferenceMemoryGuard
 import dagger.hilt.android.HiltAndroidApp
@@ -11,9 +14,6 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.SessionStatus
-import dev.scrybe.core.transcription.DebugLogEntry
-import dev.scrybe.core.transcription.DebugLogEntryType
-import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transforms.DefaultProfiles
 import dev.scrybe.service.recording.WaveformBackfiller
 import kotlinx.coroutines.CoroutineScope

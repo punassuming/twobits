@@ -1,5 +1,8 @@
 package dev.scrybe.core.transcription
 
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import kotlinx.coroutines.Dispatchers
