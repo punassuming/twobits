@@ -8,6 +8,9 @@
 
 ### Fixes
 
+**Your old debug history** — crash and AI-call logs from before the log screens merged are no longer dropped:
+* one crash whose error carried no message used to discard the whole import
+
 * no user-visible change: Scrybe moved onto the same shared Debug Log this app now uses, so a fix to it reaches both at once
 
 * no user-visible change: PriceDrop now reads and writes the Debug Log through the shared module rather than its own copy of the same code — the stored file's format is unchanged, so existing logs are kept

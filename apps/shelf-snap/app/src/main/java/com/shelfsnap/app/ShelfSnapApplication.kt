@@ -1,10 +1,10 @@
 package com.shelfsnap.app
 
 import android.app.Application
-import com.shelfsnap.app.data.local.DebugLogEntry
-import com.shelfsnap.app.data.local.DebugLogEntryType
-import com.shelfsnap.app.data.local.DebugLogStore
 import com.twobits.common.ProcessInfo
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.DeviceDiagnostics
 import com.twobits.localai.LocalInferenceMemoryGuard
 import dagger.hilt.android.HiltAndroidApp

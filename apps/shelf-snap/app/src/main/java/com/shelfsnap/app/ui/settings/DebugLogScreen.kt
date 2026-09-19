@@ -40,9 +40,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.shelfsnap.app.data.local.DebugLogEntry
-import com.shelfsnap.app.data.local.DebugLogEntryType
-import com.shelfsnap.app.data.local.PROCESS_EXIT_TYPE
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.PROCESS_EXIT_TYPE
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

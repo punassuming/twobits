@@ -73,19 +73,35 @@ data class DebugLogEntry(
     val stackTrace: String? = null,
 )
 
-/** Pre-merge `CrashLogStore` schema — kept only to decode `crash_log.json` during migration. */
+/**
+ * Pre-merge `CrashLogStore` schema — kept only to decode `crash_log.json` during migration.
+ *
+ * `internal`, not `private`, so [LegacyWireCompatibilityTest] can decode real Gson-shaped
+ * documents against it. These two schemas read files this code never wrote, on exactly one launch
+ * per install, and a failure is swallowed by design — so a test is the only thing that can catch a
+ * mistake here at all.
+ *
+ * Every nullable field carries an explicit `= null`, which matters more than it looks: Gson omits
+ * null fields entirely, and kotlinx.serialization treats a missing key for a property with no
+ * default as a hard `MissingFieldException`. A crash entry with no message — common, plenty of
+ * throwables have none — would therefore have failed to decode, taking the whole legacy migration
+ * with it and silently discarding the user's pre-merge log.
+ */
 @Serializable
-private data class LegacyCrashLogEntry(
+internal data class LegacyCrashLogEntry(
     val timestampMs: Long,
     val threadName: String,
     val exceptionType: String,
-    val message: String?,
+    val message: String? = null,
     val stackTrace: String,
 )
 
-/** Pre-merge `AiCallDebugStore` schema — kept only to decode `ai_call_debug.json` during migration. */
+/**
+ * Pre-merge `AiCallDebugStore` schema — kept only to decode `ai_call_debug.json` during migration.
+ * See [LegacyCrashLogEntry] on why this is `internal` and why the defaults matter.
+ */
 @Serializable
-private data class LegacyAiCallDebugEntry(
+internal data class LegacyAiCallDebugEntry(
     val timestampMs: Long,
     val op: String,
     val endpoint: String,
@@ -503,7 +519,8 @@ class DebugLogStore
             return candidate
         }
 
-        private fun encodedSize(entries: List<DebugLogEntry>): Int = json.encodeToString(ListSerializer(DebugLogEntry.serializer()), entries).length
+        private fun encodedSize(entries: List<DebugLogEntry>): Int =
+            json.encodeToString(ListSerializer(DebugLogEntry.serializer()), entries).length
 
         /**
          * Serialises a read-modify-write of the log file against **other processes**, not just

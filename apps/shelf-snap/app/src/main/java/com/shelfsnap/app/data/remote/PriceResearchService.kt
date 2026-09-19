@@ -6,9 +6,6 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.shelfsnap.app.data.local.DebugLogEntry
-import com.shelfsnap.app.data.local.DebugLogEntryType
-import com.shelfsnap.app.data.local.DebugLogStore
 import com.shelfsnap.app.data.local.localAiFailureMessage
 import com.shelfsnap.app.data.model.Citation
 import com.shelfsnap.app.data.model.Item
@@ -29,6 +26,9 @@ import com.shelfsnap.app.data.remote.search.marketplaceKeyFromUrl
 import com.shelfsnap.app.util.ApiKeyValidator
 import com.twobits.core.localmodels.DEFAULT_MAX_CONTEXT_TOKENS
 import com.twobits.core.localmodels.LocalLlmModel
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext

@@ -8,6 +8,9 @@ import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.remote.buildListingSystemPrompt
 import com.shelfsnap.app.data.remote.buildListingUserMessage
 import com.shelfsnap.app.data.remote.parseListingJson
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
