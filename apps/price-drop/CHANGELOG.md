@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: PriceDrop now reads and writes the Debug Log through the shared module rather than its own copy of the same code — the stored file's format is unchanged, so existing logs are kept
+
 * no user-visible change: the Debug Log store now exists once in a shared module instead of three hand-synced copies — nothing uses it yet, so behaviour is unchanged; each app moves over in its own commit
 
 **Sharing the Debug Log** — a shared log now carries what the screen shows:

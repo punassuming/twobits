@@ -1,8 +1,8 @@
 package com.twobits.pricedrop.domain.aggregation
 
-import com.twobits.pricedrop.data.local.DebugLogEntry
-import com.twobits.pricedrop.data.local.DebugLogEntryType
-import com.twobits.pricedrop.data.local.DebugLogStore
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.pricedrop.data.provider.contracts.ProductSearchRequest
 import com.twobits.pricedrop.data.provider.contracts.ProviderResult
 import com.twobits.pricedrop.data.provider.registry.ProviderRegistry

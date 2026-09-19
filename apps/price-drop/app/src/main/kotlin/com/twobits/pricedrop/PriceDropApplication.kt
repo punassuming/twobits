@@ -2,11 +2,11 @@ package com.twobits.pricedrop
 
 import android.app.Application
 import com.twobits.common.ProcessInfo
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.DeviceDiagnostics
 import com.twobits.localai.LocalInferenceMemoryGuard
-import com.twobits.pricedrop.data.local.DebugLogEntry
-import com.twobits.pricedrop.data.local.DebugLogEntryType
-import com.twobits.pricedrop.data.local.DebugLogStore
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.settings.SettingsPrefs
 import com.twobits.pricedrop.work.PriceCheckScheduler

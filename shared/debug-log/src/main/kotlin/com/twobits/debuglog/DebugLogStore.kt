@@ -21,6 +21,7 @@ import java.io.StringWriter
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Serializable
 enum class DebugLogEntryType { CRASH, AI_CALL, SERVICE_CALL }
 
 /**

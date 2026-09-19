@@ -4,9 +4,9 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.twobits.billing.SubscriptionRepository
-import com.twobits.pricedrop.data.local.DebugLogEntry
-import com.twobits.pricedrop.data.local.DebugLogEntryType
-import com.twobits.pricedrop.data.local.DebugLogStore
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderMode

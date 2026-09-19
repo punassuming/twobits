@@ -1,11 +1,11 @@
 package com.twobits.pricedrop.ui.ask
 
 import android.content.Context
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.LiteRtLmEngine
 import com.twobits.localai.LocalInferenceMemoryGuard
-import com.twobits.pricedrop.data.local.DebugLogEntry
-import com.twobits.pricedrop.data.local.DebugLogEntryType
-import com.twobits.pricedrop.data.local.DebugLogStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

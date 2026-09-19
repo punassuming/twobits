@@ -2,9 +2,9 @@ package com.twobits.pricedrop.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.twobits.pricedrop.data.local.DebugLogEntry
-import com.twobits.pricedrop.data.local.DebugLogEntryType
-import com.twobits.pricedrop.data.local.DebugLogStore
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
