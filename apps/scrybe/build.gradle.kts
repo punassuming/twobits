@@ -63,7 +63,9 @@ subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
     extensions.configure<DetektExtension> {
-        config.setFrom(rootProject.file("detekt.yml"))
+        // One config for the whole repo, at its root — the three apps each held a
+        // byte-identical copy, and shared/ needed a fourth.
+        config.setFrom(rootProject.file("../../detekt.yml"))
         basePath = rootProject.projectDir.absolutePath
         parallel = true
     }
@@ -98,6 +100,9 @@ tasks.register("detekt") {
     description = "Runs detekt across all Android subprojects."
     group = "verification"
     dependsOn(subprojects.map { "${it.path}:detekt" })
+    // Same reason as `sharedUnitTest`: an included build is not a subproject, so this
+    // aggregate would otherwise skip every shared module.
+    dependsOn(gradle.includedBuild("shared").task(":detekt"))
 }
 
 tasks.register("sharedUnitTest") {

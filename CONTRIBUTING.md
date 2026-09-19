@@ -66,7 +66,6 @@ scrybe/
         ├── workers/                  ← :workers
         ├── gradle/
         │   └── libs.versions.toml    ← Version catalog
-        ├── detekt.yml                ← Static analysis config
         ├── build.gradle.kts          ← Root build script
         └── settings.gradle.kts       ← Module declarations
 ```
@@ -470,7 +469,8 @@ The project enforces style automatically via **KtLint** and **Detekt**.
 
 Run `./gradlew ktlintFormat` to auto-fix formatting issues before committing.
 
-Configuration file: `apps/scrybe/detekt.yml`.
+Configuration file: `detekt.yml` at the repo root — one config for all three apps and the
+shared modules.
 
 ---
 

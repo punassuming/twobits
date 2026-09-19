@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: static analysis now runs on the shared modules too, and all three apps plus the shared code share one config instead of three identical copies — code moved into `shared/` used to leave the checks behind
+
 **Your old debug history** — crash and AI-call logs from before the log screens merged are no longer dropped:
 * one crash whose error carried no message used to discard the whole import
 
