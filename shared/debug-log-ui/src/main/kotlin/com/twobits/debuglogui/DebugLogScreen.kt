@@ -1,4 +1,4 @@
-package com.twobits.pricedrop.ui.settings
+package com.twobits.debuglogui
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
@@ -54,7 +54,7 @@ import java.util.Locale
  * timed out right before a crash is otherwise invisible unless the two screens are
  * cross-referenced by eye. An "-start" AI-call entry with no matching completed entry right
  * after it means the app crashed mid-call — see [DebugLogEntry]'s doc. Never shows raw
- * prompt/response/page text.
+ * recorded audio, photos, or full prompt/response/page text.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

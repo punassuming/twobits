@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.twobits.debuglogui.CrashWarningViewModel
 import com.twobits.design.components.AppWhatsNewDialog
 import com.twobits.design.components.ProgressFooter
 import dev.scrybe.android.navigation.Screen

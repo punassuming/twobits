@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: the Debug Log screen and its two ViewModels now exist once in a shared module instead of once per app — the screen was 326 lines in all three, differing by a single comment line
+
 * no user-visible change: static analysis now runs on the shared modules too, and all three apps plus the shared code share one config instead of three identical copies — code moved into `shared/` used to leave the checks behind
 
 * no user-visible change: this app's own import of pre-merge logs was never affected by the bug fixed in the other two — its old reader tolerated the missing field that the shared one did not

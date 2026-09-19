@@ -24,7 +24,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.shelfsnap.app.ui.CrashWarningViewModel
 import com.shelfsnap.app.ui.camera.CameraScreen
 import com.shelfsnap.app.ui.components.LocalAnalysisProgressViewModel
 import com.shelfsnap.app.ui.inventory.InventoryScreen
@@ -33,13 +32,14 @@ import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
 import com.shelfsnap.app.ui.itemdetail.MarketResearchScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingViewModel
-import com.shelfsnap.app.ui.settings.DebugLogScreen
 import com.shelfsnap.app.ui.settings.ProScreen
 import com.shelfsnap.app.ui.settings.ServicesScreen
 import com.shelfsnap.app.ui.settings.SettingsScreen
 import com.shelfsnap.app.ui.summary.SummaryScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewViewModel
+import com.twobits.debuglogui.CrashWarningViewModel
+import com.twobits.debuglogui.DebugLogScreen
 import com.twobits.design.components.AppWhatsNewDialog
 import com.twobits.design.components.ProgressFooter
 

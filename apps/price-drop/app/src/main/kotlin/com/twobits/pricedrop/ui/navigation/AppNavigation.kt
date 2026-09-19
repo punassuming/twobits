@@ -23,8 +23,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.twobits.debuglogui.CrashWarningViewModel
+import com.twobits.debuglogui.DebugLogScreen
 import com.twobits.design.components.AppWhatsNewDialog
-import com.twobits.pricedrop.ui.CrashWarningViewModel
 import com.twobits.pricedrop.ui.ask.AskScreen
 import com.twobits.pricedrop.ui.barcode.BarcodeScanScreen
 import com.twobits.pricedrop.ui.drops.DropsScreen
@@ -34,7 +35,6 @@ import com.twobits.pricedrop.ui.pro.ProScreen
 import com.twobits.pricedrop.ui.product.ProductDetailScreen
 import com.twobits.pricedrop.ui.search.SearchScreen
 import com.twobits.pricedrop.ui.settings.AIConfigScreen
-import com.twobits.pricedrop.ui.settings.DebugLogScreen
 import com.twobits.pricedrop.ui.settings.ServicesScreen
 import com.twobits.pricedrop.ui.settings.SettingsScreen
 import com.twobits.pricedrop.ui.watch.WatchScreen

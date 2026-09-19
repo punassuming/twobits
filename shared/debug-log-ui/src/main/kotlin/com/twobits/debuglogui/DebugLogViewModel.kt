@@ -1,4 +1,4 @@
-package com.twobits.pricedrop.ui.settings
+package com.twobits.debuglogui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

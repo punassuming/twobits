@@ -1,0 +1,17 @@
+# Mirrors the apps' own config, since shared code is compiled into all three of them and should be
+# held to the same rules. Scrybe's stricter variant is the baseline: the shared modules are the one
+# place where a relaxed rule would spread to every app at once.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+
+[*.{kt,kts}]
+max_line_length = off
+# @Composable functions are PascalCase by convention, which ktlint's function-naming rule otherwise
+# rejects and cannot auto-correct.
+ktlint_function_naming_ignore_when_annotated_with = Composable
