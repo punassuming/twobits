@@ -142,7 +142,9 @@ internal const val PROCESS_EXIT_TYPE = "ProcessExit"
  * Deliberately synchronous throughout, not suspend: [install]'s crash handler runs on the
  * crashing thread with the process about to die, so there's no time to hop dispatchers or await
  * anything — every other write path is required to be just as synchronous so one lock protects
- * all of them. A caller on a suspend call path that cares about not blocking its own dispatcher
+ * all of them. That lock is [withFileLock], which guards across processes as well as threads,
+ * because inference runs in its own process. A caller on a suspend call path that cares about not
+ * blocking its own dispatcher
  * (e.g. reading the whole log for a settings screen) should wrap the call in
  * `withContext(Dispatchers.IO)` itself — this store makes no dispatcher decisions on its own.
  */
@@ -432,7 +434,7 @@ class DebugLogStore
         private fun prefs(): SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         fun readAll(): List<DebugLogEntry> =
-            synchronized(lock) {
+            withFileLock {
                 runCatching {
                     if (!file.exists()) return emptyList()
                     gson.fromJson<List<DebugLogEntry>>(file.readText(), entryListType) ?: emptyList()
@@ -440,7 +442,7 @@ class DebugLogStore
             }
 
         fun clear() {
-            synchronized(lock) { runCatching { file.delete() } }
+            withFileLock { runCatching { file.delete() } }
         }
 
         private fun crashEntry(
@@ -475,8 +477,50 @@ class DebugLogStore
 
         private fun encodedSize(entries: List<DebugLogEntry>): Int = gson.toJson(entries).length
 
-        private fun write(entry: DebugLogEntry) {
+        /**
+         * Serialises a read-modify-write of the log file against **other processes**, not just
+         * other threads.
+         *
+         * `synchronized(lock)` guards only this JVM. Once inference runs in its own process, two
+         * processes can interleave read-append-rewrite cycles on one file, and the loser's entries
+         * are simply gone. Worse, a half-written file fails to parse and every read path falls back
+         * to `emptyList()` — so a torn write does not lose one entry, it silently discards the
+         * entire log, which is the only diagnostic channel these crashes have.
+         *
+         * The JVM monitor stays on the *outside* deliberately: a [java.nio.channels.FileLock] is
+         * held per process, so asking for it twice from one process throws
+         * `OverlappingFileLockException`. The monitor is what guarantees that cannot happen.
+         */
+        private fun <T> withFileLock(block: () -> T): T =
             synchronized(lock) {
+                runCatching {
+                    java.io.RandomAccessFile(File(context.filesDir, LOCK_FILE_NAME), "rw").use { handle ->
+                        handle.channel.lock().use { block() }
+                    }
+                }.getOrElse {
+                    // A device that cannot give us a lock file is still better served by an
+                    // unsynchronised write than by silently dropping diagnostics.
+                    Log.w(TAG, "Debug log file lock unavailable: ${it.javaClass.simpleName}")
+                    block()
+                }
+            }
+
+        /**
+         * Replaces the log file in one step. A direct `writeText` truncates first, so a process
+         * death mid-write leaves a truncated document that parses as nothing; a rename over the top
+         * is atomic within a filesystem, so a reader sees either the old file or the new one.
+         */
+        private fun writeAtomically(payload: String) {
+            val temp = File(context.filesDir, "$FILE_NAME.tmp")
+            temp.writeText(payload)
+            if (!temp.renameTo(file)) {
+                file.writeText(payload)
+                temp.delete()
+            }
+        }
+
+        private fun write(entry: DebugLogEntry) {
+            withFileLock {
                 runCatching {
                     val existing =
                         runCatching {
@@ -487,7 +531,7 @@ class DebugLogStore
                             }
                         }.getOrElse { emptyList() }
                     val updated = trimToByteBudget((existing + entry).takeLast(MAX_ENTRIES))
-                    file.writeText(gson.toJson(updated))
+                    writeAtomically(gson.toJson(updated))
                 }.onFailure { Log.w(TAG, "Failed to record debug log entry: ${it.javaClass.simpleName}") }
             }
         }
@@ -495,6 +539,7 @@ class DebugLogStore
         private companion object {
             const val TAG = "DebugLog"
             const val FILE_NAME = "debug_log.json"
+            const val LOCK_FILE_NAME = "debug_log.lock"
             const val LEGACY_CRASH_FILE_NAME = "crash_log.json"
             const val LEGACY_AI_CALL_FILE_NAME = "ai_call_debug.json"
             const val MAX_ENTRIES = 150

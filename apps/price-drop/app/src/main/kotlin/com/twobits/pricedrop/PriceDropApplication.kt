@@ -1,6 +1,7 @@
 package com.twobits.pricedrop
 
 import android.app.Application
+import com.twobits.common.ProcessInfo
 import com.twobits.localai.DeviceDiagnostics
 import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.pricedrop.data.local.DebugLogEntry
@@ -36,6 +37,12 @@ class PriceDropApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Every process an app declares gets its own Application instance and its own
+        // onCreate(), so everything below would run again in the :inference process: a second
+        // crash handler, a second launch entry appended to the same log file, and — for Scrybe —
+        // a startup sweep that would correct rows the main process is actively using. None of it
+        // belongs anywhere but here.
+        if (!ProcessInfo.isMainProcess(this)) return
         debugLogStore.install()
         // A device fingerprint once per launch — on-device inference crashes are heavily
         // device/chipset dependent, so a crash entry with no idea which device it happened on is
