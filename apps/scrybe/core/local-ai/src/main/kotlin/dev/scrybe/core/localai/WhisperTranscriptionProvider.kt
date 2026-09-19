@@ -1,10 +1,11 @@
 package dev.scrybe.core.localai
 
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
+import com.twobits.localai.LocalInferenceGate
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.DebugLogEntry
-import dev.scrybe.core.transcription.DebugLogEntryType
-import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.TranscriptResult
 import dev.scrybe.core.transcription.TranscriptionOptions
 import dev.scrybe.core.transcription.TranscriptionProvider
@@ -35,14 +36,20 @@ class WhisperTranscriptionProvider
             // once for diarization/insights via DiarizationServiceFacade/InsightServiceFacade,
             // but missed here since this provider has no equivalent local/cloud facade to carry
             // the fix — it's the local branch of TranscriptionOrchestrator's provider map).
+            //
+            // Start and completion entries are both written unconditionally, and must stay that
+            // way: the start entry is what a crashed run leaves behind as its only evidence, and
+            // an unmatched one raises a crash warning to the user. Gating only the completion
+            // behind this toggle made every successful transcription look like a crash. Only the
+            // per-chunk timing detail below is optional.
             val debugEnabled = preferencesDataStore.debugDiarization.first()
 
             suspend fun record(
                 success: Boolean,
                 snippet: String,
                 durationMs: Long? = null,
+                stackTrace: String? = null,
             ) {
-                if (!debugEnabled) return
                 debugLogStore.record(
                     DebugLogEntry(
                         timestampMs = System.currentTimeMillis(),
@@ -54,6 +61,7 @@ class WhisperTranscriptionProvider
                         success = success,
                         responseSnippet = snippet,
                         durationMs = durationMs,
+                        stackTrace = stackTrace,
                     ),
                 )
             }
@@ -85,43 +93,58 @@ class WhisperTranscriptionProvider
                     // already being safely on disk is the only way to later see, from the debug
                     // log alone, that a transcription was in flight when it crashed — there's no
                     // matching "transcribe" entry after it if so (see DebugLogStore.staleStartWarning).
-                    if (debugEnabled) {
-                        debugLogStore.record(
-                            DebugLogEntry(
-                                timestampMs = startedAtMs,
-                                type = DebugLogEntryType.AI_CALL,
-                                op = "transcribe-start",
-                                endpoint = "on-device",
-                                model = model.filePrefix,
-                                requestSummary = "file=${audioFile.name}",
-                                success = true,
-                            ),
-                        )
-                    }
-                    WhisperEngine(modelDir, model.filePrefix).use { engine ->
-                        // Per-window timings are the one measurement that separates "the model
-                        // is slow on this device" from "a window is stuck" — a run that hangs
-                        // leaves no trace otherwise, and a run that finishes says nothing about
-                        // how the time was spent. Only collected when the debug log is on.
-                        val chunkTimingsMs = mutableListOf<Long>()
-                        val text =
-                            engine.transcribe(decoded.samples, decoded.sampleRateHz) { _, _, elapsedMs ->
-                                if (debugEnabled) chunkTimingsMs += elapsedMs
-                            }
-                        record(
+                    // Written unconditionally, not gated on debugEnabled like the detail below —
+                    // a native crash gives no chance to flip a setting first.
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = startedAtMs,
+                            type = DebugLogEntryType.AI_CALL,
+                            op = "transcribe-start",
+                            startMarker = true,
+                            endpoint = "on-device",
+                            model = model.filePrefix,
+                            requestSummary = "file=${audioFile.name}",
                             success = true,
-                            snippet = "${text.length} chars${chunkTimingSummary(chunkTimingsMs)}",
-                            durationMs = System.currentTimeMillis() - startedAtMs,
-                        )
-                        TranscriptResult(
-                            text = text,
-                            language = "en",
-                            durationSeconds = null,
-                        )
+                        ),
+                    )
+                    // Whisper is a native model like any other, and until now it was the one
+                    // engine that ignored the process-wide gate — so a transcription could hold a
+                    // Whisper model resident while a diarization or insight pass loaded a
+                    // multi-gigabyte LiteRT-LM model alongside it, which is exactly the combined
+                    // footprint the gate exists to prevent. Safe to wait here: the LiteRT follow-up
+                    // work takes the finished transcript as input, so it never runs inside this
+                    // block and the two can only ever queue, never deadlock.
+                    LocalInferenceGate.withGate {
+                        WhisperEngine(modelDir, model.filePrefix).use { engine ->
+                            // Per-window timings are the one measurement that separates "the
+                            // model is slow on this device" from "a window is stuck" — a run that
+                            // hangs leaves no trace otherwise, and a run that finishes says
+                            // nothing about how the time was spent. The one piece of detail still
+                            // gated on the toggle, since it costs work on every decode window.
+                            val chunkTimingsMs = mutableListOf<Long>()
+                            val text =
+                                engine.transcribe(decoded.samples, decoded.sampleRateHz) { _, _, elapsedMs ->
+                                    if (debugEnabled) chunkTimingsMs += elapsedMs
+                                }
+                            record(
+                                success = true,
+                                snippet = "${text.length} chars${chunkTimingSummary(chunkTimingsMs)}",
+                                durationMs = System.currentTimeMillis() - startedAtMs,
+                            )
+                            TranscriptResult(
+                                text = text,
+                                language = "en",
+                                durationSeconds = null,
+                            )
+                        }
                     }
                 }
             }.onFailure { error ->
-                record(success = false, snippet = "${error.javaClass.simpleName}: ${error.message}")
+                record(
+                    success = false,
+                    snippet = "${error.javaClass.simpleName}: ${error.message}",
+                    stackTrace = error.stackTraceToString(),
+                )
             }
         }
 

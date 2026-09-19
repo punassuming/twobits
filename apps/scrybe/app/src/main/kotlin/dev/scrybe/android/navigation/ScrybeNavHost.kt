@@ -14,13 +14,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.twobits.debuglogui.DebugLogScreen
 import dev.scrybe.android.ui.ScrybeWhatsNewScreen
 import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.AIConfigScreen
-import dev.scrybe.feature.settings.DebugLogScreen
 import dev.scrybe.feature.settings.PeopleScreen
 import dev.scrybe.feature.settings.ProScreen
 import dev.scrybe.feature.settings.RecordingTypesScreen

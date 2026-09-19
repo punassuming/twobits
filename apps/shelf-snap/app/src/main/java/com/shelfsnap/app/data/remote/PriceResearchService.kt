@@ -6,9 +6,6 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.shelfsnap.app.data.local.DebugLogEntry
-import com.shelfsnap.app.data.local.DebugLogEntryType
-import com.shelfsnap.app.data.local.DebugLogStore
 import com.shelfsnap.app.data.local.localAiFailureMessage
 import com.shelfsnap.app.data.model.Citation
 import com.shelfsnap.app.data.model.Item
@@ -27,6 +24,12 @@ import com.shelfsnap.app.data.remote.search.WebSearchResult
 import com.shelfsnap.app.data.remote.search.WebSearchService
 import com.shelfsnap.app.data.remote.search.marketplaceKeyFromUrl
 import com.shelfsnap.app.util.ApiKeyValidator
+import com.twobits.core.localmodels.DEFAULT_MAX_CONTEXT_TOKENS
+import com.twobits.core.localmodels.LocalLlmModel
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
+import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -314,24 +317,82 @@ class PriceResearchService
 
                 val synthesisStart = System.currentTimeMillis()
                 val systemPrompt = buildSystemPrompt(item)
+                // Recorded — and awaited — immediately before the risky native call below, not
+                // after: a native crash or low-memory kill in LiteRT-LM's synthesis step ends the
+                // process with zero chance for any Kotlin try/catch to run, so this entry already
+                // being safely on disk is the only way to later see, from the AI call log alone,
+                // that a local synthesis was in flight when it died — evidence-gathering (queries,
+                // page reads) already succeeded by this point and would show as OK right before
+                // it. The "market-research-engine-loaded" entry below then splits that window in
+                // two: a death before it is the model load, a death after it is the synthesis
+                // call itself. Same pattern as LocalVisionService's vision-analyze-start.
+                debugLogStore.record(
+                    DebugLogEntry(
+                        timestampMs = synthesisStart,
+                        type = DebugLogEntryType.AI_CALL,
+                        op = "market-research-start",
+                        startMarker = true,
+                        endpoint = "on-device",
+                        model = modelFile.name,
+                        requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                        success = true,
+                    ),
+                )
                 val result =
                     runCatching {
+                        val (localMaxResults, localMaxSnippetChars) = localEvidenceLimits(modelFile.name)
                         val userMessage =
                             gson.toJson(
                                 buildUserPayload(
                                     item,
                                     evidence,
-                                    maxResults = LOCAL_MAX_RESULTS,
-                                    maxSnippetChars = LOCAL_MAX_SNIPPET_CHARS,
+                                    maxResults = localMaxResults,
+                                    maxSnippetChars = localMaxSnippetChars,
                                 ),
                             )
-                        val text =
-                            withLocalLlmEngine(context, modelFile, systemInstruction = systemPrompt) { engine ->
-                                engine.generate(userMessage)
-                            }
-                        parseContentJson(text, evidence)
+                        withLocalLlmEngine(context, modelFile, systemInstruction = systemPrompt) { engine ->
+                            debugLogStore.record(
+                                DebugLogEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    type = DebugLogEntryType.AI_CALL,
+                                    op = "market-research-engine-loaded",
+                                    startMarker = true,
+                                    endpoint = "on-device",
+                                    model = modelFile.name,
+                                    requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                                    success = true,
+                                    durationMs = System.currentTimeMillis() - synthesisStart,
+                                ),
+                            )
+                            val text = engine.generate(userMessage)
+                            debugLogStore.record(
+                                DebugLogEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    type = DebugLogEntryType.AI_CALL,
+                                    op = "market-research-synthesize",
+                                    endpoint = "on-device",
+                                    model = modelFile.name,
+                                    success = true,
+                                    responseSnippet = "${text.length} chars",
+                                    durationMs = System.currentTimeMillis() - synthesisStart,
+                                ),
+                            )
+                            parseContentJson(text, evidence)
+                        }
                     }.getOrElse { e ->
                         Log.w(TAG, "Local price research failed: ${e.javaClass.simpleName}: ${e.message}")
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = System.currentTimeMillis(),
+                                type = DebugLogEntryType.AI_CALL,
+                                op = "market-research-synthesize",
+                                endpoint = "on-device",
+                                model = modelFile.name,
+                                success = false,
+                                responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                                stackTrace = e.stackTraceToString(),
+                            ),
+                        )
                         PriceResearchResult(
                             error = localAiFailureMessage(e, genericMessage = "On-device market research failed. Try Pro or BYOK instead."),
                         )
@@ -1429,6 +1490,30 @@ class PriceResearchService
              */
             private const val LOCAL_MAX_RESULTS = 6
             private const val LOCAL_MAX_SNIPPET_CHARS = 400
+
+            /**
+             * Floors for the scaling below. Below these the evidence payload stops being worth
+             * sending at all, and refusing is better than asking a model to price an item from
+             * nothing.
+             */
+            private const val LOCAL_MIN_RESULTS = 2
+            private const val LOCAL_MIN_SNIPPET_CHARS = 150
+
+            /**
+             * [LOCAL_MAX_RESULTS]/[LOCAL_MAX_SNIPPET_CHARS] were sized for a 4096-token window and
+             * then applied to every local model regardless of what it could hold. Qwen 3 0.6B ships
+             * a 1280-token bundle, so the same payload plus this path's JSON-schema system prompt
+             * overruns it — and an overrun is a native abort that takes the whole app down, not an
+             * error. Scaling keeps the tuned values exactly as they are for a full-size window and
+             * only shrinks them for a model that genuinely cannot hold them.
+             */
+            private fun localEvidenceLimits(modelFileName: String): Pair<Int, Int> {
+                val budget = LocalLlmModel.forFileName(modelFileName)?.maxContextTokens ?: DEFAULT_MAX_CONTEXT_TOKENS
+                if (budget >= DEFAULT_MAX_CONTEXT_TOKENS) return LOCAL_MAX_RESULTS to LOCAL_MAX_SNIPPET_CHARS
+                val scale = budget.toDouble() / DEFAULT_MAX_CONTEXT_TOKENS
+                return maxOf(LOCAL_MIN_RESULTS, (LOCAL_MAX_RESULTS * scale).toInt()) to
+                    maxOf(LOCAL_MIN_SNIPPET_CHARS, (LOCAL_MAX_SNIPPET_CHARS * scale).toInt())
+            }
 
             internal const val ERROR_INVALID_KEY =
                 "Invalid or missing OpenAI API key. Check Settings."

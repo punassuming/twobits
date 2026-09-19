@@ -6,10 +6,12 @@ import java.util.concurrent.TimeUnit
 
 object OkHttpClientFactory {
     fun create(debug: Boolean): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = if (debug) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
-        }
-        return OkHttpClient.Builder()
+        val loggingInterceptor =
+            HttpLoggingInterceptor().apply {
+                level = if (debug) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+            }
+        return OkHttpClient
+            .Builder()
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30L, TimeUnit.SECONDS)
             .writeTimeout(15L, TimeUnit.MINUTES)

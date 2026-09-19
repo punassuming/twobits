@@ -38,14 +38,17 @@ fun ModelRadioRow(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .background(
-                if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-                else MaterialTheme.colorScheme.surfaceContainerHigh,
-            )
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .background(
+                    if (selected) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                ).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -103,23 +106,28 @@ fun <T> ModelRadioList(
                 if (index > 0) HorizontalDivider(thickness = 0.5.dp)
                 val isFirst = index == 0
                 val isLast = index == models.lastIndex
-                val shape = when {
-                    isFirst && isLast -> RoundedCornerShape(14.dp)
-                    isFirst -> RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)
-                    isLast -> RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp)
-                    else -> RoundedCornerShape(0.dp)
-                }
+                val shape =
+                    when {
+                        isFirst && isLast -> RoundedCornerShape(14.dp)
+                        isFirst -> RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp)
+                        isLast -> RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp)
+                        else -> RoundedCornerShape(0.dp)
+                    }
                 ModelRadioRow(
                     name = name(model),
                     subtitle = subtitle(model),
                     costLabel = costLabel?.invoke(model),
                     selected = model == selected,
                     onClick = { onSelect(model) },
-                    modifier = Modifier.background(
-                        if (model == selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-                        else MaterialTheme.colorScheme.surfaceContainerHigh,
-                        shape = shape,
-                    ),
+                    modifier =
+                        Modifier.background(
+                            if (model == selected) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHigh
+                            },
+                            shape = shape,
+                        ),
                 )
             }
         }

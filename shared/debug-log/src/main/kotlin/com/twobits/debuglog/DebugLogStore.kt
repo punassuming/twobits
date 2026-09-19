@@ -1,8 +1,9 @@
-package dev.scrybe.core.transcription
+package com.twobits.debuglog
 
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -12,12 +13,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import java.io.Closeable
 import java.io.File
 import java.io.PrintWriter
+import java.io.RandomAccessFile
 import java.io.StringWriter
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Serializable
 enum class DebugLogEntryType { CRASH, AI_CALL, SERVICE_CALL }
 
 /**
@@ -26,14 +30,17 @@ enum class DebugLogEntryType { CRASH, AI_CALL, SERVICE_CALL }
  * the app actually did can be seen in one place, in order, without adb. Never contains raw
  * audio/photo bytes or full prompt/response/page text, only short summaries.
  *
+ * Shared by Scrybe, Shelf Snap and PriceDrop. It existed three times over until this module, and
+ * every fix had to be hand-ported to each copy — which is how one mistake became three.
+ *
  * A flat union of fields across every [type], not a sealed class: kotlinx.serialization's
  * polymorphic support needs extra registration/annotation ceremony this handful of optional
  * fields doesn't warrant, and it keeps [DebugLogStore] itself type-agnostic.
  *
- * [op] values ending in "-start" are written *before* a risky call (a native model load or
+ * [startMarker] entries are written *before* a risky call (a native model load or
  * inference that could crash the process outright) with no matching [success]/[durationMs] yet —
  * [DebugLogStore.record] returning means the entry is already on disk, so if the process dies
- * before the matching completed entry is ever written, a dangling "-start" entry with no
+ * before the matching completed entry is ever written, a dangling marker with no
  * successor is itself the diagnostic: it pinpoints exactly which call was in flight, with what
  * model/inputs, at the moment of the crash — the only way to see that at all for a native fault,
  * since no Kotlin exception handler runs in time to catch it.
@@ -44,6 +51,14 @@ data class DebugLogEntry(
     val type: DebugLogEntryType,
     // AI_CALL / SERVICE_CALL
     val op: String? = null,
+    /**
+     * Set only by an entry written *before* a risky native call, to be matched by a later
+     * completion entry. Declared explicitly rather than inferred from an "-start" suffix on
+     * [op]: that inference silently captured any unrelated op that happened to end in "-start"
+     * (a per-launch "app-start" fingerprint entry did exactly that) and reported it to the user
+     * as an unfinished call from a crashed run.
+     */
+    val startMarker: Boolean = false,
     val endpoint: String? = null,
     val model: String? = null,
     val requestSummary: String? = null,
@@ -58,19 +73,35 @@ data class DebugLogEntry(
     val stackTrace: String? = null,
 )
 
-/** Pre-merge `CrashLogStore` schema — kept only to decode `crash_log.json` during migration. */
+/**
+ * Pre-merge `CrashLogStore` schema — kept only to decode `crash_log.json` during migration.
+ *
+ * `internal`, not `private`, so [LegacyWireCompatibilityTest] can decode real Gson-shaped
+ * documents against it. These two schemas read files this code never wrote, on exactly one launch
+ * per install, and a failure is swallowed by design — so a test is the only thing that can catch a
+ * mistake here at all.
+ *
+ * Every nullable field carries an explicit `= null`, which matters more than it looks: Gson omits
+ * null fields entirely, and kotlinx.serialization treats a missing key for a property with no
+ * default as a hard `MissingFieldException`. A crash entry with no message — common, plenty of
+ * throwables have none — would therefore have failed to decode, taking the whole legacy migration
+ * with it and silently discarding the user's pre-merge log.
+ */
 @Serializable
-private data class LegacyCrashLogEntry(
+internal data class LegacyCrashLogEntry(
     val timestampMs: Long,
     val threadName: String,
     val exceptionType: String,
-    val message: String?,
+    val message: String? = null,
     val stackTrace: String,
 )
 
-/** Pre-merge `AiCallDebugStore` schema — kept only to decode `ai_call_debug.json` during migration. */
+/**
+ * Pre-merge `AiCallDebugStore` schema — kept only to decode `ai_call_debug.json` during migration.
+ * See [LegacyCrashLogEntry] on why this is `internal` and why the defaults matter.
+ */
 @Serializable
-private data class LegacyAiCallDebugEntry(
+internal data class LegacyAiCallDebugEntry(
     val timestampMs: Long,
     val op: String,
     val endpoint: String,
@@ -83,6 +114,56 @@ private data class LegacyAiCallDebugEntry(
 )
 
 /**
+ * The entry, if any, that a crashed previous run left unfinished: the newest entry overall must be
+ * an unmatched [DebugLogEntry.startMarker], because anything newer means the app went on to do
+ * something else and therefore did not die there.
+ *
+ * Process-exit entries are skipped rather than counted: they are appended after the fact, on the
+ * *next* launch, and would otherwise hide the very marker they describe.
+ *
+ * Pure and top-level so the rule can be tested directly — an earlier version inferred "unfinished"
+ * from an "-start" suffix on the op name and so reported a per-launch "app-start" bookkeeping
+ * entry as a crash.
+ */
+internal fun selectStaleStartMarker(entries: List<DebugLogEntry>): DebugLogEntry? =
+    entries
+        .lastOrNull { it.exceptionType != PROCESS_EXIT_TYPE }
+        ?.takeIf { it.startMarker }
+
+/**
+ * The feature an op belongs to, with its stage suffix removed. A single call writes
+ * `<op>-start`, `<op>-engine-loaded` and then `<op>`, so comparing raw op strings across stages
+ * would never match — a crash remembered at one stage has to be recognised when the next attempt
+ * starts at another.
+ */
+internal fun baseOp(op: String): String = STAGE_SUFFIXES.firstOrNull { op.endsWith(it) }?.let { op.removeSuffix(it) } ?: op
+
+private val STAGE_SUFFIXES = listOf("-engine-loaded", "-start")
+
+/**
+ * Whether an entry describes the same model-and-operation pair that ended the process on a previous
+ * run. Compared on [baseOp], because the crash may be remembered at one stage (`-engine-loaded`,
+ * a death during generation) and the retry recognised at another (`-start`) — comparing raw op
+ * strings would mean the memory never fires or never clears.
+ */
+internal fun isRememberedCrashPair(
+    op: String?,
+    model: String?,
+    crashedOp: String?,
+    crashedModel: String?,
+): Boolean {
+    if (op == null || crashedOp == null) return false
+    return baseOp(op) == baseOp(crashedOp) && model.orEmpty() == crashedModel.orEmpty()
+}
+
+/**
+ * [DebugLogEntry.exceptionType] of the synthetic entry describing how the previous run ended.
+ * Public because the Debug Log screen surfaces it in its shared export, and in Scrybe that screen
+ * lives in a different Gradle module from this store.
+ */
+const val PROCESS_EXIT_TYPE = "ProcessExit"
+
+/**
  * Rolling, file-backed log merging what were previously two separate signals — uncaught crashes
  * ([install]) and AI/service call outcomes ([record]) — into one chronological timeline, so
  * cause and effect (a service call that timed out right before a crash, say) can actually be
@@ -91,7 +172,9 @@ private data class LegacyAiCallDebugEntry(
  * Deliberately synchronous throughout, not suspend: [install]'s crash handler runs on the
  * crashing thread with the process about to die, so there's no time to hop dispatchers or await
  * anything — every other write path is required to be just as synchronous so one lock protects
- * all of them. A caller on a suspend call path that cares about not blocking its own dispatcher
+ * all of them. That lock is [withFileLock], which guards across processes as well as threads,
+ * because inference runs in its own process. A caller on a suspend call path that cares about not
+ * blocking its own dispatcher
  * (e.g. reading the whole log for a settings screen) should wrap the call in
  * `withContext(Dispatchers.IO)` itself — this store makes no dispatcher decisions on its own.
  */
@@ -100,8 +183,22 @@ class DebugLogStore
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val json: Json,
     ) {
+        /**
+         * Built here rather than injected. The only `Json` binding in the repo lives in shared
+         * `:network`, and Shelf Snap depends on neither that module nor kotlinx-serialization —
+         * which is exactly why it had forked this store onto Gson. Owning the instance is what lets
+         * all three apps share one implementation without taking on a dependency they do not want.
+         *
+         * `ignoreUnknownKeys` matters for a file that outlives the build that wrote it: a log
+         * written by a newer version with an added field must still decode, not wipe itself.
+         */
+        private val json =
+            Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+            }
+
         private val lock = Any()
         private val file: File get() = File(context.filesDir, FILE_NAME)
         private var previousHandler: Thread.UncaughtExceptionHandler? = null
@@ -125,7 +222,7 @@ class DebugLogStore
                 DebugLogEntry(
                     timestampMs = System.currentTimeMillis(),
                     type = entry.type,
-                    op = entry.op?.removeSuffix("-start"),
+                    op = entry.op?.let { baseOp(it) },
                     endpoint = entry.endpoint,
                     model = entry.model,
                     requestSummary = entry.requestSummary,
@@ -142,10 +239,8 @@ class DebugLogStore
             migrateLegacyLogsIfPresent()
             // Process-exit entries (below) are appended after the fact and must not hide a
             // still-undismissed "-start" marker from an earlier launch.
-            _staleStartWarning.value =
-                readAll()
-                    .lastOrNull { it.exceptionType != PROCESS_EXIT_TYPE }
-                    ?.takeIf { it.op?.endsWith("-start") == true }
+            _staleStartWarning.value = selectStaleStartMarker(readAll())
+            _staleStartWarning.value?.let { rememberCrashedCall(it) }
             recordPreviousExitReasonIfNew()
             previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -173,7 +268,7 @@ class DebugLogStore
                         .getSystemService(ActivityManager::class.java)
                         ?.getHistoricalProcessExitReasons(context.packageName, 0, 1)
                         ?.firstOrNull()
-                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val prefs = prefs()
                 if (exit != null && exit.timestamp > prefs.getLong(KEY_LAST_RECORDED_EXIT_TIMESTAMP, 0L)) {
                     prefs.edit().putLong(KEY_LAST_RECORDED_EXIT_TIMESTAMP, exit.timestamp).apply()
                     val reasonName =
@@ -198,11 +293,44 @@ class DebugLogStore
                                 message =
                                     "Previous run ended: $reasonName — ${exit.description ?: "no description"} " +
                                         "(importance ${exit.importance}, pss ${exit.pss / KB_PER_MB} MB)",
+                                stackTrace = readExitTrace(exit),
                             ),
                         )
                     }
                 }
             }.onFailure { Log.w(TAG, "Failed to record previous process exit reason: ${it.javaClass.simpleName}") }
+        }
+
+        /**
+         * The actual native trace/tombstone data behind [ApplicationExitInfo], when the platform
+         * makes one available — a real stack trace for the crash or ANR, not just the coarse
+         * reason enum above. Available on API 30+ (same floor as [recordPreviousExitReasonIfNew]
+         * itself) for `REASON_CRASH_NATIVE`, `REASON_CRASH`, and `REASON_ANR` on most OEMs/OS
+         * versions, though the platform is free to return null (older devices, some OEM skins, or
+         * simply no trace captured for this exit) — this is best-effort. Nothing can read this
+         * *at* the moment of a native crash, only afterward from the OS's own record — read once
+         * here on the next launch, which is the entire point of it. Capped well under any
+         * realistic trace size so one huge tombstone can't bloat the rolling debug log file.
+         */
+        private fun readExitTrace(exit: ApplicationExitInfo): String? {
+            // Repeated from the caller rather than relied on: `getTraceInputStream` is API 30 and
+            // minSdk is 26, and lint only follows an SDK_INT guard within the one function that
+            // states it — so without this the build fails, and any future caller is guarded too.
+            // Read outside the runCatching lambda below for the same reason.
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+            val stream = exit.traceInputStream ?: return null
+            return runCatching {
+                val buffer = ByteArray(MAX_TRACE_BYTES)
+                var totalRead = 0
+                stream.use {
+                    while (totalRead < buffer.size) {
+                        val read = it.read(buffer, totalRead, buffer.size - totalRead)
+                        if (read == -1) break
+                        totalRead += read
+                    }
+                }
+                String(buffer, 0, totalRead, Charsets.UTF_8).takeIf { text -> text.isNotBlank() }
+            }.getOrNull()
         }
 
         /**
@@ -289,18 +417,76 @@ class DebugLogStore
             write(crashEntry(Thread.currentThread(), throwable))
         }
 
-        fun record(entry: DebugLogEntry) = write(entry)
+        fun record(entry: DebugLogEntry) = write(annotateIfPreviouslyCrashed(entry))
+
+        /**
+         * Remembers the model and operation that were in flight when a previous run died, so the
+         * *next* attempt at that same pair is not silently identical to the one that killed the
+         * app. Without this, a model that reliably aborts is retried on every tap with nothing in
+         * the log tying the attempts together — each one looks like a first occurrence, which is a
+         * large part of why a single crashing model can absorb days of guessing.
+         *
+         * Kept in the same preferences file as the exit-reason bookmark rather than in the log
+         * itself: the log is a rolling window and the entry that proves the crash is exactly the
+         * one that scrolls away.
+         */
+        private fun rememberCrashedCall(marker: DebugLogEntry) {
+            val op = marker.op?.let { baseOp(it) } ?: return
+            runCatching {
+                prefs()
+                    .edit()
+                    .putString(KEY_CRASHED_OP, op)
+                    .putString(KEY_CRASHED_MODEL, marker.model.orEmpty())
+                    .apply()
+            }.onFailure { Log.w(TAG, "Failed to remember crashed call: ${it.javaClass.simpleName}") }
+        }
+
+        /**
+         * Marks a start entry that repeats a pair which ended the process last time, and clears the
+         * memory once that pair completes successfully — "crashed and has not succeeded since" is
+         * the only claim worth making, and a success is what disproves it.
+         */
+        private fun annotateIfPreviouslyCrashed(entry: DebugLogEntry): DebugLogEntry {
+            val op = entry.op ?: return entry
+            val remembered = runCatching { prefs() }.getOrNull() ?: return entry
+            val crashedOp = remembered.getString(KEY_CRASHED_OP, null) ?: return entry
+            val crashedModel = remembered.getString(KEY_CRASHED_MODEL, null).orEmpty()
+            if (!isRememberedCrashPair(op, entry.model, crashedOp, crashedModel)) return entry
+            if (entry.startMarker) {
+                val note = "this model ended the process on a previous run of $crashedOp"
+                return entry.copy(
+                    responseSnippet = entry.responseSnippet?.let { "$it · $note" } ?: note,
+                )
+            }
+            if (entry.success == true) {
+                runCatching {
+                    remembered
+                        .edit()
+                        .remove(KEY_CRASHED_OP)
+                        .remove(KEY_CRASHED_MODEL)
+                        .apply()
+                }
+            }
+            return entry
+        }
+
+        private fun prefs(): SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         fun readAll(): List<DebugLogEntry> =
-            synchronized(lock) {
+            withFileLock {
                 runCatching {
-                    if (!file.exists()) return emptyList()
-                    json.decodeFromString(ListSerializer(DebugLogEntry.serializer()), file.readText())
+                    // Not `return emptyList()`: withFileLock is not an inline function, so a
+                    // non-local return out of its lambda is a compile error.
+                    if (!file.exists()) {
+                        emptyList()
+                    } else {
+                        json.decodeFromString(ListSerializer(DebugLogEntry.serializer()), file.readText())
+                    }
                 }.getOrElse { emptyList() }
             }
 
         fun clear() {
-            synchronized(lock) { runCatching { file.delete() } }
+            withFileLock { runCatching { file.delete() } }
         }
 
         private fun crashEntry(
@@ -318,8 +504,84 @@ class DebugLogStore
             )
         }
 
-        private fun write(entry: DebugLogEntry) {
+        /**
+         * [MAX_ENTRIES] alone bounds the *count*, not the size: one entry can carry a
+         * [MAX_TRACE_BYTES] native trace, so a full log can reach several megabytes — and every
+         * read and write re-parses the whole file, on exactly the crashing devices least able to
+         * afford it. Drops oldest-first until the encoded document fits, always keeping the entry
+         * just recorded.
+         */
+        private fun trimToByteBudget(entries: List<DebugLogEntry>): List<DebugLogEntry> {
+            var candidate = entries
+            while (candidate.size > 1 && encodedSize(candidate) > MAX_FILE_BYTES) {
+                candidate = candidate.drop(1)
+            }
+            return candidate
+        }
+
+        private fun encodedSize(entries: List<DebugLogEntry>): Int = json.encodeToString(ListSerializer(DebugLogEntry.serializer()), entries).length
+
+        /**
+         * Serialises a read-modify-write of the log file against **other processes**, not just
+         * other threads.
+         *
+         * `synchronized(lock)` guards only this JVM. Once inference runs in its own process, two
+         * processes can interleave read-append-rewrite cycles on one file, and the loser's entries
+         * are simply gone. Worse, a half-written file fails to parse and every read path falls back
+         * to `emptyList()` — so a torn write does not lose one entry, it silently discards the
+         * entire log, which is the only diagnostic channel these crashes have.
+         *
+         * The JVM monitor stays on the *outside* deliberately: a [java.nio.channels.FileLock] is
+         * held per process, so asking for it twice from one process throws
+         * `OverlappingFileLockException`. The monitor is what guarantees that cannot happen.
+         */
+        private fun <T> withFileLock(block: () -> T): T =
             synchronized(lock) {
+                // Acquisition is separated from running [block] so that [block] is invoked exactly
+                // once on every path. Wrapping both in one runCatching would re-run it after any
+                // failure of its own — which for a write means writing twice.
+                val crossProcessLock = acquireCrossProcessLock()
+                if (crossProcessLock == null) block() else crossProcessLock.use { block() }
+            }
+
+        /**
+         * Null when no lock can be taken, in which case the caller proceeds unsynchronised: a
+         * device that cannot give us a lock file is still better served by an unguarded write than
+         * by dropping diagnostics entirely.
+         */
+        private fun acquireCrossProcessLock(): Closeable? =
+            runCatching {
+                val handle = RandomAccessFile(File(context.filesDir, LOCK_FILE_NAME), "rw")
+                val fileLock =
+                    runCatching { handle.channel.lock() }.getOrElse {
+                        handle.close()
+                        throw it
+                    }
+                Closeable {
+                    fileLock.close()
+                    handle.close()
+                }
+            }.getOrElse {
+                Log.w(TAG, "Debug log file lock unavailable: ${it.javaClass.simpleName}")
+                null
+            }
+
+        /**
+         * Replaces the log file in one step. A direct `writeText` truncates first, so a process
+         * death mid-write leaves a truncated document that parses as nothing; a rename over the top
+         * is atomic within a filesystem, so a reader sees either the old file or the new one.
+         */
+        private fun writeAtomically(payload: String) {
+            val temp = File(context.filesDir, "$FILE_NAME.tmp")
+            temp.writeText(payload)
+            if (!temp.renameTo(file)) {
+                file.writeText(payload)
+                temp.delete()
+            }
+        }
+
+        private fun write(entry: DebugLogEntry) {
+            withFileLock {
                 runCatching {
                     val existing =
                         runCatching {
@@ -329,8 +591,8 @@ class DebugLogStore
                                 json.decodeFromString(ListSerializer(DebugLogEntry.serializer()), file.readText())
                             }
                         }.getOrElse { emptyList() }
-                    val updated = (existing + entry).takeLast(MAX_ENTRIES)
-                    file.writeText(json.encodeToString(ListSerializer(DebugLogEntry.serializer()), updated))
+                    val updated = trimToByteBudget((existing + entry).takeLast(MAX_ENTRIES))
+                    writeAtomically(json.encodeToString(ListSerializer(DebugLogEntry.serializer()), updated))
                 }.onFailure { Log.w(TAG, "Failed to record debug log entry: ${it.javaClass.simpleName}") }
             }
         }
@@ -338,12 +600,16 @@ class DebugLogStore
         private companion object {
             const val TAG = "DebugLog"
             const val FILE_NAME = "debug_log.json"
+            const val LOCK_FILE_NAME = "debug_log.lock"
             const val LEGACY_CRASH_FILE_NAME = "crash_log.json"
             const val LEGACY_AI_CALL_FILE_NAME = "ai_call_debug.json"
             const val MAX_ENTRIES = 150
             const val PREFS_NAME = "debug_log_store"
             const val KEY_LAST_RECORDED_EXIT_TIMESTAMP = "last_recorded_exit_timestamp"
-            const val PROCESS_EXIT_TYPE = "ProcessExit"
+            const val KEY_CRASHED_OP = "crashed_op"
+            const val KEY_CRASHED_MODEL = "crashed_model"
             const val KB_PER_MB = 1024L
+            const val MAX_TRACE_BYTES = 16 * 1024
+            const val MAX_FILE_BYTES = 1024 * 1024
         }
     }

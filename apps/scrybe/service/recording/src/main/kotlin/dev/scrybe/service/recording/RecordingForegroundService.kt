@@ -15,6 +15,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.twobits.debuglog.DebugLogStore
 import dagger.hilt.android.AndroidEntryPoint
 import dev.scrybe.core.audio.AudioRecorder
 import dev.scrybe.core.audio.RealtimeAudioSource
@@ -28,7 +29,6 @@ import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
-import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transcription.realtime.OpenAiRealtimeTranscriptionProvider
 import dev.scrybe.core.transcription.realtime.RealtimeTranscriptSession
@@ -80,6 +80,19 @@ class RecordingForegroundService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val streamingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Guards cleanupAfterRecordingCommand() against tearing the whole service down — cancelling
+    // serviceScope, which every command's coroutine runs on — while a DIFFERENT command's work is
+    // still genuinely in flight. Without this, a second command reaching cleanupAfterRecordingCommand()
+    // (a duplicate/stale ACTION_STOP — e.g. from the recording notification's own Stop button,
+    // which stays live and tappable independent of the in-app UI's disabled state until
+    // updateTranscribingNotification() replaces it partway into runAutoTranscription() — or
+    // handleCancel() for a newly-started recording while an earlier one is still transcribing)
+    // would call stopSelf() and cancel a still-running handleStop()'s auto-transcription out from
+    // under it, surfacing as a bare "Job was cancelled" a few seconds after it started. Only ever
+    // mutated from onStartCommand()'s call chain and serviceScope's own coroutines, all of which
+    // run on Dispatchers.Main — safe as a plain Int with no synchronization.
+    private var activeCommandCount = 0
     private var lastNotifiedSecond: Long = -1L
     private var telemetryJob: Job? = null
     private var locationDeferred: Deferred<Triple<Double, Double, String?>?>? = null
@@ -171,6 +184,7 @@ class RecordingForegroundService : Service() {
                 }
             }
         serviceScope.launch {
+            retainService()
             val config =
                 RecordingConfig(
                     outputDir = filesDir.resolve("recordings").absolutePath,
@@ -182,6 +196,10 @@ class RecordingForegroundService : Service() {
             audioRecorder
                 .startRecording(config)
                 .onSuccess {
+                    // Balances retainService() above without stopping the service — recording is
+                    // now active and must keep the service running regardless of what else, if
+                    // anything, is also in flight.
+                    releaseService()
                     // Only opened once the authoritative file recording already has the mic —
                     // starting both captures concurrently (as this used to) risks some OEM audio
                     // stacks muting whichever client opens the mic second. Racing them meant the
@@ -293,6 +311,7 @@ class RecordingForegroundService : Service() {
 
     private fun handleStop() {
         serviceScope.launch {
+            retainService()
             // Cleanup (tears down the foreground notification/service) must run exactly once no
             // matter how this coroutine ends — including via cancellation. Auto-transcription
             // below now runs inline on this same coroutine (see runAutoTranscription's doc) rather
@@ -300,6 +319,19 @@ class RecordingForegroundService : Service() {
             // this whole coroutine, not just the transcription part — without this `finally`, that
             // would skip cleanup entirely and leave the service and its notification stuck.
             try {
+                // Swaps the notification's still-tappable "Stop" action out immediately, before
+                // any of the save/transcribe work below even starts — otherwise that action stays
+                // live on the OS notification, independent of the in-app Stop button's own
+                // disabled state, for as long as it takes this coroutine to reach
+                // runAutoTranscription()'s own updateTranscribingNotification() call. A second
+                // ACTION_STOP landing from that stale button during this window used to reach
+                // cleanupAfterRecordingCommand() and destroy the service — and its serviceScope —
+                // out from under this coroutine's still-in-flight transcription; retainService()
+                // above already prevents that outright now, but this closes off the most likely
+                // way such a duplicate command would actually arrive in the first place.
+                if (preferencesDataStore.autoTranscribe.first()) {
+                    updateTranscribingNotification()
+                }
                 val streamedText = closeRealtimeStreamingIfActive()
                 playRecordingFeedback()
                 audioRecorder
@@ -384,6 +416,7 @@ class RecordingForegroundService : Service() {
     }
 
     private fun handleCancel() {
+        retainService()
         audioRecorder.cancelRecording()
         serviceScope.launch { closeRealtimeStreamingIfActive() }
         cleanupAfterRecordingCommand()
@@ -410,10 +443,36 @@ class RecordingForegroundService : Service() {
         super.onDestroy()
     }
 
+    /**
+     * Call at the start of any unit of work that must stop [cleanupAfterRecordingCommand]
+     * elsewhere from tearing the service down while this one is still genuinely in flight. Must
+     * be paired with exactly one call to [releaseService] or [cleanupAfterRecordingCommand] on
+     * every exit path (success, failure, and cancellation via a `finally` — a plain, non-suspend
+     * function call in a `finally` still runs even when the coroutine itself was cancelled).
+     */
+    private fun retainService() {
+        activeCommandCount++
+    }
+
+    /**
+     * Balances [retainService] without deciding whether to stop the service — for a path (a
+     * successful recording start) that must keep the service running regardless of what else, if
+     * anything, is also in flight.
+     */
+    private fun releaseService() {
+        activeCommandCount = (activeCommandCount - 1).coerceAtLeast(0)
+    }
+
     private fun cleanupAfterRecordingCommand() {
+        releaseService()
         telemetryJob?.cancel()
         telemetryJob = null
         lastNotifiedSecond = -1L
+        // Another recording command — most often an earlier handleStop()'s still-running
+        // auto-transcription — genuinely isn't done yet. Stopping the service now would cancel
+        // serviceScope out from under it; whichever command finishes last is the one that
+        // actually tears the service down.
+        if (activeCommandCount > 0) return
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

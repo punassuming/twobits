@@ -8,6 +8,65 @@
 
 ### Fixes
 
+* no user-visible change: code formatting is now enforced on the shared modules too, using the same engine version the pre-commit hook uses, so a file the hook calls clean cannot fail in CI
+
+* no user-visible change: fixed a build-breaking mistake in how the previous commit wired static analysis into the shared modules — caught by CI, so it never shipped
+
+* no user-visible change: the Debug Log screen and its two ViewModels now exist once in a shared module instead of once per app — the screen was 326 lines in all three, differing by a single comment line
+
+* no user-visible change: static analysis now runs on the shared modules too, and all three apps plus the shared code share one config instead of three identical copies — code moved into `shared/` used to leave the checks behind
+
+* no user-visible change: this app's own import of pre-merge logs was never affected by the bug fixed in the other two — its old reader tolerated the missing field that the shared one did not
+
+* no user-visible change: Shelf Snap's Debug Log now uses the same shared implementation as the other two apps instead of its own copy, and reads existing logs unchanged
+
+* no user-visible change: two of the three apps now share one Debug Log implementation; this app still has its own copy and moves over next
+
+* no user-visible change: restored an annotation on the shared Debug Log's entry-type enum that was dropped when the code moved into its own module — this app still uses its own copy, so nothing changes here yet
+
+* no user-visible change: the Debug Log store now exists once in a shared module instead of three hand-synced copies — nothing uses it yet, so behaviour is unchanged; each app moves over in its own commit
+
+**Sharing the Debug Log** — a shared log now carries what the screen shows:
+* every entry, not just the ones the current filter leaves visible
+* whether each call succeeded, its HTTP status, and its stack trace
+* the device and how the previous run ended, at the top
+
+* no user-visible change: fixed a compile error and a double-write hazard in the previous commit's debug-log locking — caught by CI, so neither shipped
+
+* no user-visible change: each on-device model now states its own context window explicitly instead of inheriting an unverified default, so the four that have never been measured are visible rather than hidden
+
+* no user-visible change: the Debug Log file is now safe against two processes writing it at once, and is replaced atomically — a torn write used to make the whole log parse as empty
+
+* no user-visible change: a crash *during* on-device generation is now detected too, not only one during model load — the reported failure was the former, and it previously left no warning and no record at all
+
+* no user-visible change: when an on-device model ends the process, the Debug Log now marks the next attempt at that same model and feature, instead of each retry looking like a first occurrence
+
+**Stuck on-device tasks** — a jammed local model now reports instead of hanging forever:
+* previously every later on-device task waited with no error and no log
+
+* no user-visible change: market research now sizes its evidence to the context window of the model you picked, instead of one figure chosen for the largest — a real defect, but on-device crashes are not resolved by it
+
+* no user-visible change: fixed a build-breaking API-level error in the previous commit's native-crash-trace capture — caught by CI, so it never shipped
+
+* no user-visible change: the rule that decides "the last run crashed" is now a plain function covered by unit tests, and shared-module tests finally run in CI instead of being skipped silently
+
+**False crash warnings** — the app no longer reports a crash that never happened:
+* a normal launch with no AI activity no longer triggers the warning
+
+* no user-visible change: the Debug Log file is now size-capped, and its launch entry is written off the main thread
+
+* no user-visible change: the local-analysis footer's card now reaches the true bottom edge the same way Scrybe's does — this app's version wasn't visibly broken, fixed for consistency
+
+* no user-visible change: the local-analysis and market-research footers now both use a shared `ProgressFooter` component (also used by Scrybe) instead of two separate one-off composables — same look and behavior
+
+* no user-visible change: market research's on-device synthesis step now logs memory and a model-loaded marker to the Debug Log, matching local vision analysis, so a native crash there is diagnosable instead of leaving no trace
+
+* no user-visible change: local listing refinement now logs memory and a model-loaded marker to the Debug Log too, closing the same gap for the last remaining on-device call
+
+* no user-visible change: a "Previous run ended in a crash" Debug Log entry now includes the OS's own native trace when available, not just the coarse crash reason
+
+* no user-visible change: the Debug Log now records a device fingerprint (model, Android version, CPU, RAM) once per launch, since on-device crashes vary a lot by device
+
 ## 1.32.5 (2026-09-16)
 
 ### Features

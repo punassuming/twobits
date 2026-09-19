@@ -11,13 +11,13 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.twobits.core.localmodels.LocalLlmModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withTimeout
 import java.io.Closeable
 import java.io.File
@@ -225,13 +225,23 @@ class LiteRtLmEngine internal constructor(
         private const val CACHE_SUBDIR = "litertlm"
 
         /**
-         * At most one engine resident per process. Overlapping local calls are a documented,
-         * intended pattern for the apps (Shelf Snap fans out listing refinement per platform
-         * while a vision analysis can still be running), and each of them would otherwise load
-         * its own multi-GB copy of the model at the same time. The second caller now simply
-         * waits for the first engine to close.
+         * The context window to actually ask for, never larger than the bundle can serve. A
+         * `.litertlm` file bakes its KV cache size in at conversion time (Qwen 3 0.6B's file name
+         * says `ekv1280` outright), and requesting more is answered with a process abort rather
+         * than an exception — so a caller's request is a ceiling, not a promise.
+         *
+         * Resolved from the file name here rather than threaded through every call site: the six
+         * existing callers cannot each be relied on to remember, and a seventh would silently
+         * reintroduce the crash. A file that matches no catalog entry (a user-imported model) is
+         * left to the caller's own value, which is the best information available for it.
          */
-        private val residentEngineGate = Mutex()
+        private fun contextBudgetFor(
+            modelFile: File,
+            requested: Int,
+        ): Int {
+            val declared = LocalLlmModel.forFileName(modelFile.name)?.maxContextTokens
+            return declared?.coerceAtMost(requested) ?: requested
+        }
 
         /**
          * The only way to obtain an engine. Takes the process-wide gate, checks free memory
@@ -248,15 +258,23 @@ class LiteRtLmEngine internal constructor(
             maxNumTokens: Int = DEFAULT_MAX_NUM_TOKENS,
         ): LiteRtLmEngine {
             require(maxNumTokens > 0) { "maxNumTokens must be positive" }
-            residentEngineGate.lock()
+            val effectiveMaxNumTokens = contextBudgetFor(modelFile, maxNumTokens)
+            // Not withGate {}: this hands the engine back to its caller, so the release belongs
+            // to close(), not to the end of this function.
+            LocalInferenceGate.acquire()
             return runCatching {
                 // Checked after taking the gate, not before: the previous engine releasing its
                 // memory is exactly the event that can turn a refusal into a pass.
-                LocalInferenceMemoryGuard.requireHeadroom(context, modelFile, vision = visionBackend != null)
-                LiteRtLmEngine(context, modelFile, systemInstruction, visionBackend, maxNumTokens) {
-                    residentEngineGate.unlock()
+                LocalInferenceMemoryGuard.requireHeadroom(
+                    context,
+                    modelFile,
+                    vision = visionBackend != null,
+                    contextTokens = effectiveMaxNumTokens,
+                )
+                LiteRtLmEngine(context, modelFile, systemInstruction, visionBackend, effectiveMaxNumTokens) {
+                    LocalInferenceGate.release()
                 }
-            }.onFailure { residentEngineGate.unlock() }.getOrThrow()
+            }.onFailure { LocalInferenceGate.release() }.getOrThrow()
         }
     }
 }

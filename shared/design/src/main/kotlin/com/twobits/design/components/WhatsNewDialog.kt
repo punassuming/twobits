@@ -38,10 +38,11 @@ fun AppWhatsNewDialog(
         title = { Text(title) },
         text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
             ) {
                 categories.forEach { category ->
                     WhatsNewDialogCategorySection(category)
@@ -53,18 +54,19 @@ fun AppWhatsNewDialog(
                 Text(confirmLabel)
             }
         },
-        dismissButton = if (onViewHistory != null) {
-            {
-                TextButton(onClick = {
-                    onDismiss()
-                    onViewHistory()
-                }) {
-                    Text("View history")
+        dismissButton =
+            if (onViewHistory != null) {
+                {
+                    TextButton(onClick = {
+                        onDismiss()
+                        onViewHistory()
+                    }) {
+                        Text("View history")
+                    }
                 }
-            }
-        } else {
-            null
-        },
+            } else {
+                null
+            },
     )
 }
 
@@ -72,9 +74,10 @@ fun AppWhatsNewDialog(
 private fun WhatsNewDialogCategorySection(category: WhatsNewCategory) {
     if (category.items.isEmpty()) return
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,

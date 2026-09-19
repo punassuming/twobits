@@ -233,7 +233,8 @@ object ModelDownloader {
         maxAgeMs: Long = STALE_PART_MAX_AGE_MS,
     ) {
         val cutoff = System.currentTimeMillis() - maxAgeMs
-        dir.listFiles { f -> f.isFile && f.name.endsWith(PART_SUFFIX) }
+        dir
+            .listFiles { f -> f.isFile && f.name.endsWith(PART_SUFFIX) }
             ?.filter { it.lastModified() < cutoff }
             ?.forEach { it.delete() }
     }
@@ -269,8 +270,7 @@ object ModelDownloader {
     }
 
     /** Public so callers building a per-entry storage listing (not just the aggregate) can reuse this. */
-    fun sizeBytes(file: File): Long =
-        if (file.isDirectory) file.walkTopDown().filter { it.isFile }.sumOf { it.length() } else file.length()
+    fun sizeBytes(file: File): Long = if (file.isDirectory) file.walkTopDown().filter { it.isFile }.sumOf { it.length() } else file.length()
 
     /**
      * A failure that retrying won't fix — the caller should stop immediately rather than burn

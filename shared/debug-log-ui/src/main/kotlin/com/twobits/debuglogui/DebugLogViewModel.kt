@@ -1,11 +1,11 @@
-package dev.scrybe.feature.settings
+package com.twobits.debuglogui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.scrybe.core.transcription.DebugLogEntry
-import dev.scrybe.core.transcription.DebugLogEntryType
-import dev.scrybe.core.transcription.DebugLogStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

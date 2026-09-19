@@ -36,7 +36,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -92,10 +91,11 @@ fun WhatsNewScreenLayout(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                horizontal = 16.dp,
-                vertical = 8.dp,
-            ),
+            contentPadding =
+                androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 16.dp,
+                    vertical = 8.dp,
+                ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(releases, key = { it.version }) { release ->
@@ -114,13 +114,17 @@ private fun WhatsNewVersionBlock(
     release: WhatsNewRelease,
     onNavigate: ((String) -> Unit)?,
 ) {
-    val expandedCats = remember(release.version) {
-        mutableStateMapOf<String, Boolean>().also { map ->
-            if (release.isLatest) {
-                release.categories.firstOrNull()?.id?.let { map[it] = true }
+    val expandedCats =
+        remember(release.version) {
+            mutableStateMapOf<String, Boolean>().also { map ->
+                if (release.isLatest) {
+                    release.categories
+                        .firstOrNull()
+                        ?.id
+                        ?.let { map[it] = true }
+                }
             }
         }
-    }
 
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -130,9 +134,10 @@ private fun WhatsNewVersionBlock(
         Column {
             // Version header
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -195,10 +200,11 @@ private fun CategorySection(
     Column {
         // Category row
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onToggle)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -281,27 +287,34 @@ private fun WhatsNewItemRow(
 
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = if (isOpen) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                color = if (isOpen) MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
-                        else Color.Transparent,
-                shape = RoundedCornerShape(14.dp),
-            ),
+        color =
+            if (isOpen) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    color =
+                        if (isOpen) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
+                        } else {
+                            Color.Transparent
+                        },
+                    shape = RoundedCornerShape(14.dp),
+                ),
     ) {
         Column {
             if (hasDescription) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onToggle)
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onToggle)
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -329,9 +342,10 @@ private fun WhatsNewItemRow(
                         imageVector = Icons.Filled.ExpandMore,
                         contentDescription = if (isOpen) "Collapse" else "Expand",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .rotate(itemChevronRotation),
+                        modifier =
+                            Modifier
+                                .size(18.dp)
+                                .rotate(itemChevronRotation),
                     )
                 }
 
@@ -374,9 +388,10 @@ private fun WhatsNewItemRow(
                 }
             } else {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {

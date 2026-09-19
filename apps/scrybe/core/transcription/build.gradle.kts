@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":core:datastore"))
     implementation(project(":core:model"))
     implementation(project(":core:base"))
+    api("com.twobits.core:debug-log")
     implementation("com.twobits.core:network")
     implementation("com.twobits.core:secure-store")
     implementation("com.twobits.core:billing")

@@ -115,6 +115,8 @@ tasks.named("preBuild").configure {
 
 dependencies {
     implementation("com.twobits.core:billing")
+    implementation("com.twobits.core:debug-log")
+    implementation("com.twobits.core:debug-log-ui")
     implementation("com.twobits.core:common")
     implementation("com.twobits.core:design")
 

@@ -1,4 +1,4 @@
-package com.twobits.pricedrop.ui.settings
+package com.twobits.debuglogui
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
@@ -40,8 +40,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.twobits.pricedrop.data.local.DebugLogEntry
-import com.twobits.pricedrop.data.local.DebugLogEntryType
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.PROCESS_EXIT_TYPE
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -53,7 +54,7 @@ import java.util.Locale
  * timed out right before a crash is otherwise invisible unless the two screens are
  * cross-referenced by eye. An "-start" AI-call entry with no matching completed entry right
  * after it means the app crashed mid-call — see [DebugLogEntry]'s doc. Never shows raw
- * prompt/response/page text.
+ * recorded audio, photos, or full prompt/response/page text.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,7 +83,7 @@ fun DebugLogScreen(
                                     type = "text/plain"
                                     putExtra(
                                         Intent.EXTRA_TEXT,
-                                        uiState.visibleEntries.joinToString("\n\n---\n\n") { it.asShareText() },
+                                        shareText(uiState.entries),
                                     )
                                 }
                             context.startActivity(Intent.createChooser(intent, "Share debug log"))
@@ -225,7 +226,7 @@ private fun CrashEntryCard(entry: DebugLogEntry) {
 
 @Composable
 private fun CallEntryCard(entry: DebugLogEntry) {
-    val isStartMarker = entry.op?.endsWith("-start") == true
+    val isStartMarker = entry.startMarker
     val isService = entry.type == DebugLogEntryType.SERVICE_CALL
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -270,17 +271,54 @@ private fun CallEntryCard(entry: DebugLogEntry) {
     }
 }
 
+/**
+ * The whole log as plain text, for pasting into a bug report.
+ *
+ * Deliberately built from **every** entry rather than the filtered view, and carrying every field
+ * the on-screen cards render. An earlier version shared `visibleEntries` and dropped `success`,
+ * `startMarker`, `httpStatus` and call-entry stack traces — so a shared log could not distinguish a
+ * successful call from a failed one, which is the first thing anyone reading it needs to know.
+ *
+ * The device fingerprint and the previous run's exit reason are lifted to a header because they are
+ * the two facts a reader needs before any individual entry makes sense, and hunting for them in a
+ * 150-entry list is exactly the friction this is meant to remove.
+ */
+private fun shareText(entries: List<DebugLogEntry>): String {
+    val device = entries.firstOrNull { it.endpoint == DEVICE_INFO_ENDPOINT }?.requestSummary
+    val previousRun = entries.firstOrNull { it.exceptionType == PROCESS_EXIT_TYPE }?.message
+    return buildString {
+        appendLine("Debug log · ${entries.size} entries, newest first")
+        device?.let { appendLine("Device: $it") }
+        previousRun?.let { appendLine(it) }
+        appendLine()
+        append(entries.joinToString("\n\n---\n\n") { it.asShareText() })
+    }
+}
+
+/** Mirrors the badge on [CallEntryCard] so the export and the screen never disagree. */
+private fun DebugLogEntry.outcomeLabel(): String =
+    when {
+        startMarker -> "STARTED"
+        success == true -> "OK"
+        else -> "FAILED"
+    }
+
 private fun DebugLogEntry.asShareText(): String =
     when (type) {
         DebugLogEntryType.CRASH ->
             "${TIME_FORMAT.format(Date(timestampMs))} · thread $threadName\n$exceptionType: $message\n$stackTrace"
         DebugLogEntryType.AI_CALL, DebugLogEntryType.SERVICE_CALL ->
-            "${TIME_FORMAT.format(Date(timestampMs))} · $op · $endpoint" +
+            "${TIME_FORMAT.format(Date(timestampMs))} · ${outcomeLabel()} · $op · $endpoint" +
                 (model?.let { " · $it" } ?: "") +
+                (httpStatus?.let { " · HTTP $it" } ?: "") +
                 (durationMs?.let { " · ${formatDuration(it)}" } ?: "") +
                 "\n$requestSummary" +
-                (responseSnippet?.let { "\n$it" } ?: "")
+                (responseSnippet?.let { "\n$it" } ?: "") +
+                (stackTrace?.let { "\n$it" } ?: "")
     }
+
+/** [DebugLogEntry.endpoint] of the per-launch device fingerprint written by each Application. */
+private const val DEVICE_INFO_ENDPOINT = "device-info"
 
 private val TIME_FORMAT = SimpleDateFormat("MM-dd HH:mm:ss", Locale.US)
 

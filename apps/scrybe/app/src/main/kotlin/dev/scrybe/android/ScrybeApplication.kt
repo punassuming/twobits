@@ -1,6 +1,12 @@
 package dev.scrybe.android
 
 import android.app.Application
+import com.twobits.common.ProcessInfo
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
+import com.twobits.localai.DeviceDiagnostics
+import com.twobits.localai.LocalInferenceMemoryGuard
 import dagger.hilt.android.HiltAndroidApp
 import dev.scrybe.core.common.TransformStepsCodec
 import dev.scrybe.core.database.RecordingSessionDao
@@ -8,7 +14,6 @@ import dev.scrybe.core.database.TransformProfileDao
 import dev.scrybe.core.database.TransformProfileEntity
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.SessionStatus
-import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transforms.DefaultProfiles
 import dev.scrybe.service.recording.WaveformBackfiller
 import kotlinx.coroutines.CoroutineScope
@@ -34,7 +39,30 @@ class ScrybeApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Every process an app declares gets its own Application instance and its own
+        // onCreate(), so everything below would run again in the :inference process: a second
+        // crash handler, a second launch entry appended to the same log file, and — for Scrybe —
+        // a startup sweep that would correct rows the main process is actively using. None of it
+        // belongs anywhere but here.
+        if (!ProcessInfo.isMainProcess(this)) return
         debugLogStore.install()
+        // A device fingerprint once per launch — on-device inference crashes are heavily
+        // device/chipset dependent, so a crash entry with no idea which device it happened on is
+        // far harder to reproduce or triage than one timestamped next to this. Written off the
+        // main thread: every DebugLogStore write re-reads, re-parses and rewrites the whole log
+        // file, and install() above has already done that twice before this point.
+        applicationScope.launch {
+            debugLogStore.record(
+                DebugLogEntry(
+                    timestampMs = System.currentTimeMillis(),
+                    type = DebugLogEntryType.AI_CALL,
+                    op = "app-launch",
+                    endpoint = "device-info",
+                    requestSummary = DeviceDiagnostics.summary(LocalInferenceMemoryGuard.snapshot(this@ScrybeApplication)?.totalMb),
+                    success = true,
+                ),
+            )
+        }
         // Captured synchronously, before any launch{} below can be delayed by the dispatcher —
         // see reconcileOrphanedTranscribingSessions()'s doc comment for why this exact ordering
         // is what makes that sweep safe.
