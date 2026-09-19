@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: code formatting is now enforced on the shared modules too, using the same engine version the pre-commit hook uses, so a file the hook calls clean cannot fail in CI
+
 * no user-visible change: fixed a build-breaking mistake in how the previous commit wired static analysis into the shared modules — caught by CI, so it never shipped
 
 * no user-visible change: the Debug Log screen and its two ViewModels now exist once in a shared module instead of once per app — the screen was 326 lines in all three, differing by a single comment line

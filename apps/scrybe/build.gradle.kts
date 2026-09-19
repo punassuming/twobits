@@ -88,12 +88,18 @@ tasks.register("ktlintFormat") {
     description = "Formats Kotlin sources across all Android subprojects."
     group = "formatting"
     dependsOn(subprojects.map { "${it.path}:ktlintFormat" })
+    // An included build is not a subproject, so this aggregate would otherwise skip
+    // every shared module — same reason `sharedUnitTest` and `detekt` bridge across.
+    dependsOn(gradle.includedBuild("shared").task(":ktlintFormat"))
 }
 
 tasks.register("ktlintCheck") {
     description = "Runs ktlint checks across all Android subprojects."
     group = "verification"
     dependsOn(subprojects.map { "${it.path}:ktlintCheck" })
+    // An included build is not a subproject, so this aggregate would otherwise skip
+    // every shared module — same reason `sharedUnitTest` and `detekt` bridge across.
+    dependsOn(gradle.includedBuild("shared").task(":ktlintCheck"))
 }
 
 tasks.register("detekt") {

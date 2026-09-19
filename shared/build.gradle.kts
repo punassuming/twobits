@@ -19,3 +19,15 @@ tasks.register("detekt") {
     group = "verification"
     dependsOn(subprojects.map { "${it.path}:detekt" })
 }
+
+tasks.register("ktlintCheck") {
+    description = "Runs ktlint checks across all shared modules."
+    group = "verification"
+    dependsOn(subprojects.map { "${it.path}:ktlintCheck" })
+}
+
+tasks.register("ktlintFormat") {
+    description = "Formats Kotlin sources across all shared modules."
+    group = "formatting"
+    dependsOn(subprojects.map { "${it.path}:ktlintFormat" })
+}

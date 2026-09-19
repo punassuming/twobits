@@ -519,8 +519,7 @@ class DebugLogStore
             return candidate
         }
 
-        private fun encodedSize(entries: List<DebugLogEntry>): Int =
-            json.encodeToString(ListSerializer(DebugLogEntry.serializer()), entries).length
+        private fun encodedSize(entries: List<DebugLogEntry>): Int = json.encodeToString(ListSerializer(DebugLogEntry.serializer()), entries).length
 
         /**
          * Serialises a read-modify-write of the log file against **other processes**, not just

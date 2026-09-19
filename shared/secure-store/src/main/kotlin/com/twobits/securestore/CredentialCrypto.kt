@@ -77,7 +77,9 @@ class CredentialCrypto
                 val blob = Base64.decode(stored, Base64.NO_WRAP)
                 if (blob.size <= IV_LENGTH) return stored
                 decrypt(stored)
-            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            } catch (
+                @Suppress("TooGenericExceptionCaught") e: Exception,
+            ) {
                 stored
             }
         }

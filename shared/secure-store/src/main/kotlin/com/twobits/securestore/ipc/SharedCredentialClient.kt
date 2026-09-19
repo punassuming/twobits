@@ -15,11 +15,12 @@ private const val METHOD_SET = "set"
 private const val EXTRA_ID = "id"
 private const val EXTRA_VALUE = "value"
 
-private val SIBLING_APP_IDS = listOf(
-    "dev.scrybe.android",
-    "com.shelfsnap.app",
-    "com.twobits.pricedrop",
-)
+private val SIBLING_APP_IDS =
+    listOf(
+        "dev.scrybe.android",
+        "com.shelfsnap.app",
+        "com.twobits.pricedrop",
+    )
 
 /**
  * Transparently reads/writes shared credentials across sibling TwoBits apps.
@@ -45,7 +46,9 @@ class SharedCredentialClient
         ): Bundle? =
             try {
                 context.contentResolver.call(siblingUri(appId), method, null, extras)
-            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            } catch (
+                @Suppress("TooGenericExceptionCaught") e: Exception,
+            ) {
                 null
             }
 
@@ -67,10 +70,11 @@ class SharedCredentialClient
             id: SharedCredentialId,
             value: String,
         ) = withContext(Dispatchers.IO) {
-            val extras = Bundle().apply {
-                putString(EXTRA_ID, id.wireId)
-                putString(EXTRA_VALUE, value)
-            }
+            val extras =
+                Bundle().apply {
+                    putString(EXTRA_ID, id.wireId)
+                    putString(EXTRA_VALUE, value)
+                }
             SIBLING_APP_IDS
                 .filter { it != ownAppId() }
                 .forEach { appId -> callSibling(appId, METHOD_SET, extras) }

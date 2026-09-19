@@ -2,9 +2,9 @@ package com.twobits.apikeys
 
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.first
 
 @Singleton
 class ApiKeyRouter
@@ -23,10 +23,11 @@ class ApiKeyRouter
                         authToken = proUserIdProvider.getUserId(),
                     )
                 is SubscriptionTier.Free -> {
-                    val key = apiKeyProvider.getApiKey(providerType)
-                        ?: throw NoApiKeyException(
-                            "No API key stored. Please add your OpenAI key in Settings.",
-                        )
+                    val key =
+                        apiKeyProvider.getApiKey(providerType)
+                            ?: throw NoApiKeyException(
+                                "No API key stored. Please add your OpenAI key in Settings.",
+                            )
                     ApiConfig(
                         baseUrl = "https://api.openai.com/",
                         authToken = key,

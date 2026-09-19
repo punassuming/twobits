@@ -71,9 +71,10 @@ fun ProUsageCard(
 @Composable
 private fun ProUsageRow(metric: ProUsageMetric) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(
@@ -107,9 +108,10 @@ private fun ProUsageRow(metric: ProUsageMetric) {
             val fraction = (metric.used.toFloat() / metric.limit.toFloat()).coerceIn(0f, 1f)
             LinearProgressIndicator(
                 progress = { fraction },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(4.dp)),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp)),
                 color = AI_PRO_COLOR,
                 trackColor = AI_PRO_COLOR.copy(alpha = 0.15f),
             )
@@ -128,11 +130,12 @@ fun ProSpendCapCard(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(AI_PRO_COLOR.copy(alpha = 0.12f))
-            .padding(12.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(AI_PRO_COLOR.copy(alpha = 0.12f))
+                .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -167,11 +170,12 @@ const val BYOK_DIRECT_NOTE: String =
 @Composable
 fun ByokDirectNoteCard(modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(AI_BYOK_COLOR.copy(alpha = 0.12f))
-            .padding(12.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(AI_BYOK_COLOR.copy(alpha = 0.12f))
+                .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.Top,
     ) {
