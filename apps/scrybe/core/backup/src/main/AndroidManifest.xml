@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    This module promotes its worker to the foreground, so it declares what that needs rather than
+    relying on the app to do it. Lint enforces this per module: `SpecifyForegroundServiceType` fails
+    on the `ForegroundInfo(..., FOREGROUND_SERVICE_TYPE_DATA_SYNC)` call unless the module's own
+    merged manifest overrides WorkManager's service with a matching type.
+
+    The app declares the identical override; `tools:node="merge"` combines them rather than
+    conflicting. Scrybe's other foreground worker does not trip this only because its `setForeground`
+    call lives in `shared/local-ai`, which Android Lint never runs against.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <application>
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+    </application>
+</manifest>
