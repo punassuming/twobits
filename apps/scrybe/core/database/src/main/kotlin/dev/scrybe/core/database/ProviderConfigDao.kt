@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ProviderConfigDao {
     @Query("SELECT * FROM provider_configs")
+    suspend fun getAllProviderConfigsOnce(): List<ProviderConfigEntity>
+
+    @Query("SELECT * FROM provider_configs")
     fun getAllProviderConfigs(): Flow<List<ProviderConfigEntity>>
 
     @Query("SELECT * FROM provider_configs WHERE providerType = :providerType LIMIT 1")

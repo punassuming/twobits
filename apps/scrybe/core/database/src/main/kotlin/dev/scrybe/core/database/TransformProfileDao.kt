@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TransformProfileDao {
     @Query("SELECT * FROM transform_profiles ORDER BY name ASC")
+    suspend fun getAllProfilesOnce(): List<TransformProfileEntity>
+
+    @Query("SELECT * FROM transform_profiles ORDER BY name ASC")
     fun getAllProfiles(): Flow<List<TransformProfileEntity>>
 
     @Query("SELECT * FROM transform_profiles WHERE id = :id LIMIT 1")

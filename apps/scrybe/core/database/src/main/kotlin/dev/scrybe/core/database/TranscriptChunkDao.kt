@@ -7,6 +7,9 @@ import androidx.room.Query
 
 @Dao
 interface TranscriptChunkDao {
+    @Query("SELECT * FROM transcript_chunks ORDER BY sessionId, chunkIndex ASC")
+    suspend fun getAllChunksOnce(): List<TranscriptChunkEntity>
+
     @Query("SELECT * FROM transcript_chunks WHERE sessionId = :sessionId ORDER BY chunkIndex ASC")
     suspend fun getChunksForSession(sessionId: String): List<TranscriptChunkEntity>
 

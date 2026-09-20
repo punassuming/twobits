@@ -692,7 +692,10 @@ fun SettingsScreen(
                             .heightIn(max = 400.dp)
                             .verticalScroll(rememberScrollState()),
                 ) {
-                    AudioFormat.entries.forEach { format ->
+                    // Not `entries`: MP3 and WAV are hidden because MediaRecorder cannot
+                    // produce either — picking them gave an MPEG-4/AAC file under a name
+                    // that other apps then failed to open. See AudioFormat's doc.
+                    AudioFormat.selectable.forEach { format ->
                         Row(
                             modifier =
                                 Modifier

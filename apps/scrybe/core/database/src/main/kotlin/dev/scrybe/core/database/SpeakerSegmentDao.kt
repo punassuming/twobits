@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SpeakerSegmentDao {
+    @Query("SELECT * FROM speaker_segments ORDER BY sessionId, startMs ASC")
+    suspend fun getAllSegmentsOnce(): List<SpeakerSegmentEntity>
+
     @Query("SELECT * FROM speaker_segments WHERE sessionId = :sessionId ORDER BY startMs")
     fun getSegmentsForSession(sessionId: String): Flow<List<SpeakerSegmentEntity>>
 

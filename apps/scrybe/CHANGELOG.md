@@ -8,6 +8,12 @@
 
 ### Fixes
 
+**Recording format** — MP3 and WAV are no longer offered when recording:
+* the recorder never produced either; both gave an AAC file under the wrong name
+* existing recordings still play, and export now names them correctly
+
+* no user-visible change: the backup writer and the bulk audio export, with no way to run them yet — the screen that does comes next
+
 * no user-visible change: groundwork for backing up and restoring your whole recording history — the backup file format and its safety checks, with nothing using them yet
 
 * no user-visible change: when an on-device model times out, the log now says whether it produced no output at all or stopped partway — opposite causes that used to read identically

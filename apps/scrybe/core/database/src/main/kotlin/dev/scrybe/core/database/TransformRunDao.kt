@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TransformRunDao {
     @Query("SELECT * FROM transform_runs ORDER BY startedAt DESC")
+    suspend fun getAllRunsOnce(): List<TransformRunEntity>
+
+    @Query("SELECT * FROM transform_runs ORDER BY startedAt DESC")
     fun getAllRuns(): Flow<List<TransformRunEntity>>
 
     @Query("SELECT * FROM transform_runs WHERE sessionId = :sessionId ORDER BY startedAt DESC")
