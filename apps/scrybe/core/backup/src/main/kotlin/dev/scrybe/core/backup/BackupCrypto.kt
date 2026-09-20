@@ -99,15 +99,19 @@ internal object BackupCrypto {
     ): T =
         try {
             // `use` is inline, so the suspend block runs in the caller's context.
-            decryptingStream(input, passphrase, salt, iv).use { stream ->
-                val result = block(stream)
-                // Force the authentication check. GCM verifies its tag in `doFinal`, which
-                // `CipherInputStream` only reaches when the stream hits EOF — and a reader can
-                // legitimately stop before that. `ZipInputStream` does exactly this: it stops at the
-                // end-of-central-directory marker, leaving the tail unread. Without this drain a
-                // tampered or truncated backup would restore silently, which is the failure GCM was
-                // chosen to prevent.
-                stream.drain()
+            decryptingStream(input, passphrase, salt, iv).use { cipherStream ->
+                // The block gets a stream it cannot close. That matters more than it looks:
+                // `CipherInputStream.close()` runs `doFinal` itself and **discards** the
+                // authentication failure, and it marks the stream done so nothing afterwards can
+                // re-check. Since every real reader here closes what it is given —
+                // `ZipInputStream(...).use` does — handing over the live stream would mean the tag
+                // was never verified on exactly the path that matters, while a test whose block
+                // happens not to close would still pass.
+                val result = block(NonClosingInputStream(cipherStream))
+                // Now force the check. GCM verifies in `doFinal`, which is only reached at EOF, and
+                // a reader can legitimately stop earlier: `ZipInputStream` stops at the
+                // end-of-central-directory marker and leaves the tail unread.
+                cipherStream.drain()
                 result
             }
         } catch (security: GeneralSecurityException) {
@@ -118,6 +122,29 @@ internal object BackupCrypto {
             // both mean "this backup could not be read", which is what the message says.
             throw BackupDecryptionException(WRONG_PASSPHRASE_MESSAGE, io)
         }
+
+    /**
+     * Hands a reader a stream it cannot close, so this object keeps control of when `doFinal` runs.
+     * Only the three methods a reader actually uses are delegated; the rest inherit `InputStream`'s
+     * defaults, which are expressed in terms of `read`.
+     */
+    private class NonClosingInputStream(
+        private val delegate: InputStream,
+    ) : InputStream() {
+        override fun read(): Int = delegate.read()
+
+        override fun read(
+            b: ByteArray,
+            off: Int,
+            len: Int,
+        ): Int = delegate.read(b, off, len)
+
+        override fun available(): Int = delegate.available()
+
+        override fun close() {
+            // Deliberately nothing — see readAuthenticated.
+        }
+    }
 
     /** Reads and discards the rest of the stream, so the cipher reaches `doFinal`. */
     private fun InputStream.drain() {

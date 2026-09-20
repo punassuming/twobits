@@ -112,6 +112,47 @@ class BackupCryptoTest {
         }
     }
 
+    /**
+     * The case the previous test did not cover, and the one that actually ships.
+     *
+     * Every real reader closes the stream it is given — `restorePayload` does
+     * `ZipInputStream(...).use`. `CipherInputStream.close()` runs `doFinal` itself and discards the
+     * authentication failure, so if the block could close the live stream the tag would never be
+     * checked on the only path that matters, while a test whose block happens not to close would
+     * still pass. This asserts tampering is caught even when the block closes.
+     */
+    @Test
+    fun `tampering is caught even when the reader closes the stream`() {
+        val salt = BackupCrypto.randomBytes(BackupContainer.SALT_BYTES)
+        val iv = BackupCrypto.randomBytes(BackupContainer.IV_BYTES)
+        val cipherText = encrypt("passphrase", salt, iv)
+        cipherText[cipherText.size - 24] = (cipherText[cipherText.size - 24] + 1).toByte()
+
+        assertThrows(BackupDecryptionException::class.java) {
+            read(cipherText, "passphrase", salt, iv) { stream ->
+                stream.read(ByteArray(16))
+                stream.close()
+            }
+        }
+    }
+
+    /** The happy path must survive the same close, or every encrypted restore would fail. */
+    @Test
+    fun `an intact payload still decrypts when the reader closes the stream`() {
+        val salt = BackupCrypto.randomBytes(BackupContainer.SALT_BYTES)
+        val iv = BackupCrypto.randomBytes(BackupContainer.IV_BYTES)
+        val cipherText = encrypt("passphrase", salt, iv)
+
+        val first =
+            read(cipherText, "passphrase", salt, iv) { stream ->
+                val head = ByteArray(16)
+                stream.read(head)
+                stream.close()
+                head
+            }
+        assertArrayEquals(payload.copyOf(16), first)
+    }
+
     @Test
     fun `a truncated payload fails rather than returning a partial history`() {
         val salt = BackupCrypto.randomBytes(BackupContainer.SALT_BYTES)

@@ -17,6 +17,8 @@
 
 ### Fixes
 
+* no user-visible change: a passphrase-protected backup now detects tampering on the path that actually runs, not only in the case the first test happened to cover
+
 * no user-visible change: the backup's record of which database version wrote it now reads the real version instead of a copy that could drift
 
 * no user-visible change: fixed a compile error in the new backup code that CI caught before any of it shipped
