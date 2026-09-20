@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: restoring a backup merges it in — sessions already on the device are left alone, so restoring twice changes nothing the second time
+
 **Recording format** — MP3 and WAV are no longer offered when recording:
 * the recorder never produced either; both gave an AAC file under the wrong name
 * existing recordings still play, and export now names them correctly
