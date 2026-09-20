@@ -40,6 +40,7 @@ dependencies {
     implementation(project(":core:transforms"))
     implementation(project(":core:transcription"))
     implementation(project(":core:local-ai"))
+    implementation(project(":core:backup"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

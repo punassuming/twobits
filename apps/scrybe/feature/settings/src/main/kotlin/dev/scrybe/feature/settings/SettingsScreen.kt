@@ -89,6 +89,7 @@ fun SettingsScreen(
     onNavigateToPeople: () -> Unit = {},
     onNavigateToPro: () -> Unit = {},
     onNavigateToRecordingTypes: () -> Unit = {},
+    onNavigateToBackup: () -> Unit = {},
     onNavigateToDebugLog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -503,6 +504,12 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("Manage Files")
+                    }
+                    Button(
+                        onClick = onNavigateToBackup,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Backup & Restore")
                     }
                     HorizontalDivider()
                     val storageGb = uiState.usageStats.totalStorageBytes / (1024f * 1024f * 1024f)

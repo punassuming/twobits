@@ -128,6 +128,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:transforms"))
     implementation(project(":core:transcription"))
+    implementation(project(":core:backup"))
 
     implementation(project(":feature:capture"))
     implementation(project(":feature:file-manager"))

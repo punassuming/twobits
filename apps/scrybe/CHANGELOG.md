@@ -4,6 +4,15 @@
 
 ### Features
 
+**Backup & restore** — move your whole recording history to a new phone:
+* one file holds every recording with its title, date and transcript
+* restore adds what is missing and leaves what is already there
+* optionally lock the backup with a passphrase
+
+**Export recordings** — copy just the audio to a folder you choose:
+* files are named so other apps can open them
+* find it under Settings, Storage
+
 ### Improvements
 
 ### Fixes
