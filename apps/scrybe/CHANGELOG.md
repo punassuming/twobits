@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: groundwork for backing up and restoring your whole recording history — the backup file format and its safety checks, with nothing using them yet
+
 * no user-visible change: when an on-device model times out, the log now says whether it produced no output at all or stopped partway — opposite causes that used to read identically
 
 **On-device AI** — fixed a library mismatch that stopped models returning a response:

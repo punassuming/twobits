@@ -98,6 +98,7 @@ include(":core:audio")
 include(":core:transcription")
 include(":core:transforms")
 include(":core:export")
+include(":core:backup")
 
 // Feature modules
 include(":feature:capture")
