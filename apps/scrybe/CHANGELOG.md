@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**On-device AI** — fixed a library mismatch that stopped models returning a response:
+* the bundled AI engine needed a newer coroutines version than shipped
+* affected every on-device model, not one in particular
+
 * no user-visible change: code formatting is now enforced on the shared modules too, using the same engine version the pre-commit hook uses, so a file the hook calls clean cannot fail in CI
 
 * no user-visible change: renamed a subscription-state property in the shared billing code whose backing name did not match the one it exposes

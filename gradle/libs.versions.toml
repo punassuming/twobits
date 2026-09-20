@@ -55,7 +55,19 @@ gson = "2.11.0"                   # Shelf Snap, PriceDrop
 retrofit = "2.11.0"               # Scrybe only
 
 # ── Kotlin extras ─────────────────────────────────────────────────────────────
-kotlinxCoroutines = "1.9.0"
+# 1.11.0 is a hard floor, not a routine upgrade — do not lower it while litertLm is 0.16.1.
+# litertlm-android's AAR was compiled against 1.11.0 and calls `SendChannel.close$default(...)`
+# as a *static on the SendChannel interface*. Before 1.11.0 that method exists only on
+# `SendChannel$DefaultImpls`, so on 1.9.0 (which litertlm's own POM declares) the call resolves
+# to nothing and throws at runtime:
+#   NoSuchMethodError: No static method close$default(
+#     Lkotlinx/coroutines/channels/SendChannel;Ljava/lang/Throwable;ILjava/lang/Object;)Z
+# It fires inside `Conversation.onDone()`, the completion path of every `sendMessageAsync`, so it
+# breaks on-device generation for every model rather than any particular one.
+# Upstream: google-ai-edge/LiteRT-LM#2812 (diagnoses the mismatch) and #3334 (same error on
+# 0.16.1; its claim that no public release carries the method is wrong — it stops testing at
+# 1.10.2). Verified here by decompiling both published artifacts.
+kotlinxCoroutines = "1.11.0"
 kotlinxSerializationJson = "1.6.3" # Scrybe only
 
 # ── Camera ────────────────────────────────────────────────────────────────────
@@ -73,6 +85,8 @@ coil = "2.7.0"                    # Shelf Snap only
 vico = "2.1.2"                    # PriceDrop only
 
 # ── ML / device ───────────────────────────────────────────────────────────────
+# Coupled to kotlinxCoroutines above: this version's AAR needs 1.11.0's `SendChannel` shape.
+# Changing either one means re-checking the other.
 litertLm = "0.16.1"
 mlkitBarcode = "17.3.0"           # PriceDrop only
 commonsCompress = "1.27.1"        # Scrybe only
