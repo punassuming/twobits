@@ -12,6 +12,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.SettingsBackupRestore
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -97,13 +103,16 @@ fun BackupScreen(
                 BackupProgressCard(uiState)
             }
             uiState.message?.let { message ->
-                AppLabeledSectionCard(title = if (uiState.isError) "Something went wrong" else "Done") {
+                AppLabeledSectionCard(
+                    title = if (uiState.isError) "Something went wrong" else "Done",
+                    icon = if (uiState.isError) Icons.Filled.ErrorOutline else Icons.Filled.CheckCircle,
+                ) {
                     Text(message, style = MaterialTheme.typography.bodyMedium)
                     TextButton(onClick = viewModel::dismissMessage) { Text("Dismiss") }
                 }
             }
 
-            AppLabeledSectionCard(title = "Back up everything") {
+            AppLabeledSectionCard(title = "Back up everything", icon = Icons.Filled.Backup) {
                 Text(
                     "Saves every recording together with its title, date and transcript in a single " +
                         "file. Restore it on a new phone to pick up where you left off.",
@@ -142,7 +151,7 @@ fun BackupScreen(
                 }
             }
 
-            AppLabeledSectionCard(title = "Restore from a backup") {
+            AppLabeledSectionCard(title = "Restore from a backup", icon = Icons.Filled.SettingsBackupRestore) {
                 Text(
                     "Adds everything from a backup file. Recordings already on this phone are left " +
                         "untouched, so restoring twice is safe.",
@@ -157,7 +166,7 @@ fun BackupScreen(
                 }
             }
 
-            AppLabeledSectionCard(title = "Export recordings only") {
+            AppLabeledSectionCard(title = "Export recordings only", icon = Icons.Filled.FolderOpen) {
                 Text(
                     "Copies the audio files into a folder you choose, named so other apps can open " +
                         "them. No transcripts or titles — use a backup for those.",
@@ -222,7 +231,7 @@ private fun BackupProgressCard(uiState: BackupUiState) {
             BackupOperation.EXPORT -> "Exporting"
             null -> ""
         }
-    AppLabeledSectionCard(title = label) {
+    AppLabeledSectionCard(title = label, icon = Icons.Filled.Sync) {
         val fraction = uiState.progress.fraction
         if (fraction != null) {
             LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())

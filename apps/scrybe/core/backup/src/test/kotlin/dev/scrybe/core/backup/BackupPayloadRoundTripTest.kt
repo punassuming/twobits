@@ -1,5 +1,6 @@
 package dev.scrybe.core.backup
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -112,7 +113,9 @@ class BackupPayloadRoundTripTest {
         assertTrue(header.encrypted)
 
         val result =
-            BackupCrypto.readAuthenticated(container, "a good passphrase".toCharArray(), header.salt, header.iv) { readPayload(it) }
+            runBlocking {
+                BackupCrypto.readAuthenticated(container, "a good passphrase".toCharArray(), header.salt, header.iv) { readPayload(it) }
+            }
         assertEquals(2, result.first!!.sessions.size)
         assertEquals("AUDIO-TWO", result.third.getValue("session-two").decodeToString())
     }
@@ -122,7 +125,9 @@ class BackupPayloadRoundTripTest {
         val container = ByteArrayInputStream(writeContainer("the right one".toCharArray()))
         val header = BackupContainer.readHeader(container)
         assertThrows(BackupDecryptionException::class.java) {
-            BackupCrypto.readAuthenticated(container, "not it".toCharArray(), header.salt, header.iv) { readPayload(it) }
+            runBlocking {
+                BackupCrypto.readAuthenticated(container, "not it".toCharArray(), header.salt, header.iv) { readPayload(it) }
+            }
         }
     }
 

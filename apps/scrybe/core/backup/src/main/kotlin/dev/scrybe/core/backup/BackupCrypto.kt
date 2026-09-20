@@ -40,6 +40,8 @@ internal object BackupCrypto {
      */
     private const val ITERATIONS = 210_000
 
+    private const val DRAIN_BUFFER_BYTES = 8 * 1024
+
     private val secureRandom = SecureRandom()
 
     fun randomBytes(size: Int): ByteArray = ByteArray(size).also(secureRandom::nextBytes)
@@ -88,15 +90,26 @@ internal object BackupCrypto {
      * GCM reports tampering and a wrong key identically, on purpose — neither this code nor an
      * attacker can tell them apart — so the message covers both rather than guessing.
      */
-    fun <T> readAuthenticated(
+    suspend fun <T> readAuthenticated(
         input: InputStream,
         passphrase: CharArray,
         salt: ByteArray,
         iv: ByteArray,
-        block: (InputStream) -> T,
+        block: suspend (InputStream) -> T,
     ): T =
         try {
-            decryptingStream(input, passphrase, salt, iv).use(block)
+            // `use` is inline, so the suspend block runs in the caller's context.
+            decryptingStream(input, passphrase, salt, iv).use { stream ->
+                val result = block(stream)
+                // Force the authentication check. GCM verifies its tag in `doFinal`, which
+                // `CipherInputStream` only reaches when the stream hits EOF — and a reader can
+                // legitimately stop before that. `ZipInputStream` does exactly this: it stops at the
+                // end-of-central-directory marker, leaving the tail unread. Without this drain a
+                // tampered or truncated backup would restore silently, which is the failure GCM was
+                // chosen to prevent.
+                stream.drain()
+                result
+            }
         } catch (security: GeneralSecurityException) {
             throw BackupDecryptionException(WRONG_PASSPHRASE_MESSAGE, security)
         } catch (io: java.io.IOException) {
@@ -105,6 +118,15 @@ internal object BackupCrypto {
             // both mean "this backup could not be read", which is what the message says.
             throw BackupDecryptionException(WRONG_PASSPHRASE_MESSAGE, io)
         }
+
+    /** Reads and discards the rest of the stream, so the cipher reaches `doFinal`. */
+    private fun InputStream.drain() {
+        val scratch = ByteArray(DRAIN_BUFFER_BYTES)
+        @Suppress("ControlFlowWithEmptyBody")
+        while (read(scratch) != -1) {
+            // Nothing to do with the bytes; reaching EOF is the point.
+        }
+    }
 
     private fun deriveKey(
         passphrase: CharArray,

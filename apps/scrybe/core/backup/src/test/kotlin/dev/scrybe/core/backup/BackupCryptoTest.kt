@@ -1,5 +1,6 @@
 package dev.scrybe.core.backup
 
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -8,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 
 /**
  * Encryption is optional, which makes it easy to under-test — the common path never touches it.
@@ -31,19 +33,25 @@ class BackupCryptoTest {
         return out.toByteArray()
     }
 
+    /** `readAuthenticated` is suspend; these tests are not, so each call gets its own scope. */
+    private fun <T> read(
+        cipherText: ByteArray,
+        passphrase: String,
+        salt: ByteArray,
+        iv: ByteArray,
+        block: (InputStream) -> T,
+    ): T =
+        runBlocking {
+            BackupCrypto.readAuthenticated(ByteArrayInputStream(cipherText), passphrase.toCharArray(), salt, iv) { block(it) }
+        }
+
     @Test
     fun `a payload encrypted with a passphrase comes back byte for byte`() {
         val salt = BackupCrypto.randomBytes(BackupContainer.SALT_BYTES)
         val iv = BackupCrypto.randomBytes(BackupContainer.IV_BYTES)
         val cipherText = encrypt("correct horse battery staple", salt, iv)
 
-        val decrypted =
-            BackupCrypto.readAuthenticated(
-                ByteArrayInputStream(cipherText),
-                "correct horse battery staple".toCharArray(),
-                salt,
-                iv,
-            ) { it.readBytes() }
+        val decrypted = read(cipherText, "correct horse battery staple", salt, iv) { it.readBytes() }
 
         assertArrayEquals(payload, decrypted)
     }
@@ -64,7 +72,7 @@ class BackupCryptoTest {
 
         val failure =
             assertThrows(BackupDecryptionException::class.java) {
-                BackupCrypto.readAuthenticated(ByteArrayInputStream(cipherText), "the wrong one".toCharArray(), salt, iv) { it.readBytes() }
+                read(cipherText, "the wrong one", salt, iv) { it.readBytes() }
             }
         assertTrue(failure.message!!.contains("passphrase is wrong"))
     }
@@ -81,7 +89,26 @@ class BackupCryptoTest {
         cipherText[cipherText.size / 2] = (cipherText[cipherText.size / 2] + 1).toByte()
 
         assertThrows(BackupDecryptionException::class.java) {
-            BackupCrypto.readAuthenticated(ByteArrayInputStream(cipherText), "passphrase".toCharArray(), salt, iv) { it.readBytes() }
+            read(cipherText, "passphrase", salt, iv) { it.readBytes() }
+        }
+    }
+
+    /**
+     * The case that motivated draining the stream in `readAuthenticated`. GCM only checks its tag
+     * at EOF, so a reader that stops early — `ZipInputStream` stops at the end-of-central-directory
+     * marker, not the end of the stream — would never trigger the check. A tampered backup has to
+     * fail even when the block ignores most of it.
+     */
+    @Test
+    fun `tampering is caught even when the reader stops early`() {
+        val salt = BackupCrypto.randomBytes(BackupContainer.SALT_BYTES)
+        val iv = BackupCrypto.randomBytes(BackupContainer.IV_BYTES)
+        val cipherText = encrypt("passphrase", salt, iv)
+        cipherText[cipherText.size - 20] = (cipherText[cipherText.size - 20] + 1).toByte()
+
+        assertThrows(BackupDecryptionException::class.java) {
+            // Reads only the first few bytes and returns, exactly as a zip reader would.
+            read(cipherText, "passphrase", salt, iv) { it.read(ByteArray(16)) }
         }
     }
 
@@ -92,12 +119,7 @@ class BackupCryptoTest {
         val cipherText = encrypt("passphrase", salt, iv)
 
         assertThrows(BackupDecryptionException::class.java) {
-            BackupCrypto.readAuthenticated(
-                ByteArrayInputStream(cipherText.copyOf(cipherText.size - 8)),
-                "passphrase".toCharArray(),
-                salt,
-                iv,
-            ) { it.readBytes() }
+            read(cipherText.copyOf(cipherText.size - 8), "passphrase", salt, iv) { it.readBytes() }
         }
     }
 
@@ -107,12 +129,7 @@ class BackupCryptoTest {
         val cipherText = encrypt("passphrase", BackupCrypto.randomBytes(BackupContainer.SALT_BYTES), iv)
 
         assertThrows(BackupDecryptionException::class.java) {
-            BackupCrypto.readAuthenticated(
-                ByteArrayInputStream(cipherText),
-                "passphrase".toCharArray(),
-                BackupCrypto.randomBytes(BackupContainer.SALT_BYTES),
-                iv,
-            ) { it.readBytes() }
+            read(cipherText, "passphrase", BackupCrypto.randomBytes(BackupContainer.SALT_BYTES), iv) { it.readBytes() }
         }
     }
 
