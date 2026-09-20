@@ -7,7 +7,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -25,9 +24,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.shelfsnap.app.ui.CrashWarningViewModel
 import com.shelfsnap.app.ui.camera.CameraScreen
-import com.shelfsnap.app.ui.components.LocalAnalysisProgressToast
 import com.shelfsnap.app.ui.components.LocalAnalysisProgressViewModel
 import com.shelfsnap.app.ui.inventory.InventoryScreen
 import com.shelfsnap.app.ui.itemdetail.ItemDetailScreen
@@ -35,14 +32,16 @@ import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
 import com.shelfsnap.app.ui.itemdetail.MarketResearchScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingScreen
 import com.shelfsnap.app.ui.onboarding.OnboardingViewModel
-import com.shelfsnap.app.ui.settings.DebugLogScreen
 import com.shelfsnap.app.ui.settings.ProScreen
 import com.shelfsnap.app.ui.settings.ServicesScreen
 import com.shelfsnap.app.ui.settings.SettingsScreen
 import com.shelfsnap.app.ui.summary.SummaryScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewViewModel
+import com.twobits.debuglogui.CrashWarningViewModel
+import com.twobits.debuglogui.DebugLogScreen
 import com.twobits.design.components.AppWhatsNewDialog
+import com.twobits.design.components.ProgressFooter
 
 @Composable
 fun AppNavigation(
@@ -75,22 +74,28 @@ fun AppNavigation(
     // contentWindowInsets is zeroed out deliberately: individual screens under NavHost already
     // manage their own top/side system-bar insets (there's no topBar here for Scaffold to reserve
     // space for), so this Scaffold's only job is reserving bottom space for the toast — letting it
-    // also fold system-bar insets into innerPadding would double up with what each screen and the
-    // toast itself (navigationBarsPadding() below) already apply.
+    // also fold system-bar insets into innerPadding would double up with what each screen already
+    // applies on its own.
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            // AnimatedVisibility inside this toast collapses to zero height when not showing, so
+            // AnimatedVisibility inside this footer collapses to zero height when not showing, so
             // innerPadding's bottom value shrinks back to zero the moment it disappears, and grows
             // to exactly its measured height while visible — this is what actually reduces the
-            // content area and makes the toast come up from the real bottom edge, instead of
+            // content area and makes the footer come up from the real bottom edge, instead of
             // floating over content that has no idea it exists (the previous Box+align(BottomCenter)
             // overlay).
-            LocalAnalysisProgressToast(
-                label = localAnalysisProgressState.label,
-                otherActiveCount = localAnalysisProgressState.otherActiveCount,
-                modifier = Modifier.navigationBarsPadding(),
+            // No navigationBarsPadding() here — ProgressFooter applies gesture-nav clearance to
+            // its own inner content instead, so its card can reach the true bottom edge
+            // unconditionally. See its own doc comment for why.
+            ProgressFooter(
+                visible = localAnalysisProgressState.label != null,
+                primaryText = localAnalysisProgressState.label ?: "",
+                tertiaryText =
+                    localAnalysisProgressState.otherActiveCount
+                        .takeIf { it > 0 }
+                        ?.let { "and $it more also running" },
             )
         },
     ) { innerPadding ->
@@ -274,7 +279,7 @@ fun AppNavigation(
 }
 
 /**
- * [DebugLogStore.staleStartWarning][com.shelfsnap.app.data.local.DebugLogStore.staleStartWarning]
+ * [DebugLogStore.staleStartWarning][com.twobits.debuglog.DebugLogStore.staleStartWarning]
  * surfaced as a one-time dialog — a native crash (a bad model file, a LiteRT-LM abort) has no
  * catchable Kotlin exception to report through the usual error paths, so without this the app
  * would just silently relaunch with no explanation for what happened last time.

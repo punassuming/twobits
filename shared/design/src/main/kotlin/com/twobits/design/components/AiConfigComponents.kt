@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+
 val AI_PRO_COLOR = Color(0xFF88D7A8)
 val AI_BYOK_COLOR = Color(0xFF7DD4DC)
 val AI_LOCAL_COLOR = Color(0xFFFFB695)
@@ -88,16 +89,19 @@ fun AiCredentialsDock(
             )
             if (proExpanded) {
                 Column(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 14.dp),
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
-                        text = if (hasPro)
-                            "Your $proLabel subscription is active. AI features are managed automatically."
-                        else
-                            "Upgrade to $proLabel for managed AI access — no personal API key needed.",
+                        text =
+                            if (hasPro) {
+                                "Your $proLabel subscription is active. AI features are managed automatically."
+                            } else {
+                                "Upgrade to $proLabel for managed AI access — no personal API key needed."
+                            },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -105,10 +109,11 @@ fun AiCredentialsDock(
                         Button(
                             onClick = onUpgrade,
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = AI_PRO_COLOR,
-                                contentColor = Color(0xFF1A3A2A),
-                            ),
+                            colors =
+                                ButtonDefaults.buttonColors(
+                                    containerColor = AI_PRO_COLOR,
+                                    contentColor = Color(0xFF1A3A2A),
+                                ),
                         ) {
                             Icon(Icons.Default.WorkspacePremium, contentDescription = null, modifier = Modifier.size(16.dp))
                             Text("Upgrade to $proLabel", modifier = Modifier.padding(start = 8.dp))
@@ -131,9 +136,10 @@ fun AiCredentialsDock(
             )
             if (byokExpanded) {
                 Column(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 14.dp),
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     OutlinedTextField(
@@ -175,10 +181,11 @@ fun AiCredentialsDock(
                             onClick = onClear,
                             modifier = Modifier.weight(1f),
                             enabled = apiKey.isNotBlank() && !isValidating,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.error,
-                            ),
+                            colors =
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.error,
+                                ),
                         ) {
                             Text("Clear")
                         }
@@ -194,11 +201,12 @@ fun AiCredentialsDock(
                         Text(
                             text = validationMessage,
                             style = MaterialTheme.typography.bodySmall,
-                            color = when (isKeyValid) {
-                                true -> MaterialTheme.colorScheme.primary
-                                false -> MaterialTheme.colorScheme.error
-                                null -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            color =
+                                when (isKeyValid) {
+                                    true -> MaterialTheme.colorScheme.primary
+                                    false -> MaterialTheme.colorScheme.error
+                                    null -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
                 }
@@ -219,18 +227,20 @@ private fun AiCredentialRow(
     onToggle: () -> Unit,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onToggle() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() }
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .background(iconTint.copy(alpha = 0.15f)),
+            modifier =
+                Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(iconTint.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
@@ -261,10 +271,12 @@ private fun AiCredentialRow(
             }
             Text(
                 text = subtitle,
-                style = if (subtitleMonospace)
-                    MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
-                else
-                    MaterialTheme.typography.bodySmall,
+                style =
+                    if (subtitleMonospace) {
+                        MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+                    } else {
+                        MaterialTheme.typography.bodySmall
+                    },
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -272,9 +284,10 @@ private fun AiCredentialRow(
             Icons.Default.ExpandMore,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .size(20.dp)
-                .rotate(if (expanded) 180f else 0f),
+            modifier =
+                Modifier
+                    .size(20.dp)
+                    .rotate(if (expanded) 180f else 0f),
         )
     }
 }
@@ -290,11 +303,12 @@ fun AiSourceSegment(
     localColor: Color = AI_LOCAL_COLOR,
     modifier: Modifier = Modifier,
 ) {
-    val pills = buildList {
-        add(Triple("pro", "Pro", proColor))
-        add(Triple("byok", "BYOK", byokColor))
-        if (hasLocal) add(Triple("local", "Local", localColor))
-    }
+    val pills =
+        buildList {
+            add(Triple("pro", "Pro", proColor))
+            add(Triple("byok", "BYOK", byokColor))
+            if (hasLocal) add(Triple("local", "Local", localColor))
+        }
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -340,11 +354,12 @@ fun AiProManagedCard(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(AI_PRO_COLOR.copy(alpha = 0.12f))
-            .padding(12.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(AI_PRO_COLOR.copy(alpha = 0.12f))
+                .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -368,11 +383,12 @@ fun AiNoKeyWarning(
     text: String = "No API key configured. Add your OpenAI key in the credentials panel above.",
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
-            .padding(12.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
+                .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -402,10 +418,11 @@ fun AiSectionHeader(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer),
+            modifier =
+                Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

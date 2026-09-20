@@ -4,7 +4,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class SubscriptionRepository(private val billingManager: BillingManager) {
+class SubscriptionRepository(
+    private val billingManager: BillingManager,
+) {
     val subscriptionTier: StateFlow<SubscriptionTier> = billingManager.subscriptionTier
 
     private val initMutex = Mutex()

@@ -7,6 +7,9 @@ import android.util.Log
 import com.shelfsnap.app.data.remote.DraftItemResult
 import com.shelfsnap.app.data.remote.VisionAnalysisService
 import com.shelfsnap.app.data.remote.parseDraftItemJson
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.LiteRtBackend
 import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
@@ -73,6 +76,7 @@ class LocalVisionService
                                 timestampMs = startedAtMs,
                                 type = DebugLogEntryType.AI_CALL,
                                 op = "vision-analyze-start",
+                                startMarker = true,
                                 endpoint = "on-device",
                                 model = modelFile.name,
                                 requestSummary =
@@ -93,6 +97,7 @@ class LocalVisionService
                                         timestampMs = System.currentTimeMillis(),
                                         type = DebugLogEntryType.AI_CALL,
                                         op = "vision-engine-loaded",
+                                        startMarker = true,
                                         endpoint = "on-device",
                                         model = modelFile.name,
                                         requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",

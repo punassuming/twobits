@@ -32,6 +32,7 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:base"))
     implementation(project(":core:datastore"))
+    implementation("com.twobits.core:debug-log")
     implementation(project(":core:transcription"))
     implementation(project(":core:transforms"))
     implementation(libs.androidx.core.ktx)

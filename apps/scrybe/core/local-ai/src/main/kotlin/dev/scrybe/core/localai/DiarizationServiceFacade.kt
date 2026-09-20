@@ -1,11 +1,11 @@
 package dev.scrybe.core.localai
 
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.SpeakerSegment
-import dev.scrybe.core.transcription.DebugLogEntry
-import dev.scrybe.core.transcription.DebugLogEntryType
-import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.DiarizationService
 import dev.scrybe.core.transcription.OpenAiDiarizationService
 import kotlinx.coroutines.flow.first
@@ -51,23 +51,22 @@ class DiarizationServiceFacade
                 // this stays a silent skip in the main UI (diarization is a non-blocking
                 // enhancement, not core to the recording). Recording the failure — including an
                 // InsufficientMemoryException's specific reason — here is the only way it's ever
-                // diagnosable at all.
+                // diagnosable at all, so unlike the routing entry above it isn't gated on
+                // debugEnabled — a rare failure logging unconditionally costs nothing.
                 localService.diarize(sessionId, audioFile, transcriptText, providerType).onFailure { error ->
-                    if (debugEnabled) {
-                        debugLogStore.record(
-                            DebugLogEntry(
-                                timestampMs = System.currentTimeMillis(),
-                                type = DebugLogEntryType.AI_CALL,
-                                op = "diarize",
-                                endpoint = "on-device",
-                                model = "local",
-                                requestSummary = "AI features source is Local — routed to on-device model, not OpenAI",
-                                success = false,
-                                responseSnippet = "${error.javaClass.simpleName}: ${error.message}",
-                                stackTrace = error.stackTraceToString(),
-                            ),
-                        )
-                    }
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.AI_CALL,
+                            op = "diarize",
+                            endpoint = "on-device",
+                            model = "local",
+                            requestSummary = "AI features source is Local — routed to on-device model, not OpenAI",
+                            success = false,
+                            responseSnippet = "${error.javaClass.simpleName}: ${error.message}",
+                            stackTrace = error.stackTraceToString(),
+                        ),
+                    )
                 }
             } else {
                 openAiService.diarize(sessionId, audioFile, transcriptText, providerType)

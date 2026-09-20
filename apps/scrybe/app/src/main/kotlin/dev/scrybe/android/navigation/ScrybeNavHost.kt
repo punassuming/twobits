@@ -14,13 +14,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.twobits.debuglogui.DebugLogScreen
 import dev.scrybe.android.ui.ScrybeWhatsNewScreen
 import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
 import dev.scrybe.feature.profiles.ProfilesScreen
 import dev.scrybe.feature.sessiondetail.SessionDetailScreen
 import dev.scrybe.feature.settings.AIConfigScreen
-import dev.scrybe.feature.settings.DebugLogScreen
+import dev.scrybe.feature.settings.BackupScreen
 import dev.scrybe.feature.settings.PeopleScreen
 import dev.scrybe.feature.settings.ProScreen
 import dev.scrybe.feature.settings.RecordingTypesScreen
@@ -49,6 +50,8 @@ sealed class Screen(
     object DebugLog : Screen("debug_log")
 
     object RecordingTypes : Screen("recording_types")
+
+    object Backup : Screen("backup")
 
     object WhatsNew : Screen("whats_new")
 
@@ -159,6 +162,7 @@ fun ScrybeNavHost(
                 onNavigateToPeople = { navController.navigate(Screen.People.route) },
                 onNavigateToPro = { navController.navigate(Screen.Pro.route) },
                 onNavigateToRecordingTypes = { navController.navigate(Screen.RecordingTypes.route) },
+                onNavigateToBackup = { navController.navigate(Screen.Backup.route) },
                 onNavigateToDebugLog = { navController.navigate(Screen.DebugLog.route) },
             )
         }
@@ -173,6 +177,10 @@ fun ScrybeNavHost(
         }
         composable(Screen.RecordingTypes.route) {
             RecordingTypesScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.Backup.route) {
+            BackupScreen(onBack = { navController.popBackStack() })
         }
         composable(Screen.People.route) {
             PeopleScreen(onNavigateBack = { navController.popBackStack() })

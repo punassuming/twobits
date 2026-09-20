@@ -11,18 +11,19 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.twobits.core.localmodels.LocalLlmModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withTimeout
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Public stand-in for `com.google.ai.edge.litertlm.Backend`, which callers outside this module
@@ -146,9 +147,11 @@ class LiteRtLmEngine internal constructor(
         val result = CompletableDeferred<String>()
         val accumulatedResponse = StringBuilder()
         val messageCount = AtomicInteger(0)
+        val lastMessageAtMs = AtomicLong(0L)
         val callback =
             object : MessageCallback {
                 override fun onMessage(message: Message) {
+                    lastMessageAtMs.set(System.currentTimeMillis())
                     synchronized(accumulatedResponse) { accumulatedResponse.append(message.toString()) }
                     onProgress(
                         LiteRtGenerationProgress(
@@ -189,7 +192,7 @@ class LiteRtLmEngine internal constructor(
                 start(callback)
                 withTimeout(timeoutMs) { result.await() }
             } catch (timeout: TimeoutCancellationException) {
-                throw LocalGenerationTimeoutException(timeoutMs, timeout)
+                throw LocalGenerationTimeoutException(timeoutMs, messageCount.get(), lastMessageAtMs.get(), timeout)
             } finally {
                 // Covers both the timeout above and the caller's own coroutine being cancelled
                 // (e.g. a ViewModel cleared mid-generation): either way, if the deferred never
@@ -225,13 +228,23 @@ class LiteRtLmEngine internal constructor(
         private const val CACHE_SUBDIR = "litertlm"
 
         /**
-         * At most one engine resident per process. Overlapping local calls are a documented,
-         * intended pattern for the apps (Shelf Snap fans out listing refinement per platform
-         * while a vision analysis can still be running), and each of them would otherwise load
-         * its own multi-GB copy of the model at the same time. The second caller now simply
-         * waits for the first engine to close.
+         * The context window to actually ask for, never larger than the bundle can serve. A
+         * `.litertlm` file bakes its KV cache size in at conversion time (Qwen 3 0.6B's file name
+         * says `ekv1280` outright), and requesting more is answered with a process abort rather
+         * than an exception — so a caller's request is a ceiling, not a promise.
+         *
+         * Resolved from the file name here rather than threaded through every call site: the six
+         * existing callers cannot each be relied on to remember, and a seventh would silently
+         * reintroduce the crash. A file that matches no catalog entry (a user-imported model) is
+         * left to the caller's own value, which is the best information available for it.
          */
-        private val residentEngineGate = Mutex()
+        private fun contextBudgetFor(
+            modelFile: File,
+            requested: Int,
+        ): Int {
+            val declared = LocalLlmModel.forFileName(modelFile.name)?.maxContextTokens
+            return declared?.coerceAtMost(requested) ?: requested
+        }
 
         /**
          * The only way to obtain an engine. Takes the process-wide gate, checks free memory
@@ -248,15 +261,23 @@ class LiteRtLmEngine internal constructor(
             maxNumTokens: Int = DEFAULT_MAX_NUM_TOKENS,
         ): LiteRtLmEngine {
             require(maxNumTokens > 0) { "maxNumTokens must be positive" }
-            residentEngineGate.lock()
+            val effectiveMaxNumTokens = contextBudgetFor(modelFile, maxNumTokens)
+            // Not withGate {}: this hands the engine back to its caller, so the release belongs
+            // to close(), not to the end of this function.
+            LocalInferenceGate.acquire()
             return runCatching {
                 // Checked after taking the gate, not before: the previous engine releasing its
                 // memory is exactly the event that can turn a refusal into a pass.
-                LocalInferenceMemoryGuard.requireHeadroom(context, modelFile, vision = visionBackend != null)
-                LiteRtLmEngine(context, modelFile, systemInstruction, visionBackend, maxNumTokens) {
-                    residentEngineGate.unlock()
+                LocalInferenceMemoryGuard.requireHeadroom(
+                    context,
+                    modelFile,
+                    vision = visionBackend != null,
+                    contextTokens = effectiveMaxNumTokens,
+                )
+                LiteRtLmEngine(context, modelFile, systemInstruction, visionBackend, effectiveMaxNumTokens) {
+                    LocalInferenceGate.release()
                 }
-            }.onFailure { residentEngineGate.unlock() }.getOrThrow()
+            }.onFailure { LocalInferenceGate.release() }.getOrThrow()
         }
     }
 }
@@ -274,7 +295,33 @@ suspend fun <T> withLocalLlmEngine(
     block: suspend (LiteRtLmEngine) -> T,
 ): T = LiteRtLmEngine.acquire(context, modelFile, systemInstruction, visionBackend, maxNumTokens).use { block(it) }
 
+/**
+ * A generation deadline expired. The message distinguishes *where* it stalled, because that
+ * separates two opposite diagnoses that previously read identically in the Debug Log.
+ *
+ * No output at all points at the model or the engine — a load that never produced a token.
+ * Output that stopped arriving long before the deadline points at the completion path instead:
+ * the library finished generating and then failed to hand the result back. A throw on LiteRT-LM's
+ * own callback thread cannot be caught from here, so a deadline is the only symptom this side
+ * ever sees, and the counts are the only way to tell which one it was.
+ */
 class LocalGenerationTimeoutException(
     timeoutMs: Long,
+    receivedMessageCount: Int,
+    lastMessageAtMs: Long,
     cause: Throwable,
-) : RuntimeException("Local generation timed out after ${timeoutMs / 1_000}s and was cancelled", cause)
+) : RuntimeException(describeTimeout(timeoutMs, receivedMessageCount, lastMessageAtMs), cause)
+
+private fun describeTimeout(
+    timeoutMs: Long,
+    receivedMessageCount: Int,
+    lastMessageAtMs: Long,
+): String {
+    val seconds = timeoutMs / 1_000
+    if (receivedMessageCount == 0) {
+        return "Local generation timed out after ${seconds}s with no output at all, and was cancelled"
+    }
+    val silentMs = System.currentTimeMillis() - lastMessageAtMs
+    return "Local generation timed out after ${seconds}s and was cancelled — " +
+        "$receivedMessageCount chunks received, last ${silentMs / 1_000}s before the deadline"
+}

@@ -17,7 +17,9 @@ subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
 
     extensions.configure<DetektExtension> {
-        config.setFrom(rootProject.file("detekt.yml"))
+        // One config for the whole repo, at its root — the three apps each held a
+        // byte-identical copy, and shared/ needed a fourth.
+        config.setFrom(rootProject.file("../../detekt.yml"))
         basePath = rootProject.projectDir.absolutePath
         parallel = true
     }
@@ -40,16 +42,35 @@ tasks.register("ktlintFormat") {
     description = "Formats Kotlin sources across all sub-projects."
     group = "formatting"
     dependsOn(subprojects.map { "${it.path}:ktlintFormat" })
+    // An included build is not a subproject, so this aggregate would otherwise skip
+    // every shared module — same reason `sharedUnitTest` and `detekt` bridge across.
+    dependsOn(gradle.includedBuild("shared").task(":ktlintFormat"))
 }
 
 tasks.register("ktlintCheck") {
     description = "Runs ktlint checks across all sub-projects."
     group = "verification"
     dependsOn(subprojects.map { "${it.path}:ktlintCheck" })
+    // An included build is not a subproject, so this aggregate would otherwise skip
+    // every shared module — same reason `sharedUnitTest` and `detekt` bridge across.
+    dependsOn(gradle.includedBuild("shared").task(":ktlintCheck"))
 }
 
 tasks.register("detekt") {
     description = "Runs detekt across all sub-projects."
     group = "verification"
     dependsOn(subprojects.map { "${it.path}:detekt" })
+    // Same reason as `sharedUnitTest`: an included build is not a subproject, so this
+    // aggregate would otherwise skip every shared module.
+    dependsOn(gradle.includedBuild("shared").task(":detekt"))
+}
+
+tasks.register("sharedUnitTest") {
+    description = "Runs unit tests in the composite `shared` build, which app-side test tasks never reach."
+    group = "verification"
+    // An included build only runs the tasks needed to produce the artifacts it substitutes, so
+    // `testDebugUnitTest` here never descends into `shared`. Without this, a test added under
+    // shared/ passes locally and gates nothing in CI.
+    dependsOn(gradle.includedBuild("shared").task(":local-models:test"))
+    dependsOn(gradle.includedBuild("shared").task(":debug-log:testDebugUnitTest"))
 }

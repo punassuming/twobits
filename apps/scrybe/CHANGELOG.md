@@ -4,9 +4,116 @@
 
 ### Features
 
+**Backup & restore** — move your whole recording history to a new phone:
+* one file holds every recording with its title, date and transcript
+* restore adds what is missing and leaves what is already there
+* optionally lock the backup with a passphrase
+
+**Export recordings** — copy just the audio to a folder you choose:
+* files are named so other apps can open them
+* find it under Settings, Storage
+
 ### Improvements
 
 ### Fixes
+
+* no user-visible change: the backup module now declares the background-service type it needs, instead of relying on the app to declare it
+
+* no user-visible change: a passphrase-protected backup now detects tampering on the path that actually runs, not only in the case the first test happened to cover
+
+* no user-visible change: the backup's record of which database version wrote it now reads the real version instead of a copy that could drift
+
+* no user-visible change: fixed a compile error in the new backup code that CI caught before any of it shipped
+
+* no user-visible change: a backup protected with a passphrase now refuses to restore if the file has been altered, even when only part of it is read
+
+* no user-visible change: fixed two missing test dependencies that broke the build on the previous commits — caught by CI, so nothing shipped
+
+* no user-visible change: restoring a backup merges it in — sessions already on the device are left alone, so restoring twice changes nothing the second time
+
+**Recording format** — MP3 and WAV are no longer offered when recording:
+* the recorder never produced either; both gave an AAC file under the wrong name
+* existing recordings still play, and export now names them correctly
+
+* no user-visible change: the backup writer and the bulk audio export, with no way to run them yet — the screen that does comes next
+
+* no user-visible change: groundwork for backing up and restoring your whole recording history — the backup file format and its safety checks, with nothing using them yet
+
+* no user-visible change: when an on-device model times out, the log now says whether it produced no output at all or stopped partway — opposite causes that used to read identically
+
+**On-device AI** — fixed a library mismatch that stopped models returning a response:
+* the bundled AI engine needed a newer coroutines version than shipped
+* affected every on-device model, not one in particular
+
+* no user-visible change: code formatting is now enforced on the shared modules too, using the same engine version the pre-commit hook uses, so a file the hook calls clean cannot fail in CI
+
+* no user-visible change: renamed a subscription-state property in the shared billing code whose backing name did not match the one it exposes
+
+* no user-visible change: fixed a build-breaking mistake in how the previous commit wired static analysis into the shared modules — caught by CI, so it never shipped
+
+* no user-visible change: the Debug Log screen and its two ViewModels now exist once in a shared module instead of once per app — the screen was 326 lines in all three, differing by a single comment line
+
+* no user-visible change: static analysis now runs on the shared modules too, and all three apps plus the shared code share one config instead of three identical copies — code moved into `shared/` used to leave the checks behind
+
+**Your old debug history** — crash and AI-call logs from before the log screens merged are no longer dropped:
+* one crash whose error carried no message used to discard the whole import
+
+* no user-visible change: Scrybe now reads and writes the Debug Log through the shared module rather than its own copy of the same code — the stored file's format is unchanged, so existing logs are kept
+
+* no user-visible change: restored an annotation on the shared Debug Log's entry-type enum that was dropped when the code moved into its own module — this app still uses its own copy, so nothing changes here yet
+
+* no user-visible change: the Debug Log store now exists once in a shared module instead of three hand-synced copies — nothing uses it yet, so behaviour is unchanged; each app moves over in its own commit
+
+**Sharing the Debug Log** — a shared log now carries what the screen shows:
+* every entry, not just the ones the current filter leaves visible
+* whether each call succeeded, its HTTP status, and its stack trace
+* the device and how the previous run ended, at the top
+
+**Cloud AI failures** — a failed transcription, diarization or insight is now always logged:
+* previously it recorded nothing unless "AI call debug" happened to be on
+* the failure entry now carries a stack trace too
+
+* no user-visible change: fixed a compile error and a double-write hazard in the previous commit's debug-log locking — caught by CI, so neither shipped
+
+* no user-visible change: each on-device model now states its own context window explicitly instead of inheriting an unverified default, so the four that have never been measured are visible rather than hidden
+
+* no user-visible change: the Debug Log file is now safe against two processes writing it at once, and is replaced atomically — a torn write used to make the whole log parse as empty
+
+* no user-visible change: a crash *during* on-device generation is now detected too, not only one during model load — the reported failure was the former, and it previously left no warning and no record at all
+
+* no user-visible change: when an on-device model ends the process, the Debug Log now marks the next attempt at that same model and feature, instead of each retry looking like a first occurrence
+
+**Stuck on-device tasks** — a jammed local model now reports instead of hanging forever:
+* previously every later on-device task waited with no error and no log
+
+* no user-visible change: local transcription now shares the one-model-at-a-time gate with the on-device LLM, so a transcription and a diarization can no longer both hold a model in memory
+
+* no user-visible change: on-device models are no longer asked for a larger context window than they were built for, which a native runtime answers by killing the app
+
+* no user-visible change: fixed a build-breaking API-level error in the previous commit's native-crash-trace capture — caught by CI, so it never shipped
+
+* no user-visible change: the rule that decides "the last run crashed" is now a plain function covered by unit tests, and shared-module tests finally run in CI instead of being skipped silently
+
+**False crash warnings** — the app no longer reports a crash that never happened:
+* a normal launch with no AI activity no longer triggers the warning
+* a successful local transcription no longer looks like a crash
+
+* no user-visible change: the Debug Log file is now size-capped, and its launch entry is written off the main thread
+
+**Transcribing footer** — the card now reaches the true bottom edge, no gap below it:
+* the card's background fills edge to edge instead of floating above a strip of screen background
+
+* no user-visible change: the transcribing footer now uses a shared `ProgressFooter` component (also used by Shelf Snap) instead of its own one-off composable — same look and behavior
+
+**Auto-transcription** — fixed a real cause of a just-finished recording failing to transcribe:
+* a second Stop tap could kill the service mid-transcription — fixed
+* the recording notification's Stop button now disappears the moment you tap Stop
+
+* no user-visible change: every on-device AI call (title/tag/cluster suggestions, transforms) now logs memory and a model-loaded marker to the Debug Log, matching local transcription — a native crash in any of them is now diagnosable
+
+* no user-visible change: local transcription/diarization/insight failures are now logged to the Debug Log with a full stack trace even when "AI call debug" is off, since a failure is the one case that always needs diagnosing
+* no user-visible change: a "Previous run ended in a crash" Debug Log entry now includes the OS's own native trace when available, not just the coarse crash reason
+* no user-visible change: the Debug Log now records a device fingerprint (model, Android version, CPU, RAM) once per launch, since on-device crashes vary a lot by device
 
 ## 1.53.5 (2026-09-16)
 

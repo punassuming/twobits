@@ -255,9 +255,9 @@ if [[ -n "$STAGED_KT_SOURCES" ]]; then
         | paste -sd ',' -)
 
     DETEKT_EXIT=0
-    # Each app root has its own detekt.yml matching the owning project's root.
-    # Find the config closest to the files being checked (fall back to Scrybe's).
-    DETEKT_CONFIG="$SCRYBE_DIR/detekt.yml"
+    # One config at the repo root, shared by all three apps and the shared modules.
+    # This hook always used a single config anyway; now the Gradle builds agree with it.
+    DETEKT_CONFIG="$REPO_ROOT/detekt.yml"
     java -jar "$DETEKT_JAR" \
         --config "$DETEKT_CONFIG" \
         --input "$DETEKT_INPUT" \

@@ -39,11 +39,9 @@ class LlmModelDownloadCoordinator(
         return if (f.exists() && f.length() > 0) f else null
     }
 
-    fun anyReady(predicate: (LocalLlmModel) -> Boolean = { true }): LocalLlmModel? =
-        LocalLlmModel.entries.firstOrNull { predicate(it) && file(it) != null }
+    fun anyReady(predicate: (LocalLlmModel) -> Boolean = { true }): LocalLlmModel? = LocalLlmModel.entries.firstOrNull { predicate(it) && file(it) != null }
 
-    private fun resolveState(model: LocalLlmModel): LocalModelState =
-        file(model)?.let { LocalModelState.Ready(it.absolutePath) } ?: LocalModelState.Absent
+    private fun resolveState(model: LocalLlmModel): LocalModelState = file(model)?.let { LocalModelState.Ready(it.absolutePath) } ?: LocalModelState.Absent
 
     suspend fun download(model: LocalLlmModel) {
         if (_states.value[model] is LocalModelState.Acquiring) return
@@ -107,15 +105,13 @@ class LlmModelDownloadCoordinator(
      * [knownFileNames]), as (name, sizeBytes) pairs — the per-entry breakdown a storage viewer
      * needs, not just the aggregate total.
      */
-    fun orphanedFileDetails(): List<Pair<String, Long>> =
-        ModelDownloader.orphanedEntries(modelsDir, knownFileNames()).map { it.name to ModelDownloader.sizeBytes(it) }
+    fun orphanedFileDetails(): List<Pair<String, Long>> = ModelDownloader.orphanedEntries(modelsDir, knownFileNames()).map { it.name to ModelDownloader.sizeBytes(it) }
 
     /** Deletes every orphaned entry under [modelsDir] and returns the bytes reclaimed. */
     fun deleteOrphanedFiles(): Long = ModelDownloader.deleteOrphanedEntries(modelsDir, knownFileNames())
 
     /** Every model file currently on disk under [modelsDir], as (name, sizeBytes) pairs — for a storage viewer. */
-    fun installedFileDetails(): List<Pair<String, Long>> =
-        LocalLlmModel.entries.mapNotNull { model -> file(model)?.let { model.fileName to ModelDownloader.sizeBytes(it) } }
+    fun installedFileDetails(): List<Pair<String, Long>> = LocalLlmModel.entries.mapNotNull { model -> file(model)?.let { model.fileName to ModelDownloader.sizeBytes(it) } }
 
     /** Absolute path to the directory models are stored under — informational only; not independently browsable outside the app (Android scopes `Android/data/<package>` to this app). */
     fun storageDirPath(): String = modelsDir.absolutePath

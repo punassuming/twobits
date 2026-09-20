@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -35,7 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.twobits.debuglogui.CrashWarningViewModel
 import com.twobits.design.components.AppWhatsNewDialog
+import com.twobits.design.components.ProgressFooter
 import dev.scrybe.android.navigation.Screen
 import dev.scrybe.android.navigation.ScrybeNavHost
 import dev.scrybe.feature.capture.OnboardingScreen
@@ -106,7 +107,7 @@ private fun ScrybeMainContent(
 }
 
 /**
- * [DebugLogStore.staleStartWarning][dev.scrybe.core.transcription.DebugLogStore.staleStartWarning]
+ * [DebugLogStore.staleStartWarning][com.twobits.debuglog.DebugLogStore.staleStartWarning]
  * surfaced as a one-time dialog — a native crash (a bad model file, an ONNX/LiteRT abort) has no
  * catchable Kotlin exception to report through the usual error paths, so without this the app
  * would just silently relaunch with no explanation for what happened last time.
@@ -148,7 +149,7 @@ private fun MainContentBox(
     // already manage their own top/side system-bar insets (there's no topBar here for Scaffold to
     // reserve space for), so this Scaffold's only job is reserving bottom space for the toast —
     // letting it also fold system-bar insets into innerPadding would double up with what each
-    // screen and the toast itself (navigationBarsPadding() below) already apply.
+    // screen already applies on its own.
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -156,15 +157,21 @@ private fun MainContentBox(
             // AnimatedVisibility(visible = false) collapses to zero height, so innerPadding's
             // bottom value below shrinks back to zero the moment this isn't showing, and grows to
             // exactly its measured height while it is — this is what actually reduces the content
-            // area and makes the toast come up from the real bottom edge, instead of floating over
-            // content that has no idea it exists (the previous Box+align(BottomCenter) overlay).
-            TranscriptionProgressToast(
+            // area and makes the footer come up from the real bottom edge, instead of floating
+            // over content that has no idea it exists (the previous Box+align(BottomCenter)
+            // overlay). No navigationBarsPadding() here — ProgressFooter applies gesture-nav
+            // clearance to its own inner content instead, so its card can reach the true bottom
+            // edge unconditionally. See its own doc comment for why.
+            ProgressFooter(
                 visible = transcriptionProgressState.isTranscribing,
-                label = transcriptionProgressState.label,
-                queuedCount = transcriptionProgressState.queuedCount,
-                isCancelling = transcriptionProgressState.isCancelling,
+                primaryText = if (transcriptionProgressState.isCancelling) "Cancelling…" else "Transcribing…",
+                secondaryText = transcriptionProgressState.label.takeIf { it.isNotBlank() },
+                tertiaryText =
+                    transcriptionProgressState.queuedCount
+                        .takeIf { it > 0 }
+                        ?.let { "$it more queued" },
                 onCancel = onCancelTranscription,
-                modifier = Modifier.navigationBarsPadding(),
+                isCancelling = transcriptionProgressState.isCancelling,
             )
         },
     ) { innerPadding ->

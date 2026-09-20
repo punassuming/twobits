@@ -2,6 +2,7 @@ package com.twobits.localai
 
 import android.app.ActivityManager
 import android.content.Context
+import com.twobits.core.localmodels.DEFAULT_MAX_CONTEXT_TOKENS
 import java.io.File
 
 /** One reading of [ActivityManager.getMemoryInfo], in bytes. */
@@ -40,6 +41,14 @@ class InsufficientMemoryException(
  * resident footprint is roughly the file size plus KV cache/activations for text, and the image
  * encoder plus its soft tokens on top for vision. They're meant to catch the hopeless case
  * (a 2.4 GB model with 1 GB free), not to be a precise accounting.
+ *
+ * What the factors *do* track is the context window, because the KV cache is linear in token
+ * count and used to be ignored entirely — the allowance was fixed at whatever suited a
+ * 4096-token window and then applied to every model and every window size alike. It is now
+ * scaled by the window actually being requested, calibrated so a default-sized window demands
+ * exactly what it demanded before. No attempt is made to model layers or head dimensions per
+ * architecture: that data is not in the catalog, and a precise-looking number derived from
+ * guesses would be worse than an honestly rough one.
  */
 object LocalInferenceMemoryGuard {
     private const val TEXT_HEADROOM_FACTOR = 1.1
@@ -60,9 +69,13 @@ object LocalInferenceMemoryGuard {
     fun requiredBytes(
         modelFile: File,
         vision: Boolean,
+        contextTokens: Int = DEFAULT_MAX_CONTEXT_TOKENS,
     ): Long {
         val factor = if (vision) VISION_HEADROOM_FACTOR else TEXT_HEADROOM_FACTOR
-        return (modelFile.length() * factor).toLong()
+        // The part above 1.0 is the KV-cache/activation allowance, so that is the part that
+        // scales with the window; the weights themselves are mapped and do not.
+        val allowance = (factor - 1.0) * (contextTokens.toDouble() / DEFAULT_MAX_CONTEXT_TOKENS)
+        return (modelFile.length() * (1.0 + allowance)).toLong()
     }
 
     /**
@@ -74,9 +87,10 @@ object LocalInferenceMemoryGuard {
         context: Context,
         modelFile: File,
         vision: Boolean,
+        contextTokens: Int = DEFAULT_MAX_CONTEXT_TOKENS,
     ) {
         val snapshot = snapshot(context) ?: return
-        val required = requiredBytes(modelFile, vision)
+        val required = requiredBytes(modelFile, vision, contextTokens)
         val usable = snapshot.availBytes - snapshot.thresholdBytes
         if (!snapshot.lowMemory && usable >= required) return
         val modelName = modelFile.nameWithoutExtension

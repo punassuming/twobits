@@ -487,10 +487,11 @@ fun CollapsibleProviderRow(
                         onClick = onClear,
                         modifier = Modifier.weight(1f),
                         enabled = apiKey.isNotBlank() && !isValidating,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.error,
-                        ),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.error,
+                            ),
                     ) { Text("Clear") }
                     TextButton(onClick = onTest, modifier = Modifier.weight(1f), enabled = apiKey.isNotBlank() && !isValidating) {
                         Text("Test")
@@ -500,11 +501,12 @@ fun CollapsibleProviderRow(
                     Text(
                         text = validationMessage,
                         style = MaterialTheme.typography.bodySmall,
-                        color = when (isKeyValid) {
-                            true -> MaterialTheme.colorScheme.primary
-                            false -> MaterialTheme.colorScheme.error
-                            null -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        color =
+                            when (isKeyValid) {
+                                true -> MaterialTheme.colorScheme.primary
+                                false -> MaterialTheme.colorScheme.error
+                                null -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                 }
             }

@@ -24,8 +24,8 @@ class BillingManager(
     context: Context,
     private val config: BillingConfig,
 ) {
-    private val _tier = MutableStateFlow<SubscriptionTier>(SubscriptionTier.Free)
-    val subscriptionTier: StateFlow<SubscriptionTier> = _tier.asStateFlow()
+    private val _subscriptionTier = MutableStateFlow<SubscriptionTier>(SubscriptionTier.Free)
+    val subscriptionTier: StateFlow<SubscriptionTier> = _subscriptionTier.asStateFlow()
 
     init {
         Purchases.configure(PurchasesConfiguration.Builder(context, config.revenueCatPublicKey).build())
@@ -34,7 +34,7 @@ class BillingManager(
     /** Returns true if RevenueCat was reached and the tier updated; false on failure. */
     suspend fun refreshStatus(): Boolean =
         runCatching { fetchCustomerInfo() }
-            .onSuccess { _tier.value = it.toTier() }
+            .onSuccess { _subscriptionTier.value = it.toTier() }
             .isSuccess
 
     suspend fun getMonthlyPackage(): Package? =
@@ -53,11 +53,14 @@ class BillingManager(
             }
         }.getOrNull()
 
-    suspend fun purchase(activity: Activity, pkg: Package): Result<SubscriptionTier> =
+    suspend fun purchase(
+        activity: Activity,
+        pkg: Package,
+    ): Result<SubscriptionTier> =
         runCatching {
             val customerInfo = purchasePackage(activity, pkg)
             val tier = customerInfo.toTier()
-            _tier.value = tier
+            _subscriptionTier.value = tier
             tier
         }
 
@@ -67,7 +70,7 @@ class BillingManager(
         runCatching {
             val customerInfo = doRestorePurchases()
             val tier = customerInfo.toTier()
-            _tier.value = tier
+            _subscriptionTier.value = tier
             tier
         }
 
@@ -76,8 +79,8 @@ class BillingManager(
             Purchases.sharedInstance.getCustomerInfo(
                 object : ReceiveCustomerInfoCallback {
                     override fun onReceived(customerInfo: CustomerInfo) = cont.resume(customerInfo)
-                    override fun onError(error: PurchasesError) =
-                        cont.resumeWithException(Exception(error.message))
+
+                    override fun onError(error: PurchasesError) = cont.resumeWithException(Exception(error.message))
                 },
             )
         }
@@ -87,22 +90,35 @@ class BillingManager(
             Purchases.sharedInstance.getOfferings(
                 object : ReceiveOfferingsCallback {
                     override fun onReceived(offerings: Offerings) = cont.resume(offerings)
-                    override fun onError(error: PurchasesError) =
-                        cont.resumeWithException(Exception(error.message))
+
+                    override fun onError(error: PurchasesError) = cont.resumeWithException(Exception(error.message))
                 },
             )
         }
 
-    private suspend fun purchasePackage(activity: Activity, pkg: Package): CustomerInfo =
+    private suspend fun purchasePackage(
+        activity: Activity,
+        pkg: Package,
+    ): CustomerInfo =
         suspendCancellableCoroutine { cont ->
             Purchases.sharedInstance.purchase(
                 PurchaseParams.Builder(activity, pkg).build(),
                 object : PurchaseCallback {
-                    override fun onCompleted(storeTransaction: StoreTransaction, customerInfo: CustomerInfo) =
-                        cont.resume(customerInfo)
-                    override fun onError(error: PurchasesError, userCancelled: Boolean) {
-                        val ex = if (userCancelled) PurchaseCancelledException()
-                        else Exception(error.message)
+                    override fun onCompleted(
+                        storeTransaction: StoreTransaction,
+                        customerInfo: CustomerInfo,
+                    ) = cont.resume(customerInfo)
+
+                    override fun onError(
+                        error: PurchasesError,
+                        userCancelled: Boolean,
+                    ) {
+                        val ex =
+                            if (userCancelled) {
+                                PurchaseCancelledException()
+                            } else {
+                                Exception(error.message)
+                            }
                         cont.resumeWithException(ex)
                     }
                 },
@@ -114,13 +130,16 @@ class BillingManager(
             Purchases.sharedInstance.restorePurchases(
                 object : ReceiveCustomerInfoCallback {
                     override fun onReceived(customerInfo: CustomerInfo) = cont.resume(customerInfo)
-                    override fun onError(error: PurchasesError) =
-                        cont.resumeWithException(Exception(error.message))
+
+                    override fun onError(error: PurchasesError) = cont.resumeWithException(Exception(error.message))
                 },
             )
         }
 
     private fun CustomerInfo.toTier(): SubscriptionTier =
-        if (entitlements[config.proEntitlementId]?.isActive == true) SubscriptionTier.Pro
-        else SubscriptionTier.Free
+        if (entitlements[config.proEntitlementId]?.isActive == true) {
+            SubscriptionTier.Pro
+        } else {
+            SubscriptionTier.Free
+        }
 }

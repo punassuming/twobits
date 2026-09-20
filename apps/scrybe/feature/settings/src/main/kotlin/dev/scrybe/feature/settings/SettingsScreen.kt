@@ -89,6 +89,7 @@ fun SettingsScreen(
     onNavigateToPeople: () -> Unit = {},
     onNavigateToPro: () -> Unit = {},
     onNavigateToRecordingTypes: () -> Unit = {},
+    onNavigateToBackup: () -> Unit = {},
     onNavigateToDebugLog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -504,6 +505,12 @@ fun SettingsScreen(
                     ) {
                         Text("Manage Files")
                     }
+                    Button(
+                        onClick = onNavigateToBackup,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Backup & Restore")
+                    }
                     HorizontalDivider()
                     val storageGb = uiState.usageStats.totalStorageBytes / (1024f * 1024f * 1024f)
                     val storageFraction = (storageGb / 10f).coerceIn(0f, 1f)
@@ -692,7 +699,10 @@ fun SettingsScreen(
                             .heightIn(max = 400.dp)
                             .verticalScroll(rememberScrollState()),
                 ) {
-                    AudioFormat.entries.forEach { format ->
+                    // Not `entries`: MP3 and WAV are hidden because MediaRecorder cannot
+                    // produce either — picking them gave an MPEG-4/AAC file under a name
+                    // that other apps then failed to open. See AudioFormat's doc.
+                    AudioFormat.selectable.forEach { format ->
                         Row(
                             modifier =
                                 Modifier

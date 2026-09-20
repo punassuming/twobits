@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CustomRecordingTypeDao {
     @Query("SELECT * FROM custom_recording_types ORDER BY createdAt ASC")
+    suspend fun getAllOnce(): List<CustomRecordingTypeEntity>
+
+    @Query("SELECT * FROM custom_recording_types ORDER BY createdAt ASC")
     fun getAll(): Flow<List<CustomRecordingTypeEntity>>
 
     @Query("SELECT * FROM custom_recording_types WHERE id = :id")

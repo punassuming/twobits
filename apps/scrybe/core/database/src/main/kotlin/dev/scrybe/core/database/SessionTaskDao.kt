@@ -13,6 +13,9 @@ data class SessionTaskCount(
 
 @Dao
 interface SessionTaskDao {
+    @Query("SELECT * FROM session_tasks ORDER BY sessionId, createdAt ASC")
+    suspend fun getAllTasksOnce(): List<SessionTaskEntity>
+
     @Query("SELECT * FROM session_tasks WHERE sessionId = :sessionId ORDER BY createdAt ASC")
     fun getTasksForSession(sessionId: String): Flow<List<SessionTaskEntity>>
 

@@ -3,6 +3,9 @@ package dev.scrybe.core.localai
 import android.content.Context
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.LlmDownloadSource
 import com.twobits.localai.LlmModelDownloadCoordinator
 import com.twobits.localai.ModelDownloadDiagnostics
@@ -10,9 +13,6 @@ import com.twobits.localai.ModelDownloader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.LocalWhisperModel
-import dev.scrybe.core.transcription.DebugLogEntry
-import dev.scrybe.core.transcription.DebugLogEntryType
-import dev.scrybe.core.transcription.DebugLogStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

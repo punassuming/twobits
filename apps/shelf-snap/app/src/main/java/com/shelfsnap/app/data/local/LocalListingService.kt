@@ -8,6 +8,10 @@ import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.remote.buildListingSystemPrompt
 import com.shelfsnap.app.data.remote.buildListingUserMessage
 import com.shelfsnap.app.data.remote.parseListingJson
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
+import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +66,40 @@ class LocalListingService
                     // WhisperTranscriptionProvider).
                     withContext(Dispatchers.IO) {
                         progressTracker.update(progressId, "Loading local model…")
+                        // Recorded — and awaited — immediately before the risky native call
+                        // below, not after: a native crash or low-memory kill in LiteRT-LM ends
+                        // the process with zero chance for any Kotlin try/catch to run, so this
+                        // entry already being safely on disk is the only way to later see, from
+                        // the Debug Log alone, that a listing refine was in flight (and how much
+                        // memory was free) when it died. The "listing-refine-engine-loaded" entry
+                        // below then splits that window into "died during load" vs. "died during
+                        // generation" — same pattern as every other local-inference call site.
+                        debugLogStore.record(
+                            DebugLogEntry(
+                                timestampMs = startedAtMs,
+                                type = DebugLogEntryType.AI_CALL,
+                                op = "listing-refine-start",
+                                startMarker = true,
+                                endpoint = "on-device",
+                                model = modelFile.name,
+                                requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                                success = true,
+                            ),
+                        )
                         withLocalLlmEngine(context, modelFile, systemInstruction = systemPrompt) { engine ->
+                            debugLogStore.record(
+                                DebugLogEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    type = DebugLogEntryType.AI_CALL,
+                                    op = "listing-refine-engine-loaded",
+                                    startMarker = true,
+                                    endpoint = "on-device",
+                                    model = modelFile.name,
+                                    requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                                    success = true,
+                                    durationMs = System.currentTimeMillis() - startedAtMs,
+                                ),
+                            )
                             progressTracker.update(progressId, "Generating listing locally…")
                             val response =
                                 engine.generate(userMessage) { progress ->

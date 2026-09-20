@@ -69,7 +69,7 @@ jobs:
       - name: Build, lint & test
         working-directory: apps/shelf-snap
         shell: bash
-        run: ./gradlew assembleRelease testDebugUnitTest lintRelease ktlintCheck detekt --no-daemon
+        run: ./gradlew assembleRelease testDebugUnitTest sharedUnitTest lintRelease ktlintCheck detekt --no-daemon
 
       - name: Upload lint report
         if: always()
@@ -85,7 +85,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shelf-snap-test-results-${{ github.run_number }}
-          path: apps/shelf-snap/app/build/reports/tests/
+          path: |
+            apps/shelf-snap/app/build/reports/tests/
+            shared/*/build/reports/tests/
           if-no-files-found: ignore
           retention-days: 14
 

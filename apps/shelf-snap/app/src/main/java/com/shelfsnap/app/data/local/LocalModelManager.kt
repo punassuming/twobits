@@ -7,6 +7,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import com.twobits.localai.LlmDownloadSource
 import com.twobits.localai.LlmModelDownloadCoordinator
 import com.twobits.localai.ModelDownloadDiagnostics

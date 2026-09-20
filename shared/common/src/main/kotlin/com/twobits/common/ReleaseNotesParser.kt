@@ -19,14 +19,14 @@ data class ReleaseNotesGroup(
 )
 
 object ReleaseNotesParser {
-    fun parseLatestReleaseNotes(changelog: String): ReleaseNotes? =
-        parseReleaseHistory(changelog).firstOrNull()
+    fun parseLatestReleaseNotes(changelog: String): ReleaseNotes? = parseReleaseHistory(changelog).firstOrNull()
 
     fun parseReleaseHistory(changelog: String): List<ReleaseNotes> {
         val lines = changelog.lines()
-        val sectionIndices = lines.mapIndexedNotNull { index, line ->
-            if (line.startsWith("## ")) index else null
-        }
+        val sectionIndices =
+            lines.mapIndexedNotNull { index, line ->
+                if (line.startsWith("## ")) index else null
+            }
         if (sectionIndices.isEmpty()) return emptyList()
 
         return sectionIndices.mapIndexedNotNull { idx, startIndex ->
@@ -39,17 +39,19 @@ object ReleaseNotesParser {
             } else {
                 val date = DATE_REGEX.find(headingRaw)?.value.orEmpty()
                 val groups = parseStructuredGroups(sectionLines)
-                val summaryItems = if (groups.isNotEmpty()) {
-                    groups.flatMap { g -> g.items.map { it.title } }.take(MAX_SUMMARY_ITEMS)
-                } else {
-                    sectionLines.asSequence()
-                        .map { it.trim() }
-                        .filter { it.startsWith("* ") || it.startsWith("- ") }
-                        .map { normalizeBullet(it) }
-                        .filter { it.isNotBlank() }
-                        .take(MAX_SUMMARY_ITEMS)
-                        .toList()
-                }
+                val summaryItems =
+                    if (groups.isNotEmpty()) {
+                        groups.flatMap { g -> g.items.map { it.title } }.take(MAX_SUMMARY_ITEMS)
+                    } else {
+                        sectionLines
+                            .asSequence()
+                            .map { it.trim() }
+                            .filter { it.startsWith("* ") || it.startsWith("- ") }
+                            .map { normalizeBullet(it) }
+                            .filter { it.isNotBlank() }
+                            .take(MAX_SUMMARY_ITEMS)
+                            .toList()
+                    }
                 ReleaseNotes(
                     title = title,
                     date = date,
@@ -75,9 +77,10 @@ object ReleaseNotesParser {
      * Falls back to empty list if no `### ` sub-headings are found.
      */
     private fun parseStructuredGroups(sectionLines: List<String>): List<ReleaseNotesGroup> {
-        val subHeadings = sectionLines.mapIndexedNotNull { i, line ->
-            if (line.startsWith("### ")) i else null
-        }
+        val subHeadings =
+            sectionLines.mapIndexedNotNull { i, line ->
+                if (line.startsWith("### ")) i else null
+            }
         if (subHeadings.isEmpty()) return emptyList()
 
         val groups = mutableListOf<ReleaseNotesGroup>()
@@ -85,12 +88,13 @@ object ReleaseNotesParser {
             val subEnd = subHeadings.getOrNull(si + 1) ?: sectionLines.size
             val groupLines = sectionLines.subList(subStart, subEnd)
             val rawLabel = groupLines.first().removePrefix("### ").trim()
-            val groupLabel = when (rawLabel.lowercase()) {
-                "features" -> "Features & Enhancements"
-                "improvements" -> "Improvements"
-                "fixes", "bug fixes" -> "Bug Fixes"
-                else -> rawLabel
-            }
+            val groupLabel =
+                when (rawLabel.lowercase()) {
+                    "features" -> "Features & Enhancements"
+                    "improvements" -> "Improvements"
+                    "fixes", "bug fixes" -> "Bug Fixes"
+                    else -> rawLabel
+                }
             val items = parseGroupItems(groupLines.drop(1))
             if (items.isNotEmpty()) {
                 groups += ReleaseNotesGroup(title = groupLabel, items = items)
@@ -112,10 +116,11 @@ object ReleaseNotesParser {
         fun flush() {
             val t = currentTitle ?: return
             val descParts = listOfNotNull(currentIntroDesc) + currentBullets
-            items += ReleaseNoteItem(
-                title = t,
-                description = descParts.joinToString(" · ").ifBlank { t },
-            )
+            items +=
+                ReleaseNoteItem(
+                    title = t,
+                    description = descParts.joinToString(" · ").ifBlank { t },
+                )
             currentTitle = null
             currentIntroDesc = null
             currentBullets.clear()
@@ -126,11 +131,13 @@ object ReleaseNotesParser {
             when {
                 line.startsWith("**") -> {
                     flush()
-                    val stripped = line.replace(BOLD_REGEX, "$1")
-                        .replace(INLINE_CODE_REGEX, "$1")
-                        .trimEnd(':')
-                        .trim()
-                    val sep = stripped.indexOf(" — ")  // em-dash separator
+                    val stripped =
+                        line
+                            .replace(BOLD_REGEX, "$1")
+                            .replace(INLINE_CODE_REGEX, "$1")
+                            .trimEnd(':')
+                            .trim()
+                    val sep = stripped.indexOf(" — ") // em-dash separator
                     if (sep >= 0) {
                         currentTitle = stripped.substring(0, sep).trim()
                         currentIntroDesc = stripped.substring(sep + 3).trim()
@@ -147,8 +154,9 @@ object ReleaseNotesParser {
                         items += ReleaseNoteItem(title = text, description = text)
                     }
                 }
-                line.isBlank() && currentTitle != null &&
-                        (currentIntroDesc != null || currentBullets.isNotEmpty()) -> {
+                line.isBlank() &&
+                    currentTitle != null &&
+                    (currentIntroDesc != null || currentBullets.isNotEmpty()) -> {
                     // Blank line ends this bold item's bullet block so that any following
                     // standalone bullets in the same section become their own items.
                     flush()
@@ -160,7 +168,8 @@ object ReleaseNotesParser {
     }
 
     private fun normalizeHeading(text: String): String =
-        text.replace(LINK_REGEX, "$1")
+        text
+            .replace(LINK_REGEX, "$1")
             .replace(SQUARE_BRACKET_REGEX, "$1")
             .replace(DATE_REGEX, "")
             .replace(PAREN_REGEX, "")
@@ -168,7 +177,8 @@ object ReleaseNotesParser {
             .trim()
 
     private fun normalizeBullet(text: String): String =
-        text.removePrefix("* ")
+        text
+            .removePrefix("* ")
             .removePrefix("- ")
             .replace(LINK_REGEX, "$1")
             .replace(COMMIT_LINK_REGEX, "")

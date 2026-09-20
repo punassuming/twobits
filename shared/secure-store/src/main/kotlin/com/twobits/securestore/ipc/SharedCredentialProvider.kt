@@ -27,7 +27,6 @@ private const val EXTRA_VALUE = "value"
  * EntryPointAccessors in call() instead of via field injection.
  */
 class SharedCredentialProvider : ContentProvider() {
-
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface CredentialBridgeEntryPoint {

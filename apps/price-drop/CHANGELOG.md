@@ -8,6 +8,64 @@
 
 ### Fixes
 
+* no user-visible change: when an on-device model times out, the log now says whether it produced no output at all or stopped partway — opposite causes that used to read identically
+
+**On-device AI** — fixed a library mismatch that stopped models returning a response:
+* the bundled AI engine needed a newer coroutines version than shipped
+* affected every on-device model, not one in particular
+
+* no user-visible change: code formatting is now enforced on the shared modules too, using the same engine version the pre-commit hook uses, so a file the hook calls clean cannot fail in CI
+
+* no user-visible change: fixed a build-breaking mistake in how the previous commit wired static analysis into the shared modules — caught by CI, so it never shipped
+
+* no user-visible change: the Debug Log screen and its two ViewModels now exist once in a shared module instead of once per app — the screen was 326 lines in all three, differing by a single comment line
+
+* no user-visible change: static analysis now runs on the shared modules too, and all three apps plus the shared code share one config instead of three identical copies — code moved into `shared/` used to leave the checks behind
+
+**Your old debug history** — crash and AI-call logs from before the log screens merged are no longer dropped:
+* one crash whose error carried no message used to discard the whole import
+
+* no user-visible change: Scrybe moved onto the same shared Debug Log this app now uses, so a fix to it reaches both at once
+
+* no user-visible change: PriceDrop now reads and writes the Debug Log through the shared module rather than its own copy of the same code — the stored file's format is unchanged, so existing logs are kept
+
+* no user-visible change: the Debug Log store now exists once in a shared module instead of three hand-synced copies — nothing uses it yet, so behaviour is unchanged; each app moves over in its own commit
+
+**Sharing the Debug Log** — a shared log now carries what the screen shows:
+* every entry, not just the ones the current filter leaves visible
+* whether each call succeeded, its HTTP status, and its stack trace
+* the device and how the previous run ended, at the top
+
+* no user-visible change: fixed a compile error and a double-write hazard in the previous commit's debug-log locking — caught by CI, so neither shipped
+
+* no user-visible change: each on-device model now states its own context window explicitly instead of inheriting an unverified default, so the four that have never been measured are visible rather than hidden
+
+* no user-visible change: the Debug Log file is now safe against two processes writing it at once, and is replaced atomically — a torn write used to make the whole log parse as empty
+
+* no user-visible change: a crash *during* on-device generation is now detected too, not only one during model load — the reported failure was the former, and it previously left no warning and no record at all
+
+* no user-visible change: when an on-device model ends the process, the Debug Log now marks the next attempt at that same model and feature, instead of each retry looking like a first occurrence
+
+**Stuck on-device tasks** — a jammed local model now reports instead of hanging forever:
+* previously every later on-device task waited with no error and no log
+
+* no user-visible change: on-device models are no longer asked for a larger context window than they were built for, which a native runtime answers by killing the app
+
+* no user-visible change: fixed a build-breaking API-level error in the previous commit's native-crash-trace capture — caught by CI, so it never shipped
+
+* no user-visible change: the rule that decides "the last run crashed" is now a plain function covered by unit tests, and shared-module tests finally run in CI instead of being skipped silently
+
+**False crash warnings** — the app no longer reports a crash that never happened:
+* a normal launch with no AI activity no longer triggers the warning
+
+* no user-visible change: the Debug Log file is now size-capped, and its launch entry is written off the main thread
+
+* no user-visible change: local Ask now logs a model-loaded marker to the Debug Log too, closing the last gap in on-device crash diagnostics shared with Scrybe and Shelf Snap
+
+* no user-visible change: the Debug Log now also records why the app's last run ended (crash, low memory, ANR) with the OS's own native trace when available — this app never had that check at all before, unlike Scrybe and Shelf Snap
+* no user-visible change: product-search and page-read failures now include a full stack trace in the Debug Log, not just a one-line message
+* no user-visible change: the Debug Log now records a device fingerprint (model, Android version, CPU, RAM) once per launch, since on-device crashes vary a lot by device
+
 ## 0.23.3 (2026-09-13)
 
 ### Features

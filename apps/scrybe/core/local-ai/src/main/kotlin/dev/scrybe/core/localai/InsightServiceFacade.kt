@@ -1,10 +1,10 @@
 package dev.scrybe.core.localai
 
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.transcription.DebugLogEntry
-import dev.scrybe.core.transcription.DebugLogEntryType
-import dev.scrybe.core.transcription.DebugLogStore
 import dev.scrybe.core.transcription.InsightService
 import dev.scrybe.core.transcription.OpenAiInsightService
 import kotlinx.coroutines.flow.first
@@ -67,12 +67,13 @@ class InsightServiceFacade
         // discards a failure here with .getOrNull() ?: return — by design, this stays a silent
         // skip in the main UI (insights are a non-blocking enhancement, not core to the
         // recording). Recording the failure — including an InsufficientMemoryException's
-        // specific reason — here is the only way it's ever diagnosable at all.
+        // specific reason — here is the only way it's ever diagnosable at all, so unlike the
+        // routing entry above it isn't gated on the debug toggle — a rare failure logging
+        // unconditionally costs nothing.
         private suspend fun logFailure(
             op: String,
             error: Throwable,
         ) {
-            if (!preferencesDataStore.debugDiarization.first()) return
             debugLogStore.record(
                 DebugLogEntry(
                     timestampMs = System.currentTimeMillis(),

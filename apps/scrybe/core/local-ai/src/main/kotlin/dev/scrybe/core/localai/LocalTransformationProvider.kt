@@ -1,6 +1,10 @@
 package dev.scrybe.core.localai
 
 import android.content.Context
+import com.twobits.debuglog.DebugLogEntry
+import com.twobits.debuglog.DebugLogEntryType
+import com.twobits.debuglog.DebugLogStore
+import com.twobits.localai.LocalInferenceMemoryGuard
 import com.twobits.localai.withLocalLlmEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.scrybe.core.datastore.AppPreferencesDataStore
@@ -21,6 +25,7 @@ class LocalTransformationProvider
         @ApplicationContext private val context: Context,
         private val modelManager: LocalModelManager,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val debugLogStore: DebugLogStore,
     ) : TransformationProvider {
         override val providerType: ProviderType = ProviderType.LOCAL
 
@@ -34,15 +39,77 @@ class LocalTransformationProvider
 
                 val transcript = input.combinedTranscriptText ?: input.transcriptText
                 val prompt = "Transcript:\n$transcript\n\nOutput only the result."
-
-                withContext(Dispatchers.Default) {
-                    withLocalLlmEngine(context, modelFile, systemInstruction = input.systemPrompt) { engine ->
-                        val response = engine.generate(prompt)
-                        TransformResult(
-                            transformedText = response.trim(),
-                            modelName = selectedModel.displayName,
-                        )
+                val startedAtMs = System.currentTimeMillis()
+                // Recorded — and awaited — immediately before the risky native call below, not
+                // after: a native crash or low-memory kill in LiteRT-LM kills the process with
+                // zero chance for any Kotlin try/catch to run, so this entry already being safely
+                // on disk is the only way to later see, from the Debug Log alone, that a
+                // transform was in flight (and how much memory was free) when it died. The
+                // "transform-engine-loaded" entry below then splits that window into "died during
+                // load" vs. "died during generation" — same pattern as every other local-inference
+                // call site in the app.
+                debugLogStore.record(
+                    DebugLogEntry(
+                        timestampMs = startedAtMs,
+                        type = DebugLogEntryType.AI_CALL,
+                        op = "transform-start",
+                        startMarker = true,
+                        endpoint = "on-device",
+                        model = modelFile.name,
+                        requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                        success = true,
+                    ),
+                )
+                try {
+                    withContext(Dispatchers.Default) {
+                        withLocalLlmEngine(context, modelFile, systemInstruction = input.systemPrompt) { engine ->
+                            debugLogStore.record(
+                                DebugLogEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    type = DebugLogEntryType.AI_CALL,
+                                    op = "transform-engine-loaded",
+                                    startMarker = true,
+                                    endpoint = "on-device",
+                                    model = modelFile.name,
+                                    requestSummary = LocalInferenceMemoryGuard.snapshot(context)?.summary() ?: "mem=unknown",
+                                    success = true,
+                                    durationMs = System.currentTimeMillis() - startedAtMs,
+                                ),
+                            )
+                            val response = engine.generate(prompt)
+                            debugLogStore.record(
+                                DebugLogEntry(
+                                    timestampMs = System.currentTimeMillis(),
+                                    type = DebugLogEntryType.AI_CALL,
+                                    op = "transform",
+                                    endpoint = "on-device",
+                                    model = modelFile.name,
+                                    success = true,
+                                    responseSnippet = "${response.length} chars",
+                                    durationMs = System.currentTimeMillis() - startedAtMs,
+                                ),
+                            )
+                            TransformResult(
+                                transformedText = response.trim(),
+                                modelName = selectedModel.displayName,
+                            )
+                        }
                     }
+                } catch (e: Throwable) {
+                    debugLogStore.record(
+                        DebugLogEntry(
+                            timestampMs = System.currentTimeMillis(),
+                            type = DebugLogEntryType.AI_CALL,
+                            op = "transform",
+                            endpoint = "on-device",
+                            model = modelFile.name,
+                            success = false,
+                            responseSnippet = "${e.javaClass.simpleName}: ${e.message}",
+                            durationMs = System.currentTimeMillis() - startedAtMs,
+                            stackTrace = e.stackTraceToString(),
+                        ),
+                    )
+                    throw e
                 }
             }
     }

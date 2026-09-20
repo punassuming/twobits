@@ -78,7 +78,6 @@ enum class OpenAiTransformModel(
     companion object {
         val default: OpenAiTransformModel = GPT_5_MINI
 
-        fun fromApiName(value: String?): OpenAiTransformModel =
-            entries.firstOrNull { it.apiName.equals(value, ignoreCase = true) } ?: default
+        fun fromApiName(value: String?): OpenAiTransformModel = entries.firstOrNull { it.apiName.equals(value, ignoreCase = true) } ?: default
     }
 }
