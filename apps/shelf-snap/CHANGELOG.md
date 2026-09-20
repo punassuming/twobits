@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* no user-visible change: when an on-device model times out, the log now says whether it produced no output at all or stopped partway — opposite causes that used to read identically
+
 **On-device AI** — fixed a library mismatch that stopped models returning a response:
 * the bundled AI engine needed a newer coroutines version than shipped
 * affected every on-device model, not one in particular

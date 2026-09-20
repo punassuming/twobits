@@ -23,6 +23,7 @@ import java.io.Closeable
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Public stand-in for `com.google.ai.edge.litertlm.Backend`, which callers outside this module
@@ -146,9 +147,11 @@ class LiteRtLmEngine internal constructor(
         val result = CompletableDeferred<String>()
         val accumulatedResponse = StringBuilder()
         val messageCount = AtomicInteger(0)
+        val lastMessageAtMs = AtomicLong(0L)
         val callback =
             object : MessageCallback {
                 override fun onMessage(message: Message) {
+                    lastMessageAtMs.set(System.currentTimeMillis())
                     synchronized(accumulatedResponse) { accumulatedResponse.append(message.toString()) }
                     onProgress(
                         LiteRtGenerationProgress(
@@ -189,7 +192,7 @@ class LiteRtLmEngine internal constructor(
                 start(callback)
                 withTimeout(timeoutMs) { result.await() }
             } catch (timeout: TimeoutCancellationException) {
-                throw LocalGenerationTimeoutException(timeoutMs, timeout)
+                throw LocalGenerationTimeoutException(timeoutMs, messageCount.get(), lastMessageAtMs.get(), timeout)
             } finally {
                 // Covers both the timeout above and the caller's own coroutine being cancelled
                 // (e.g. a ViewModel cleared mid-generation): either way, if the deferred never
@@ -292,7 +295,33 @@ suspend fun <T> withLocalLlmEngine(
     block: suspend (LiteRtLmEngine) -> T,
 ): T = LiteRtLmEngine.acquire(context, modelFile, systemInstruction, visionBackend, maxNumTokens).use { block(it) }
 
+/**
+ * A generation deadline expired. The message distinguishes *where* it stalled, because that
+ * separates two opposite diagnoses that previously read identically in the Debug Log.
+ *
+ * No output at all points at the model or the engine — a load that never produced a token.
+ * Output that stopped arriving long before the deadline points at the completion path instead:
+ * the library finished generating and then failed to hand the result back. A throw on LiteRT-LM's
+ * own callback thread cannot be caught from here, so a deadline is the only symptom this side
+ * ever sees, and the counts are the only way to tell which one it was.
+ */
 class LocalGenerationTimeoutException(
     timeoutMs: Long,
+    receivedMessageCount: Int,
+    lastMessageAtMs: Long,
     cause: Throwable,
-) : RuntimeException("Local generation timed out after ${timeoutMs / 1_000}s and was cancelled", cause)
+) : RuntimeException(describeTimeout(timeoutMs, receivedMessageCount, lastMessageAtMs), cause)
+
+private fun describeTimeout(
+    timeoutMs: Long,
+    receivedMessageCount: Int,
+    lastMessageAtMs: Long,
+): String {
+    val seconds = timeoutMs / 1_000
+    if (receivedMessageCount == 0) {
+        return "Local generation timed out after ${seconds}s with no output at all, and was cancelled"
+    }
+    val silentMs = System.currentTimeMillis() - lastMessageAtMs
+    return "Local generation timed out after ${seconds}s and was cancelled — " +
+        "$receivedMessageCount chunks received, last ${silentMs / 1_000}s before the deadline"
+}
