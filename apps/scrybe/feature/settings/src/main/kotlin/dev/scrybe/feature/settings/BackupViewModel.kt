@@ -98,7 +98,7 @@ class BackupViewModel
                 val encrypted =
                     withContext(Dispatchers.IO) {
                         runCatching {
-                            context.contentResolver.openInputStream(source)?.let { backupReader.inspect(it).encrypted }
+                            context.contentResolver.openInputStream(source)?.let { backupReader.isProtected(it) }
                         }
                     }
                 encrypted.fold(

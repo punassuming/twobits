@@ -63,10 +63,16 @@ class BackupReader
             }
 
         /**
-         * Reads the header only, so the UI can tell whether to ask for a passphrase before doing
-         * any work. [source] is closed by this call.
+         * Whether [source] is a passphrase-protected backup, read from the header alone so the UI
+         * can prompt before any work starts. [source] is closed by this call.
+         *
+         * Returns a `Boolean` rather than the parsed header because `BackupHeader` is `internal` to
+         * this module — it carries the salt and IV, which nothing outside has any use for — and a
+         * public function cannot expose an internal type. Throws [BackupFormatException] if the file
+         * is not a backup this build can read, which is worth surfacing before the user picks a
+         * passphrase.
          */
-        fun inspect(source: InputStream): BackupHeader = source.use { BackupContainer.readHeader(it) }
+        fun isProtected(source: InputStream): Boolean = source.use { BackupContainer.readHeader(it).encrypted }
 
         /**
          * Restores from [source], which is closed by this call.
@@ -115,15 +121,20 @@ class BackupReader
                 var entry = zip.nextEntry
                 while (entry != null) {
                     currentCoroutineContext().ensureActive()
+                    // Bound to a val rather than smart-casting the loop variable: `entry` is
+                    // reassigned at the bottom of the loop, and a non-null smart cast across a
+                    // reassigned var is the kind of thing that compiles today and stops compiling
+                    // after an unrelated refactor.
+                    val name = entry.name
                     when {
-                        entry.name == BackupEntryNames.DATABASE ->
+                        name == BackupEntryNames.DATABASE ->
                             database = json.decodeFromString(DatabaseDto.serializer(), zip.readBytes().decodeToString())
-                        entry.name == BackupEntryNames.MANIFEST ->
+                        name == BackupEntryNames.MANIFEST ->
                             manifest = json.decodeFromString(BackupManifest.serializer(), zip.readBytes().decodeToString())
                         else -> {
-                            val sessionId = BackupEntryNames.sessionIdOfAudioEntry(entry.name)
+                            val sessionId = BackupEntryNames.sessionIdOfAudioEntry(name)
                             if (sessionId != null) {
-                                val extension = entry.name.substringAfterLast('.')
+                                val extension = name.substringAfterLast('.')
                                 val target = File(recordingsDir, "restored_$sessionId.$extension")
                                 if (!target.exists()) {
                                     target.outputStream().use { out -> zip.copyTo(out) }
