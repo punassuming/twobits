@@ -54,8 +54,4 @@ dependencies {
     // version tracks the Kotlin plugin automatically instead of being pinned separately and drifting
     // from it. Test-only — it does not ship.
     testImplementation(kotlin("reflect"))
-    // Room is `implementation` in :core:database, so `androidx.room.Database` is not on this
-    // module's compile classpath. BackupSchemaVersionTest reads the real schema version off that
-    // annotation, so the test source set needs it directly.
-    testImplementation(libs.androidx.room.runtime)
 }

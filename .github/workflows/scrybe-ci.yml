@@ -174,6 +174,9 @@ jobs:
           name: scrybe-test-results-${{ github.run_number }}
           path: |
             apps/scrybe/app/build/reports/tests/
+            apps/scrybe/core/*/build/reports/tests/
+            apps/scrybe/feature/*/build/reports/tests/
+            apps/scrybe/service/*/build/reports/tests/
             shared/*/build/reports/tests/
           if-no-files-found: ignore
           retention-days: 14

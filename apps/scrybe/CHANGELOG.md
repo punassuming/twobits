@@ -17,6 +17,8 @@
 
 ### Fixes
 
+* no user-visible change: the backup's record of which database version wrote it now reads the real version instead of a copy that could drift
+
 * no user-visible change: fixed a compile error in the new backup code that CI caught before any of it shipped
 
 * no user-visible change: a backup protected with a passphrase now refuses to restore if the file has been altered, even when only part of it is read

@@ -18,6 +18,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import dev.scrybe.core.database.SCRYBE_DATABASE_VERSION
 
 /**
  * Runs a backup, restore or export in the background.
@@ -98,7 +99,7 @@ class BackupWorker(
             deps.backupWriter().write(
                 destination = out,
                 appVersionName = version,
-                databaseSchemaVersion = DATABASE_SCHEMA_VERSION,
+                databaseSchemaVersion = SCRYBE_DATABASE_VERSION,
                 passphrase = passphrase,
             ) { written, total -> tracker.update(written, total) }
         val missing =
@@ -120,7 +121,7 @@ class BackupWorker(
         val result =
             deps.backupReader().restore(
                 source = input,
-                currentDatabaseSchemaVersion = DATABASE_SCHEMA_VERSION,
+                currentDatabaseSchemaVersion = SCRYBE_DATABASE_VERSION,
                 passphrase = passphrase,
             ) { restored, total -> tracker.update(restored, total) }
         return buildString {
@@ -200,13 +201,6 @@ class BackupWorker(
         private const val KB = 1024.0
         private const val MB = KB * 1024
         private const val GB = MB * 1024
-
-        /**
-         * Mirrors `AppDatabase`'s version. Duplicated rather than imported because `:core:backup`
-         * has no reason to depend on the database class itself — and the manifest only needs the
-         * number. `BackupSchemaVersionTest` fails if the two drift apart.
-         */
-        const val DATABASE_SCHEMA_VERSION = 17
 
         /**
          * [passphrase] is handed to [BackupPassphraseHolder] rather than the work request, and is

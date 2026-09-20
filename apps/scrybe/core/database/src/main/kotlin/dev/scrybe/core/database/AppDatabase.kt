@@ -3,6 +3,16 @@ package dev.scrybe.core.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
+/**
+ * The schema version, named so other modules can record it without depending on [AppDatabase].
+ *
+ * `:core:backup` writes it into every backup's manifest, and restore refuses a backup claiming a
+ * newer one. That guard is only meaningful if the number is the real one, so it lives here and is
+ * referenced rather than copied — a second literal would drift on the next migration with nothing
+ * failing to say so.
+ */
+const val SCRYBE_DATABASE_VERSION = 17
+
 @Database(
     entities = [
         RecordingSessionEntity::class,
@@ -17,7 +27,7 @@ import androidx.room.RoomDatabase
         SessionTaskEntity::class,
         CustomRecordingTypeEntity::class,
     ],
-    version = 17,
+    version = SCRYBE_DATABASE_VERSION,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

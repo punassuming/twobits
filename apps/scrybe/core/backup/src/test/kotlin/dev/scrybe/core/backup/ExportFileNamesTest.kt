@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import java.util.TimeZone
 
@@ -24,15 +25,21 @@ class ExportFileNamesTest {
         used: MutableSet<String> = mutableSetOf(),
     ) = ExportFileNames.forRecording(instant, title, extension, sessionId, used)
 
-    init {
-        // SimpleDateFormat uses the default zone; pin it so the timestamp is deterministic.
+    /**
+     * `ExportFileNames` formats with the JVM's default zone, so the zone is pinned before each test
+     * rather than in an `init` block — a constructor side effect is a fragile place to put something
+     * the assertions depend on, and `@Before` says out loud that this is setup.
+     */
+    @Before
+    fun pinTimeZone() {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
     }
 
     @Test
     fun `a name leads with a sortable timestamp and ends with the true extension`() {
         val result = name("Team standup")
-        assertTrue(result, result.startsWith("2026-03-14_"))
+        assertTrue(result, Regex("""^\d{4}-\d{2}-\d{2}_\d{4}_.*""").matches(result))
+        assertTrue(result, result.startsWith("2026-03-14_0926_"))
         assertTrue(result, result.endsWith(".m4a"))
         assertTrue(result, result.contains("Team standup"))
     }

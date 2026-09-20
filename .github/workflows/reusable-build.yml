@@ -77,7 +77,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app_name }}-test-results-${{ github.run_number }}
-          path: ${{ inputs.app_root }}/app/build/reports/tests/
+          path: |
+            ${{ inputs.app_root }}/app/build/reports/tests/
+            ${{ inputs.app_root }}/core/*/build/reports/tests/
+            ${{ inputs.app_root }}/feature/*/build/reports/tests/
           if-no-files-found: ignore
           retention-days: 14
 
