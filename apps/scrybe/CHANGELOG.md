@@ -17,6 +17,8 @@
 
 ### Fixes
 
+* no user-visible change: fixed two missing test dependencies that broke the build on the previous commits — caught by CI, so nothing shipped
+
 * no user-visible change: restoring a backup merges it in — sessions already on the device are left alone, so restoring twice changes nothing the second time
 
 **Recording format** — MP3 and WAV are no longer offered when recording:

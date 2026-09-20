@@ -53,6 +53,13 @@ class BackupViewModel
             viewModelScope.launch {
                 progressTracker.progress.collect { progress -> _uiState.value = _uiState.value.copy(progress = progress) }
             }
+            viewModelScope.launch {
+                // A finished operation says what it did. Without this the progress bar simply
+                // vanishes and the user has no way to tell a completed backup from a silent failure.
+                progressTracker.lastResult.collect { result ->
+                    if (result != null) _uiState.value = _uiState.value.copy(message = result, isError = false)
+                }
+            }
         }
 
         /** A filename that sorts chronologically and says which app wrote it. */
@@ -126,6 +133,7 @@ class BackupViewModel
         }
 
         fun dismissMessage() {
+            progressTracker.clearResult()
             _uiState.value = _uiState.value.copy(message = null, isError = false)
         }
 

@@ -61,12 +61,14 @@ class BackupWorker(
 
         tracker.start(operation)
         setForeground(foregroundInfo(operation, null))
+        var summary: String? = null
         return try {
-            when (operation) {
-                BackupOperation.BACKUP -> runBackup(deps, uri, passphrase, tracker)
-                BackupOperation.RESTORE -> runRestore(deps, uri, passphrase, tracker)
-                BackupOperation.EXPORT -> runExport(deps, uri, tracker)
-            }
+            summary =
+                when (operation) {
+                    BackupOperation.BACKUP -> runBackup(deps, uri, passphrase, tracker)
+                    BackupOperation.RESTORE -> runRestore(deps, uri, passphrase, tracker)
+                    BackupOperation.EXPORT -> runExport(deps, uri, tracker)
+                }
             Result.success()
         } catch (cancellation: kotlin.coroutines.cancellation.CancellationException) {
             throw cancellation
@@ -76,7 +78,7 @@ class BackupWorker(
             Result.failure(workDataOf(KEY_ERROR to (failure.message ?: "The operation could not be completed.")))
         } finally {
             passphrase?.fill('\u0000')
-            tracker.finish()
+            tracker.finish(summary)
         }
     }
 
@@ -85,19 +87,27 @@ class BackupWorker(
         uri: Uri,
         passphrase: CharArray?,
         tracker: BackupProgressTracker,
-    ) {
+    ): String {
         val out = applicationContext.contentResolver.openOutputStream(uri) ?: error("Could not open the chosen file for writing.")
         val version =
             applicationContext.packageManager
                 .getPackageInfo(applicationContext.packageName, 0)
                 .versionName
                 .orEmpty()
-        deps.backupWriter().write(
-            destination = out,
-            appVersionName = version,
-            databaseSchemaVersion = DATABASE_SCHEMA_VERSION,
-            passphrase = passphrase,
-        ) { written, total -> tracker.update(written, total) }
+        val result =
+            deps.backupWriter().write(
+                destination = out,
+                appVersionName = version,
+                databaseSchemaVersion = DATABASE_SCHEMA_VERSION,
+                passphrase = passphrase,
+            ) { written, total -> tracker.update(written, total) }
+        val missing =
+            if (result.missingAudioCount > 0) {
+                ", ${result.missingAudioCount} with no audio file left on this phone"
+            } else {
+                ""
+            }
+        return "Backed up ${result.sessionCount} recordings (${formatSize(result.totalAudioBytes)})$missing."
     }
 
     private suspend fun runRestore(
@@ -105,22 +115,40 @@ class BackupWorker(
         uri: Uri,
         passphrase: CharArray?,
         tracker: BackupProgressTracker,
-    ) {
+    ): String {
         val input = applicationContext.contentResolver.openInputStream(uri) ?: error("Could not open the chosen file for reading.")
-        deps.backupReader().restore(
-            source = input,
-            currentDatabaseSchemaVersion = DATABASE_SCHEMA_VERSION,
-            passphrase = passphrase,
-        ) { restored, total -> tracker.update(restored, total) }
+        val result =
+            deps.backupReader().restore(
+                source = input,
+                currentDatabaseSchemaVersion = DATABASE_SCHEMA_VERSION,
+                passphrase = passphrase,
+            ) { restored, total -> tracker.update(restored, total) }
+        return buildString {
+            append("Restored ${result.sessionsRestored} recordings")
+            if (result.sessionsAlreadyPresent > 0) append(", ${result.sessionsAlreadyPresent} already on this phone")
+            if (result.sessionsMissingAudio > 0) append(", ${result.sessionsMissingAudio} without audio")
+            append(".")
+            // Said explicitly because a silently unconfigured provider looks like a broken app.
+            if (result.providersNeedingKeys > 0) append(" Your API keys were not in the backup — add them again in Settings.")
+        }
     }
 
     private suspend fun runExport(
         deps: Deps,
         uri: Uri,
         tracker: BackupProgressTracker,
-    ) {
-        deps.recordingExporter().exportAll(uri) { exported, total -> tracker.update(exported, total) }
+    ): String {
+        val result = deps.recordingExporter().exportAll(uri) { exported, total -> tracker.update(exported, total) }
+        val skipped = if (result.skippedCount > 0) ", ${result.skippedCount} skipped" else ""
+        return "Exported ${result.exportedCount} recordings (${formatSize(result.totalBytes)})$skipped."
     }
+
+    private fun formatSize(bytes: Long): String =
+        when {
+            bytes >= GB -> "%.1f GB".format(bytes.toDouble() / GB)
+            bytes >= MB -> "%.0f MB".format(bytes.toDouble() / MB)
+            else -> "%.0f KB".format(bytes.toDouble() / KB)
+        }
 
     private fun foregroundInfo(
         operation: BackupOperation,
@@ -169,6 +197,9 @@ class BackupWorker(
         private const val KEY_URI = "uri"
         private const val CHANNEL_ID = "backup_restore"
         private const val NOTIFICATION_ID = 4711
+        private const val KB = 1024.0
+        private const val MB = KB * 1024
+        private const val GB = MB * 1024
 
         /**
          * Mirrors `AppDatabase`'s version. Duplicated rather than imported because `:core:backup`

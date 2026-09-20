@@ -42,10 +42,20 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:database"))
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.core.ktx)
     implementation(libs.work.runtime.ktx)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // `kotlin.reflect.full.primaryConstructor`, used by EntityFieldCoverageTest to compare each
+    // entity against its DTO. Declared with kotlin("reflect") rather than a catalog alias so the
+    // version tracks the Kotlin plugin automatically instead of being pinned separately and drifting
+    // from it. Test-only — it does not ship.
+    testImplementation(kotlin("reflect"))
+    // Room is `implementation` in :core:database, so `androidx.room.Database` is not on this
+    // module's compile classpath. BackupSchemaVersionTest reads the real schema version off that
+    // annotation, so the test source set needs it directly.
+    testImplementation(libs.androidx.room.runtime)
 }

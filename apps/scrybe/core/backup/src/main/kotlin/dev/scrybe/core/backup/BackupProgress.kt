@@ -43,7 +43,13 @@ class BackupProgressTracker
         private val _progress = MutableStateFlow(BackupProgress.idle)
         val progress: StateFlow<BackupProgress> = _progress.asStateFlow()
 
+        private val _lastResult = MutableStateFlow<String?>(null)
+
+        /** A one-line summary of the last completed operation, or null if none has finished. */
+        val lastResult: StateFlow<String?> = _lastResult.asStateFlow()
+
         fun start(operation: BackupOperation) {
+            _lastResult.value = null
             _progress.value = BackupProgress(operation = operation)
         }
 
@@ -55,8 +61,18 @@ class BackupProgressTracker
             if (current.isRunning) _progress.value = current.copy(completed = completed, total = total)
         }
 
-        fun finish() {
+        /**
+         * Ends the operation and leaves [lastResult] describing what it did, so the screen can say
+         * "42 recordings backed up" rather than simply stopping. Null for a failure — the error
+         * message is carried separately and is the more useful thing to show.
+         */
+        fun finish(result: String? = null) {
+            _lastResult.value = result
             _progress.value = BackupProgress.idle
+        }
+
+        fun clearResult() {
+            _lastResult.value = null
         }
     }
 
