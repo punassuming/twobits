@@ -4,7 +4,13 @@
 
 ### Features
 
+**Transcription progress** — see how far along a transcription is, not just that it's running:
+* the footer now shows which chunk it's on and how many remain
+* the progress ring fills in as chunks finish, instead of spinning blind
+
 ### Improvements
+
+**Transcription footer** — the cancel button now sits at the right edge, not next to the text
 
 ### Fixes
 

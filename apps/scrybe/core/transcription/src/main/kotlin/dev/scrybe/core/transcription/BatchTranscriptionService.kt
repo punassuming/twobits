@@ -24,6 +24,7 @@ class BatchTranscriptionService
         private val audioChunker: OpenAiAudioChunker,
         private val chunkDao: TranscriptChunkDao,
         private val orchestrator: TranscriptionOrchestrator,
+        private val chunkProgressTracker: TranscriptionChunkProgressTracker,
     ) {
         suspend fun transcribe(
             sessionId: String,
@@ -67,6 +68,10 @@ class BatchTranscriptionService
                 transcribeChunks(sessionId, audioChunks, totalChunks, providerType, options)
             } finally {
                 audioChunker.cleanupChunks(audioChunks, audioFile)
+                // Covers every exit from transcribeChunks — full success, the partial-failure
+                // early return inside it, and a thrown exception — so a finished or abandoned
+                // batch never leaves a stale reading for the next transcription to inherit.
+                chunkProgressTracker.clear()
             }
         }
 
@@ -81,6 +86,9 @@ class BatchTranscriptionService
                 val existing = chunkDao.getChunkByIndex(sessionId, index)
                 if (existing?.status == CHUNK_STATUS_DONE) {
                     Log.d(TAG, "Session $sessionId chunk $index already done, skipping")
+                    // A resumed batch should report where it actually is on its very first
+                    // update, not appear to start over from zero and jump on the next fresh chunk.
+                    chunkProgressTracker.update(completed = index + 1, total = totalChunks)
                     continue
                 }
                 val chunkResult =
@@ -108,6 +116,7 @@ class BatchTranscriptionService
                         createdAt = System.currentTimeMillis(),
                     ),
                 )
+                chunkProgressTracker.update(completed = index + 1, total = totalChunks)
             }
             val fullText =
                 chunkDao

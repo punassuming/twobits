@@ -7,6 +7,7 @@ import com.twobits.localai.LocalInferenceGate
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.transcription.TranscriptResult
+import dev.scrybe.core.transcription.TranscriptionChunkProgressTracker
 import dev.scrybe.core.transcription.TranscriptionOptions
 import dev.scrybe.core.transcription.TranscriptionProvider
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,7 @@ class WhisperTranscriptionProvider
         private val modelManager: LocalModelManager,
         private val debugLogStore: DebugLogStore,
         private val preferencesDataStore: AppPreferencesDataStore,
+        private val chunkProgressTracker: TranscriptionChunkProgressTracker,
     ) : TranscriptionProvider {
         override val providerType: ProviderType = ProviderType.LOCAL
 
@@ -71,6 +73,9 @@ class WhisperTranscriptionProvider
                     modelManager.activeWhisperDir()
                         ?: run {
                             record(success = false, snippet = "Whisper model not downloaded")
+                            // A bare `return` here exits the whole function directly, bypassing
+                            // the `.also { }` below that clears this on every other exit path.
+                            chunkProgressTracker.clear()
                             return Result.failure(IllegalStateException("Whisper model not downloaded"))
                         }
 
@@ -123,7 +128,11 @@ class WhisperTranscriptionProvider
                             // gated on the toggle, since it costs work on every decode window.
                             val chunkTimingsMs = mutableListOf<Long>()
                             val text =
-                                engine.transcribe(decoded.samples, decoded.sampleRateHz) { _, _, elapsedMs ->
+                                engine.transcribe(decoded.samples, decoded.sampleRateHz) { index, total, elapsedMs ->
+                                    // Unconditional, unlike the timing collection below: progress
+                                    // is a status signal, not a debugging aid, so it isn't gated
+                                    // behind the same toggle.
+                                    chunkProgressTracker.update(completed = index + 1, total = total)
                                     if (debugEnabled) chunkTimingsMs += elapsedMs
                                 }
                             record(
@@ -145,6 +154,11 @@ class WhisperTranscriptionProvider
                     snippet = "${error.javaClass.simpleName}: ${error.message}",
                     stackTrace = error.stackTraceToString(),
                 )
+            }.also {
+                // Runs on every exit from the runCatching above — success, a caught failure, or a
+                // cancellation — so a stale "chunk 4 of 7" can never survive into the next
+                // transcription's own "Transcribing…" before its first chunk lands.
+                chunkProgressTracker.clear()
             }
         }
 
