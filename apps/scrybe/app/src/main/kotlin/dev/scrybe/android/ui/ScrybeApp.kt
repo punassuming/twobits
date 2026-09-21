@@ -39,6 +39,7 @@ import com.twobits.design.components.AppWhatsNewDialog
 import com.twobits.design.components.ProgressFooter
 import dev.scrybe.android.navigation.Screen
 import dev.scrybe.android.navigation.ScrybeNavHost
+import dev.scrybe.core.transcription.TranscriptionChunkProgressTracker
 import dev.scrybe.feature.capture.OnboardingScreen
 import dev.scrybe.feature.capture.OnboardingViewModel
 
@@ -166,10 +167,8 @@ private fun MainContentBox(
                 visible = transcriptionProgressState.isTranscribing,
                 primaryText = if (transcriptionProgressState.isCancelling) "Cancelling…" else "Transcribing…",
                 secondaryText = transcriptionProgressState.label.takeIf { it.isNotBlank() },
-                tertiaryText =
-                    transcriptionProgressState.queuedCount
-                        .takeIf { it > 0 }
-                        ?.let { "$it more queued" },
+                tertiaryText = transcriptionProgressState.progressDetailText(),
+                progressFraction = transcriptionProgressState.chunkProgress?.asFraction(),
                 onCancel = onCancelTranscription,
                 isCancelling = transcriptionProgressState.isCancelling,
             )
@@ -256,4 +255,17 @@ private fun formatBannerElapsed(elapsedMs: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "%02d:%02d".format(minutes, seconds)
+}
+
+private fun TranscriptionChunkProgressTracker.Progress.asFraction(): Float = completed.toFloat() / total
+
+/**
+ * The footer's third line: chunk progress and the queued-behind count, whichever of the two
+ * apply, joined when both do. Kept to one line — this and [secondaryText] (the title) are the
+ * only two the footer has room for once [primaryText] is spent on the plain status word.
+ */
+private fun TranscriptionProgressUiState.progressDetailText(): String? {
+    val chunkText = chunkProgress?.let { "chunk ${it.completed} of ${it.total}" }
+    val queuedText = queuedCount.takeIf { it > 0 }?.let { "$it more queued" }
+    return listOfNotNull(chunkText, queuedText).joinToString(" · ").ifBlank { null }
 }

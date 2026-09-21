@@ -8,6 +8,16 @@
 
 ### Fixes
 
+* no user-visible change: the shared progress footer gained an optional determinate-progress mode and a layout fix so a cancel button sits at the trailing edge — this app doesn't use either yet
+
+**On-device AI** — fixed a crash that hit every local model on first use:
+* app-store builds stripped code the on-device engine needed to start
+* debug builds never showed this, only what you actually installed
+
+**App-store reliability** — fixed a rule protecting this app's own data from a packaging step:
+* it named another app's package by mistake and protected nothing here
+* could show as blank prices, missing search results, or a parsing error
+
 ## 0.23.4 (2026-09-21)
 
 ### Features

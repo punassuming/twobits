@@ -7,6 +7,7 @@ import dev.scrybe.core.database.RecordingSessionDao
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.transcription.BatchTranscriptionTracker
 import dev.scrybe.core.transcription.TranscriptionCancellationController
+import dev.scrybe.core.transcription.TranscriptionChunkProgressTracker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,10 @@ data class TranscriptionProgressUiState(
     val label: String = "",
     val queuedCount: Int = 0,
     val isCancelling: Boolean = false,
+    /** How many of how many chunks are done for whichever transcription is currently running —
+     * on-device or cloud, see [TranscriptionChunkProgressTracker]. Null when nothing is chunked
+     * finely enough for a fraction to mean anything (a short clip, or nothing running at all). */
+    val chunkProgress: TranscriptionChunkProgressTracker.Progress? = null,
 )
 
 /**
@@ -44,6 +49,7 @@ class TranscriptionProgressViewModel
     constructor(
         recordingSessionDao: RecordingSessionDao,
         batchTranscriptionTracker: BatchTranscriptionTracker,
+        chunkProgressTracker: TranscriptionChunkProgressTracker,
         private val cancellationController: TranscriptionCancellationController,
     ) : ViewModel() {
         // Purely a local "did the tap register" signal — there's no DB/coordinator state for
@@ -58,12 +64,14 @@ class TranscriptionProgressViewModel
             combine(
                 recordingSessionDao.observeSessionsByStatus(SessionStatus.TRANSCRIBING.name),
                 batchTranscriptionTracker.remaining,
-            ) { sessions, batchRemaining ->
+                chunkProgressTracker.progress,
+            ) { sessions, batchRemaining, chunkProgress ->
                 val current = sessions.firstOrNull()
                 TranscriptionProgressUiState(
                     isTranscribing = current != null || batchRemaining > 0,
                     label = current?.title.orEmpty(),
                     queuedCount = (sessions.size - 1).coerceAtLeast(0) + batchRemaining,
+                    chunkProgress = chunkProgress,
                 )
             }.stateIn(
                 scope = viewModelScope,

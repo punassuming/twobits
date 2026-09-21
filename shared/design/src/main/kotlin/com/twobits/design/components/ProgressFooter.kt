@@ -56,10 +56,13 @@ private fun progressFooterTextTransition() =
  *
  * [primaryText] is the bold, always-shown headline (e.g. "Transcribing…"). [secondaryText] and
  * [tertiaryText] are optional detail lines, each animated independently so updating one doesn't
- * replay the others' transition. [onCancel] is optional — omit it for a task with no cancel
- * affordance (market research, local vision/listing analysis); when present, the button swaps to
- * a spinner and disables itself while [isCancelling] is true, so a second tap can't look like a
- * no-op while the underlying task is still working out how to stop.
+ * replay the others' transition. [progressFraction] switches the leading spinner from
+ * indeterminate to determinate when the caller actually knows how far through a chunked task it
+ * is (e.g. chunk 3 of 7) — omit it, as most callers do, for a task with no natural fraction.
+ * [onCancel] is optional — omit it for a task with no cancel affordance (market research, local
+ * vision/listing analysis); when present, the button swaps to a spinner and disables itself while
+ * [isCancelling] is true, so a second tap can't look like a no-op while the underlying task is
+ * still working out how to stop.
  */
 @Composable
 fun ProgressFooter(
@@ -68,6 +71,7 @@ fun ProgressFooter(
     modifier: Modifier = Modifier,
     secondaryText: String? = null,
     tertiaryText: String? = null,
+    progressFraction: Float? = null,
     onCancel: (() -> Unit)? = null,
     isCancelling: Boolean = false,
 ) {
@@ -87,17 +91,31 @@ fun ProgressFooter(
             Row(
                 modifier =
                     Modifier
+                        .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 14.dp)
                         .navigationBarsPadding(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                if (progressFraction != null) {
+                    CircularProgressIndicator(
+                        progress = { progressFraction.coerceIn(0f, 1f) },
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                } else {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 Spacer(Modifier.width(12.dp))
-                Column {
+                // weight(1f) is the fix, not fillMaxWidth() on the Row alone: without a weighted
+                // child claiming the space the Row now stretches into, the cancel button below
+                // still ends up sitting flush against the text instead of at the trailing edge —
+                // which is exactly the "x is not right-aligned" this shape was reported as.
+                Column(modifier = Modifier.weight(1f)) {
                     AnimatedContent(
                         targetState = primaryText,
                         transitionSpec = { progressFooterTextTransition() },

@@ -8,6 +8,12 @@
 
 ### Fixes
 
+* no user-visible change: the shared progress footer gained an optional determinate-progress mode and a layout fix so a cancel button sits at the trailing edge — this app doesn't use either yet
+
+**On-device AI** — fixed a crash that hit every local model on first use:
+* app-store builds stripped code the on-device engine needed to start
+* debug builds never showed this, only what you actually installed
+
 ## 1.32.6 (2026-09-21)
 
 ### Features
