@@ -8,6 +8,10 @@
 
 ### Fixes
 
+**On-device AI** — fixed a crash that hit every local model on first use:
+* app-store builds stripped code the on-device engine needed to start
+* debug builds never showed this, only what you actually installed
+
 ## 1.53.6 (2026-09-21)
 
 ### Features
