@@ -446,9 +446,15 @@ class SessionDetailViewModel
         }
 
         fun transcribe() {
+            // transcribeSessionDetached(), not transcribeSession() directly: this coroutine is
+            // cancelled the moment this ViewModel is cleared (navigating away from this screen),
+            // and awaiting a job that isn't its own child stops only the awaiting here — the
+            // transcription keeps running and the footer keeps tracking it either way. Retrying,
+            // backing out, and retrying again used to hard-cancel each attempt in turn instead.
             viewModelScope.launch {
                 sessionTranscriptionCoordinator
-                    .transcribeSession(sessionId)
+                    .transcribeSessionDetached(sessionId)
+                    .await()
                     .onSuccess {
                         _events.emit(SessionDetailEvent.Message("Transcript created."))
                     }.onFailure {

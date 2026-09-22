@@ -14,6 +14,10 @@
 
 ### Fixes
 
+**Retry transcription** — leaving a recording's detail screen no longer stops a retry you just started:
+* it used to cancel outright the moment you navigated away, even a moment after tapping retry
+* it now keeps running in the background; reopen the recording to see the result
+
 **On-device AI** — fixed a crash that hit every local model on first use:
 * app-store builds stripped code the on-device engine needed to start
 * debug builds never showed this, only what you actually installed
