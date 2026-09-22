@@ -12,12 +12,10 @@ import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.TranscriptType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -49,23 +47,6 @@ class SessionTranscriptionCoordinator
 
             return transcribeSession(sessionId).map { true }
         }
-
-        /**
-         * Runs [transcribeSession] on [postTranscriptionScope] instead of the caller's own
-         * coroutine — for a manual retry launched from a screen's `viewModelScope`, which is torn
-         * down the moment the user navigates away from that screen. Without this, navigating
-         * away mid-retry cancelled the transcription outright (a `CancellationException` in the
-         * debug log, the session flipped back to FAILED), even though nothing about the retry
-         * itself failed — the screen just wasn't there to keep watching it. The returned
-         * [Deferred] is not a child of the caller's job: awaiting it and having that await
-         * cancelled (screen torn down again before this finishes) stops the *caller* from
-         * waiting, but does not stop this from running to completion, exactly like
-         * [launchDiarization]/[launchInsights] below already run detached from their caller.
-         * [cancellationController] still sees it as a normal registered job, so the Cancel action
-         * and [TranscriptionCancellationController.isActive] both work on it exactly as they do
-         * for any other call to [transcribeSession].
-         */
-        fun transcribeSessionDetached(sessionId: String): Deferred<Result<TranscriptEntity>> = postTranscriptionScope.async { transcribeSession(sessionId) }
 
         suspend fun transcribeSession(sessionId: String): Result<TranscriptEntity> {
             // Registers the currently-running coroutine's own Job — not a new child — so

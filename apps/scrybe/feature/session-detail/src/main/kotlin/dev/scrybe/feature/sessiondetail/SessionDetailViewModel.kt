@@ -46,6 +46,7 @@ import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transcription.DiarizationDebugInfo
 import dev.scrybe.core.transcription.DiarizationDebugStore
+import dev.scrybe.core.transcription.RetranscribeWorker
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
 import dev.scrybe.core.transcription.TranscriptionCancellationController
 import dev.scrybe.core.transforms.OpenAiTagSuggestionService
@@ -446,21 +447,16 @@ class SessionDetailViewModel
         }
 
         fun transcribe() {
-            // transcribeSessionDetached(), not transcribeSession() directly: this coroutine is
-            // cancelled the moment this ViewModel is cleared (navigating away from this screen),
-            // and awaiting a job that isn't its own child stops only the awaiting here — the
-            // transcription keeps running and the footer keeps tracking it either way. Retrying,
-            // backing out, and retrying again used to hard-cancel each attempt in turn instead.
+            // RetranscribeWorker, not a direct coordinator call: this ViewModel's own scope is
+            // torn down the moment the user navigates away from this screen, and an on-device
+            // transcription of a long recording can run for many minutes — easily longer than
+            // the user keeps this screen open, or even the app in the foreground at all. The
+            // worker survives both. This screen's uiState already reacts to the session's own DB
+            // row (see the combine building it below), so it picks up the result on its own
+            // whenever it's next visible — no completion callback is needed here.
+            RetranscribeWorker.enqueue(context, sessionId)
             viewModelScope.launch {
-                sessionTranscriptionCoordinator
-                    .transcribeSessionDetached(sessionId)
-                    .await()
-                    .onSuccess {
-                        _events.emit(SessionDetailEvent.Message("Transcript created."))
-                    }.onFailure {
-                        Log.e(TAG, "Transcription failed for session $sessionId", it)
-                        _events.emit(SessionDetailEvent.Message(it.message ?: "Transcription failed"))
-                    }
+                _events.emit(SessionDetailEvent.Message("Transcription started."))
             }
         }
 

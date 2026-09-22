@@ -14,9 +14,9 @@
 
 ### Fixes
 
-**Retry transcription** — leaving a recording's detail screen no longer stops a retry you just started:
+**Retry transcription** — leaving a recording's detail screen, or the app entirely, no longer stops a retry you just started:
 * it used to cancel outright the moment you navigated away, even a moment after tapping retry
-* it now keeps running in the background; reopen the recording to see the result
+* a long recording can take a while to transcribe on-device — it now keeps a notification up and finishes in the background even if you lock your phone or switch apps; reopen the recording to see the result
 
 **On-device AI** — fixed a crash that hit every local model on first use:
 * app-store builds stripped code the on-device engine needed to start
