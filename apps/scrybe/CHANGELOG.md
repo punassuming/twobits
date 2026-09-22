@@ -20,6 +20,8 @@
 
 * no user-visible change: the transcription footer's progress signal came from the database, which a fast local transcription could write and overwrite before anything ever observed it — now driven by a signal that can't miss a fast transcription
 
+* no user-visible change: a failed or cancelled on-device transcription's debug log entry was missing how long it ran, unlike a failed cloud one — both now record it
+
 ## 1.53.6 (2026-09-21)
 
 ### Features

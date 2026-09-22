@@ -68,11 +68,23 @@ class WhisperTranscriptionProvider
                 )
             }
 
+            // Measures decode + model-load + chunked-transcribe together, not just the model
+            // call — this is what actually answers "why does local transcription feel slow",
+            // since decode/model-construction can dominate for a short clip. Declared outside
+            // runCatching, not just inside the withContext block below, so the onFailure branch
+            // below can report a real duration too instead of leaving every failed/cancelled
+            // attempt's debug log entry with no duration at all.
+            val startedAtMs = System.currentTimeMillis()
+
             return runCatching {
                 val (modelDir, model) =
                     modelManager.activeWhisperDir()
                         ?: run {
-                            record(success = false, snippet = "Whisper model not downloaded")
+                            record(
+                                success = false,
+                                snippet = "Whisper model not downloaded",
+                                durationMs = System.currentTimeMillis() - startedAtMs,
+                            )
                             // A bare `return` here exits the whole function directly, bypassing
                             // the `.also { }` below that clears this on every other exit path.
                             chunkProgressTracker.clear()
@@ -87,10 +99,6 @@ class WhisperTranscriptionProvider
                 // coroutine), but that's an easy contract to break for a new one, so it's
                 // enforced here instead of trusted at every call site.
                 withContext(Dispatchers.IO) {
-                    // Measures decode + model-load + chunked-transcribe together, not just the
-                    // model call — this is what actually answers "why does local transcription
-                    // feel slow", since decode/model-construction can dominate for a short clip.
-                    val startedAtMs = System.currentTimeMillis()
                     val decoded = AudioDecoder.decode(audioFile)
                     // Recorded — and awaited — immediately before the risky native call below, not
                     // after: a native crash in WhisperEngine's ONNX model load/decode kills the
@@ -152,6 +160,7 @@ class WhisperTranscriptionProvider
                 record(
                     success = false,
                     snippet = "${error.javaClass.simpleName}: ${error.message}",
+                    durationMs = System.currentTimeMillis() - startedAtMs,
                     stackTrace = error.stackTraceToString(),
                 )
             }.also {
