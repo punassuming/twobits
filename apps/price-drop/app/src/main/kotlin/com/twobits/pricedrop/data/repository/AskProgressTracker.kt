@@ -1,7 +1,10 @@
 package com.twobits.pricedrop.data.repository
 
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,23 +26,45 @@ data class AskProgressState(
 class AskProgressTracker
     @Inject
     constructor() {
-        private var job: Job? = null
+        // Process-scoped, not the caller's own coroutine: moving only the *display* state to
+        // this singleton wasn't enough on its own — AskViewModel's viewModelScope is cancelled
+        // the moment the user backs out of the Ask screen, and until launchSend() below, the
+        // actual chat call was still tied to it, so pressing Back mid-send killed the reply
+        // outright even though the new nav-root footer suggested it would keep going.
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private var current: Deferred<*>? = null
         private val _state = MutableStateFlow<AskProgressState?>(null)
         val state: StateFlow<AskProgressState?> = _state.asStateFlow()
 
-        /** Captures the calling coroutine's own [Job] so [cancel] has something to stop. */
-        suspend fun start(label: String) {
-            job = currentCoroutineContext()[Job]
+        /**
+         * Runs [send] on [scope] instead of the caller's own coroutine. The returned [Deferred]
+         * is not a child of the caller's job: awaiting it and having that await cancelled (screen
+         * torn down again before this finishes) stops the *caller* from waiting, but does not
+         * stop the send itself. This only needs to survive in-app navigation, not the app being
+         * backgrounded entirely — unlike Scrybe's manual-retry transcription, which needs the
+         * stronger guarantee a foreground `WorkManager` job gives it (see `RetranscribeWorker`),
+         * because one chat reply is a single, usually-quick call rather than something that can
+         * run for tens of minutes on-device.
+         */
+        fun <T> launchSend(
+            label: String,
+            send: suspend () -> T,
+        ): Deferred<T> {
             _state.value = AskProgressState(label = label, startedAtMs = System.currentTimeMillis())
-        }
-
-        fun finish() {
-            job = null
-            _state.value = null
+            val deferred =
+                scope.async {
+                    try {
+                        send()
+                    } finally {
+                        _state.value = null
+                    }
+                }
+            current = deferred
+            return deferred
         }
 
         /** Stops the send() call currently in flight, if any. */
         fun cancel() {
-            job?.cancel()
+            current?.cancel()
         }
     }

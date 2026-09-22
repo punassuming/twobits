@@ -161,12 +161,15 @@ class ItemDetailViewModel
             val current = currentEditedItem() ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isResearching = true, error = null) }
-                marketResearchProgressTracker.start(current.id)
                 try {
+                    // launchResearch(), not a direct repository call: this coroutine is cancelled
+                    // the moment the user backs out of this item, and awaiting a job that isn't
+                    // its own child stops only the awaiting here — the research keeps running and
+                    // the footer keeps tracking it either way. See the tracker's own doc comment.
                     val result =
-                        repository.researchPrice(current) { progress ->
-                            marketResearchProgressTracker.update(progress)
-                        }
+                        marketResearchProgressTracker
+                            .launchResearch(current.id) { onProgress -> repository.researchPrice(current, onProgress) }
+                            .await()
                     if (result.error != null) {
                         _uiState.update { it.copy(error = result.error) }
                         return@launch
@@ -188,9 +191,9 @@ class ItemDetailViewModel
                     }
                 } finally {
                     // Unconditional, covering success, a returned error, and the footer's new
-                    // cancel action alike — a per-branch reset left both of these stuck at their
-                    // last value if the coroutine was ever cancelled between them.
-                    marketResearchProgressTracker.finish()
+                    // cancel action alike. Only resets this screen's own local flag now — the
+                    // tracker resets its own state from inside launchResearch()'s detached scope,
+                    // independent of whether this coroutine is still around to reach here.
                     _uiState.update { it.copy(isResearching = false) }
                 }
             }

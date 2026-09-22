@@ -1,7 +1,10 @@
 package com.shelfsnap.app.data.remote
 
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,27 +30,47 @@ data class MarketResearchState(
 class MarketResearchProgressTracker
     @Inject
     constructor() {
-        private var job: Job? = null
+        // Process-scoped, not the caller's own coroutine: moving only the *display* state to
+        // this singleton wasn't enough on its own — ItemDetailViewModel's viewModelScope is
+        // cancelled the moment the user backs out of the item, and until launchResearch() below,
+        // the actual network+LLM work was still tied to it, so pressing Back mid-research killed
+        // the run outright even though the new nav-root footer suggested it would keep going.
+        private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        private var current: Deferred<*>? = null
         private val _state = MutableStateFlow<MarketResearchState?>(null)
         val state: StateFlow<MarketResearchState?> = _state.asStateFlow()
 
-        /** Captures the calling coroutine's own [Job] so [cancel] has something to stop. */
-        suspend fun start(itemId: Long) {
-            job = currentCoroutineContext()[Job]
+        /**
+         * Runs [research] on [scope] instead of the caller's own coroutine. The returned
+         * [Deferred] is not a child of the caller's job: awaiting it and having that await
+         * cancelled (screen torn down again before this finishes) stops the *caller* from
+         * waiting, but does not stop the research itself. This only needs to survive in-app
+         * navigation, not the app being backgrounded entirely — unlike Scrybe's manual-retry
+         * transcription, which needs the stronger guarantee a foreground `WorkManager` job gives
+         * it (see `RetranscribeWorker`), because a research run is a single web-search-and-LLM
+         * pass rather than something that can run for tens of minutes on-device. [ResearchProgress]
+         * updates from [research]'s own progress callback flow into [state] the same way as
+         * before.
+         */
+        fun <T> launchResearch(
+            itemId: Long,
+            research: suspend ((ResearchProgress) -> Unit) -> T,
+        ): Deferred<T> {
             _state.value = MarketResearchState(itemId = itemId, progress = null, startedAtMs = System.currentTimeMillis())
-        }
-
-        fun update(progress: ResearchProgress) {
-            _state.update { it?.copy(progress = progress) }
-        }
-
-        fun finish() {
-            job = null
-            _state.value = null
+            val deferred =
+                scope.async {
+                    try {
+                        research { progress -> _state.update { it?.copy(progress = progress) } }
+                    } finally {
+                        _state.value = null
+                    }
+                }
+            current = deferred
+            return deferred
         }
 
         /** Stops the research run currently in flight, if any. */
         fun cancel() {
-            job?.cancel()
+            current?.cancel()
         }
     }

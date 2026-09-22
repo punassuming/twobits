@@ -27,6 +27,17 @@ class TranscriptionCancellationController
         private val jobsBySessionId = ConcurrentHashMap<String, Job>()
         private val startedAtMsBySessionId = ConcurrentHashMap<String, Long>()
 
+        // Guards the map-mutate + snapshot-read + StateFlow-publish sequence in register()/
+        // unregister() as one atomic unit. Each of those three steps is individually safe
+        // (ConcurrentHashMap, StateFlow.value), but the sequence as a whole is not: two
+        // concurrent calls (e.g. auto-transcribe and a manual retry finishing within moments of
+        // each other) could each mutate the map, then read+publish a snapshot in an order that
+        // doesn't match their mutations — a snapshot read *before* the other call's mutation can
+        // still publish *after* it, overwriting a correct, newer snapshot with a stale one. Worst
+        // case: the last publish is a non-empty set even though the map is actually empty, and
+        // the footer never clears.
+        private val lock = Any()
+
         private val _activeSessionIds = MutableStateFlow<Set<String>>(emptySet())
         private val _earliestStartedAtMs = MutableStateFlow<Long?>(null)
 
@@ -56,10 +67,12 @@ class TranscriptionCancellationController
             sessionId: String,
             job: Job,
         ) {
-            jobsBySessionId[sessionId] = job
-            startedAtMsBySessionId[sessionId] = System.currentTimeMillis()
-            _activeSessionIds.value = jobsBySessionId.keys.toSet()
-            _earliestStartedAtMs.value = startedAtMsBySessionId.values.minOrNull()
+            synchronized(lock) {
+                jobsBySessionId[sessionId] = job
+                startedAtMsBySessionId[sessionId] = System.currentTimeMillis()
+                _activeSessionIds.value = jobsBySessionId.keys.toSet()
+                _earliestStartedAtMs.value = startedAtMsBySessionId.values.minOrNull()
+            }
         }
 
         // Conditional remove: guards against a fast retry re-registering sessionId with a new
@@ -69,10 +82,12 @@ class TranscriptionCancellationController
             sessionId: String,
             job: Job,
         ) {
-            val removed = jobsBySessionId.remove(sessionId, job)
-            if (removed) startedAtMsBySessionId.remove(sessionId)
-            _activeSessionIds.value = jobsBySessionId.keys.toSet()
-            _earliestStartedAtMs.value = startedAtMsBySessionId.values.minOrNull()
+            synchronized(lock) {
+                val removed = jobsBySessionId.remove(sessionId, job)
+                if (removed) startedAtMsBySessionId.remove(sessionId)
+                _activeSessionIds.value = jobsBySessionId.keys.toSet()
+                _earliestStartedAtMs.value = startedAtMsBySessionId.values.minOrNull()
+            }
         }
 
         /** Cancels every transcription currently tracked — the progress toast's single Cancel action. */
