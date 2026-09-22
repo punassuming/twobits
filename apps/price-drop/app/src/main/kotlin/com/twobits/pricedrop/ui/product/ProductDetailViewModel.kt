@@ -9,6 +9,7 @@ import com.twobits.pricedrop.data.model.Offer
 import com.twobits.pricedrop.data.model.PriceEvent
 import com.twobits.pricedrop.data.model.WatchedProduct
 import com.twobits.pricedrop.data.repository.DropsRepository
+import com.twobits.pricedrop.data.repository.PriceCheckProgressTracker
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ class ProductDetailViewModel
     constructor(
         private val watchlistRepo: WatchlistRepository,
         private val dropsRepo: DropsRepository,
+        private val priceCheckProgressTracker: PriceCheckProgressTracker,
     ) : ViewModel() {
         private val _product = MutableStateFlow<WatchedProduct?>(null)
         val product: StateFlow<WatchedProduct?> = _product
@@ -80,16 +82,28 @@ class ProductDetailViewModel
         fun refresh(productId: Long) {
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(isRefreshing = true, refreshError = null)
-                val product = watchlistRepo.getById(productId)
-                runCatching {
-                    watchlistRepo.refreshPrice(productId, force = true)
-                    watchlistRepo.refreshOffers(productId)
-                    val query = product?.title.orEmpty().ifBlank { product?.brand.orEmpty() }
-                    if (query.isNotBlank()) watchlistRepo.fetchCoupons(productId, query)
-                }.onFailure { e ->
-                    _uiState.value = _uiState.value.copy(refreshError = e.message ?: "Refresh failed")
+                priceCheckProgressTracker.start(productId, "Refreshing price…")
+                try {
+                    val product = watchlistRepo.getById(productId)
+                    runCatching {
+                        watchlistRepo.refreshPrice(productId, force = true)
+                        priceCheckProgressTracker.update("Checking offers…")
+                        watchlistRepo.refreshOffers(productId)
+                        val query = product?.title.orEmpty().ifBlank { product?.brand.orEmpty() }
+                        if (query.isNotBlank()) {
+                            priceCheckProgressTracker.update("Checking coupons…")
+                            watchlistRepo.fetchCoupons(productId, query)
+                        }
+                    }.onFailure { e ->
+                        _uiState.value = _uiState.value.copy(refreshError = e.message ?: "Refresh failed")
+                    }
+                } finally {
+                    // Unconditional, covering success, a caught failure, and the footer's new
+                    // cancel action alike — a cancelled refresh would otherwise leave isRefreshing
+                    // stuck true forever, since cancellation skips straight past the branches above.
+                    priceCheckProgressTracker.finish()
+                    _uiState.value = _uiState.value.copy(isRefreshing = false)
                 }
-                _uiState.value = _uiState.value.copy(isRefreshing = false)
             }
         }
 

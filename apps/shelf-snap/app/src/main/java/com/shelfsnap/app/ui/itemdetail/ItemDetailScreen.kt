@@ -85,10 +85,8 @@ import coil.compose.AsyncImage
 import com.shelfsnap.app.R
 import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.VisionModel
-import com.shelfsnap.app.data.remote.ResearchProgress
 import com.shelfsnap.app.ui.inventory.conditionColor
 import com.shelfsnap.app.ui.theme.LocalEstimateLabel
-import com.twobits.design.components.ProgressFooter
 import java.io.File
 
 @Composable
@@ -104,7 +102,6 @@ fun ItemDetailScreen(
     viewModel: ItemDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val researchProgress by viewModel.researchProgress.collectAsState()
 
     LaunchedEffect(itemId) { viewModel.load(itemId) }
     LaunchedEffect(uiState.isDeleted) { if (uiState.isDeleted) onDeleted() }
@@ -172,20 +169,6 @@ fun ItemDetailScreen(
         onAddPhoto = onAddPhoto,
         onNavigateToListingSummary = onNavigateToListingSummary,
         onDeleteRequested = { showDeleteDialog = true },
-        researchProgressFooter = {
-            // Passed into Scaffold's own bottomBar slot below instead of floating as a Box
-            // overlay on top of this screen's content — that previously left a gap of visible
-            // content below the footer (its own padding stacked with no reserved space) and could
-            // block touches to whatever sat underneath its bounds. A real bottomBar slot reserves
-            // exactly its measured height (zero when AnimatedVisibility's `visible` is false) and
-            // folds it into Scaffold's own inset math, same as topBar already does above.
-            ProgressFooter(
-                visible = uiState.isResearching,
-                primaryText = researchProgress.phaseLabel(),
-                secondaryText = researchProgress?.detail?.takeIf { it.isNotBlank() },
-                tertiaryText = researchProgress?.countsLabel()?.takeIf { it.isNotBlank() },
-            )
-        },
     )
 }
 
@@ -198,11 +181,9 @@ private fun ItemDetailScaffold(
     onAddPhoto: () -> Unit,
     onNavigateToListingSummary: () -> Unit,
     onDeleteRequested: () -> Unit,
-    researchProgressFooter: @Composable () -> Unit,
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = researchProgressFooter,
         topBar = {
             TopAppBar(
                 title = {
@@ -812,20 +793,3 @@ private fun PhotoViewerDialog(
         }
     }
 }
-
-/** [ProgressFooter]'s primary line while market research is running. */
-private fun ResearchProgress?.phaseLabel(): String =
-    when (this?.phase) {
-        ResearchProgress.Phase.SEARCHING -> "Searching marketplaces…"
-        ResearchProgress.Phase.VERIFYING -> "Verifying listings…"
-        ResearchProgress.Phase.SYNTHESIZING -> "Analyzing with AI…"
-        null -> "Starting research…"
-    }
-
-/** [ProgressFooter]'s tertiary line while market research is running. */
-private fun ResearchProgress.countsLabel(): String =
-    buildList {
-        if (queriesRun > 0) add("$queriesRun ${if (queriesRun == 1) "query" else "queries"}")
-        if (resultsFound > 0) add("$resultsFound found")
-        if (pagesTarget > 0) add("$pagesConfirmed/$pagesTarget verified")
-    }.joinToString(" · ")

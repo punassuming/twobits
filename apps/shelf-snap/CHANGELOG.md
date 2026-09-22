@@ -4,7 +4,15 @@
 
 ### Features
 
+**Market research footer** — stays visible no matter where you go in the app, and can be cancelled:
+* it used to disappear the moment you left the item you were researching, even though research kept running
+* tap it to jump straight to the full query-by-query and page-by-page research detail
+
 ### Improvements
+
+**Local analysis footer** — can now be cancelled, and shows how long it's been running:
+* the elapsed time used to be baked into the status text itself, changing its shape every second
+* now it's its own steady reading next to the text, same as every other footer in the app
 
 ### Fixes
 

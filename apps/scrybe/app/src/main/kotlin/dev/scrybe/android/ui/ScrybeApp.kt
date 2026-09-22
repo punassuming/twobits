@@ -169,6 +169,7 @@ private fun MainContentBox(
                 secondaryText = transcriptionProgressState.label.takeIf { it.isNotBlank() },
                 tertiaryText = transcriptionProgressState.progressDetailText(),
                 progressFraction = transcriptionProgressState.chunkProgress?.asFraction(),
+                startedAtMs = transcriptionProgressState.startedAtMs,
                 onCancel = onCancelTranscription,
                 isCancelling = transcriptionProgressState.isCancelling,
             )

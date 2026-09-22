@@ -27,6 +27,8 @@ data class TranscriptionProgressUiState(
      * on-device or cloud, see [TranscriptionChunkProgressTracker]. Null when nothing is chunked
      * finely enough for a fraction to mean anything (a short clip, or nothing running at all). */
     val chunkProgress: TranscriptionChunkProgressTracker.Progress? = null,
+    /** See [TranscriptionCancellationController.earliestStartedAtMs]. Null when nothing is running. */
+    val startedAtMs: Long? = null,
 )
 
 /**
@@ -77,13 +79,15 @@ class TranscriptionProgressViewModel
                 recordingSessionDao.observeSessionsByStatus(SessionStatus.TRANSCRIBING.name),
                 batchTranscriptionTracker.remaining,
                 chunkProgressTracker.progress,
-            ) { activeSessionIds, sessions, batchRemaining, chunkProgress ->
+                cancellationController.earliestStartedAtMs,
+            ) { activeSessionIds, sessions, batchRemaining, chunkProgress, startedAtMs ->
                 val current = sessions.firstOrNull()
                 TranscriptionProgressUiState(
                     isTranscribing = activeSessionIds.isNotEmpty() || batchRemaining > 0,
                     label = current?.title.orEmpty(),
                     queuedCount = (activeSessionIds.size - 1).coerceAtLeast(0) + batchRemaining,
                     chunkProgress = chunkProgress,
+                    startedAtMs = startedAtMs,
                 )
             }.stateIn(
                 scope = viewModelScope,

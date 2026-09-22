@@ -12,6 +12,8 @@
 
 **Transcription footer** — the cancel button now sits at the right edge, not next to the text
 
+**Transcription footer** — now shows how long a transcription has been running
+
 ### Fixes
 
 **Retry transcription** — leaving a recording's detail screen, or the app entirely, no longer stops a retry you just started:

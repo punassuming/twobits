@@ -9,6 +9,7 @@ import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.remote.PriceDropApiClient
+import com.twobits.pricedrop.data.repository.AskProgressTracker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,7 @@ class AskViewModel
         private val providerSettings: ProviderSettingsStore,
         private val localModelManager: LocalModelManager,
         private val localAskSession: LocalAskSession,
+        private val askProgressTracker: AskProgressTracker,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(AskUiState())
         val uiState: StateFlow<AskUiState> = _uiState
@@ -63,19 +65,24 @@ class AskViewModel
             input.value = ""
             _uiState.value = _uiState.value.copy(isLoading = true)
             viewModelScope.launch {
-                chatMessageDao.insert(ChatMessageEntity(role = "user", content = text))
-                val reply =
-                    runCatching {
-                        if (providerSettings.getFeatureSource(AiFeature.ASK) == ProviderMode.LOCAL) {
-                            sendLocal(text)
-                        } else {
-                            api.chat(SYSTEM_PROMPT, _uiState.value.messages)
+                val isLocal = providerSettings.getFeatureSource(AiFeature.ASK) == ProviderMode.LOCAL
+                askProgressTracker.start(if (isLocal) "Thinking locally…" else "Asking…")
+                try {
+                    chatMessageDao.insert(ChatMessageEntity(role = "user", content = text))
+                    val reply =
+                        runCatching {
+                            if (isLocal) sendLocal(text) else api.chat(SYSTEM_PROMPT, _uiState.value.messages)
+                        }.getOrElse { e ->
+                            "Sorry — I couldn't reach the shopping assistant. ${e.message.orEmpty()}".trim()
                         }
-                    }.getOrElse { e ->
-                        "Sorry — I couldn't reach the shopping assistant. ${e.message.orEmpty()}".trim()
-                    }
-                chatMessageDao.insert(ChatMessageEntity(role = "assistant", content = reply))
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                    chatMessageDao.insert(ChatMessageEntity(role = "assistant", content = reply))
+                } finally {
+                    // Unconditional, covering success and the footer's new cancel action alike —
+                    // a cancelled send() would otherwise leave isLoading stuck true forever, since
+                    // cancellation skips straight past the reply/insert calls above.
+                    askProgressTracker.finish()
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
             }
         }
 

@@ -25,8 +25,10 @@ class TranscriptionCancellationController
     @Inject
     constructor() {
         private val jobsBySessionId = ConcurrentHashMap<String, Job>()
+        private val startedAtMsBySessionId = ConcurrentHashMap<String, Long>()
 
         private val _activeSessionIds = MutableStateFlow<Set<String>>(emptySet())
+        private val _earliestStartedAtMs = MutableStateFlow<Long?>(null)
 
         /**
          * Session ids with a live transcription job in *this* process, mirrored from
@@ -41,12 +43,23 @@ class TranscriptionCancellationController
          */
         val activeSessionIds: StateFlow<Set<String>> = _activeSessionIds.asStateFlow()
 
+        /**
+         * When the oldest currently-running transcription in this process started, or null if
+         * none are running. The minimum, not any one particular session's start time: the footer
+         * shows one aggregate elapsed-time reading regardless of how many sessions are active at
+         * once (a "transcribe selected" batch, or auto-transcribe racing a manual retry), and "how
+         * long has this whole thing been going" is the more useful reading of the two in that case.
+         */
+        val earliestStartedAtMs: StateFlow<Long?> = _earliestStartedAtMs.asStateFlow()
+
         fun register(
             sessionId: String,
             job: Job,
         ) {
             jobsBySessionId[sessionId] = job
+            startedAtMsBySessionId[sessionId] = System.currentTimeMillis()
             _activeSessionIds.value = jobsBySessionId.keys.toSet()
+            _earliestStartedAtMs.value = startedAtMsBySessionId.values.minOrNull()
         }
 
         // Conditional remove: guards against a fast retry re-registering sessionId with a new
@@ -56,8 +69,10 @@ class TranscriptionCancellationController
             sessionId: String,
             job: Job,
         ) {
-            jobsBySessionId.remove(sessionId, job)
+            val removed = jobsBySessionId.remove(sessionId, job)
+            if (removed) startedAtMsBySessionId.remove(sessionId)
             _activeSessionIds.value = jobsBySessionId.keys.toSet()
+            _earliestStartedAtMs.value = startedAtMsBySessionId.values.minOrNull()
         }
 
         /** Cancels every transcription currently tracked — the progress toast's single Cancel action. */

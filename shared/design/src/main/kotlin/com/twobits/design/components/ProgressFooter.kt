@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,11 +27,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 /** Shared crossfade+slide transition for one line of text that updates while the footer stays visible. */
 private fun progressFooterTextTransition() =
@@ -59,10 +66,27 @@ private fun progressFooterTextTransition() =
  * replay the others' transition. [progressFraction] switches the leading spinner from
  * indeterminate to determinate when the caller actually knows how far through a chunked task it
  * is (e.g. chunk 3 of 7) — omit it, as most callers do, for a task with no natural fraction.
- * [onCancel] is optional — omit it for a task with no cancel affordance (market research, local
- * vision/listing analysis); when present, the button swaps to a spinner and disables itself while
- * [isCancelling] is true, so a second tap can't look like a no-op while the underlying task is
- * still working out how to stop.
+ * [onCancel] is optional — omit it for a task with no cancel affordance; when present, the button
+ * swaps to a spinner and disables itself while [isCancelling] is true, so a second tap can't look
+ * like a no-op while the underlying task is still working out how to stop.
+ *
+ * [startedAtMs], when non-null (an epoch-millis timestamp, e.g. `System.currentTimeMillis()` at
+ * the moment the task began), renders as a trailing `m:ss` (or `h:mm:ss` past an hour) label that
+ * ticks up once a second on its own — standardized here rather than left to each caller, since
+ * the original version of this had one app (Shelf Snap's local analysis) baking its own
+ * hand-formatted "...7s" straight into [primaryText], recomputed from whatever ticker its own
+ * engine happened to expose. A plain start timestamp is the one thing every caller can trivially
+ * provide (no per-app ticking `Flow` needed), and ticking lives here once instead of three times.
+ * Independent of [tertiaryText]: a chunked task can show both a step count and how long it's
+ * taken at once (e.g. "chunk 3 of 7" + "0:42").
+ *
+ * [onViewDetails], when non-null, makes the whole card clickable — not just another icon crowded
+ * into the already-busy trailing area next to the elapsed time and cancel button — for a task
+ * that has a real detail view to jump to (e.g. Shelf Snap's market research, whose per-query and
+ * per-page-read breakdown otherwise only turns up if the user happens to reopen that exact item
+ * and scroll to its Market tab while a run is in flight). [onCancel]'s own `IconButton` still gets
+ * its tap first — Compose resolves nested clickables to the innermost hit target, so tapping
+ * Cancel does not also trigger navigation.
  */
 @Composable
 fun ProgressFooter(
@@ -72,9 +96,22 @@ fun ProgressFooter(
     secondaryText: String? = null,
     tertiaryText: String? = null,
     progressFraction: Float? = null,
+    startedAtMs: Long? = null,
     onCancel: (() -> Unit)? = null,
     isCancelling: Boolean = false,
+    onViewDetails: (() -> Unit)? = null,
 ) {
+    // Ticks once a second while startedAtMs is set — restarted (via the key) whenever a new task
+    // starts, so a stale reading from a previous run can't linger into the next one's first tick.
+    var elapsedMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(startedAtMs) {
+        if (startedAtMs == null) return@LaunchedEffect
+        while (true) {
+            elapsedMs = System.currentTimeMillis() - startedAtMs
+            delay(1_000)
+        }
+    }
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(animationSpec = tween(220)) { fullHeight -> fullHeight } + fadeIn(tween(220)),
@@ -86,7 +123,11 @@ fun ProgressFooter(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             contentColor = MaterialTheme.colorScheme.onSurface,
             shadowElevation = 6.dp,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp).fillMaxWidth(),
+            modifier =
+                Modifier
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+                    .fillMaxWidth()
+                    .let { if (onViewDetails != null) it.clickable(onClick = onViewDetails) else it },
         ) {
             Row(
                 modifier =
@@ -155,6 +196,14 @@ fun ProgressFooter(
                         }
                     }
                 }
+                if (startedAtMs != null) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = formatProgressFooterElapsed(elapsedMs),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (onCancel != null) {
                     Spacer(Modifier.width(4.dp))
                     // Disabled (not just visually, functionally) while cancelling — the
@@ -179,5 +228,18 @@ fun ProgressFooter(
                 }
             }
         }
+    }
+}
+
+/** `m:ss`, or `h:mm:ss` past an hour — the one format every caller of [elapsedMs] shares. */
+private fun formatProgressFooterElapsed(elapsedMs: Long): String {
+    val totalSeconds = elapsedMs / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%d:%02d".format(minutes, seconds)
     }
 }

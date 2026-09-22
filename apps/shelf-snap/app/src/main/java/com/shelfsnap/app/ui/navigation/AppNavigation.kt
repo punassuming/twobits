@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -24,8 +25,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.shelfsnap.app.data.remote.ResearchProgress
 import com.shelfsnap.app.ui.camera.CameraScreen
 import com.shelfsnap.app.ui.components.LocalAnalysisProgressViewModel
+import com.shelfsnap.app.ui.components.MarketResearchProgressViewModel
 import com.shelfsnap.app.ui.inventory.InventoryScreen
 import com.shelfsnap.app.ui.itemdetail.ItemDetailScreen
 import com.shelfsnap.app.ui.itemdetail.ListingSummaryScreen
@@ -64,6 +67,8 @@ fun AppNavigation(
     val whatsNewState by whatsNewViewModel.uiState.collectAsState()
     val localAnalysisProgressViewModel: LocalAnalysisProgressViewModel = hiltViewModel()
     val localAnalysisProgressState by localAnalysisProgressViewModel.uiState.collectAsState()
+    val marketResearchProgressViewModel: MarketResearchProgressViewModel = hiltViewModel()
+    val marketResearchProgressState by marketResearchProgressViewModel.uiState.collectAsState()
     val crashWarningViewModel: CrashWarningViewModel = hiltViewModel()
     val staleStartWarning by crashWarningViewModel.staleStartWarning.collectAsState()
     val slideEnter = slideInHorizontally { it } + fadeIn()
@@ -80,23 +85,47 @@ fun AppNavigation(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            // AnimatedVisibility inside this footer collapses to zero height when not showing, so
-            // innerPadding's bottom value shrinks back to zero the moment it disappears, and grows
-            // to exactly its measured height while visible — this is what actually reduces the
-            // content area and makes the footer come up from the real bottom edge, instead of
-            // floating over content that has no idea it exists (the previous Box+align(BottomCenter)
-            // overlay).
+            // AnimatedVisibility inside each footer collapses it to zero height when not showing,
+            // so innerPadding's bottom value shrinks back to zero the moment both disappear, and
+            // grows to whichever's measured height while one is visible — this is what actually
+            // reduces the content area and makes a footer come up from the real bottom edge,
+            // instead of floating over content that has no idea it exists (the previous
+            // Box+align(BottomCenter) overlay).
             // No navigationBarsPadding() here — ProgressFooter applies gesture-nav clearance to
             // its own inner content instead, so its card can reach the true bottom edge
             // unconditionally. See its own doc comment for why.
-            ProgressFooter(
-                visible = localAnalysisProgressState.label != null,
-                primaryText = localAnalysisProgressState.label ?: "",
-                tertiaryText =
-                    localAnalysisProgressState.otherActiveCount
-                        .takeIf { it > 0 }
-                        ?.let { "and $it more also running" },
-            )
+            //
+            // Two independent footers, not one merged state: local analysis and market research
+            // are unrelated features that can genuinely run at once (e.g. background photo
+            // analysis while researching a different item's price), and merging them into a
+            // single three-line footer would mean one starting mid-run wipes out whatever the
+            // other was showing. Stacking both is the same trade Scrybe's own footer doesn't have
+            // to make, since it only ever has one kind of task running.
+            Column {
+                ProgressFooter(
+                    visible = localAnalysisProgressState.label != null,
+                    primaryText = localAnalysisProgressState.label ?: "",
+                    tertiaryText =
+                        localAnalysisProgressState.otherActiveCount
+                            .takeIf { it > 0 }
+                            ?.let { "and $it more also running" },
+                    startedAtMs = localAnalysisProgressState.startedAtMs,
+                    onCancel = localAnalysisProgressViewModel::cancel,
+                )
+                ProgressFooter(
+                    visible = marketResearchProgressState.itemId != null,
+                    primaryText = marketResearchProgressState.progress.phaseLabel(),
+                    secondaryText = marketResearchProgressState.progress?.detail?.takeIf { it.isNotBlank() },
+                    tertiaryText = marketResearchProgressState.progress?.countsLabel()?.takeIf { it.isNotBlank() },
+                    startedAtMs = marketResearchProgressState.startedAtMs,
+                    onCancel = marketResearchProgressViewModel::cancel,
+                    onViewDetails = {
+                        marketResearchProgressState.itemId?.let {
+                            navController.navigate(Screen.MarketResearch.createRoute(it))
+                        }
+                    },
+                )
+            }
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -307,3 +336,20 @@ private fun CrashWarningDialog(
         },
     )
 }
+
+/** [ProgressFooter]'s primary line while market research is running. */
+private fun ResearchProgress?.phaseLabel(): String =
+    when (this?.phase) {
+        ResearchProgress.Phase.SEARCHING -> "Searching marketplaces…"
+        ResearchProgress.Phase.VERIFYING -> "Verifying listings…"
+        ResearchProgress.Phase.SYNTHESIZING -> "Analyzing with AI…"
+        null -> "Starting research…"
+    }
+
+/** [ProgressFooter]'s tertiary line while market research is running. */
+private fun ResearchProgress.countsLabel(): String =
+    buildList {
+        if (queriesRun > 0) add("$queriesRun ${if (queriesRun == 1) "query" else "queries"}")
+        if (resultsFound > 0) add("$resultsFound found")
+        if (pagesTarget > 0) add("$pagesConfirmed/$pagesTarget verified")
+    }.joinToString(" · ")
