@@ -18,6 +18,8 @@
 * app-store builds stripped code the on-device engine needed to start
 * debug builds never showed this, only what you actually installed
 
+* no user-visible change: the transcription footer's progress signal came from the database, which a fast local transcription could write and overwrite before anything ever observed it — now driven by a signal that can't miss a fast transcription
+
 ## 1.53.6 (2026-09-21)
 
 ### Features

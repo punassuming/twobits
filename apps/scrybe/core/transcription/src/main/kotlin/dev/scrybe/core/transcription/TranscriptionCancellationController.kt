@@ -1,6 +1,9 @@
 package dev.scrybe.core.transcription
 
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,11 +26,27 @@ class TranscriptionCancellationController
     constructor() {
         private val jobsBySessionId = ConcurrentHashMap<String, Job>()
 
+        private val _activeSessionIds = MutableStateFlow<Set<String>>(emptySet())
+
+        /**
+         * Session ids with a live transcription job in *this* process, mirrored from
+         * [jobsBySessionId] synchronously inside [register]/[unregister]. This exists because a
+         * session's TRANSCRIBING row in the database is not a reliable liveness signal on its
+         * own: a fast on-device transcription can write TRANSCRIBING and then overwrite it with
+         * TRANSCRIBED before Room's `InvalidationTracker` gets a chance to run the observing
+         * query in between, so a UI driven solely off that DB Flow can miss the whole thing. This
+         * flow can't miss it — it flips synchronously the moment [register]/[unregister] run,
+         * with no query/coalescing step in between. See [TranscriptionProgressViewModel] for the
+         * consumer this was added for.
+         */
+        val activeSessionIds: StateFlow<Set<String>> = _activeSessionIds.asStateFlow()
+
         fun register(
             sessionId: String,
             job: Job,
         ) {
             jobsBySessionId[sessionId] = job
+            _activeSessionIds.value = jobsBySessionId.keys.toSet()
         }
 
         // Conditional remove: guards against a fast retry re-registering sessionId with a new
@@ -38,6 +57,7 @@ class TranscriptionCancellationController
             job: Job,
         ) {
             jobsBySessionId.remove(sessionId, job)
+            _activeSessionIds.value = jobsBySessionId.keys.toSet()
         }
 
         /** Cancels every transcription currently tracked — the progress toast's single Cancel action. */
