@@ -108,12 +108,15 @@ class LocalVisionService
                                 progressTracker.update(progressId, "Analyzing photo…")
                                 val response =
                                     engine.generateWithImage(File(downscaledPath), VisionAnalysisService.USER_PROMPT) { progress ->
-                                        val elapsedSeconds = progress.elapsedMs / 1_000
+                                        // No elapsed time baked into this text anymore — the
+                                        // footer now shows that itself, ticking from the
+                                        // operation's own startedAtMs rather than this one field
+                                        // this callback happens to expose.
                                         val detail =
                                             if (progress.receivedMessageCount == 0) {
-                                                "Waiting for local model… ${elapsedSeconds}s"
+                                                "Waiting for local model…"
                                             } else {
-                                                "Analyzing photo… ${elapsedSeconds}s"
+                                                "Analyzing photo…"
                                             }
                                         progressTracker.update(progressId, detail)
                                     }

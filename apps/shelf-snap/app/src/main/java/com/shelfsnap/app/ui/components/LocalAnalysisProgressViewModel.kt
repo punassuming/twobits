@@ -12,6 +12,7 @@ import javax.inject.Inject
 
 data class LocalAnalysisProgressUiState(
     val label: String? = null,
+    val startedAtMs: Long? = null,
     val otherActiveCount: Int = 0,
 )
 
@@ -19,13 +20,15 @@ data class LocalAnalysisProgressUiState(
 class LocalAnalysisProgressViewModel
     @Inject
     constructor(
-        tracker: LocalAnalysisProgressTracker,
+        private val tracker: LocalAnalysisProgressTracker,
     ) : ViewModel() {
         val uiState: StateFlow<LocalAnalysisProgressUiState> =
             tracker.active
                 .map { operations ->
+                    val current = operations.firstOrNull()
                     LocalAnalysisProgressUiState(
-                        label = operations.firstOrNull()?.label,
+                        label = current?.label,
+                        startedAtMs = current?.startedAtMs,
                         otherActiveCount = (operations.size - 1).coerceAtLeast(0),
                     )
                 }.stateIn(
@@ -33,4 +36,7 @@ class LocalAnalysisProgressViewModel
                     started = SharingStarted.WhileSubscribed(5_000),
                     initialValue = LocalAnalysisProgressUiState(),
                 )
+
+        /** Stops every local analysis currently running, not just the one shown in the footer. */
+        fun cancel() = tracker.cancelAll()
     }

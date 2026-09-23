@@ -49,12 +49,15 @@
 
         <!-- WorkManager routes every setForeground() call (regardless of Worker) through this
              one shared service. Its own manifest declares no foregroundServiceType by default,
-             so any Worker requesting dataSync (see ModelDownloadWorker/runLlmDownload) crashes
-             with "foregroundServiceType ... is not a subset of ... 0x00000000" unless the app
-             overrides this declaration to actually include it. -->
+             so any Worker requesting a type it doesn't already have crashes with
+             "foregroundServiceType ... is not a subset of ..." unless the app's own declaration
+             is the union of every type any Worker actually requests: dataSync
+             (ModelDownloadWorker/runLlmDownload, BackupWorker) and mediaProcessing
+             (RetranscribeWorker — the same operation RecordingForegroundService's own
+             foregroundServiceType already covers when it runs inline instead of from a retry). -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
+            android:foregroundServiceType="dataSync|mediaProcessing"
             tools:node="merge" />
     </application>
 

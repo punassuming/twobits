@@ -12,7 +12,7 @@ import com.shelfsnap.app.data.model.PlatformListing
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.data.model.displayTitle
 import com.shelfsnap.app.data.model.displayTitleFallback
-import com.shelfsnap.app.data.remote.ResearchProgress
+import com.shelfsnap.app.data.remote.MarketResearchProgressTracker
 import com.shelfsnap.app.data.repository.ItemRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,16 +71,10 @@ class ItemDetailViewModel
     @Inject
     constructor(
         private val repository: ItemRepository,
+        private val marketResearchProgressTracker: MarketResearchProgressTracker,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(ItemDetailUiState())
         val uiState: StateFlow<ItemDetailUiState> = _uiState.asStateFlow()
-
-        // Live status for the market-research progress toast. Separate from uiState since it
-        // updates far more frequently (once per search query / page read) than the rest of the
-        // screen's state, and is meaningless once research finishes — isResearching in uiState
-        // already governs the toast's visibility.
-        private val _researchProgress = MutableStateFlow<ResearchProgress?>(null)
-        val researchProgress: StateFlow<ResearchProgress?> = _researchProgress.asStateFlow()
 
         fun load(itemId: Long) {
             viewModelScope.launch {
@@ -167,32 +161,40 @@ class ItemDetailViewModel
             val current = currentEditedItem() ?: return
             viewModelScope.launch {
                 _uiState.update { it.copy(isResearching = true, error = null) }
-                _researchProgress.value = null
-                val result =
-                    repository.researchPrice(current) { progress ->
-                        _researchProgress.value = progress
+                try {
+                    // launchResearch(), not a direct repository call: this coroutine is cancelled
+                    // the moment the user backs out of this item, and awaiting a job that isn't
+                    // its own child stops only the awaiting here — the research keeps running and
+                    // the footer keeps tracking it either way. See the tracker's own doc comment.
+                    val result =
+                        marketResearchProgressTracker
+                            .launchResearch(current.id) { onProgress -> repository.researchPrice(current, onProgress) }
+                            .await()
+                    if (result.error != null) {
+                        _uiState.update { it.copy(error = result.error) }
+                        return@launch
                     }
-                if (result.error != null) {
-                    _uiState.update { it.copy(isResearching = false, error = result.error) }
-                    _researchProgress.value = null
-                    return@launch
-                }
-                val updated =
-                    current.copy(
-                        marketResearch = result.research,
-                        updatedAt = System.currentTimeMillis(),
-                    )
-                repository.update(updated)
-                _researchProgress.value = null
-                _uiState.update {
-                    it.copy(
-                        isResearching = false,
-                        item = updated,
-                        // If the model proposed an overall price and the user hasn't typed one, surface it.
-                        editEstimatedValue =
-                            result.suggestedValue
-                                ?.let { v -> "%.2f".format(v) } ?: it.editEstimatedValue,
-                    )
+                    val updated =
+                        current.copy(
+                            marketResearch = result.research,
+                            updatedAt = System.currentTimeMillis(),
+                        )
+                    repository.update(updated)
+                    _uiState.update {
+                        it.copy(
+                            item = updated,
+                            // If the model proposed an overall price and the user hasn't typed one, surface it.
+                            editEstimatedValue =
+                                result.suggestedValue
+                                    ?.let { v -> "%.2f".format(v) } ?: it.editEstimatedValue,
+                        )
+                    }
+                } finally {
+                    // Unconditional, covering success, a returned error, and the footer's new
+                    // cancel action alike. Only resets this screen's own local flag now — the
+                    // tracker resets its own state from inside launchResearch()'s detached scope,
+                    // independent of whether this coroutine is still around to reach here.
+                    _uiState.update { it.copy(isResearching = false) }
                 }
             }
         }

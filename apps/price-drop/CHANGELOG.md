@@ -4,9 +4,15 @@
 
 ### Features
 
+**Progress footer** — Ask and a price-check refresh now show what's happening, and can be cancelled:
+* both used to be a bare spinner with no label, no way to stop it, and nothing to see once you left the screen
+* now they show how long they've been running, work from any screen, and a tap jumps back to the item or conversation
+
 ### Improvements
 
 ### Fixes
+
+* no user-visible change: the new Ask and price-check footers looked like they survived navigating away, but the underlying send/refresh was still cancelled the moment you did — caught by review before this shipped
 
 ## 0.23.5 (2026-09-21)
 

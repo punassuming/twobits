@@ -103,12 +103,15 @@ class LocalListingService
                             progressTracker.update(progressId, "Generating listing locally…")
                             val response =
                                 engine.generate(userMessage) { progress ->
-                                    val elapsedSeconds = progress.elapsedMs / 1_000
+                                    // No elapsed time baked into this text anymore — the footer
+                                    // now shows that itself, ticking from the operation's own
+                                    // startedAtMs rather than this one field this callback
+                                    // happens to expose.
                                     val detail =
                                         if (progress.receivedMessageCount == 0) {
-                                            "Waiting for local model… ${elapsedSeconds}s"
+                                            "Waiting for local model…"
                                         } else {
-                                            "Generating listing locally… ${elapsedSeconds}s"
+                                            "Generating listing locally…"
                                         }
                                     progressTracker.update(progressId, detail)
                                 }

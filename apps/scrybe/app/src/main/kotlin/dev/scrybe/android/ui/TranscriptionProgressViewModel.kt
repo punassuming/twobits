@@ -27,21 +27,34 @@ data class TranscriptionProgressUiState(
      * on-device or cloud, see [TranscriptionChunkProgressTracker]. Null when nothing is chunked
      * finely enough for a fraction to mean anything (a short clip, or nothing running at all). */
     val chunkProgress: TranscriptionChunkProgressTracker.Progress? = null,
+    /** See [TranscriptionCancellationController.earliestStartedAtMs]. Null when nothing is running. */
+    val startedAtMs: Long? = null,
 )
 
 /**
- * Backed by [RecordingSessionEntity.status][dev.scrybe.core.database.RecordingSessionEntity],
- * not a dedicated event bus: [dev.scrybe.core.transcription.SessionTranscriptionCoordinator]
- * already flips a session to [SessionStatus.TRANSCRIBING] for the duration of every transcribe
- * call (auto or manual — retry, batch, or the session-detail button all funnel through it), so
- * this reuses that existing, already-reactive signal instead of adding a parallel one.
+ * Liveness (`isTranscribing`/`queuedCount`) is driven by
+ * [TranscriptionCancellationController.activeSessionIds], not by
+ * [RecordingSessionEntity.status][dev.scrybe.core.database.RecordingSessionEntity]. That status
+ * is written and observed through Room, and a fast on-device transcription can write
+ * TRANSCRIBING and overwrite it with TRANSCRIBED before Room's `InvalidationTracker` gets a
+ * chance to run the observing query in between — the UI would then miss the whole thing (cloud
+ * transcription's own network latency happened to always mask this race, which is why it went
+ * unnoticed until local got a progress footer). [dev.scrybe.core.transcription.SessionTranscriptionCoordinator]
+ * registers/unregisters synchronously around every transcribe call (auto, manual retry, batch,
+ * or the session-detail button all funnel through it), so
+ * [TranscriptionCancellationController.activeSessionIds] reflects "running right now" with no
+ * query/coalescing step that could lose a fast transition.
  *
- * That signal alone undercounts a "transcribe selected" batch, though: such a batch processes
- * one session at a time, so at most one ever reports TRANSCRIBING — the rest of the batch is
- * otherwise indistinguishable from "nothing else pending." [BatchTranscriptionTracker] fills
- * that specific gap; combined with the DB signal, [queuedCount] covers both a same-batch
- * backlog and any other transcription that happens to be running concurrently (e.g.
- * auto-transcribe firing while a manual retry is in flight).
+ * The DB status Flow is kept only to source [TranscriptionProgressUiState.label] (the current
+ * session's title) — losing that for an especially fast local transcription just means the
+ * footer briefly shows no title, not that it fails to show at all.
+ *
+ * [TranscriptionCancellationController.activeSessionIds] alone undercounts a "transcribe
+ * selected" batch, though: such a batch processes one session at a time, so only one id is ever
+ * registered — the rest of the batch is otherwise indistinguishable from "nothing else
+ * pending." [BatchTranscriptionTracker] fills that specific gap; combined, [queuedCount] covers
+ * both a same-batch backlog and any other transcription that happens to be running concurrently
+ * (e.g. auto-transcribe firing while a manual retry is in flight).
  */
 @HiltViewModel
 class TranscriptionProgressViewModel
@@ -59,19 +72,22 @@ class TranscriptionProgressViewModel
         private val cancellingFlow = MutableStateFlow(false)
         private var cancellingTimeoutJob: Job? = null
 
-        /** DB-derived progress only — deliberately excludes [cancellingFlow] so nothing here loops back into it. */
+        /** Deliberately excludes [cancellingFlow] so nothing here loops back into it. */
         private val transcribingState: StateFlow<TranscriptionProgressUiState> =
             combine(
+                cancellationController.activeSessionIds,
                 recordingSessionDao.observeSessionsByStatus(SessionStatus.TRANSCRIBING.name),
                 batchTranscriptionTracker.remaining,
                 chunkProgressTracker.progress,
-            ) { sessions, batchRemaining, chunkProgress ->
+                cancellationController.earliestStartedAtMs,
+            ) { activeSessionIds, sessions, batchRemaining, chunkProgress, startedAtMs ->
                 val current = sessions.firstOrNull()
                 TranscriptionProgressUiState(
-                    isTranscribing = current != null || batchRemaining > 0,
+                    isTranscribing = activeSessionIds.isNotEmpty() || batchRemaining > 0,
                     label = current?.title.orEmpty(),
-                    queuedCount = (sessions.size - 1).coerceAtLeast(0) + batchRemaining,
+                    queuedCount = (activeSessionIds.size - 1).coerceAtLeast(0) + batchRemaining,
                     chunkProgress = chunkProgress,
+                    startedAtMs = startedAtMs,
                 )
             }.stateIn(
                 scope = viewModelScope,

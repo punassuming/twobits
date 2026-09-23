@@ -9,6 +9,7 @@ import com.twobits.pricedrop.data.model.Offer
 import com.twobits.pricedrop.data.model.PriceEvent
 import com.twobits.pricedrop.data.model.WatchedProduct
 import com.twobits.pricedrop.data.repository.DropsRepository
+import com.twobits.pricedrop.data.repository.PriceCheckProgressTracker
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ class ProductDetailViewModel
     constructor(
         private val watchlistRepo: WatchlistRepository,
         private val dropsRepo: DropsRepository,
+        private val priceCheckProgressTracker: PriceCheckProgressTracker,
     ) : ViewModel() {
         private val _product = MutableStateFlow<WatchedProduct?>(null)
         val product: StateFlow<WatchedProduct?> = _product
@@ -80,16 +82,37 @@ class ProductDetailViewModel
         fun refresh(productId: Long) {
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(isRefreshing = true, refreshError = null)
-                val product = watchlistRepo.getById(productId)
-                runCatching {
-                    watchlistRepo.refreshPrice(productId, force = true)
-                    watchlistRepo.refreshOffers(productId)
-                    val query = product?.title.orEmpty().ifBlank { product?.brand.orEmpty() }
-                    if (query.isNotBlank()) watchlistRepo.fetchCoupons(productId, query)
-                }.onFailure { e ->
-                    _uiState.value = _uiState.value.copy(refreshError = e.message ?: "Refresh failed")
+                try {
+                    // launchRefresh(), not calling the repository directly: this coroutine is
+                    // cancelled the moment the user backs out of the product, and awaiting a job
+                    // that isn't its own child stops only the awaiting here — the refresh keeps
+                    // running and the footer keeps tracking it either way. See the tracker's own
+                    // doc comment.
+                    val error =
+                        priceCheckProgressTracker
+                            .launchRefresh(productId, "Refreshing price…") { updateStep ->
+                                val product = watchlistRepo.getById(productId)
+                                runCatching {
+                                    watchlistRepo.refreshPrice(productId, force = true)
+                                    updateStep("Checking offers…")
+                                    watchlistRepo.refreshOffers(productId)
+                                    val query = product?.title.orEmpty().ifBlank { product?.brand.orEmpty() }
+                                    if (query.isNotBlank()) {
+                                        updateStep("Checking coupons…")
+                                        watchlistRepo.fetchCoupons(productId, query)
+                                    }
+                                }.exceptionOrNull()?.let { it.message ?: "Refresh failed" }
+                            }.await()
+                    if (error != null) {
+                        _uiState.value = _uiState.value.copy(refreshError = error)
+                    }
+                } finally {
+                    // Unconditional, covering success, a caught failure, and the footer's new
+                    // cancel action alike. Only resets this screen's own local flag now — the
+                    // tracker resets its own state from inside launchRefresh()'s detached scope,
+                    // independent of whether this coroutine is still around to reach here.
+                    _uiState.value = _uiState.value.copy(isRefreshing = false)
                 }
-                _uiState.value = _uiState.value.copy(isRefreshing = false)
             }
         }
 

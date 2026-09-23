@@ -6,7 +6,19 @@
 
 ### Improvements
 
+**Transcription footer** — now shows how long a transcription has been running
+
 ### Fixes
+
+**Retry transcription** — leaving a recording's detail screen, or the app entirely, no longer stops a retry you just started:
+* it used to cancel outright the moment you navigated away, even a moment after tapping retry
+* a long recording can take a while to transcribe on-device — it now keeps a notification up and finishes in the background even if you lock your phone or switch apps; reopen the recording to see the result
+
+* no user-visible change: the transcription footer's progress signal came from the database, which a fast local transcription could write and overwrite before anything ever observed it — now driven by a signal that can't miss a fast transcription
+
+* no user-visible change: a failed or cancelled on-device transcription's debug log entry was missing how long it ran, unlike a failed cloud one — both now record it
+
+* no user-visible change: a rare race between two transcriptions starting or finishing within moments of each other could leave the footer stuck visible after both were done — caught by review before this shipped
 
 ## 1.53.7 (2026-09-21)
 
