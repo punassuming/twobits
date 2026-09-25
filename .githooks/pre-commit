@@ -103,7 +103,13 @@ ok "PriceDrop changelog update check"
 
 # ── 2. AndroidManifest.xml files ─────────────────────────────────────────────
 python3 "$REPO_ROOT/scripts/validate-manifests.py" --root "$SCRYBE_DIR" \
-    || fail "AndroidManifest.xml validation failed."
+    || fail "apps/scrybe AndroidManifest.xml validation failed."
+
+python3 "$REPO_ROOT/scripts/validate-manifests.py" --root "$SHELF_SNAP_DIR" \
+    || fail "apps/shelf-snap AndroidManifest.xml validation failed."
+
+python3 "$REPO_ROOT/scripts/validate-manifests.py" --root "$PRICE_DROP_DIR" \
+    || fail "apps/price-drop AndroidManifest.xml validation failed."
 ok "AndroidManifest.xml files"
 
 # ── 3. Kotlin formatting via standalone ktlint ───────────────────────────────
@@ -165,7 +171,10 @@ if [[ -n "$STAGED_KT" ]]; then
         [".asStateFlow()"]="kotlinx.coroutines.flow.asStateFlow"
         [".asSharedFlow()"]="kotlinx.coroutines.flow.asSharedFlow"
         [".filterNotNull()"]="kotlinx.coroutines.flow.filterNotNull"
-        [".mapNotNull("]="kotlinx.coroutines.flow.mapNotNull"
+        # NOT ".mapNotNull(": also a kotlin.collections/kotlin.sequences stdlib extension
+        # (no import needed), so a plain text match on it false-positives on ordinary
+        # List/Sequence code — e.g. SearchApiShoppingProvider.kt's
+        # `sequenceOf(...).mapNotNull(root::getAsJsonArray)`.
         [".debounce("]="kotlinx.coroutines.flow.debounce"
         [".distinctUntilChanged()"]="kotlinx.coroutines.flow.distinctUntilChanged"
         [".flowOn("]="kotlinx.coroutines.flow.flowOn"

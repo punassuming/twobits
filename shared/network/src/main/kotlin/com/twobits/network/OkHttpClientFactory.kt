@@ -9,6 +9,7 @@ object OkHttpClientFactory {
         val loggingInterceptor =
             HttpLoggingInterceptor().apply {
                 level = if (debug) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+                redactHeader("Authorization")
             }
         return OkHttpClient
             .Builder()

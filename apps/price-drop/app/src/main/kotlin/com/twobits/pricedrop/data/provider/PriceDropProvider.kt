@@ -67,7 +67,7 @@ enum class PriceDropProvider(
                 "Developer plan includes 100 free searches per month.",
         signupUrl = "https://www.searchapi.io",
         costEstimate = "Current entry plan: \$40/month for 10,000 searches",
-        capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS, ProviderCapability.PROMOTIONS),
+        capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS),
     ),
     SERPER(
         key = "serper",
@@ -82,7 +82,7 @@ enum class PriceDropProvider(
                 "2,500 free searches, no card required.",
         signupUrl = "https://serper.dev",
         costEstimate = "Est. cost: ~\$0.30–1.00 per 1,000 searches · 2,500 free",
-        capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS, ProviderCapability.PROMOTIONS),
+        capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS),
     ),
     FIRECRAWL(
         key = "firecrawl",

@@ -210,7 +210,7 @@
     <string name="onboarding_sell_title">Research and cross-list</string>
     <string name="onboarding_sell_body">Check market prices, then generate ready-to-paste listings for eBay, Mercari, Facebook Marketplace, and more.</string>
     <string name="onboarding_privacy_title">Local-first and private</string>
-    <string name="onboarding_privacy_body">Your inventory stays on this device. When you\'re ready for AI features, add your own key or Pro in Settings — it\'s optional.</string>
+    <string name="onboarding_privacy_body">Your inventory stays on this device. AI features are optional: run them fully on-device, add your own key, or go Pro — all in Settings.</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_get_started">Get started</string>

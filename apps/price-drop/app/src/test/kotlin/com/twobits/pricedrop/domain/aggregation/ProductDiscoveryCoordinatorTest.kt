@@ -4,7 +4,6 @@ import com.twobits.pricedrop.data.provider.contracts.OfferProvider
 import com.twobits.pricedrop.data.provider.contracts.ProductDetailsProvider
 import com.twobits.pricedrop.data.provider.contracts.ProductSearchProvider
 import com.twobits.pricedrop.data.provider.contracts.ProductSearchRequest
-import com.twobits.pricedrop.data.provider.contracts.PromotionProvider
 import com.twobits.pricedrop.data.provider.contracts.ProviderCapability
 import com.twobits.pricedrop.data.provider.contracts.ProviderDescriptor
 import com.twobits.pricedrop.data.provider.contracts.ProviderResult
@@ -38,8 +37,6 @@ class ProductDiscoveryCoordinatorTest {
                             override suspend fun detailProviders(): List<ProductDetailsProvider> = emptyList()
 
                             override suspend fun offerProviders(): List<OfferProvider> = emptyList()
-
-                            override suspend fun promotionProviders(): List<PromotionProvider> = emptyList()
                         },
                     resolver = ProductResolver(),
                     offerAggregator = OfferAggregator(),
@@ -57,15 +54,14 @@ class ProductDiscoveryCoordinatorTest {
         calls: MutableList<String>,
         candidates: List<ProductCandidate> = emptyList(),
         failure: Boolean = false,
-    ) =
-        object : ProductSearchProvider {
-            override val descriptor = ProviderDescriptor(id, id, setOf(ProviderCapability.SEARCH))
+    ) = object : ProductSearchProvider {
+        override val descriptor = ProviderDescriptor(id, id, setOf(ProviderCapability.SEARCH))
 
-            override suspend fun search(request: ProductSearchRequest): ProviderResult<List<ProductCandidate>> {
-                calls += id
-                return if (failure) ProviderResult.Failure("fixture failure") else ProviderResult.Success(candidates)
-            }
+        override suspend fun search(request: ProductSearchRequest): ProviderResult<List<ProductCandidate>> {
+            calls += id
+            return if (failure) ProviderResult.Failure("fixture failure") else ProviderResult.Success(candidates)
         }
+    }
 
     private fun candidate(provider: String) =
         ProductCandidate(

@@ -69,7 +69,7 @@ enum class AiFeature(
         label = "Promotions",
         description = "Offer promotions and manually entered coupon codes",
         callEstimate = "0 dedicated calls",
-        callNote = "Uses provider offer metadata; broad coupon aggregation remains experimental",
+        callNote = "Manually entered savings codes only; no automated coupon/promotion provider exists yet",
         callWeight = 1,
         providers = emptyList(),
         models = emptyList(),

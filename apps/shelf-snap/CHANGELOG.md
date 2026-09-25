@@ -6,7 +6,12 @@
 
 ### Improvements
 
+**Onboarding** — the privacy page now mentions fully on-device (local) AI analysis alongside BYOK and Pro, not just the latter two.
+
 ### Fixes
+
+* Authorization headers are redacted from debug HTTP logs instead of appearing in plaintext.
+* Removed an unused, unencrypted API-key storage class in `shared/api-keys` that had no live callers in any app.
 
 ## 1.32.8 (2026-09-23)
 
