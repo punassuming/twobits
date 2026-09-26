@@ -231,7 +231,7 @@ class LocalVisionService
             modelFile: File,
             index: Int,
             total: Int,
-            progressId: String,
+            progressId: Long,
         ): DraftItemResult {
             val label = "photo ${index + 1}/$total"
             val downscaledPath = downscaleForLocalInference(photoPath)
