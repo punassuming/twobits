@@ -10,6 +10,7 @@
 
 * Updated Gradle build tooling and plugin versions (Android Gradle Plugin, Kotlin, Kotlin Compose plugin, ktlint, detekt, Hilt, KSP, Gradle wrapper) via automated dependency updates.
 * Aligned the shared version catalog with those bumps and brought the Shelf Snap/PriceDrop Gradle wrappers up to the same version as Scrybe's, since Android Gradle Plugin 9 requires a newer Gradle than they were still on.
+* Migrated every module off the separate Kotlin Android Gradle plugin to Android Gradle Plugin 9's built-in Kotlin support, which now rejects applying that plugin explicitly.
 
 ## 1.53.10 (2026-09-26)
 
