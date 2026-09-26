@@ -4,7 +4,7 @@ plugins {
     id("com.android.library") version "8.7.3"
     id("org.jetbrains.kotlin.android") version "2.3.0"
     id("io.gitlab.arturbosch.detekt") version "1.23.7"
-    id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
 }
 
 group = "com.twobits.core"
