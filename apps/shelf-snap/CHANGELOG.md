@@ -6,7 +6,20 @@
 
 ### Improvements
 
+**On-device analysis** — now shows a "Processed on your device" badge.
+* appears on results analysed fully on your phone
+
+**Multi-photo analysis** — now works in local mode too:
+* previously only the first photo was analysed locally, even with multi-photo on
+* each photo is now analysed individually, then combined into one result
+* the combined result shows the same on-device badge
+
 ### Fixes
+
+* Consolidated the three near-identical per-app model-download workers into one shared implementation.
+* Crash reports now include a short trail of recent app activity (screen changes, service lifecycle) for better context on what led up to them.
+* Reverted an attempt to route CI through a shared reusable workflow — it made every CI run fail immediately, so CI still builds inline for now.
+* Fixed a compile error in the new multi-photo local analysis code (a progress-tracker ID was typed wrong).
 
 ## 1.32.9 (2026-09-26)
 

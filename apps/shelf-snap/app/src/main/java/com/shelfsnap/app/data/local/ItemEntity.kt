@@ -32,6 +32,7 @@ data class ItemEntity(
     val updatedAt: Long = System.currentTimeMillis(),
     val primaryPhotoIndex: Int = 0,
     val title: String = "",
+    val executionMode: String? = null,
 )
 
 fun ItemEntity.toDomain() =
@@ -57,6 +58,7 @@ fun ItemEntity.toDomain() =
         updatedAt = updatedAt,
         primaryPhotoIndex = primaryPhotoIndex,
         title = title,
+        executionMode = executionMode,
     )
 
 fun Item.toEntity() =
@@ -82,4 +84,5 @@ fun Item.toEntity() =
         updatedAt = updatedAt,
         primaryPhotoIndex = primaryPhotoIndex,
         title = title,
+        executionMode = executionMode,
     )

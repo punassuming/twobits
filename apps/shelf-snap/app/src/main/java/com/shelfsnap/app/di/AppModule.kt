@@ -9,6 +9,7 @@ import com.shelfsnap.app.data.local.AppDatabase
 import com.shelfsnap.app.data.local.ItemDao
 import com.shelfsnap.app.data.local.MIGRATION_2_3
 import com.shelfsnap.app.data.local.MIGRATION_3_4
+import com.shelfsnap.app.data.local.MIGRATION_4_5
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,7 +29,7 @@ object AppModule {
     ): AppDatabase =
         Room
             .databaseBuilder(ctx, AppDatabase::class.java, "shelf_snap.db")
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .fallbackToDestructiveMigrationFrom(1)
             .build()
 

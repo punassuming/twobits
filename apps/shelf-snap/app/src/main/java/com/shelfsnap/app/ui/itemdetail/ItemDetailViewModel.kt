@@ -149,7 +149,7 @@ class ItemDetailViewModel
                         editTags = result.tags,
                         editCondition = result.condition,
                         editEstimatedValue = "%.2f".format(result.estimatedValue),
-                        item = item.copy(confidencePercent = result.confidencePercent),
+                        item = item.copy(confidencePercent = result.confidencePercent, executionMode = result.executionMode),
                         lastAnalysisModel = modelOverride ?: VisionModel.default,
                     )
                 }

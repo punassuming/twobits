@@ -36,6 +36,8 @@ data class Item(
     val primaryPhotoIndex: Int = 0,
     // ── v4: item-level display title ──────────────────────────────────────────
     val title: String = "",
+    // ── v5: which mode analysed this item, for "Processed on your device" badging ─
+    val executionMode: String? = null,
 ) {
     /** True when the item has at least one active (not sold) platform listing. */
     val hasActiveListing: Boolean

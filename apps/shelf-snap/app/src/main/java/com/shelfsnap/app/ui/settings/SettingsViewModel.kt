@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shelfsnap.app.R
 import com.shelfsnap.app.data.local.LocalModelManager
 import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
@@ -17,13 +18,13 @@ import com.shelfsnap.app.data.remote.search.SearchApiService
 import com.shelfsnap.app.data.remote.search.SerperSearchService
 import com.shelfsnap.app.data.repository.ItemRepository
 import com.shelfsnap.app.util.ApiKeyValidator
-import com.shelfsnap.app.work.ModelDownloadWorker
 import com.twobits.billing.BillingManager
 import com.twobits.billing.PurchaseDelegate
 import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.localai.work.SharedModelDownloadWorker
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -756,7 +757,7 @@ class SettingsViewModel
         }
 
         fun downloadLlmModel(model: LocalLlmModel) {
-            ModelDownloadWorker.enqueue(context, model)
+            SharedModelDownloadWorker.enqueue(context, model, notificationIcon = R.drawable.ic_launcher_foreground)
         }
 
         fun deleteLlmModel(model: LocalLlmModel) {

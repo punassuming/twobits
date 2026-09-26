@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.twobits.debuglogui.CrashWarningViewModel
@@ -78,6 +80,14 @@ private fun ScrybeMainContent(
     val activeRecordingState by activeRecordingViewModel.uiState.collectAsState()
     val transcriptionProgressState by transcriptionProgressViewModel.uiState.collectAsState()
     val staleStartWarning by crashWarningViewModel.staleStartWarning.collectAsState()
+    DisposableEffect(navController) {
+        val listener =
+            NavController.OnDestinationChangedListener { _, destination, _ ->
+                crashWarningViewModel.recordBreadcrumb("nav:${destination.route}")
+            }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
     MainContentBox(
         navController = navController,
         activeRecordingState = activeRecordingState,

@@ -11,10 +11,10 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.twobits.localai.work.SharedModelDownloadWorker
 import com.twobits.pricedrop.MainActivity
 import com.twobits.pricedrop.R
 import com.twobits.pricedrop.data.model.Drop
-import com.twobits.pricedrop.work.ModelDownloadWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.text.NumberFormat
 import java.util.Locale
@@ -55,7 +55,7 @@ class PriceDropNotifier
             )
             manager.createNotificationChannel(
                 NotificationChannel(
-                    ModelDownloadWorker.CHANNEL_ID,
+                    SharedModelDownloadWorker.DEFAULT_CHANNEL_ID,
                     "Model downloads",
                     NotificationManager.IMPORTANCE_LOW,
                 ).apply {
@@ -83,7 +83,8 @@ class PriceDropNotifier
             val sub = subTextFor(drop)
 
             val builder =
-                NotificationCompat.Builder(context, channel)
+                NotificationCompat
+                    .Builder(context, channel)
                     .setSmallIcon(R.drawable.ic_launcher_foreground)
                     .setContentTitle(title)
                     .setContentText(body)
@@ -91,11 +92,11 @@ class PriceDropNotifier
                     .setAutoCancel(true)
                     .setContentIntent(openProductIntent(drop.productId))
                     .setStyle(
-                        NotificationCompat.BigTextStyle()
+                        NotificationCompat
+                            .BigTextStyle()
                             .bigText(body)
                             .setSummaryText(sub),
-                    )
-                    .addAction(0, "Open item", openProductIntent(drop.productId))
+                    ).addAction(0, "Open item", openProductIntent(drop.productId))
 
             if (isCoupon && drop.couponCode.isNotBlank()) {
                 builder.addAction(0, "Copy ${drop.couponCode}", copyCodeIntent(drop.couponCode))

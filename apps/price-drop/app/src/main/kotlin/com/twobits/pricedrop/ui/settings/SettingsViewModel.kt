@@ -15,6 +15,8 @@ import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.localai.work.SharedModelDownloadWorker
+import com.twobits.pricedrop.R
 import com.twobits.pricedrop.data.local.LocalModelManager
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.CredentialCheck
@@ -24,7 +26,6 @@ import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import com.twobits.pricedrop.data.settings.SettingsPrefs
-import com.twobits.pricedrop.work.ModelDownloadWorker
 import com.twobits.pricedrop.work.PriceCheckScheduler
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
@@ -101,7 +102,7 @@ class SettingsViewModel
         val selectedLlm: StateFlow<LocalLlmModel?> = localModelManager.selectedLlm
 
         fun downloadLlmModel(model: LocalLlmModel) {
-            ModelDownloadWorker.enqueue(context, model)
+            SharedModelDownloadWorker.enqueue(context, model, notificationIcon = R.drawable.ic_launcher_foreground)
         }
 
         fun deleteLlmModel(model: LocalLlmModel) {

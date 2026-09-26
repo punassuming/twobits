@@ -21,6 +21,7 @@ import javax.inject.Inject
 data class ChatMessage(
     val role: String,
     val content: String,
+    val executionMode: String? = null,
 )
 
 data class AskUiState(
@@ -50,7 +51,7 @@ class AskViewModel
                 .onEach { entities ->
                     _uiState.value =
                         _uiState.value.copy(
-                            messages = entities.map { ChatMessage(it.role, it.content) },
+                            messages = entities.map { ChatMessage(it.role, it.content, it.executionMode) },
                         )
                 }.launchIn(viewModelScope)
         }
@@ -81,7 +82,13 @@ class AskViewModel
                                 }.getOrElse { e ->
                                     "Sorry — I couldn't reach the shopping assistant. ${e.message.orEmpty()}".trim()
                                 }
-                            chatMessageDao.insert(ChatMessageEntity(role = "assistant", content = reply))
+                            chatMessageDao.insert(
+                                ChatMessageEntity(
+                                    role = "assistant",
+                                    content = reply,
+                                    executionMode = if (isLocal) ProviderMode.LOCAL.name else null,
+                                ),
+                            )
                         }.await()
                 } finally {
                     // Unconditional, covering success and the footer's new cancel action alike.

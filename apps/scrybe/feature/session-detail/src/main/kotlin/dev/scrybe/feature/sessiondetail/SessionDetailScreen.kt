@@ -108,6 +108,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
+import com.twobits.design.components.InferenceSourceBadge
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.SessionStatusPresentation
 import dev.scrybe.core.common.customTypeIcon
@@ -117,6 +118,7 @@ import dev.scrybe.core.common.scrybeContentWidth
 import dev.scrybe.core.database.CustomRecordingTypeEntity
 import dev.scrybe.core.database.FolderEntity
 import dev.scrybe.core.model.Person
+import dev.scrybe.core.model.ProviderType
 import dev.scrybe.core.model.RecordingMode
 import dev.scrybe.core.model.SessionStatus
 import dev.scrybe.core.model.SessionTask
@@ -2071,6 +2073,9 @@ private fun TranscriptCard(
                         }
                     }
                 } ?: Spacer(modifier = Modifier.weight(1f))
+                if (transcript.providerType == ProviderType.LOCAL) {
+                    InferenceSourceBadge()
+                }
                 TranscriptCardActions(
                     expanded = expanded,
                     onCopy = {

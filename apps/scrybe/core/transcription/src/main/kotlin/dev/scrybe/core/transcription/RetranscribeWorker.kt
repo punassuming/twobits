@@ -21,12 +21,12 @@ import dagger.hilt.components.SingletonComponent
 /**
  * Runs a manual "retry transcription" (the session-detail screen's retry button) as a
  * foreground-promoted worker so it survives the screen turning off or the app backgrounding —
- * the same reason ModelDownloadWorker and BackupWorker are workers rather than
+ * the same reason SharedModelDownloadWorker and BackupWorker are workers rather than
  * `viewModelScope.launch`. A retry has no other durable owner: it isn't part of an active
  * recording (no [dev.scrybe.service.recording.RecordingForegroundService] to run inside of), and
  * an on-device transcription of a long recording can run for many minutes — easily longer than
  * the user is willing to keep the screen open and watching. Follows
- * ModelDownloadWorker/BackupWorker exactly — plain [CoroutineWorker] with a Hilt [EntryPoint]
+ * SharedModelDownloadWorker/BackupWorker exactly — plain [CoroutineWorker] with a Hilt [EntryPoint]
  * rather than `@HiltWorker`, so no custom `WorkerFactory` is needed.
  *
  * mediaProcessing, not dataSync: this is the identical operation

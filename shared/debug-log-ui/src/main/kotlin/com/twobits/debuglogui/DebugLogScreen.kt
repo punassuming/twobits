@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.debuglog.Breadcrumb
 import com.twobits.debuglog.DebugLogEntry
 import com.twobits.debuglog.DebugLogEntryType
 import com.twobits.debuglog.PROCESS_EXIT_TYPE
@@ -83,7 +84,7 @@ fun DebugLogScreen(
                                     type = "text/plain"
                                     putExtra(
                                         Intent.EXTRA_TEXT,
-                                        shareText(uiState.entries),
+                                        shareText(uiState.entries, uiState.breadcrumbs),
                                     )
                                 }
                             context.startActivity(Intent.createChooser(intent, "Share debug log"))
@@ -99,6 +100,9 @@ fun DebugLogScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (uiState.breadcrumbs.isNotEmpty()) {
+                BreadcrumbTrailCard(uiState.breadcrumbs)
+            }
             DebugLogFilterRow(selected = uiState.filter, onSelect = viewModel::setFilter)
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
@@ -145,6 +149,27 @@ fun DebugLogScreen(
                 TextButton(onClick = { showClearConfirm = false }) { Text("Cancel") }
             },
         )
+    }
+}
+
+/**
+ * The last few navigation/lifecycle events leading up to now — not part of the AI-call/crash
+ * timeline below, so shown as its own compact strip rather than mixed into [DebugLogEntryCard]'s
+ * list. Session-only: this reflects [BreadcrumbStore]'s in-memory trail for the *current* process,
+ * not history across restarts (a past crash's own trail, if any, is folded into that crash's own
+ * entry — see [DebugLogStore]'s crash-recording paths — since that's the one place it survives).
+ */
+@Composable
+private fun BreadcrumbTrailCard(breadcrumbs: List<Breadcrumb>) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Recent activity (this session)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                breadcrumbs.joinToString(" → ") { it.event },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -283,13 +308,17 @@ private fun CallEntryCard(entry: DebugLogEntry) {
  * the two facts a reader needs before any individual entry makes sense, and hunting for them in a
  * 150-entry list is exactly the friction this is meant to remove.
  */
-private fun shareText(entries: List<DebugLogEntry>): String {
+private fun shareText(
+    entries: List<DebugLogEntry>,
+    breadcrumbs: List<Breadcrumb>,
+): String {
     val device = entries.firstOrNull { it.endpoint == DEVICE_INFO_ENDPOINT }?.requestSummary
     val previousRun = entries.firstOrNull { it.exceptionType == PROCESS_EXIT_TYPE }?.message
     return buildString {
         appendLine("Debug log · ${entries.size} entries, newest first")
         device?.let { appendLine("Device: $it") }
         previousRun?.let { appendLine(it) }
+        if (breadcrumbs.isNotEmpty()) appendLine("Recent activity (this session): ${breadcrumbs.joinToString(" → ") { it.event }}")
         appendLine()
         append(entries.joinToString("\n\n---\n\n") { it.asShareText() })
     }

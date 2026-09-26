@@ -6,7 +6,14 @@
 
 ### Improvements
 
+**Ask assistant** — on-device replies now show a "Processed on your device" badge.
+* marks answers that ran locally instead of in the cloud
+
 ### Fixes
+
+* Consolidated the three near-identical per-app model-download workers into one shared implementation.
+* Crash reports now include a short trail of recent app activity (screen changes, service lifecycle) for better context on what led up to them.
+* Reverted an attempt to route CI through a shared reusable workflow — it made every CI run fail immediately, so CI still builds inline for now.
 
 ## 0.23.7 (2026-09-26)
 

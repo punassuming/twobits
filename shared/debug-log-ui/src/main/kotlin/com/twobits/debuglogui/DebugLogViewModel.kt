@@ -2,6 +2,8 @@ package com.twobits.debuglogui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.twobits.debuglog.Breadcrumb
+import com.twobits.debuglog.BreadcrumbStore
 import com.twobits.debuglog.DebugLogEntry
 import com.twobits.debuglog.DebugLogEntryType
 import com.twobits.debuglog.DebugLogStore
@@ -17,6 +19,7 @@ import javax.inject.Inject
 /** null [filter] shows every entry type — the default, chronological "everything" view. */
 data class DebugLogUiState(
     val entries: List<DebugLogEntry> = emptyList(),
+    val breadcrumbs: List<Breadcrumb> = emptyList(),
     val filter: DebugLogEntryType? = null,
     val isLoading: Boolean = true,
 ) {
@@ -29,6 +32,7 @@ class DebugLogViewModel
     @Inject
     constructor(
         private val store: DebugLogStore,
+        private val breadcrumbStore: BreadcrumbStore,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DebugLogUiState())
         val uiState: StateFlow<DebugLogUiState> = _uiState.asStateFlow()
@@ -41,7 +45,7 @@ class DebugLogViewModel
             viewModelScope.launch {
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 val entries = withContext(Dispatchers.IO) { store.readAll() }.sortedByDescending { it.timestampMs }
-                _uiState.value = _uiState.value.copy(entries = entries, isLoading = false)
+                _uiState.value = _uiState.value.copy(entries = entries, breadcrumbs = breadcrumbStore.current(), isLoading = false)
             }
         }
 

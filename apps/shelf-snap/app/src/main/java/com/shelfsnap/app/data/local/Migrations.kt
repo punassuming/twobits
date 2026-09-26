@@ -20,3 +20,13 @@ val MIGRATION_3_4 =
             )
         }
     }
+
+/** Nullable, no default: only LOCAL-mode analyses ever populate it — everything before this migration is null, which is exactly "unknown/not local." */
+val MIGRATION_4_5 =
+    object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE items ADD COLUMN executionMode TEXT",
+            )
+        }
+    }
