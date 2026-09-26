@@ -10,9 +10,9 @@
 
 ### Fixes
 
-* CI now builds through a shared reusable workflow instead of duplicating the same build/lint/test/upload steps inline.
 * Consolidated the three near-identical per-app model-download workers into one shared implementation.
 * Crash reports now include a short trail of recent app activity (screen changes, service lifecycle) for better context on what led up to them.
+* Reverted an attempt to route CI through a shared reusable workflow — it made every CI run fail immediately, so CI still builds inline for now.
 
 ## 0.23.7 (2026-09-26)
 
