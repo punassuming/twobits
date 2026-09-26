@@ -8,7 +8,7 @@
 
 ### Fixes
 
-* Updated Gradle build tooling and plugin versions (Android Gradle Plugin, Kotlin, ktlint, detekt, KSP) via automated dependency updates.
+* Updated Gradle build tooling and plugin versions (Android Gradle Plugin, Kotlin, Kotlin Compose plugin, ktlint, detekt, KSP) via automated dependency updates.
 
 ## 1.32.10 (2026-09-26)
 
