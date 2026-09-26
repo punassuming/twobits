@@ -9,6 +9,7 @@
 ### Fixes
 
 * Updated Gradle build tooling and plugin versions (Android Gradle Plugin, Kotlin, Kotlin Compose plugin, ktlint, detekt) via automated dependency updates.
+* Bumped the Gradle wrapper to match the newer Android Gradle Plugin's minimum requirement.
 
 ## 0.23.8 (2026-09-26)
 
