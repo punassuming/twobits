@@ -6,7 +6,8 @@
 
 ### Improvements
 
-**Ask assistant** — on-device replies now show a "Processed on your device" badge, so it's clear which answers ran locally versus in the cloud.
+**Ask assistant** — on-device replies now show a "Processed on your device" badge.
+* marks answers that ran locally instead of in the cloud
 
 ### Fixes
 

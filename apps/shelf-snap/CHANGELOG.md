@@ -6,9 +6,13 @@
 
 ### Improvements
 
-**On-device analysis** — now shows a "Processed on your device" badge, and multi-photo analysis is finally applied in local mode too:
-* previously, local mode silently analysed only the first photo even with multi-photo analysis enabled; now each photo is analysed individually and combined into one result
-* the combined result shows the same on-device badge as a single-photo local analysis
+**On-device analysis** — now shows a "Processed on your device" badge.
+* appears on results analysed fully on your phone
+
+**Multi-photo analysis** — now works in local mode too:
+* previously only the first photo was analysed locally, even with multi-photo on
+* each photo is now analysed individually, then combined into one result
+* the combined result shows the same on-device badge
 
 ### Fixes
 

@@ -6,7 +6,8 @@
 
 ### Improvements
 
-**On-device transcripts** — now show a "Processed on your device" badge, so it's clear at a glance which transcripts ran fully locally versus in the cloud.
+**On-device transcripts** — now show a "Processed on your device" badge.
+* shows at a glance which transcripts ran locally vs. cloud
 
 ### Fixes
 

@@ -120,9 +120,18 @@ class SharedModelDownloadWorker(
                             KEY_CHANNEL_NAME to channelName,
                         ),
                     ).build()
+            // "shared_" prefix, not the pre-consolidation "model_download_<model>" name each
+            // per-app worker used: a request enqueued under the old name before an app update
+            // persists across it (WorkManager survives process death/reboot), but its persisted
+            // WorkSpec still names the now-deleted per-app Worker class, so WorkManager fails it
+            // with a ClassNotFoundException on the next attempt to run it — and while that stale,
+            // about-to-fail request is still in a non-terminal state, KEEP would defer to it and
+            // silently drop a fresh re-download tap. A new unique-work name sidesteps this
+            // entirely: the stale old-named request fails and gets pruned on its own, unrelated
+            // to and never blocking a new request enqueued under this name.
             WorkManager
                 .getInstance(context)
-                .enqueueUniqueWork("model_download_${model.name}", ExistingWorkPolicy.KEEP, request)
+                .enqueueUniqueWork("shared_model_download_${model.name}", ExistingWorkPolicy.KEEP, request)
         }
     }
 }
