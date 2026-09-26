@@ -11,6 +11,7 @@
 * Updated Gradle build tooling and plugin versions (Android Gradle Plugin, Kotlin, Kotlin Compose plugin, ktlint, detekt) via automated dependency updates.
 * Bumped the Gradle wrapper to match the newer Android Gradle Plugin's minimum requirement.
 * Migrated every module off the separate Kotlin Android Gradle plugin to Android Gradle Plugin 9's built-in Kotlin support, which now rejects applying that plugin explicitly.
+* Re-enabled a Gradle source-set option Android Gradle Plugin 9 tightened by default, needed for the in-app changelog asset to keep generating correctly.
 
 ## 0.23.8 (2026-09-26)
 
