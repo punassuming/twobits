@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* Updated Gradle build tooling and plugin versions (Android Gradle Plugin, Kotlin, ktlint, detekt, Hilt, KSP, Gradle wrapper) via automated dependency updates.
+
 ## 1.53.10 (2026-09-26)
 
 ### Features
