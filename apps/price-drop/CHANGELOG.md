@@ -13,6 +13,7 @@
 * Opted out of Android Gradle Plugin 9's built-in Kotlin support and its new build DSL, since built-in Kotlin bundles an older compiler than this repo's on-device model dependency requires.
 * Re-enabled a Gradle source-set option Android Gradle Plugin 9 tightened by default, needed for the in-app changelog asset to keep generating correctly.
 * Reformatted Kotlin source across the app for new default style rules that shipped with the ktlint bump; no behavior changes.
+* Raised the CI build's Metaspace limit, which Android Gradle Plugin 9's newer code-shrinking tool needed more of than the old cap allowed.
 
 ## 0.23.8 (2026-09-26)
 
