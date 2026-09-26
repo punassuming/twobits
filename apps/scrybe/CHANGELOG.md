@@ -6,7 +6,17 @@
 
 ### Improvements
 
+**Insight analysis** — sentiment and topic detection now runs on gpt-5.4-mini for more headroom on longer recordings.
+
 ### Fixes
+
+**Sentiment & topic insights** — no longer silently show a fake "neutral"/empty result when the model runs out of its output budget mid-response:
+* a failed insight generation now surfaces as a failure instead of masking itself as a real result
+* mirrors the same fix already shipped for speaker diarization
+
+* CI now lints the release build variant instead of debug, matching Shelf Snap and PriceDrop.
+* Authorization headers are redacted from debug HTTP logs instead of appearing in plaintext.
+* Removed an unused, unencrypted API-key storage class in `shared/api-keys` that had no live callers in any app.
 
 ## 1.53.8 (2026-09-23)
 

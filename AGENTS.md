@@ -162,25 +162,42 @@ Every cross-module import requires `implementation(project(":module:name"))` in 
 
 **Rule:** when you add `import dev.scrybe.X.Y.SomeClass`, confirm `implementation(project(":X:Y"))` is in the importing module's `build.gradle.kts`. If missing, add it.
 
-Package → Gradle module:
+Package → Gradle module (Scrybe-native modules only — regenerated directly from
+`apps/scrybe/settings.gradle.kts`'s `include(...)` list; do not hand-edit this table without
+re-checking it against that file):
 
 | Package prefix | Gradle module |
 |---|---|
-| `dev.scrybe.core.billing` | `:core:billing` |
-| `dev.scrybe.core.common` | `:core:common` |
+| `dev.scrybe.core.localai` | `:core:local-ai` |
+| `dev.scrybe.core.common` | `:core:base` (module renamed from `:core:common`; directory and package are unchanged, still `core/common`) |
 | `dev.scrybe.core.model` | `:core:model` |
 | `dev.scrybe.core.database` | `:core:database` |
 | `dev.scrybe.core.datastore` | `:core:datastore` |
 | `dev.scrybe.core.audio` | `:core:audio` |
-| `dev.scrybe.core.network` | `:core:network` |
 | `dev.scrybe.core.transcription` | `:core:transcription` |
 | `dev.scrybe.core.transforms` | `:core:transforms` |
 | `dev.scrybe.core.export` | `:core:export` |
+| `dev.scrybe.core.backup` | `:core:backup` |
 | `dev.scrybe.feature.capture` | `:feature:capture` |
-| `dev.scrybe.feature.history` | `:feature:history` |
+| `dev.scrybe.feature.filemanager` | `:feature:file-manager` |
 | `dev.scrybe.feature.profiles` | `:feature:profiles` |
-| `dev.scrybe.feature.session-detail` | `:feature:session-detail` |
+| `dev.scrybe.feature.sessiondetail` | `:feature:session-detail` |
 | `dev.scrybe.feature.settings` | `:feature:settings` |
+| `dev.scrybe.feature.tasks` | `:feature:tasks` |
+| `dev.scrybe.service.recording` | `:service:recording` |
+| *(manifest merge only, no Kotlin package yet)* | `:workers` |
+
+`:feature:history` does not exist — drop it if you see it referenced anywhere stale.
+
+**Not Scrybe-native — do not add to the table above.** `billing`, `common` (a different module
+than `:core:base` above — this is `shared/common`), `api-keys`, `network`, `design`,
+`secure-store`, `local-models`, `local-ai` (also distinct from `:core:local-ai` above — that one
+is Scrybe's own Whisper/local-model facade; this one is `shared/local-ai`, the cross-app LiteRT-LM
+engine), `debug-log`, `debug-log-ui`, and `pro` are `shared/` modules pulled in via
+`includeBuild("../../shared")` + `dependencySubstitution` (see that block in
+`settings.gradle.kts`), each under the `com.twobits.*` package namespace, not `dev.scrybe.*`. A
+missing-module error on a `com.twobits.*` import means checking `shared/`'s own module structure,
+not this table.
 
 ### 5. Non-existent Android SDK members
 

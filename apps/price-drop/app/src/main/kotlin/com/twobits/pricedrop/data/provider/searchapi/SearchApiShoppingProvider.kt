@@ -32,7 +32,7 @@ class SearchApiShoppingProvider
             ProviderDescriptor(
                 id = "searchapi",
                 displayName = "SearchAPI Google Shopping",
-                capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS, ProviderCapability.PROMOTIONS),
+                capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS),
             )
 
         override suspend fun search(request: ProductSearchRequest): ProviderResult<List<ProductCandidate>> =
@@ -49,17 +49,25 @@ class SearchApiShoppingProvider
                             .addQueryParameter("api_key", key)
                             .addQueryParameter("num", request.maxCandidates.toString())
                             .build()
-                    client.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
-                        val text = response.body?.string().orEmpty()
-                        if (!response.isSuccessful) throw IOException("SearchAPI returned HTTP ${response.code}")
-                        val root = gson.fromJson(text, JsonObject::class.java)
-                        sequenceOf("shopping_results", "popular_products")
-                            .mapNotNull(root::getAsJsonArray)
-                            .flatMap { it.asSequence() }
-                            .take(request.maxCandidates)
-                            .mapNotNull { ShoppingMapper.map(it.asJsonObject, descriptor.id, "BYOK") }
-                            .toList()
-                    }
+                    client
+                        .newCall(
+                            Request
+                                .Builder()
+                                .url(url)
+                                .get()
+                                .build(),
+                        ).execute()
+                        .use { response ->
+                            val text = response.body?.string().orEmpty()
+                            if (!response.isSuccessful) throw IOException("SearchAPI returned HTTP ${response.code}")
+                            val root = gson.fromJson(text, JsonObject::class.java)
+                            sequenceOf("shopping_results", "popular_products")
+                                .mapNotNull(root::getAsJsonArray)
+                                .flatMap { it.asSequence() }
+                                .take(request.maxCandidates)
+                                .mapNotNull { ShoppingMapper.map(it.asJsonObject, descriptor.id, "BYOK") }
+                                .toList()
+                        }
                 }
             }.fold(
                 onSuccess = { ProviderResult.Success(it) },

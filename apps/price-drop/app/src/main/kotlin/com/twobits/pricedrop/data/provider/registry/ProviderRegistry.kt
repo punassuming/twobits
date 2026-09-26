@@ -7,7 +7,6 @@ import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.provider.contracts.OfferProvider
 import com.twobits.pricedrop.data.provider.contracts.ProductDetailsProvider
 import com.twobits.pricedrop.data.provider.contracts.ProductSearchProvider
-import com.twobits.pricedrop.data.provider.contracts.PromotionProvider
 import com.twobits.pricedrop.data.provider.jina.JinaWebProvider
 import com.twobits.pricedrop.data.provider.pro.ProGatewayProvider
 import com.twobits.pricedrop.data.provider.rainforest.RainforestAmazonProvider
@@ -22,8 +21,6 @@ interface ProviderRegistry {
     suspend fun detailProviders(): List<ProductDetailsProvider>
 
     suspend fun offerProviders(): List<OfferProvider>
-
-    suspend fun promotionProviders(): List<PromotionProvider>
 }
 
 @Singleton
@@ -50,8 +47,6 @@ class DefaultProviderRegistry
         override suspend fun detailProviders(): List<ProductDetailsProvider> = rainforestIfEnabled()
 
         override suspend fun offerProviders(): List<OfferProvider> = rainforestIfEnabled()
-
-        override suspend fun promotionProviders(): List<PromotionProvider> = emptyList()
 
         private suspend fun <T> rainforestIfEnabled(): List<T> =
             if (settings.getMode(PriceDropProvider.RAINFOREST) == ProviderMode.OFF) {

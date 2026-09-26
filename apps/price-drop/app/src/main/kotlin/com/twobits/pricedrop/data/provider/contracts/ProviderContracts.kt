@@ -4,14 +4,12 @@ import com.twobits.pricedrop.domain.product.ProductCandidate
 import com.twobits.pricedrop.domain.product.ProductDetails
 import com.twobits.pricedrop.domain.product.ProductIdentity
 import com.twobits.pricedrop.domain.product.ProductOffer
-import com.twobits.pricedrop.domain.product.Promotion
 import com.twobits.pricedrop.domain.product.ProviderDiagnostic
 
 enum class ProviderCapability {
     SEARCH,
     DETAILS,
     OFFERS,
-    PROMOTIONS,
 }
 
 data class ProviderDescriptor(
@@ -57,15 +55,4 @@ interface OfferProvider {
     val descriptor: ProviderDescriptor
 
     suspend fun getOffers(identity: ProductIdentity): ProviderResult<List<ProductOffer>>
-}
-
-data class PromotionRequest(
-    val identity: ProductIdentity,
-    val merchantId: String? = null,
-)
-
-interface PromotionProvider {
-    val descriptor: ProviderDescriptor
-
-    suspend fun getPromotions(request: PromotionRequest): ProviderResult<List<Promotion>>
 }

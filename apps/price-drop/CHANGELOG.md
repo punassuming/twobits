@@ -6,7 +6,13 @@
 
 ### Improvements
 
+**Ask assistant** — the on-device chat session now automatically rebuilds itself if it's sat idle too long or a reused session hits an error, instead of assuming indefinitely holding it open is safe.
+
 ### Fixes
+
+* Authorization headers are redacted from debug HTTP logs instead of appearing in plaintext.
+* Removed an unused, unencrypted API-key storage class in `shared/api-keys` that had no live callers in any app.
+* Removed the unused `PromotionProvider` interface and registry method — it had no implementations and was never called from any provider or screen.
 
 ## 0.23.6 (2026-09-23)
 

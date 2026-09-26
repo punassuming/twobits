@@ -46,7 +46,7 @@ class OpenAiInsightService
                         Transcript: ${transcriptText.take(800)}
                         """.trimIndent()
                     val raw = callOpenAi(endpoint, prompt, "insight-sentiment", debugEnabled)
-                    unwrapJson(raw).ifBlank { """[{"startMs":0,"endMs":$durationMs,"sentiment":"NEUTRAL"}]""" }
+                    unwrapJson(raw)
                 }
             }
 
@@ -67,7 +67,7 @@ class OpenAiInsightService
                         Transcript: ${transcriptText.take(1200)}
                         """.trimIndent()
                     val raw = callOpenAi(endpoint, prompt, "insight-topics", debugEnabled)
-                    unwrapJson(raw).ifBlank { "[]" }
+                    unwrapJson(raw)
                 }
             }
 
@@ -88,13 +88,17 @@ class OpenAiInsightService
                                 content = listOf(InsightInputText(type = "input_text", text = userPrompt)),
                             ),
                         ),
-                    // gpt-5-mini is a reasoning model: reasoning tokens count against
+                    // gpt-5.4-mini is a reasoning model: reasoning tokens count against
                     // max_output_tokens, and hitting the cap mid-reasoning returns
-                    // status="incomplete" with EMPTY output text — which the callers' .ifBlank
-                    // fallbacks silently turned into "no sentiment/topics" on every recording.
-                    // The old cap of 600 was routinely consumed entirely by reasoning; low
-                    // effort keeps thinking terse and the raised cap leaves room for output.
-                    maxOutputTokens = 2000,
+                    // status="incomplete" with EMPTY output text — callers used to swallow this
+                    // via .ifBlank into a fake "no sentiment/topics" result on every recording;
+                    // callOpenAi() now throws on it instead (mirroring
+                    // OpenAiDiarizationService.callDiarizationLlm). Moved from gpt-5-mini to
+                    // gpt-5.4-mini for its larger context/output budget; the cap here is raised
+                    // accordingly to use that headroom rather than carrying over the old model's
+                    // tighter tuning. Low effort keeps thinking terse and leaves more of the cap
+                    // for actual output.
+                    maxOutputTokens = 4000,
                     reasoning = InsightReasoningConfig(effort = "low"),
                 )
             val request =
@@ -164,6 +168,18 @@ class OpenAiInsightService
                                 .filter { it.type == "output_text" }
                                 .joinToString("\n") { it.text.orEmpty() }
                                 .trim()
+                    if (text.isBlank()) {
+                        val detail =
+                            listOfNotNull(
+                                parsed.status?.let { "status=$it" },
+                                parsed.incompleteDetails?.reason?.let { "reason=$it" },
+                            ).joinToString(", ").ifBlank { "no detail" }
+                        recordOnce(success = false, httpStatus = response.code, snippet = "empty model response ($detail)")
+                        throw IOException(
+                            "Insight generation returned no output ($detail) — " +
+                                "the model likely spent its whole output-token budget on reasoning.",
+                        )
+                    }
                     recordOnce(success = true, httpStatus = response.code, snippet = "${text.length} chars")
                     text
                 }
@@ -218,6 +234,13 @@ class OpenAiInsightService
         private data class InsightResponse(
             @SerialName("output_text") val outputText: String? = null,
             val output: List<InsightOutputItem>? = null,
+            val status: String? = null,
+            @SerialName("incomplete_details") val incompleteDetails: IncompleteDetails? = null,
+        )
+
+        @Serializable
+        private data class IncompleteDetails(
+            val reason: String? = null,
         )
 
         @Serializable
@@ -232,7 +255,7 @@ class OpenAiInsightService
         )
 
         private companion object {
-            const val MODEL_NAME = "gpt-5-mini"
+            const val MODEL_NAME = "gpt-5.4-mini"
             val JSON_MEDIA_TYPE = "application/json".toMediaType()
         }
     }

@@ -43,7 +43,7 @@ class ProGatewayProvider
             ProviderDescriptor(
                 id = "pro_gateway",
                 displayName = "TwoBits Pro product discovery",
-                capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS, ProviderCapability.PROMOTIONS),
+                capabilities = setOf(ProviderCapability.SEARCH, ProviderCapability.OFFERS),
             )
 
         override suspend fun search(request: ProductSearchRequest): ProviderResult<List<ProductCandidate>> =
