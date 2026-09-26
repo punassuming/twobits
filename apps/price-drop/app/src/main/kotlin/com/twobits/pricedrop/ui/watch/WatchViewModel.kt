@@ -53,10 +53,12 @@ class WatchViewModel
         val watchlist: StateFlow<List<WatchedProduct>> =
             combine(allProducts, activeDrops, activeFilter) { products, drops, filter ->
                 when (filter) {
-                    "Below target" ->
+                    "Below target" -> {
                         products.filter { p ->
                             p.targetPrice != null && p.currentPrice > 0 && p.currentPrice <= p.targetPrice
                         }
+                    }
+
                     "Coupons" -> {
                         val productIdsWithCoupons =
                             drops
@@ -65,6 +67,7 @@ class WatchViewModel
                                 .toSet()
                         products.filter { it.id in productIdsWithCoupons }
                     }
+
                     "Needs check" -> {
                         val staleThresholdMs = TimeUnit.HOURS.toMillis(12)
                         val now = System.currentTimeMillis()
@@ -72,8 +75,14 @@ class WatchViewModel
                             p.isActive && (p.lastCheckedAt == 0L || now - p.lastCheckedAt > staleThresholdMs)
                         }
                     }
-                    "Paused" -> products.filter { !it.isActive }
-                    else -> products
+
+                    "Paused" -> {
+                        products.filter { !it.isActive }
+                    }
+
+                    else -> {
+                        products
+                    }
                 }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

@@ -136,21 +136,35 @@ class ItemRepository
                             authHeader = "Bearer $appUserId",
                         )
                     }
+
                     ExecutionMode.LOCAL -> {
                         val modelFile = localVisionModelFile()
                         when {
-                            effectivePaths.isEmpty() -> DraftItemResult(error = "No photo to analyse.")
-                            modelFile == null ->
+                            effectivePaths.isEmpty() -> {
+                                DraftItemResult(error = "No photo to analyse.")
+                            }
+
+                            modelFile == null -> {
                                 DraftItemResult(
                                     error =
                                         "No vision-capable local model downloaded. Go to Settings → AI → Vision " +
                                             "and download Gemma 4 E2B or E4B — other local models can't analyse photos.",
                                 )
-                            effectivePaths.size == 1 -> localVisionService.analyse(effectivePaths.first(), modelFile)
-                            else -> localVisionService.analyseMultiple(effectivePaths, modelFile)
+                            }
+
+                            effectivePaths.size == 1 -> {
+                                localVisionService.analyse(effectivePaths.first(), modelFile)
+                            }
+
+                            else -> {
+                                localVisionService.analyseMultiple(effectivePaths, modelFile)
+                            }
                         }
                     }
-                    ExecutionMode.BYOK, ExecutionMode.OFF -> visionService.analyse(effectivePaths, getApiKey(), model)
+
+                    ExecutionMode.BYOK, ExecutionMode.OFF -> {
+                        visionService.analyse(effectivePaths, getApiKey(), model)
+                    }
                 }
             if (result.error != null) return result
             return result.copy(
@@ -189,6 +203,7 @@ class ItemRepository
                         )
                     }
                 }
+
                 ExecutionMode.PRO -> {
                     // Refresh first so a cold-started Pro subscriber isn't rejected as Free.
                     subscriptionRepository.ensureFresh()
@@ -196,7 +211,11 @@ class ItemRepository
                         return PriceResearchResult(error = "Market research needs an active Shelf Snap Pro subscription.")
                     }
                 }
-                ExecutionMode.OFF -> return PriceResearchResult(error = "Market research is turned off in AI configuration.")
+
+                ExecutionMode.OFF -> {
+                    return PriceResearchResult(error = "Market research is turned off in AI configuration.")
+                }
+
                 ExecutionMode.LOCAL -> {
                     if (enabledSearchProviders().isEmpty()) {
                         return PriceResearchResult(
@@ -225,7 +244,8 @@ class ItemRepository
                         onProgress = onProgress,
                     )
                 }
-                ExecutionMode.LOCAL ->
+
+                ExecutionMode.LOCAL -> {
                     priceResearchService.researchLocal(
                         item = item,
                         modelFile = requireNotNull(localModelFile()) { "checked above" },
@@ -237,6 +257,8 @@ class ItemRepository
                         readerKey = getActiveReaderKey().ifBlank { null },
                         onProgress = onProgress,
                     )
+                }
+
                 ExecutionMode.BYOK, ExecutionMode.OFF -> {
                     priceResearchService.research(
                         item = item,
@@ -304,6 +326,7 @@ class ItemRepository
                             ),
                     )
                 }
+
                 ExecutionMode.LOCAL -> {
                     val modelFile = localModelFile()
                     if (modelFile != null) {
@@ -312,8 +335,10 @@ class ItemRepository
                         LocalListingResult(listing = current)
                     }
                 }
-                ExecutionMode.BYOK, ExecutionMode.OFF ->
+
+                ExecutionMode.BYOK, ExecutionMode.OFF -> {
                     LocalListingResult(listing = listingGenerationService.refine(item, platform, current, getApiKey(), model = model))
+                }
             }
         }
 

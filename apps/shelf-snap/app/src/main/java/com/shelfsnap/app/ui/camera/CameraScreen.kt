@@ -502,8 +502,11 @@ private fun CameraContent(
                     // Right: analyse pill / append button / empty placeholder
                     Box(contentAlignment = Alignment.Center) {
                         when {
-                            capturedPaths.isEmpty() -> Spacer(Modifier.size(44.dp))
-                            appendMode ->
+                            capturedPaths.isEmpty() -> {
+                                Spacer(Modifier.size(44.dp))
+                            }
+
+                            appendMode -> {
                                 Surface(
                                     onClick = onCommitAppend,
                                     shape = RoundedCornerShape(22.dp),
@@ -532,7 +535,9 @@ private fun CameraContent(
                                         )
                                     }
                                 }
-                            else ->
+                            }
+
+                            else -> {
                                 Surface(
                                     onClick = onAnalyseAndSave,
                                     shape = RoundedCornerShape(22.dp),
@@ -565,6 +570,7 @@ private fun CameraContent(
                                         )
                                     }
                                 }
+                            }
                         }
                     }
                 }

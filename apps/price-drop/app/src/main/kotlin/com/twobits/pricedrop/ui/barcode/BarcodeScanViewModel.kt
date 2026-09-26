@@ -105,12 +105,14 @@ class BarcodeScanViewModel
                         // Fire-and-forget: don't gate onAdded on a slow history fetch.
                         launch { watchlistRepo.backfillHistoryIfNeeded(result.id, product.asin) }
                     }
-                    AddResult.LimitReached ->
+
+                    AddResult.LimitReached -> {
                         uiState.value =
                             BarcodeUiState.Error(
                                 "Free plan tracks up to 3 active products. Remove one or upgrade to " +
                                     "PriceDrop Pro for unlimited tracking.",
                             )
+                    }
                 }
             }
         }

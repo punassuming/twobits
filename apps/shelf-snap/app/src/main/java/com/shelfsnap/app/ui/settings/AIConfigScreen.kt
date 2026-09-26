@@ -206,10 +206,12 @@ fun AIConfigScreen(
                         onChange = viewModel::onVisionSourceChange,
                     )
                     when (uiState.visionSource) {
-                        "pro" ->
+                        "pro" -> {
                             AiProManagedCard(
                                 description = "Managed vision API active — items analysed automatically.",
                             )
+                        }
+
                         "byok" -> {
                             if (uiState.editApiKey.isBlank()) {
                                 AiNoKeyWarning()
@@ -229,6 +231,7 @@ fun AIConfigScreen(
                                 )
                             }
                         }
+
                         else -> {
                             LocalModelPicker(
                                 models = LocalLlmModel.entries.filter { it.visionCapable },
@@ -256,10 +259,12 @@ fun AIConfigScreen(
                         onChange = viewModel::onListingSourceChange,
                     )
                     when (uiState.listingSource) {
-                        "pro" ->
+                        "pro" -> {
                             AiProManagedCard(
                                 description = "Managed listing API active — refined listing copy generated automatically.",
                             )
+                        }
+
                         "byok" -> {
                             if (uiState.editApiKey.isBlank()) {
                                 AiNoKeyWarning()
@@ -279,7 +284,8 @@ fun AIConfigScreen(
                                 )
                             }
                         }
-                        else ->
+
+                        else -> {
                             LocalModelPicker(
                                 models = LocalLlmModel.entries.toList(),
                                 status = { (uiState.llmStates[it] ?: LocalModelState.Absent).toStatus() },
@@ -289,6 +295,7 @@ fun AIConfigScreen(
                                 sizeLabel = { it.sizeLabel },
                                 onManageModels = { selectedTab = 1 },
                             )
+                        }
                     }
                 }
 
@@ -299,10 +306,12 @@ fun AIConfigScreen(
                         onChange = viewModel::onTextSourceChange,
                     )
                     when (uiState.textSource) {
-                        "pro" ->
+                        "pro" -> {
                             AiProManagedCard(
                                 description = "Managed pricing & web search API active — no keys required.",
                             )
+                        }
+
                         "local" -> {
                             LocalModelPicker(
                                 models = LocalLlmModel.entries.toList(),
@@ -322,6 +331,7 @@ fun AIConfigScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+
                         else -> {
                             if (uiState.editApiKey.isBlank()) {
                                 AiNoKeyWarning()

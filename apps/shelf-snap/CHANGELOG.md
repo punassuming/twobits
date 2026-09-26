@@ -12,6 +12,7 @@
 * Bumped the Gradle wrapper to match the newer Android Gradle Plugin's minimum requirement.
 * Opted out of Android Gradle Plugin 9's built-in Kotlin support and its new build DSL, since built-in Kotlin bundles an older compiler than this repo's on-device model dependency requires.
 * Re-enabled a Gradle source-set option Android Gradle Plugin 9 tightened by default, needed for the in-app changelog asset to keep generating correctly.
+* Reformatted Kotlin source across the app for new default style rules that shipped with the ktlint bump; no behavior changes.
 
 ## 1.32.10 (2026-09-26)
 

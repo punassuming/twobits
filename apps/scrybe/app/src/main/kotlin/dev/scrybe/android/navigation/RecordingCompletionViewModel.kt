@@ -15,7 +15,9 @@ import javax.inject.Inject
 sealed interface RecordingCompletionNavEvent {
     data object OpenHome : RecordingCompletionNavEvent
 
-    data class OpenSessionReview(val sessionId: String) : RecordingCompletionNavEvent
+    data class OpenSessionReview(
+        val sessionId: String,
+    ) : RecordingCompletionNavEvent
 }
 
 @HiltViewModel

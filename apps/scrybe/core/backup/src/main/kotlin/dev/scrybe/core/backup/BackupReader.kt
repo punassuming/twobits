@@ -127,10 +127,14 @@ class BackupReader
                     // after an unrelated refactor.
                     val name = entry.name
                     when {
-                        name == BackupEntryNames.DATABASE ->
+                        name == BackupEntryNames.DATABASE -> {
                             database = json.decodeFromString(DatabaseDto.serializer(), zip.readBytes().decodeToString())
-                        name == BackupEntryNames.MANIFEST ->
+                        }
+
+                        name == BackupEntryNames.MANIFEST -> {
                             manifest = json.decodeFromString(BackupManifest.serializer(), zip.readBytes().decodeToString())
+                        }
+
                         else -> {
                             val sessionId = BackupEntryNames.sessionIdOfAudioEntry(name)
                             if (sessionId != null) {

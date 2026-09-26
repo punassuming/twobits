@@ -92,17 +92,21 @@ fun FileManagerScreen(onNavigateBack: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         when (val state = uiState) {
-            FileManagerUiState.Loading ->
+            FileManagerUiState.Loading -> {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
                 ) { CircularProgressIndicator() }
-            is FileManagerUiState.Error ->
+            }
+
+            is FileManagerUiState.Error -> {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
                 ) { Text(state.message, color = MaterialTheme.colorScheme.error) }
-            is FileManagerUiState.Success ->
+            }
+
+            is FileManagerUiState.Success -> {
                 FileManagerContent(
                     state = state,
                     modifier = Modifier.padding(padding),
@@ -110,6 +114,7 @@ fun FileManagerScreen(onNavigateBack: () -> Unit) {
                     onDeleteFile = viewModel::deleteFile,
                     onExportBundle = viewModel::exportBundle,
                 )
+            }
         }
     }
 

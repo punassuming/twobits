@@ -159,18 +159,21 @@ private class OpenAiRealtimeSession(
                 currentSegmentText += event.delta.orEmpty()
                 _events.tryEmit(TranscriptEvent.Delta(fullTextSoFar()))
             }
+
             "conversation.item.input_audio_transcription.completed" -> {
                 val segmentText = event.transcript ?: currentSegmentText
                 completedText = listOf(completedText, segmentText).filter { it.isNotBlank() }.joinToString(" ")
                 currentSegmentText = ""
                 _events.tryEmit(TranscriptEvent.Completed(completedText))
             }
+
             "conversation.item.input_audio_transcription.failed" -> {
                 val message = event.error?.message ?: "Transcription failed for this segment"
                 Log.w(TAG, "Realtime transcription failed event: $message")
                 failed = true
                 _events.tryEmit(TranscriptEvent.Failed(message))
             }
+
             "error" -> {
                 val message = event.error?.message ?: "Realtime session error"
                 Log.w(TAG, "Realtime session error event: $message")

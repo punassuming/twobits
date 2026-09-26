@@ -139,14 +139,23 @@ class PriceDropNotifier
                     val savings = fmt.format(drop.oldPrice - drop.newPrice)
                     "$name is now ${fmt.format(drop.newPrice)} — $savings below your target"
                 }
+
                 drop.type == TYPE_BIG_DROP && drop.newPrice != null && drop.oldPrice != null && drop.oldPrice > 0.0 -> {
                     val pct = ((drop.oldPrice - drop.newPrice) / drop.oldPrice * 100.0).toInt()
                     "$name dropped $pct% — now ${fmt.format(drop.newPrice)}"
                 }
-                drop.couponCode.isNotBlank() -> "${drop.couponCode} found for $name"
-                drop.type == TYPE_PROVIDER_ERROR ->
+
+                drop.couponCode.isNotBlank() -> {
+                    "${drop.couponCode} found for $name"
+                }
+
+                drop.type == TYPE_PROVIDER_ERROR -> {
                     drop.retailer.ifBlank { "A provider failed. Check Settings → Providers." }
-                else -> name
+                }
+
+                else -> {
+                    name
+                }
             }
         }
 

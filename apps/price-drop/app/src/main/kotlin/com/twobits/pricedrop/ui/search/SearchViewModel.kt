@@ -141,7 +141,10 @@ class SearchViewModel
                         // Fire-and-forget: don't gate onAdded on a slow history fetch.
                         launch { watchlistRepo.backfillHistoryIfNeeded(result0.id, product.asin) }
                     }
-                    AddResult.LimitReached -> uiState.value = SearchUiState.Error(LIMIT_MESSAGE)
+
+                    AddResult.LimitReached -> {
+                        uiState.value = SearchUiState.Error(LIMIT_MESSAGE)
+                    }
                 }
             }
         }
@@ -169,7 +172,10 @@ class SearchViewModel
                         // Fire-and-forget: don't gate onAdded on a slow history fetch.
                         launch { watchlistRepo.backfillHistoryIfNeeded(result0.id, product.asin) }
                     }
-                    AddResult.LimitReached -> uiState.value = SearchUiState.Error(LIMIT_MESSAGE)
+
+                    AddResult.LimitReached -> {
+                        uiState.value = SearchUiState.Error(LIMIT_MESSAGE)
+                    }
                 }
             }
         }

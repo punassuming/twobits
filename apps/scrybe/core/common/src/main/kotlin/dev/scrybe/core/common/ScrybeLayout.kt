@@ -14,5 +14,4 @@ object ScrybeLayoutDefaults {
     val contentMaxWidth = 760.dp
 }
 
-fun Modifier.scrybeContentWidth(maxWidth: Dp = ScrybeLayoutDefaults.contentMaxWidth): Modifier =
-    fillMaxWidth().widthIn(max = maxWidth)
+fun Modifier.scrybeContentWidth(maxWidth: Dp = ScrybeLayoutDefaults.contentMaxWidth): Modifier = fillMaxWidth().widthIn(max = maxWidth)

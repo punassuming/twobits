@@ -7,7 +7,8 @@ object WaveformCodec {
 
     fun decode(encoded: String?): List<Float> {
         if (encoded.isNullOrBlank()) return emptyList()
-        return encoded.split(',')
+        return encoded
+            .split(',')
             .mapNotNull { token ->
                 token.toIntOrNull()?.let { value ->
                     (value / 1000f).coerceIn(0f, 1f)

@@ -523,11 +523,13 @@ private fun FeatureDetailContent(
             }
 
             when (source) {
-                ProviderMode.PRO ->
+                ProviderMode.PRO -> {
                     item {
                         AiProManagedCard(description = managedProDescription(feature))
                     }
-                ProviderMode.LOCAL ->
+                }
+
+                ProviderMode.LOCAL -> {
                     item {
                         val llmStates by viewModel.llmStates.collectAsState()
                         val selectedLlm by viewModel.selectedLlm.collectAsState()
@@ -541,7 +543,9 @@ private fun FeatureDetailContent(
                             onManageModels = onManageModels,
                         )
                     }
-                ProviderMode.OFF ->
+                }
+
+                ProviderMode.OFF -> {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -558,6 +562,8 @@ private fun FeatureDetailContent(
                             )
                         }
                     }
+                }
+
                 ProviderMode.BYOK -> {
                     item {
                         AppSectionLabel("Providers")

@@ -398,8 +398,14 @@ private fun WaveformTimeline(
                                 val idx = speakerIndex[segment.speakerId] ?: 0
                                 speakerColorForIndex(idx).copy(alpha = if (played) 0.85f else 0.40f)
                             }
-                            played -> activeColor
-                            else -> inactiveColor
+
+                            played -> {
+                                activeColor
+                            }
+
+                            else -> {
+                                inactiveColor
+                            }
                         }
                     clipRect(left = leftX, top = 0f, right = rightX, bottom = size.height) {
                         drawPath(envelopePath, spanColor)

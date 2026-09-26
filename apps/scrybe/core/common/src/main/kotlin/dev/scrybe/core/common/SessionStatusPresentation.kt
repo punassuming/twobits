@@ -38,10 +38,14 @@ object SessionStatusPresentation {
     ): ImageVector =
         when {
             isArchived -> Icons.Filled.Archive
+
             status == SessionStatus.TRANSCRIBING ||
                 status == SessionStatus.PARTIAL_TRANSCRIPTION -> Icons.Filled.HourglassEmpty
+
             status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> Icons.Filled.CheckCircle
+
             status == SessionStatus.FAILED -> Icons.Filled.Error
+
             // Covers RECORDED, IDLE, RECORDING, STOPPING, QUEUED and any future pre-transcription states
             else -> Icons.Filled.Mic
         }

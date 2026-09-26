@@ -109,6 +109,7 @@ fun DebugLogScreen(
                     uiState.isLoading -> {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
+
                     uiState.visibleEntries.isEmpty() -> {
                         Text(
                             "Nothing recorded yet. Use the app, and crashes, AI calls, and " +
@@ -118,6 +119,7 @@ fun DebugLogScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -334,9 +336,11 @@ private fun DebugLogEntry.outcomeLabel(): String =
 
 private fun DebugLogEntry.asShareText(): String =
     when (type) {
-        DebugLogEntryType.CRASH ->
+        DebugLogEntryType.CRASH -> {
             "${TIME_FORMAT.format(Date(timestampMs))} · thread $threadName\n$exceptionType: $message\n$stackTrace"
-        DebugLogEntryType.AI_CALL, DebugLogEntryType.SERVICE_CALL ->
+        }
+
+        DebugLogEntryType.AI_CALL, DebugLogEntryType.SERVICE_CALL -> {
             "${TIME_FORMAT.format(Date(timestampMs))} · ${outcomeLabel()} · $op · $endpoint" +
                 (model?.let { " · $it" } ?: "") +
                 (httpStatus?.let { " · HTTP $it" } ?: "") +
@@ -344,6 +348,7 @@ private fun DebugLogEntry.asShareText(): String =
                 "\n$requestSummary" +
                 (responseSnippet?.let { "\n$it" } ?: "") +
                 (stackTrace?.let { "\n$it" } ?: "")
+        }
     }
 
 /** [DebugLogEntry.endpoint] of the per-launch device fingerprint written by each Application. */

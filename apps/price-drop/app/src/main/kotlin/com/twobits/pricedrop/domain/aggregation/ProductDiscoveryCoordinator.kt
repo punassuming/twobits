@@ -80,6 +80,7 @@ class ProductDiscoveryCoordinator
                                             ),
                                         )
                                     }
+
                                     result.getOrNull() is ProviderResult.Success -> {
                                         val candidates = (result.getOrNull() as ProviderResult.Success<List<ProductCandidate>>).value
                                         debugLogStore?.record(
@@ -103,6 +104,7 @@ class ProductDiscoveryCoordinator
                                             ),
                                         )
                                     }
+
                                     else -> {
                                         val failure = result.getOrNull() as ProviderResult.Failure
                                         debugLogStore?.record(

@@ -103,11 +103,13 @@ fun BarcodeScanScreen(
                             Text("Point at a barcode", color = Color.White, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
+
                     is BarcodeUiState.Detected -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = Color.White)
                         }
                     }
+
                     is BarcodeUiState.Found -> {
                         Box(Modifier.align(Alignment.BottomCenter).padding(12.dp)) {
                             Card(
@@ -147,6 +149,7 @@ fun BarcodeScanScreen(
                             }
                         }
                     }
+
                     is BarcodeUiState.Error -> {
                         Box(Modifier.align(Alignment.BottomCenter).padding(12.dp)) {
                             Card {

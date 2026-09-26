@@ -280,9 +280,11 @@ class RecordingForegroundService : Service() {
                             lastRealtimeTranscript = event.textSoFar
                             recordingSessionEvents.onLiveStreamEvent(LiveStreamEvent.Delta(correlationId, event.textSoFar))
                         }
+
                         is TranscriptEvent.Completed -> {
                             lastRealtimeTranscript = event.finalText
                         }
+
                         is TranscriptEvent.Failed -> {
                             // A dropped/failed stream must never be accepted as final — marking it
                             // dropped forces closeRealtimeStreamingIfActive() to discard any cached

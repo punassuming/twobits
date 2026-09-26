@@ -50,11 +50,10 @@ class ProductResolverTest {
     private fun candidate(
         title: String,
         identity: ProductIdentity = ProductIdentity(),
-    ) =
-        ProductCandidate(
-            provider = ProviderRef("fixture", "BYOK"),
-            title = title,
-            identity = identity,
-            sourceUrl = "https://example.test/item",
-        )
+    ) = ProductCandidate(
+        provider = ProviderRef("fixture", "BYOK"),
+        title = title,
+        identity = identity,
+        sourceUrl = "https://example.test/item",
+    )
 }

@@ -58,7 +58,10 @@ class PriceDropApiClient
             upc: String? = null,
         ): PriceResponseDto =
             when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
-                ProviderMode.BYOK -> priceDirect(asin, upc, byokKey(PriceDropProvider.RAINFOREST))
+                ProviderMode.BYOK -> {
+                    priceDirect(asin, upc, byokKey(PriceDropProvider.RAINFOREST))
+                }
+
                 ProviderMode.PRO -> {
                     val body =
                         JsonObject().apply {
@@ -67,30 +70,45 @@ class PriceDropApiClient
                         }
                     workerPost("/v1/pricedrop/price", body, PriceResponseDto::class.java, op = "price")
                 }
+
                 // Rainforest has no local capability and never offers it in the UI.
-                ProviderMode.OFF, ProviderMode.LOCAL -> PriceResponseDto(found = false)
+                ProviderMode.OFF, ProviderMode.LOCAL -> {
+                    PriceResponseDto(found = false)
+                }
             }
 
         suspend fun history(asin: String): HistoryResponseDto =
             when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
-                ProviderMode.BYOK -> historyDirect(asin, byokKey(PriceDropProvider.RAINFOREST))
+                ProviderMode.BYOK -> {
+                    historyDirect(asin, byokKey(PriceDropProvider.RAINFOREST))
+                }
+
                 ProviderMode.PRO -> {
                     val body = JsonObject().apply { addProperty("asin", asin) }
                     workerPost("/v1/pricedrop/history", body, HistoryResponseDto::class.java, op = "history")
                 }
+
                 // Rainforest has no local capability and never offers it in the UI.
-                ProviderMode.OFF, ProviderMode.LOCAL -> HistoryResponseDto()
+                ProviderMode.OFF, ProviderMode.LOCAL -> {
+                    HistoryResponseDto()
+                }
             }
 
         suspend fun barcode(upc: String): BarcodeResponseDto =
             when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
-                ProviderMode.BYOK -> barcodeDirect(upc, byokKey(PriceDropProvider.RAINFOREST))
+                ProviderMode.BYOK -> {
+                    barcodeDirect(upc, byokKey(PriceDropProvider.RAINFOREST))
+                }
+
                 ProviderMode.PRO -> {
                     val body = JsonObject().apply { addProperty("upc", upc) }
                     workerPost("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java, op = "barcode")
                 }
+
                 // Rainforest has no local capability and never offers it in the UI.
-                ProviderMode.OFF, ProviderMode.LOCAL -> BarcodeResponseDto(found = false)
+                ProviderMode.OFF, ProviderMode.LOCAL -> {
+                    BarcodeResponseDto(found = false)
+                }
             }
 
         /**
@@ -560,6 +578,7 @@ class PriceDropApiClient
                     val key = providerSettings.getKey(PriceDropProvider.FIRECRAWL)
                     if (key.isBlank()) "" else readPageFirecrawl(url, key)
                 }
+
                 else -> {
                     if (!isByok(PriceDropProvider.WEB_SEARCH)) {
                         ""
@@ -851,13 +870,26 @@ class PriceDropApiClient
             body: String,
         ): String =
             when (code) {
-                401 -> "Sign-in required to use PriceDrop connectors."
-                403 -> "PriceDrop Pro subscription required."
-                429 -> "Monthly usage limit reached. Try again next month or add your own keys."
-                in 500..599 -> "The price service is temporarily unavailable. Try again shortly."
-                else ->
+                401 -> {
+                    "Sign-in required to use PriceDrop connectors."
+                }
+
+                403 -> {
+                    "PriceDrop Pro subscription required."
+                }
+
+                429 -> {
+                    "Monthly usage limit reached. Try again next month or add your own keys."
+                }
+
+                in 500..599 -> {
+                    "The price service is temporarily unavailable. Try again shortly."
+                }
+
+                else -> {
                     runCatching { gson.fromJson(body, JsonObject::class.java)?.get("error")?.asString }
                         .getOrNull() ?: "Request failed ($code)."
+                }
             }
 
         companion object {

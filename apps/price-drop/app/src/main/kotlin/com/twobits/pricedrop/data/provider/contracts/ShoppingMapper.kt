@@ -67,20 +67,23 @@ internal object ShoppingMapper {
 
     private fun JsonObject.string(vararg names: String): String? =
         names.firstNotNullOfOrNull { name ->
-            get(name)?.takeIf { it.isJsonPrimitive }?.asString?.trim()?.takeIf { it.isNotEmpty() }
+            get(name)
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
         }
 
-    private fun JsonObject.number(name: String): Double? =
-        get(name)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asDouble }.getOrNull() }
+    private fun JsonObject.number(name: String): Double? = get(name)?.takeIf { it.isJsonPrimitive }?.let { runCatching { it.asDouble }.getOrNull() }
 
     private fun Double.toMinor(): Long =
-        BigDecimal.valueOf(this)
+        BigDecimal
+            .valueOf(this)
             .movePointRight(2)
             .setScale(0, RoundingMode.HALF_UP)
             .longValueExact()
 
-    private fun normalizeMerchant(value: String): String =
-        value.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+    private fun normalizeMerchant(value: String): String = value.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 
     private fun availability(value: String?): Availability =
         when {

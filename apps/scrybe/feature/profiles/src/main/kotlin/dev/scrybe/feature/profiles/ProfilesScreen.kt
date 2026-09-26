@@ -252,20 +252,24 @@ fun ProfilesScreen(
             },
         ) { paddingValues ->
             when (val state = uiState) {
-                is ProfilesUiState.Loading ->
+                is ProfilesUiState.Loading -> {
                     Box(
                         Modifier.fillMaxSize().padding(paddingValues),
                         contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
                     }
-                is ProfilesUiState.Error ->
+                }
+
+                is ProfilesUiState.Error -> {
                     Box(
                         Modifier.fillMaxSize().padding(paddingValues),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(state.message, color = MaterialTheme.colorScheme.error)
                     }
+                }
+
                 is ProfilesUiState.Success -> {
                     LazyColumn(
                         modifier =
@@ -1575,7 +1579,7 @@ private fun ModelPickerRow(
     when (draft.providerType) {
         // The per-profile model override only applies to BYOK; in Pro the Worker
         // dictates the model, so hide it unless the user has their own key.
-        ProviderType.OPENAI ->
+        ProviderType.OPENAI -> {
             if (LocalOpenAiKeyPresent.current) {
                 val currentModel = OpenAiTransformModel.entries.firstOrNull { it.apiName == draft.modelName }
                 Surface(
@@ -1609,6 +1613,8 @@ private fun ModelPickerRow(
                     )
                 }
             }
+        }
+
         ProviderType.LOCAL -> {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -1946,12 +1952,14 @@ private fun DraftStepRow(
                         )
                     }
                 }
+
                 DraftStepState.ACTIVE -> {
                     CircularProgressIndicator(
                         modifier = Modifier.size(28.dp),
                         strokeWidth = 2.5.dp,
                     )
                 }
+
                 DraftStepState.DONE -> {
                     Box(
                         modifier =

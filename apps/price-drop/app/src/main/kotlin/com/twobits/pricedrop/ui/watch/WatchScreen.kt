@@ -350,7 +350,10 @@ private fun LastCheckedRow(
     val now = System.currentTimeMillis()
     val lastCheckedLabel =
         when {
-            product.lastCheckedAt == 0L -> "Not checked yet — tap to check now"
+            product.lastCheckedAt == 0L -> {
+                "Not checked yet — tap to check now"
+            }
+
             else -> {
                 val diffMs = now - product.lastCheckedAt
                 val relative =

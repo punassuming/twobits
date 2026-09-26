@@ -284,10 +284,12 @@ fun AIConfigScreen(
                             },
                         )
                         when (transcriptionMode) {
-                            ExecutionMode.PRO ->
+                            ExecutionMode.PRO -> {
                                 AiProManagedCard(
                                     description = "Transcription via managed OpenAI Whisper. Pro subscription active — no personal key needed.",
                                 )
+                            }
+
                             ExecutionMode.BYOK, ExecutionMode.OFF -> {
                                 if (uiState.apiKey.isBlank()) {
                                     AiNoKeyWarning()
@@ -307,7 +309,8 @@ fun AIConfigScreen(
                                     )
                                 }
                             }
-                            ExecutionMode.LOCAL ->
+
+                            ExecutionMode.LOCAL -> {
                                 LocalModelPicker(
                                     models = LocalWhisperModel.entries.toList(),
                                     status = { (whisperStates[it] ?: LocalModelState.Absent).toStatus() },
@@ -317,6 +320,7 @@ fun AIConfigScreen(
                                     sizeLabel = { it.sizeLabel },
                                     onManageModels = { selectedTab = 1 },
                                 )
+                            }
                         }
                         if (transcriptionMode != ExecutionMode.LOCAL) {
                             OutlinedTextField(
@@ -345,10 +349,12 @@ fun AIConfigScreen(
                             },
                         )
                         when (featuresMode) {
-                            ExecutionMode.PRO ->
+                            ExecutionMode.PRO -> {
                                 AiProManagedCard(
                                     description = "AI transforms managed by Pro subscription. No personal key needed.",
                                 )
+                            }
+
                             ExecutionMode.BYOK, ExecutionMode.OFF -> {
                                 if (uiState.apiKey.isBlank()) AiNoKeyWarning()
                                 SettingOptionRow(
@@ -357,7 +363,8 @@ fun AIConfigScreen(
                                     onClick = { showTransformModelPicker = true },
                                 )
                             }
-                            ExecutionMode.LOCAL ->
+
+                            ExecutionMode.LOCAL -> {
                                 LocalModelPicker(
                                     models = LocalLlmModel.entries.toList(),
                                     status = { (llmStates[it] ?: LocalModelState.Absent).toStatus() },
@@ -367,6 +374,7 @@ fun AIConfigScreen(
                                     sizeLabel = { it.sizeLabel },
                                     onManageModels = { selectedTab = 1 },
                                 )
+                            }
                         }
                     }
 
