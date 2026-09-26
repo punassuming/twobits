@@ -17,12 +17,17 @@ on:
         description: 'Space-separated Gradle tasks to run'
         type: string
         required: false
-        default: 'assembleRelease testDebugUnitTest lintRelease ktlintCheck detekt'
+        default: 'assembleRelease testDebugUnitTest sharedUnitTest lintRelease ktlintCheck detekt'
       use_retry_script:
         description: 'Invoke scripts/ci-gradle-retry.sh instead of ./gradlew (for Scrybe)'
         type: boolean
         required: false
         default: false
+      extra_test_report_globs:
+        description: 'Additional newline-separated test-report path globs beyond app/core/feature/shared (e.g. Scrybe''s service/*)'
+        type: string
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -81,6 +86,8 @@ jobs:
             ${{ inputs.app_root }}/app/build/reports/tests/
             ${{ inputs.app_root }}/core/*/build/reports/tests/
             ${{ inputs.app_root }}/feature/*/build/reports/tests/
+            shared/*/build/reports/tests/
+            ${{ inputs.extra_test_report_globs }}
           if-no-files-found: ignore
           retention-days: 14
 

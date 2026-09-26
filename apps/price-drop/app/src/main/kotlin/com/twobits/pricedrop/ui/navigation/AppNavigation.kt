@@ -15,12 +15,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -83,6 +85,14 @@ fun AppNavigation(
     val priceCheckProgressState by priceCheckProgressViewModel.state.collectAsState()
     val crashWarningViewModel: CrashWarningViewModel = hiltViewModel()
     val staleStartWarning by crashWarningViewModel.staleStartWarning.collectAsState()
+    DisposableEffect(navController) {
+        val listener =
+            NavController.OnDestinationChangedListener { _, destination, _ ->
+                crashWarningViewModel.recordBreadcrumb("nav:${destination.route}")
+            }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
 
     val startDestination =
         uiTestStartDestination

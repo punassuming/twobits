@@ -15,6 +15,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.twobits.debuglog.BreadcrumbStore
 import com.twobits.debuglog.DebugLogStore
 import dagger.hilt.android.AndroidEntryPoint
 import dev.scrybe.core.audio.AudioRecorder
@@ -78,6 +79,8 @@ class RecordingForegroundService : Service() {
 
     @Inject lateinit var debugLogStore: DebugLogStore
 
+    @Inject lateinit var breadcrumbStore: BreadcrumbStore
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val streamingScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -126,6 +129,7 @@ class RecordingForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        breadcrumbStore.record("svc:RecordingForegroundService.onCreate")
         notificationFactory.createChannel(this)
     }
 
@@ -134,6 +138,7 @@ class RecordingForegroundService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        breadcrumbStore.record("svc:RecordingForegroundService.onStartCommand:${intent?.action}")
         pendingMode =
             intent?.getStringExtra(RecordingServiceActions.EXTRA_RECORDING_MODE)
                 ?: RecordingMode.JOURNAL.name
@@ -435,6 +440,7 @@ class RecordingForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        breadcrumbStore.record("svc:RecordingForegroundService.onDestroy")
         serviceScope.cancel()
         streamingScope.cancel()
         realtimeAudioSource.stop()

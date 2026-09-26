@@ -160,6 +160,7 @@ class CameraViewModel
                         estimatedValue = result.estimatedValue,
                         confidencePercent = result.confidencePercent,
                         isDraft = true,
+                        executionMode = result.executionMode,
                     ).let { it.copy(title = result.title.ifBlank { it.displayTitle }) }
                 val itemId = repository.save(draft)
                 _uiState.update {

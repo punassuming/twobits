@@ -183,6 +183,7 @@ class DebugLogStore
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val breadcrumbStore: BreadcrumbStore,
     ) {
         /**
          * Built here rather than injected. The only `Json` binding in the repo lives in shared
@@ -284,6 +285,7 @@ class DebugLogStore
                             else -> null
                         }
                     if (reasonName != null) {
+                        val trail = breadcrumbStore.formatTrail(breadcrumbStore.readPersisted())
                         write(
                             DebugLogEntry(
                                 timestampMs = exit.timestamp,
@@ -292,7 +294,8 @@ class DebugLogStore
                                 exceptionType = PROCESS_EXIT_TYPE,
                                 message =
                                     "Previous run ended: $reasonName — ${exit.description ?: "no description"} " +
-                                        "(importance ${exit.importance}, pss ${exit.pss / KB_PER_MB} MB)",
+                                        "(importance ${exit.importance}, pss ${exit.pss / KB_PER_MB} MB)" +
+                                        (trail.takeIf { it.isNotBlank() }?.let { " · recent: $it" } ?: ""),
                                 stackTrace = readExitTrace(exit),
                             ),
                         )
@@ -494,12 +497,18 @@ class DebugLogStore
             throwable: Throwable,
         ): DebugLogEntry {
             val stackTrace = StringWriter().also { throwable.printStackTrace(PrintWriter(it)) }.toString()
+            val trail = breadcrumbStore.formatTrail(breadcrumbStore.readPersisted())
+            val message =
+                listOfNotNull(
+                    throwable.message,
+                    trail.takeIf { it.isNotBlank() }?.let { "recent: $it" },
+                ).joinToString(" · ").ifBlank { null }
             return DebugLogEntry(
                 timestampMs = System.currentTimeMillis(),
                 type = DebugLogEntryType.CRASH,
                 threadName = thread.name,
                 exceptionType = throwable.javaClass.name,
-                message = throwable.message,
+                message = message,
                 stackTrace = stackTrace,
             )
         }

@@ -24,7 +24,7 @@ import dev.scrybe.core.database.SCRYBE_DATABASE_VERSION
  * Runs a backup, restore or export in the background.
  *
  * A worker rather than `viewModelScope.launch` for the same reason model downloads are: a recording
- * history is gigabytes and the copy outlives the screen. Follows `ModelDownloadWorker` exactly —
+ * history is gigabytes and the copy outlives the screen. Follows `SharedModelDownloadWorker` exactly —
  * plain [CoroutineWorker] with a Hilt [EntryPoint] rather than `@HiltWorker`, so no custom
  * `WorkerFactory` is needed.
  *

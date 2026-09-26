@@ -9,4 +9,6 @@ data class ChatMessageEntity(
     val role: String,
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
+    /** The [com.twobits.core.pro.ExecutionMode] name that produced an assistant reply, or null for a user message or one predating this column. */
+    val executionMode: String? = null,
 )

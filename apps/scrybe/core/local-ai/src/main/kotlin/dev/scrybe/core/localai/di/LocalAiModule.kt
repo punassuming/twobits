@@ -1,5 +1,6 @@
 package dev.scrybe.core.localai.di
 
+import com.twobits.localai.LlmDownloadSource
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -7,6 +8,7 @@ import dagger.hilt.components.SingletonComponent
 import dagger.multibindings.IntoMap
 import dev.scrybe.core.localai.DiarizationServiceFacade
 import dev.scrybe.core.localai.InsightServiceFacade
+import dev.scrybe.core.localai.LocalModelManager
 import dev.scrybe.core.localai.LocalTransformationProvider
 import dev.scrybe.core.localai.WhisperTranscriptionProvider
 import dev.scrybe.core.model.ProviderType
@@ -35,4 +37,7 @@ abstract class LocalAiModule {
 
     @Binds
     abstract fun bindsInsightService(impl: InsightServiceFacade): InsightService
+
+    @Binds
+    abstract fun bindsLlmDownloadSource(impl: LocalModelManager): LlmDownloadSource
 }

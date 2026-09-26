@@ -87,6 +87,7 @@ import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.ui.inventory.conditionColor
 import com.shelfsnap.app.ui.theme.LocalEstimateLabel
+import com.twobits.design.components.InferenceSourceBadge
 import java.io.File
 
 @Composable
@@ -424,6 +425,10 @@ private fun DetailsTab(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+
+        if (item.executionMode == "LOCAL") {
+            InferenceSourceBadge()
         }
 
         // Core fields

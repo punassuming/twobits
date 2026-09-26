@@ -2,6 +2,7 @@ package com.shelfsnap.app
 
 import android.app.Application
 import com.twobits.common.ProcessInfo
+import com.twobits.debuglog.BreadcrumbStore
 import com.twobits.debuglog.DebugLogEntry
 import com.twobits.debuglog.DebugLogEntryType
 import com.twobits.debuglog.DebugLogStore
@@ -18,6 +19,8 @@ import javax.inject.Inject
 class ShelfSnapApplication : Application() {
     @Inject lateinit var debugLogStore: DebugLogStore
 
+    @Inject lateinit var breadcrumbStore: BreadcrumbStore
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
@@ -29,6 +32,7 @@ class ShelfSnapApplication : Application() {
         // belongs anywhere but here.
         if (!ProcessInfo.isMainProcess(this)) return
         debugLogStore.install()
+        breadcrumbStore.record("app:onCreate")
         // A device fingerprint once per launch — on-device inference crashes are heavily
         // device/chipset dependent, so a crash entry with no idea which device it happened on is
         // far harder to reproduce or triage than one timestamped next to this. Written off the

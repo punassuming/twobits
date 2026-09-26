@@ -123,8 +123,9 @@ class ItemRepository
                 }
             val model = (modelOverride ?: getVisionModel()).apiName
             val sourceKey = dataStore.data.firstOrNull()?.get(KEY_VISION_SOURCE) ?: "byok"
+            val executionMode = executionModeFromSourceKey(sourceKey)
             val result =
-                when (executionModeFromSourceKey(sourceKey)) {
+                when (executionMode) {
                     ExecutionMode.PRO -> {
                         val appUserId = subscriptionRepository.getAppUserId()
                         visionService.analyse(
@@ -136,17 +137,17 @@ class ItemRepository
                         )
                     }
                     ExecutionMode.LOCAL -> {
-                        val primaryPath = photoPaths.getOrNull(primaryPhotoIndex) ?: photoPaths.firstOrNull()
                         val modelFile = localVisionModelFile()
                         when {
-                            primaryPath == null -> DraftItemResult(error = "No photo to analyse.")
+                            effectivePaths.isEmpty() -> DraftItemResult(error = "No photo to analyse.")
                             modelFile == null ->
                                 DraftItemResult(
                                     error =
                                         "No vision-capable local model downloaded. Go to Settings → AI → Vision " +
                                             "and download Gemma 4 E2B or E4B — other local models can't analyse photos.",
                                 )
-                            else -> localVisionService.analyse(primaryPath, modelFile)
+                            effectivePaths.size == 1 -> localVisionService.analyse(effectivePaths.first(), modelFile)
+                            else -> localVisionService.analyseMultiple(effectivePaths, modelFile)
                         }
                     }
                     ExecutionMode.BYOK, ExecutionMode.OFF -> visionService.analyse(effectivePaths, getApiKey(), model)
@@ -155,6 +156,7 @@ class ItemRepository
             return result.copy(
                 condition = if (getAiConditionDetection()) result.condition else Condition.GOOD,
                 estimatedValue = if (getAutoPriceEstimate()) result.estimatedValue else 0.0,
+                executionMode = executionMode.name,
             )
         }
 

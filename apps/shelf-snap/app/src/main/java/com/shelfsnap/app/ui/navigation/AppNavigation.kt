@@ -15,11 +15,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -71,6 +73,14 @@ fun AppNavigation(
     val marketResearchProgressState by marketResearchProgressViewModel.uiState.collectAsState()
     val crashWarningViewModel: CrashWarningViewModel = hiltViewModel()
     val staleStartWarning by crashWarningViewModel.staleStartWarning.collectAsState()
+    DisposableEffect(navController) {
+        val listener =
+            NavController.OnDestinationChangedListener { _, destination, _ ->
+                crashWarningViewModel.recordBreadcrumb("nav:${destination.route}")
+            }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
     val slideEnter = slideInHorizontally { it } + fadeIn()
     val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
     val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()

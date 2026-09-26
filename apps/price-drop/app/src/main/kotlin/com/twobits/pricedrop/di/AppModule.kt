@@ -43,7 +43,7 @@ object AppModule {
         Room
             .databaseBuilder(ctx, PriceDropDatabase::class.java, "pricedrop.db")
             .apply { if (BuildConfig.DEBUG) enableMultiInstanceInvalidation() }
-            .addMigrations(MIGRATION_4_5)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigration()
             .build()
 
@@ -128,6 +128,13 @@ object AppModule {
                     FROM price_events
                     """.trimIndent(),
                 )
+            }
+        }
+
+    private val MIGRATION_5_6 =
+        object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE chat_messages ADD COLUMN executionMode TEXT")
             }
         }
 }

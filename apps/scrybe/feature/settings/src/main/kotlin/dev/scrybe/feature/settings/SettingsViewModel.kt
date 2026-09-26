@@ -15,6 +15,7 @@ import com.twobits.common.ReleaseNotes
 import com.twobits.common.ReleaseNotesParser
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.localai.work.SharedModelDownloadWorker
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,7 +29,6 @@ import dev.scrybe.core.database.TransformRunDao
 import dev.scrybe.core.datastore.AppPreferencesDataStore
 import dev.scrybe.core.localai.DetectedImportTarget
 import dev.scrybe.core.localai.LocalModelManager
-import dev.scrybe.core.localai.ModelDownloadWorker
 import dev.scrybe.core.localai.ModelFileDetector
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.LocalWhisperModel
@@ -621,7 +621,7 @@ class SettingsViewModel
         }
 
         fun downloadLlmModel(model: LocalLlmModel) {
-            ModelDownloadWorker.enqueue(context, model)
+            SharedModelDownloadWorker.enqueue(context, model, notificationIcon = context.applicationInfo.icon)
         }
 
         fun deleteWhisperModel(model: LocalWhisperModel) {
