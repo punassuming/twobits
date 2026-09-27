@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* Fixed the release build, which broke silently after the Android Gradle Plugin 9 upgrade — it built split APKs and the App Bundle in one pass, and AGP 9 now refuses to shrink resources for both at once.
+
 ## 1.53.11 (2026-09-27)
 
 ### Features
