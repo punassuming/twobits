@@ -491,13 +491,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # See the comment on the same step in the main release job: split into two
-          # invocations so a per-app ABI-splits config can disable itself for the bundle build.
+          # See the comment on the same step in the main release job for why this needs two
+          # invocations. This job checks out a historical tag, though — an orphaned tag from
+          # before the splits.abi.isEnable task-name conditional existed still has the old,
+          # unconditional `isEnable = true`, which the current branch's fix can't reach since
+          # it lives in the checked-out source, not this workflow. Patch that source directly
+          # (a no-op on a tag that already carries the fix, since the literal text won't match)
+          # so the recovery path works for old orphaned tags too.
+          build_file="app/build.gradle.kts"
+          if grep -q '^ *isEnable = true$' "$build_file" 2>/dev/null; then
+            sed -i.bak 's/^\( *\)isEnable = true$/\1isEnable = false/' "$build_file"
+          fi
           if [ "${{ inputs.use_retry_script }}" = "true" ]; then
             bash ../../scripts/ci-gradle-retry.sh bundleRelease
-            bash ../../scripts/ci-gradle-retry.sh assembleRelease
           else
             ./gradlew bundleRelease --no-daemon
+          fi
+          if [ -f "$build_file.bak" ]; then
+            mv "$build_file.bak" "$build_file"
+          fi
+          if [ "${{ inputs.use_retry_script }}" = "true" ]; then
+            bash ../../scripts/ci-gradle-retry.sh assembleRelease
+          else
             ./gradlew assembleRelease --no-daemon
           fi
 
