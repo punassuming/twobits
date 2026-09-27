@@ -9,13 +9,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
  * every component in it pay for this one's needs.
  */
 plugins {
-    id("com.android.library") version "8.7.3"
-    id("org.jetbrains.kotlin.android") version "2.3.0"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.3.0"
-    id("com.google.dagger.hilt.android") version "2.58"
-    id("com.google.devtools.ksp") version "2.3.0"
-    id("io.gitlab.arturbosch.detekt") version "1.23.7"
-    id("org.jlleitschuh.gradle.ktlint") version "12.1.1"
+    id("com.android.library") version "9.4.1"
+    id("org.jetbrains.kotlin.android") version "2.4.20"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.4.20"
+    id("com.google.dagger.hilt.android") version "2.60.1"
+    id("com.google.devtools.ksp") version "2.3.12"
+    id("io.gitlab.arturbosch.detekt") version "1.23.8"
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
 }
 
 group = "com.twobits.core"

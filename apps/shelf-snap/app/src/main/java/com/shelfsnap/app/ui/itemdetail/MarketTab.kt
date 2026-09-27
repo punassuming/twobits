@@ -458,14 +458,23 @@ private fun QueryRow(query: MarketQuery) {
             Text(
                 text =
                     when {
-                        failed -> "Failed"
+                        failed -> {
+                            "Failed"
+                        }
+
                         // Raw results came back but none resolved to a real marketplace
                         // posting — a classification/scoping gap, not "nothing found".
-                        query.resultCount > 0 && query.legitResultCount == 0 ->
+                        query.resultCount > 0 && query.legitResultCount == 0 -> {
                             "${query.resultCount} found, none recognized"
-                        query.legitResultCount != query.resultCount ->
+                        }
+
+                        query.legitResultCount != query.resultCount -> {
                             "${query.legitResultCount}/${query.resultCount} recognized"
-                        else -> "${query.resultCount} results"
+                        }
+
+                        else -> {
+                            "${query.resultCount} results"
+                        }
                     },
                 style = MaterialTheme.typography.labelSmall,
                 color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -770,28 +779,34 @@ private fun SearchStatusBanner(research: MarketResearch) {
             .joinToString(", ")
     val (icon, text, container, content) =
         when {
-            research.searchResultCount > 0 && research.comps.isNotEmpty() ->
+            research.searchResultCount > 0 && research.comps.isNotEmpty() -> {
                 SearchStatusStyle(
                     icon = Icons.Default.Search,
                     text = stringResource(R.string.search_results_verified, research.searchResultCount, providerLabel),
                     container = MaterialTheme.colorScheme.primaryContainer,
                     content = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
-            research.searchResultCount > 0 ->
+            }
+
+            research.searchResultCount > 0 -> {
                 SearchStatusStyle(
                     icon = Icons.Default.Warning,
                     text = stringResource(R.string.search_results_no_comps, research.searchResultCount, providerLabel),
                     container = MaterialTheme.colorScheme.tertiaryContainer,
                     content = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
-            research.searchError != null ->
+            }
+
+            research.searchError != null -> {
                 SearchStatusStyle(
                     icon = Icons.Default.Info,
                     text = stringResource(R.string.search_failed_ai_only, research.searchError),
                     container = MaterialTheme.colorScheme.errorContainer,
                     content = MaterialTheme.colorScheme.onErrorContainer,
                 )
-            attemptedProviderNames.isEmpty() && SearchProvider.fromKey(research.searchProviderKey) == SearchProvider.NONE ->
+            }
+
+            attemptedProviderNames.isEmpty() && SearchProvider.fromKey(research.searchProviderKey) == SearchProvider.NONE -> {
                 SearchStatusStyle(
                     icon = Icons.Default.Info,
                     text =
@@ -800,13 +815,16 @@ private fun SearchStatusBanner(research: MarketResearch) {
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
-            else ->
+            }
+
+            else -> {
                 SearchStatusStyle(
                     icon = Icons.Default.Info,
                     text = stringResource(R.string.search_no_results_ai_only, providerLabel),
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     content = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
+            }
         }
     Surface(shape = RoundedCornerShape(12.dp), color = container) {
         Row(

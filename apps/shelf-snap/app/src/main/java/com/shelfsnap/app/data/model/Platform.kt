@@ -80,7 +80,7 @@ fun Platform.formatListingText(item: Item): String {
             .lowercase()
             .replaceFirstChar { it.uppercase() }
     return when (this) {
-        Platform.EBAY ->
+        Platform.EBAY -> {
             buildString {
                 appendLine(fullTitle.take(80))
                 appendLine()
@@ -97,7 +97,9 @@ fun Platform.formatListingText(item: Item): String {
                 if (item.tags.isNotEmpty()) appendLine(item.tags.joinToString(", "))
                 append("Price: \$${" %.2f".format(price).trim()}")
             }
-        Platform.MERCARI ->
+        }
+
+        Platform.MERCARI -> {
             buildString {
                 appendLine(fullTitle)
                 if (item.description.isNotBlank()) appendLine(item.description)
@@ -106,7 +108,9 @@ fun Platform.formatListingText(item: Item): String {
                 if (item.tags.isNotEmpty()) appendLine(item.tags.joinToString(" ") { "#$it" })
                 append("\$${" %.2f".format(price).trim()}")
             }
-        Platform.FB_MARKETPLACE ->
+        }
+
+        Platform.FB_MARKETPLACE -> {
             buildString {
                 appendLine("\$${" %.2f".format(price).trim()} — $fullTitle")
                 appendLine("Condition: ${item.condition.toFacebookCondition()}")
@@ -116,7 +120,9 @@ fun Platform.formatListingText(item: Item): String {
                 if (item.tags.isNotEmpty()) appendLine("Tags: ${item.tags.take(3).joinToString(", ")}")
                 append("Comment or message to claim!")
             }
-        Platform.OFFERUP ->
+        }
+
+        Platform.OFFERUP -> {
             buildString {
                 appendLine(fullTitle.take(50))
                 appendLine()
@@ -130,7 +136,9 @@ fun Platform.formatListingText(item: Item): String {
                 if (item.tags.isNotEmpty()) appendLine(item.tags.joinToString(" ") { "#$it" })
                 append("Asking \$${" %.2f".format(price).trim()} — local pickup preferred")
             }
-        Platform.CRAIGSLIST ->
+        }
+
+        Platform.CRAIGSLIST -> {
             buildString {
                 appendLine(fullTitle)
                 appendLine()
@@ -143,6 +151,7 @@ fun Platform.formatListingText(item: Item): String {
                 appendLine("Asking \$${" %.2f".format(price).trim()} — cash or Venmo.")
                 append("Email for info / to arrange pickup.")
             }
+        }
     }
 }
 

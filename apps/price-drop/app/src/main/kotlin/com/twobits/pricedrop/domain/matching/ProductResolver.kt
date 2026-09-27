@@ -112,8 +112,7 @@ class ProductResolver
 
         private fun color(value: String): String? = COLORS.firstOrNull { Regex("\\b$it\\b", RegexOption.IGNORE_CASE).containsMatchIn(value) }
 
-        private fun tokens(value: String): Set<String> =
-            normalize(value).split(' ').filter { it.length > 1 && it !in STOP_WORDS }.toSet()
+        private fun tokens(value: String): Set<String> = normalize(value).split(' ').filter { it.length > 1 && it !in STOP_WORDS }.toSet()
 
         private fun normalize(value: String): String = value.lowercase().replace(Regex("[^a-z0-9]+"), " ").trim()
 

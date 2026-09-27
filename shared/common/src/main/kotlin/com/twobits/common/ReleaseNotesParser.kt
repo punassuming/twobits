@@ -146,6 +146,7 @@ object ReleaseNotesParser {
                         currentIntroDesc = null
                     }
                 }
+
                 (line.startsWith("* ") || line.startsWith("- ")) -> {
                     if (currentTitle != null) {
                         currentBullets += normalizeBullet(line)
@@ -154,6 +155,7 @@ object ReleaseNotesParser {
                         items += ReleaseNoteItem(title = text, description = text)
                     }
                 }
+
                 line.isBlank() &&
                     currentTitle != null &&
                     (currentIntroDesc != null || currentBullets.isNotEmpty()) -> {

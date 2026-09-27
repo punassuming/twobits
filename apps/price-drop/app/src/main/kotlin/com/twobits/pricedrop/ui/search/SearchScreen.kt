@@ -102,11 +102,13 @@ fun SearchScreen(
                         )
                     }
                 }
+
                 is SearchUiState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
+
                 is SearchUiState.Results -> {
                     LazyColumn(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
@@ -146,6 +148,7 @@ fun SearchScreen(
                         }
                     }
                 }
+
                 is SearchUiState.UrlConfirm -> {
                     var showConfirm by remember { mutableStateOf(true) }
                     if (showConfirm) {
@@ -161,6 +164,7 @@ fun SearchScreen(
                         )
                     }
                 }
+
                 is SearchUiState.Error -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(state.message, color = MaterialTheme.colorScheme.error)

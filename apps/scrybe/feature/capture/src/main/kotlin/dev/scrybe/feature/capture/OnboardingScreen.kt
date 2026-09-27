@@ -91,19 +91,28 @@ fun OnboardingScreen(
             StepDots(currentStep = step, totalSteps = 4)
             Spacer(Modifier.height(28.dp))
             when (step) {
-                0 -> OnboardingWelcomeStep(onNext = { step = 1 })
-                1 ->
+                0 -> {
+                    OnboardingWelcomeStep(onNext = { step = 1 })
+                }
+
+                1 -> {
                     OnboardingPickModeStep(
                         selected = selectedMode,
                         onSelect = { selectedMode = it },
                         onNext = { step = 2 },
                     )
-                2 ->
+                }
+
+                2 -> {
                     OnboardingSetupStep(
                         onSaveApiKey = onSaveApiKey,
                         onNext = { step = 3 },
                     )
-                else -> OnboardingPipelinesStep(onComplete = onComplete)
+                }
+
+                else -> {
+                    OnboardingPipelinesStep(onComplete = onComplete)
+                }
             }
         }
     }

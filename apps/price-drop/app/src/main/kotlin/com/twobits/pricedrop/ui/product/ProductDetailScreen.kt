@@ -601,7 +601,10 @@ private fun CouponCard(coupon: Coupon) {
                     }
                 } else {
                     Text(
-                        coupon.applicability.replace('_', ' ').lowercase().replaceFirstChar { it.uppercase() },
+                        coupon.applicability
+                            .replace('_', ' ')
+                            .lowercase()
+                            .replaceFirstChar { it.uppercase() },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

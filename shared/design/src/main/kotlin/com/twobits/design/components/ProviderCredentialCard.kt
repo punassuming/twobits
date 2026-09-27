@@ -88,10 +88,17 @@ enum class CredentialRequirement(
 private fun RequirementTag(requirement: CredentialRequirement) {
     val (container, content) =
         when (requirement) {
-            CredentialRequirement.REQUIRED -> MaterialTheme.colorScheme.error.copy(alpha = 0.14f) to MaterialTheme.colorScheme.error
-            CredentialRequirement.RECOMMENDED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) to MaterialTheme.colorScheme.primary
-            CredentialRequirement.OPTIONAL ->
+            CredentialRequirement.REQUIRED -> {
+                MaterialTheme.colorScheme.error.copy(alpha = 0.14f) to MaterialTheme.colorScheme.error
+            }
+
+            CredentialRequirement.RECOMMENDED -> {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) to MaterialTheme.colorScheme.primary
+            }
+
+            CredentialRequirement.OPTIONAL -> {
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f) to MaterialTheme.colorScheme.onSurfaceVariant
+            }
         }
     Surface(shape = RoundedCornerShape(6.dp), color = container) {
         Text(

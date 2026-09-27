@@ -52,16 +52,21 @@ class SharedCredentialProvider : ContentProvider() {
                 val value = runBlocking { bridge().get(id) }
                 Bundle().apply { putString(EXTRA_VALUE, value) }
             }
+
             METHOD_SET -> {
                 val value = extras.getString(EXTRA_VALUE) ?: return null
                 runBlocking { bridge().set(id, value) }
                 Bundle()
             }
+
             METHOD_CLEAR -> {
                 runBlocking { bridge().clear(id) }
                 Bundle()
             }
-            else -> null
+
+            else -> {
+                null
+            }
         }
     }
 

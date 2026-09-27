@@ -78,12 +78,21 @@ class ProviderKeyValidator
                     .build()
             okHttpClient.newCall(request).execute().use { response ->
                 return when {
-                    response.isSuccessful -> "Connected to Jina AI"
-                    response.code == 401 || response.code == 422 ->
+                    response.isSuccessful -> {
+                        "Connected to Jina AI"
+                    }
+
+                    response.code == 401 || response.code == 422 -> {
                         throw IllegalStateException("Jina AI rejected this key")
-                    response.code == 402 ->
+                    }
+
+                    response.code == 402 -> {
                         throw IllegalStateException("Jina AI account has no remaining credits")
-                    else -> throw IllegalStateException("Jina AI returned HTTP ${response.code}")
+                    }
+
+                    else -> {
+                        throw IllegalStateException("Jina AI returned HTTP ${response.code}")
+                    }
                 }
             }
         }
@@ -108,10 +117,17 @@ class ProviderKeyValidator
                     .build()
             okHttpClient.newCall(request).execute().use { response ->
                 return when {
-                    response.isSuccessful -> "Connected to SearchAPI.io"
-                    response.code == 401 || response.code == 403 ->
+                    response.isSuccessful -> {
+                        "Connected to SearchAPI.io"
+                    }
+
+                    response.code == 401 || response.code == 403 -> {
                         throw IllegalStateException("SearchAPI.io rejected this key")
-                    else -> throw IllegalStateException("SearchAPI.io returned HTTP ${response.code}")
+                    }
+
+                    else -> {
+                        throw IllegalStateException("SearchAPI.io returned HTTP ${response.code}")
+                    }
                 }
             }
         }
@@ -135,10 +151,17 @@ class ProviderKeyValidator
                     .build()
             okHttpClient.newCall(request).execute().use { response ->
                 return when {
-                    response.isSuccessful -> "Connected to Serper.dev"
-                    response.code == 401 || response.code == 403 ->
+                    response.isSuccessful -> {
+                        "Connected to Serper.dev"
+                    }
+
+                    response.code == 401 || response.code == 403 -> {
                         throw IllegalStateException("Serper.dev rejected this key")
-                    else -> throw IllegalStateException("Serper.dev returned HTTP ${response.code}")
+                    }
+
+                    else -> {
+                        throw IllegalStateException("Serper.dev returned HTTP ${response.code}")
+                    }
                 }
             }
         }
@@ -162,10 +185,17 @@ class ProviderKeyValidator
                     .build()
             okHttpClient.newCall(request).execute().use { response ->
                 return when {
-                    response.isSuccessful -> "Connected to Firecrawl"
-                    response.code == 401 || response.code == 403 ->
+                    response.isSuccessful -> {
+                        "Connected to Firecrawl"
+                    }
+
+                    response.code == 401 || response.code == 403 -> {
                         throw IllegalStateException("Firecrawl rejected this key")
-                    else -> throw IllegalStateException("Firecrawl returned HTTP ${response.code}")
+                    }
+
+                    else -> {
+                        throw IllegalStateException("Firecrawl returned HTTP ${response.code}")
+                    }
                 }
             }
         }
@@ -185,10 +215,17 @@ class ProviderKeyValidator
                     .build()
             okHttpClient.newCall(request).execute().use { response ->
                 return when {
-                    response.isSuccessful -> "Connected to Rainforest API"
-                    response.code == 401 || response.code == 403 ->
+                    response.isSuccessful -> {
+                        "Connected to Rainforest API"
+                    }
+
+                    response.code == 401 || response.code == 403 -> {
                         throw IllegalStateException("Rainforest API rejected this key")
-                    else -> throw IllegalStateException("Rainforest API returned HTTP ${response.code}")
+                    }
+
+                    else -> {
+                        throw IllegalStateException("Rainforest API returned HTTP ${response.code}")
+                    }
                 }
             }
         }

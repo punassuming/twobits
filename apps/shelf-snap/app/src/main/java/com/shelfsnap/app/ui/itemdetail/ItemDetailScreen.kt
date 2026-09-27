@@ -221,15 +221,16 @@ private fun ItemDetailScaffold(
         },
     ) { padding ->
         when {
-            uiState.isLoading ->
+            uiState.isLoading -> {
                 Box(
                     Modifier
                         .padding(padding)
                         .fillMaxSize(),
                     Alignment.Center,
                 ) { CircularProgressIndicator() }
+            }
 
-            uiState.item != null ->
+            uiState.item != null -> {
                 Column(Modifier.padding(padding).fillMaxSize()) {
                     DetailTabBar(
                         selected = uiState.tab,
@@ -238,15 +239,22 @@ private fun ItemDetailScaffold(
 
                     Box(Modifier.weight(1f)) {
                         when (uiState.tab) {
-                            DetailTab.DETAILS ->
+                            DetailTab.DETAILS -> {
                                 DetailsTab(
                                     uiState = uiState,
                                     viewModel = viewModel,
                                     onPhotoClick = viewModel::openPhotoViewer,
                                     onAddPhoto = onAddPhoto,
                                 )
-                            DetailTab.MARKET -> MarketTab(uiState = uiState, viewModel = viewModel)
-                            DetailTab.LIST -> ListTab(uiState = uiState, viewModel = viewModel, onNavigateToSummary = onNavigateToListingSummary)
+                            }
+
+                            DetailTab.MARKET -> {
+                                MarketTab(uiState = uiState, viewModel = viewModel)
+                            }
+
+                            DetailTab.LIST -> {
+                                ListTab(uiState = uiState, viewModel = viewModel, onNavigateToSummary = onNavigateToListingSummary)
+                            }
                         }
                     }
 
@@ -279,6 +287,7 @@ private fun ItemDetailScaffold(
                         }
                     }
                 }
+            }
         }
     }
 }

@@ -203,37 +203,42 @@ fun InventoryScreen(
             }
 
             when {
-                uiState.isLoading ->
+                uiState.isLoading -> {
                     Box(Modifier.fillMaxSize(), Alignment.Center) {
                         androidx.compose.material3.CircularProgressIndicator()
                     }
+                }
 
-                uiState.items.isEmpty() ->
+                uiState.items.isEmpty() -> {
                     when {
-                        uiState.searchQuery.isNotBlank() ->
+                        uiState.searchQuery.isNotBlank() -> {
                             AppEmptyState(
                                 icon = Icons.Filled.Search,
                                 title = stringResource(R.string.no_items_match_search),
                             )
+                        }
 
-                        uiState.filter != InventoryFilter.ALL ->
+                        uiState.filter != InventoryFilter.ALL -> {
                             AppEmptyState(
                                 icon = Icons.Filled.Search,
                                 title = stringResource(R.string.no_items_match_filter),
                                 primaryActionLabel = stringResource(R.string.show_all_items),
                                 onPrimaryAction = { viewModel.onFilterChange(InventoryFilter.ALL) },
                             )
+                        }
 
-                        else ->
+                        else -> {
                             Box(Modifier.fillMaxSize(), Alignment.Center) {
                                 InventoryWalkthrough(
                                     onAddItem = onAddItem,
                                     onSettingsClick = onSettingsClick,
                                 )
                             }
+                        }
                     }
+                }
 
-                else ->
+                else -> {
                     LazyColumn(
                         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 88.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -245,6 +250,7 @@ fun InventoryScreen(
                             )
                         }
                     }
+                }
             }
         }
     }
@@ -481,20 +487,23 @@ private fun InventorySortSheet(
 @Composable
 private fun ListingStatusPill(item: Item) {
     when {
-        item.hasSold ->
+        item.hasSold -> {
             StatusPill(
                 label = stringResource(R.string.status_sold),
                 icon = Icons.Default.CheckCircle,
                 container = MaterialTheme.colorScheme.secondaryContainer,
                 content = MaterialTheme.colorScheme.onSecondaryContainer,
             )
-        item.hasActiveListing ->
+        }
+
+        item.hasActiveListing -> {
             StatusPill(
                 label = stringResource(R.string.status_listed),
                 icon = Icons.Default.Sell,
                 container = MaterialTheme.colorScheme.primaryContainer,
                 content = MaterialTheme.colorScheme.onPrimaryContainer,
             )
+        }
     }
 }
 

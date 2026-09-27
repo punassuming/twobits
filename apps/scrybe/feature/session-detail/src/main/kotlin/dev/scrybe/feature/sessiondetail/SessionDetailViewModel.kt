@@ -950,6 +950,7 @@ class SessionDetailViewModel
                         transformRunDao.deleteRunsForSession(sessionId)
                         transcriptDao.deleteTranscriptsForSession(sessionId)
                     }
+
                     TranscriptType.EDITED -> {
                         val dependentTransforms =
                             allTranscripts.filter { item ->
@@ -961,6 +962,7 @@ class SessionDetailViewModel
                         }
                         transcriptDao.deleteTranscript(transcriptId)
                     }
+
                     TranscriptType.TRANSFORMED -> {
                         transcriptDao.deleteTranscript(transcriptId)
                         transcript.transformRunId?.let { transformRunDao.deleteRun(it) }

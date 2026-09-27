@@ -11,17 +11,17 @@
 
 [versions]
 # ── Build tooling ─────────────────────────────────────────────────────────────
-agp = "8.7.3"
+agp = "9.4.1"
 # 2.3.0+: litertlm-android (see litertLm below) ships Kotlin metadata that only a
 # compiler this new can read — every module in the repo needs to be on this version or
 # newer, since shared/local-ai's compiled output otherwise becomes unreadable to its
 # consumers in turn. Confirmed via real CI failures with both 2.0.21 and an
 # only-local-ai-bumped setup (each pushed the "compiled with a newer Kotlin" error to a
 # different module instead of fixing it).
-kotlin = "2.3.0"
-ksp = "2.3.0" # KSP's own versioning switched to track the Kotlin version 1:1 starting here.
-detekt = "1.23.7"
-ktlint = "12.1.1"
+kotlin = "2.4.20"
+ksp = "2.3.12" # KSP's own versioning switched to track the Kotlin version 1:1 starting here.
+detekt = "1.23.8"
+ktlint = "14.2.0"
 
 # ── AndroidX core ─────────────────────────────────────────────────────────────
 appcompat = "1.7.0"               # Scrybe only
@@ -35,10 +35,9 @@ navigationCompose = "2.8.5"
 # 2.51.1's Gradle plugin can't locate KSP's task class under KSP 2.3.0 (see kotlin
 # above) — Hilt applied at the root, KSP in subprojects, ends up on a different
 # classloader ("KSP plugin was detected to be applied but its task class could not be
-# found" — google/dagger#3965). 2.59+ needs AGP 9.0.0 (this repo is on 8.7.3, confirmed
-# via a real CI failure), so 2.58 — the last version still on AGP 8 — is the newest
-# candidate for a KSP2-compatible fix without also forcing an AGP major bump.
-hilt = "2.58"
+# found" — google/dagger#3965). 2.59+ needs AGP 9.0.0, which the repo is now on (see agp
+# above), so no ceiling remains on this one.
+hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"   # also governs hilt-work (same androidx.hilt group version)
 
 # ── Persistence ───────────────────────────────────────────────────────────────

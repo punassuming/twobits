@@ -114,13 +114,14 @@ fun TaskInboxScreen(
         },
     ) { paddingValues ->
         when (val state = uiState) {
-            is TaskInboxUiState.Loading ->
+            is TaskInboxUiState.Loading -> {
                 Box(
                     Modifier.fillMaxSize().padding(paddingValues),
                     contentAlignment = Alignment.Center,
                 ) { CircularProgressIndicator() }
+            }
 
-            is TaskInboxUiState.Success ->
+            is TaskInboxUiState.Success -> {
                 TaskInboxContent(
                     state = state,
                     modifier = Modifier.padding(paddingValues),
@@ -128,6 +129,7 @@ fun TaskInboxScreen(
                     onToggleDone = { task -> viewModel.toggleDone(task.id, task.isDone) },
                     onSessionClick = onNavigateToSession,
                 )
+            }
         }
     }
 }

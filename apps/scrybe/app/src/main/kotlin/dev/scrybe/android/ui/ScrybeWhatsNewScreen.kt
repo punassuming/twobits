@@ -17,9 +17,13 @@ fun ScrybeWhatsNewScreen(
         remember {
             val text =
                 runCatching {
-                    context.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
+                    context.assets
+                        .open("CHANGELOG.md")
+                        .bufferedReader()
+                        .use { it.readText() }
                 }.getOrNull().orEmpty()
-            ReleaseNotesParser.parseReleaseHistory(text)
+            ReleaseNotesParser
+                .parseReleaseHistory(text)
                 .mapIndexed { i, notes -> notes.toWhatsNewRelease(isLatest = i == 0) }
                 .filter { it.categories.isNotEmpty() }
         }

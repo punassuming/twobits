@@ -13,8 +13,22 @@ class ProductDiscoveryContractTest {
         val response = Gson().fromJson(json, ProductDiscoveryGatewayResponse::class.java)
 
         assertEquals(2, response.schemaVersion)
-        assertEquals(44_800L, response.products.single().offers.single().totalPrice.amountMinor)
-        assertEquals("USD", response.products.single().offers.single().totalPrice.currency)
+        assertEquals(
+            44_800L,
+            response.products
+                .single()
+                .offers
+                .single()
+                .totalPrice.amountMinor,
+        )
+        assertEquals(
+            "USD",
+            response.products
+                .single()
+                .offers
+                .single()
+                .totalPrice.currency,
+        )
         assertEquals(setOf("serper", "searchapi"), response.providerDiagnostics.map { it.provider }.toSet())
         assertTrue(json.contains("canonicalProductId"))
         assertFalse(json.contains("rawProviderData"))

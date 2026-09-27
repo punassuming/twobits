@@ -164,7 +164,10 @@ fun SessionDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is SessionDetailEvent.Message -> snackbarHostState.showSnackbar(event.text)
+                is SessionDetailEvent.Message -> {
+                    snackbarHostState.showSnackbar(event.text)
+                }
+
                 is SessionDetailEvent.ShareText -> {
                     val intent =
                         Intent(Intent.ACTION_SEND).apply {
@@ -174,6 +177,7 @@ fun SessionDetailScreen(
                         }
                     context.startActivity(Intent.createChooser(intent, "Share transcript"))
                 }
+
                 is SessionDetailEvent.ShareFile -> {
                     val file = File(event.path)
                     val contentUri =
@@ -191,10 +195,15 @@ fun SessionDetailScreen(
                         }
                     context.startActivity(Intent.createChooser(intent, "Share audio"))
                 }
-                is SessionDetailEvent.NavigateBack -> onNavigateBack()
+
+                is SessionDetailEvent.NavigateBack -> {
+                    onNavigateBack()
+                }
+
                 is SessionDetailEvent.TransformResult -> {
                     transformResult = event
                 }
+
                 is SessionDetailEvent.SendToExternal -> {
                     val intent =
                         Intent(event.action).apply {
@@ -310,7 +319,7 @@ fun SessionDetailScreen(
         },
     ) { paddingValues ->
         when (val state = uiState) {
-            is SessionDetailUiState.Loading ->
+            is SessionDetailUiState.Loading -> {
                 Box(
                     modifier =
                         Modifier
@@ -320,8 +329,9 @@ fun SessionDetailScreen(
                 ) {
                     CircularProgressIndicator()
                 }
+            }
 
-            is SessionDetailUiState.Error ->
+            is SessionDetailUiState.Error -> {
                 Box(
                     modifier =
                         Modifier
@@ -331,6 +341,7 @@ fun SessionDetailScreen(
                 ) {
                     Text(text = state.message, color = MaterialTheme.colorScheme.error)
                 }
+            }
 
             is SessionDetailUiState.Success -> {
                 Box(
@@ -407,7 +418,7 @@ fun SessionDetailScreen(
                             onSelect = { activeTab = it },
                         )
                         when (activeTab) {
-                            0 ->
+                            0 -> {
                                 OutputTabContent(
                                     state = state,
                                     onOpenTransformSheet = { showTransformSheet = true },
@@ -419,7 +430,9 @@ fun SessionDetailScreen(
                                     onClearTagSuggestions = viewModel::clearTagSuggestionState,
                                     onTranscribe = viewModel::transcribe,
                                 )
-                            1 ->
+                            }
+
+                            1 -> {
                                 TasksTabContent(
                                     tasks = state.tasks,
                                     isExtracting = state.isExtractingTasks,
@@ -429,7 +442,9 @@ fun SessionDetailScreen(
                                     onAddTask = viewModel::addTask,
                                     onShareTasks = viewModel::shareLatestTranscript,
                                 )
-                            else ->
+                            }
+
+                            else -> {
                                 TranscriptTabContent(
                                     state = state,
                                     onEditTranscript = { isEditingTranscript = true },
@@ -438,6 +453,7 @@ fun SessionDetailScreen(
                                     onSeek = viewModel::seekPlayback,
                                     onSpeakerRowClick = { showSpeakerManageSheet = true },
                                 )
+                            }
                         }
                     }
                 }
@@ -1186,10 +1202,12 @@ private fun TagSuggestionPanel(
             }
         }
         when (tagSuggestionState) {
-            is TagSuggestionUiState.Loading ->
+            is TagSuggestionUiState.Loading -> {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 }
+            }
+
             is TagSuggestionUiState.Success -> {
                 val filtered = tagSuggestionState.tags.filter { !existingTags.contains(it) && (query.isBlank() || it.contains(query, ignoreCase = true)) }
                 if (filtered.isNotEmpty()) {
@@ -1199,7 +1217,10 @@ private fun TagSuggestionPanel(
                     }
                 }
             }
-            else -> Unit
+
+            else -> {
+                Unit
+            }
         }
     }
 }
@@ -2398,7 +2419,9 @@ private fun TagEditorDialog(
                                         }
                                     }
 
-                                    else -> false
+                                    else -> {
+                                        false
+                                    }
                                 }
                             },
                     singleLine = true,
@@ -2460,15 +2483,20 @@ private fun TagEditorDialog(
                             }
                         }
                     }
-                    is TagSuggestionUiState.Error ->
+
+                    is TagSuggestionUiState.Error -> {
                         Text(
                             text = tagSuggestionState.message,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
+                    }
+
                     TagSuggestionUiState.Idle,
                     TagSuggestionUiState.Loading,
-                    -> Unit
+                    -> {
+                        Unit
+                    }
                 }
             }
         },

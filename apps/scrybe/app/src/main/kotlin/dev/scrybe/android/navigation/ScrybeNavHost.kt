@@ -76,6 +76,7 @@ fun ScrybeNavHost(
                         launchSingleTop = true
                     }
                 }
+
                 is RecordingCompletionNavEvent.OpenSessionReview -> {
                     navController.navigate(Screen.SessionDetail.createRoute(event.sessionId)) {
                         launchSingleTop = true

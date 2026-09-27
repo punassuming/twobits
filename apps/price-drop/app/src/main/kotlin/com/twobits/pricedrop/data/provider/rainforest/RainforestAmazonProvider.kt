@@ -80,7 +80,8 @@ class RainforestAmazonProvider
             )
 
         private fun Double.toMinor(): Long =
-            BigDecimal.valueOf(this)
+            BigDecimal
+                .valueOf(this)
                 .movePointRight(2)
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValueExact()
@@ -92,6 +93,5 @@ class RainforestAmazonProvider
                 else -> Availability.IN_STOCK
             }
 
-        private suspend fun providerRef(): ProviderRef =
-            ProviderRef(descriptor.id, settings.getMode(PriceDropProvider.RAINFOREST).name)
+        private suspend fun providerRef(): ProviderRef = ProviderRef(descriptor.id, settings.getMode(PriceDropProvider.RAINFOREST).name)
     }

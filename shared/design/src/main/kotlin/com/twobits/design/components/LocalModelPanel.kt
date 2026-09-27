@@ -250,43 +250,43 @@ private fun LocalModelRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 when {
-                    modelStatus is LocalModelStatus.NotAvailable ->
-                        {
-                            // Import and the primary action chip are stacked rather than placed
-                            // side by side: side by side, their combined min width crowded the
-                            // weighted details column on narrow phones down to a sliver.
-                            val primaryActionChip: @Composable () -> Unit = {
-                                AssistChip(
-                                    onClick = onPrimaryAction,
-                                    label = {
-                                        Text(primaryActionLabel, style = MaterialTheme.typography.labelSmall)
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            primaryActionIcon,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(14.dp),
-                                        )
-                                    },
-                                )
-                            }
-                            if (onImport != null) {
-                                Column(
-                                    horizontalAlignment = Alignment.End,
-                                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    primaryActionChip()
-                                    TextButton(
-                                        onClick = onImport,
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                    ) {
-                                        Text("Import", style = MaterialTheme.typography.labelMedium)
-                                    }
-                                }
-                            } else {
-                                primaryActionChip()
-                            }
+                    modelStatus is LocalModelStatus.NotAvailable -> {
+                        // Import and the primary action chip are stacked rather than placed
+                        // side by side: side by side, their combined min width crowded the
+                        // weighted details column on narrow phones down to a sliver.
+                        val primaryActionChip: @Composable () -> Unit = {
+                            AssistChip(
+                                onClick = onPrimaryAction,
+                                label = {
+                                    Text(primaryActionLabel, style = MaterialTheme.typography.labelSmall)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        primaryActionIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                },
+                            )
                         }
+                        if (onImport != null) {
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                primaryActionChip()
+                                TextButton(
+                                    onClick = onImport,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                ) {
+                                    Text("Import", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                        } else {
+                            primaryActionChip()
+                        }
+                    }
+
                     isReady && !isSelected -> {
                         TextButton(
                             onClick = onSelect,
@@ -303,7 +303,8 @@ private fun LocalModelRow(
                             )
                         }
                     }
-                    isReady && isSelected ->
+
+                    isReady && isSelected -> {
                         IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                             Icon(
                                 Icons.Filled.Delete,
@@ -312,6 +313,8 @@ private fun LocalModelRow(
                                 tint = MaterialTheme.colorScheme.error,
                             )
                         }
+                    }
+
                     modelStatus is LocalModelStatus.Error -> {
                         TextButton(onClick = onPrimaryAction) {
                             Text("Retry", style = MaterialTheme.typography.labelMedium)

@@ -19,7 +19,8 @@ class OpenAiApiKeyValidator
                     require(apiKey.isNotBlank()) { "Enter an API key first" }
 
                     val request =
-                        Request.Builder()
+                        Request
+                            .Builder()
                             .url("https://api.openai.com/v1/models")
                             .header("Authorization", "Bearer ${apiKey.trim()}")
                             .header("Accept", "application/json")
@@ -28,11 +29,25 @@ class OpenAiApiKeyValidator
 
                     okHttpClient.newCall(request).execute().use { response ->
                         when {
-                            response.isSuccessful -> Unit
-                            response.code == 401 -> throw IllegalStateException("OpenAI rejected this API key")
-                            response.code == 429 -> throw IllegalStateException("OpenAI rate-limited validation. Try again shortly.")
+                            response.isSuccessful -> {
+                                Unit
+                            }
+
+                            response.code == 401 -> {
+                                throw IllegalStateException("OpenAI rejected this API key")
+                            }
+
+                            response.code == 429 -> {
+                                throw IllegalStateException("OpenAI rate-limited validation. Try again shortly.")
+                            }
+
                             else -> {
-                                val errorBody = response.body?.string().orEmpty().replace("\n", " ").take(300)
+                                val errorBody =
+                                    response.body
+                                        ?.string()
+                                        .orEmpty()
+                                        .replace("\n", " ")
+                                        .take(300)
                                 throw IllegalStateException(
                                     "OpenAI validation failed: ${response.code} ${response.message}" +
                                         if (errorBody.isNotBlank()) " - $errorBody" else "",

@@ -700,6 +700,7 @@ private fun LiveTranscriptPanel(
                         }
                     }
                 }
+
                 isStopping -> {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -714,6 +715,7 @@ private fun LiveTranscriptPanel(
                         )
                     }
                 }
+
                 state.phase == CapturePhase.RECORDING &&
                     state.streamingStatus == LiveStreamStatus.STREAMING &&
                     state.streamingPartialTranscript != null -> {
@@ -724,6 +726,7 @@ private fun LiveTranscriptPanel(
                         modifier = Modifier.padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
                     )
                 }
+
                 !state.autoTranscribeEnabled -> {
                     Text(
                         text = "Auto-transcription is off — enable it in Settings to get a transcript after recording.",
@@ -732,6 +735,7 @@ private fun LiveTranscriptPanel(
                         modifier = Modifier.padding(16.dp),
                     )
                 }
+
                 else -> {
                     val transition = rememberInfiniteTransition(label = "pulse")
                     val alpha by transition.animateFloat(
@@ -758,14 +762,21 @@ private fun LiveTranscriptPanel(
                         Text(
                             text =
                                 when {
-                                    state.streamingStatus == LiveStreamStatus.CONNECTING ->
+                                    state.streamingStatus == LiveStreamStatus.CONNECTING -> {
                                         "Connecting live transcript…"
-                                    state.streamingStatus == LiveStreamStatus.DROPPED ->
+                                    }
+
+                                    state.streamingStatus == LiveStreamStatus.DROPPED -> {
                                         "Live transcript lost connection — will transcribe after you stop"
-                                    state.activeCustomTypeName != null ->
+                                    }
+
+                                    state.activeCustomTypeName != null -> {
                                         "Will transcribe automatically • ${state.activeCustomTypeName} profile"
-                                    else ->
+                                    }
+
+                                    else -> {
                                         "Will transcribe automatically • processed as ${state.activeMode.label}"
+                                    }
                                 },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

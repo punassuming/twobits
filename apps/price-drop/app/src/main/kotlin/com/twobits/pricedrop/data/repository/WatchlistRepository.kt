@@ -211,7 +211,12 @@ class WatchlistRepository
                 SearchHit(
                     title = candidate.title,
                     price = bestOffer?.totalPrice?.amountMinor?.div(100.0),
-                    source = product.offers.map { it.provider.id }.distinct().joinToString().ifBlank { candidate.provider.id },
+                    source =
+                        product.offers
+                            .map { it.provider.id }
+                            .distinct()
+                            .joinToString()
+                            .ifBlank { candidate.provider.id },
                     url = bestOffer?.productUrl ?: candidate.sourceUrl,
                     confidence = (product.assessment.score * 100).toInt(),
                     canonicalProductId = product.canonicalProductId,

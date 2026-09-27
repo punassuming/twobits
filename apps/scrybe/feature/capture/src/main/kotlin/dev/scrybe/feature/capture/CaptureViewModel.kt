@@ -106,16 +106,22 @@ class CaptureViewModel
                     val nextPhase =
                         when {
                             telemetry.elapsedMs > 0L || telemetry.amplitudeRatio > 0f -> CapturePhase.RECORDING
+
                             currentState.phase == CapturePhase.STOPPING &&
                                 !currentState.autoTranscribeEnabled -> CapturePhase.IDLE
+
                             else -> currentState.phase
                         }
                     val nextHistory =
                         when (nextPhase) {
-                            CapturePhase.RECORDING ->
+                            CapturePhase.RECORDING -> {
                                 (currentState.amplitudeHistory + telemetry.amplitudeRatio)
                                     .takeLast(MAX_HISTORY)
-                            else -> emptyList()
+                            }
+
+                            else -> {
+                                emptyList()
+                            }
                         }
                     _uiState.value =
                         currentState.copy(
@@ -257,23 +263,30 @@ class CaptureViewModel
                 recordingSessionEvents.liveStreamEvents.collectLatest { event ->
                     _uiState.value =
                         when (event) {
-                            is LiveStreamEvent.Connecting ->
+                            is LiveStreamEvent.Connecting -> {
                                 _uiState.value.copy(streamingStatus = LiveStreamStatus.CONNECTING)
-                            is LiveStreamEvent.Delta ->
+                            }
+
+                            is LiveStreamEvent.Delta -> {
                                 _uiState.value.copy(
                                     streamingStatus = LiveStreamStatus.STREAMING,
                                     streamingPartialTranscript = event.textSoFar,
                                 )
-                            is LiveStreamEvent.Unavailable ->
+                            }
+
+                            is LiveStreamEvent.Unavailable -> {
                                 _uiState.value.copy(
                                     streamingStatus = LiveStreamStatus.UNAVAILABLE,
                                     streamingPartialTranscript = null,
                                 )
-                            is LiveStreamEvent.Dropped ->
+                            }
+
+                            is LiveStreamEvent.Dropped -> {
                                 _uiState.value.copy(
                                     streamingStatus = LiveStreamStatus.DROPPED,
                                     streamingPartialTranscript = null,
                                 )
+                            }
                         }
                 }
             }

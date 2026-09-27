@@ -64,7 +64,8 @@ class PriceObservationRepository
             )
 
         private fun Double.toMinor(): Long =
-            BigDecimal.valueOf(this)
+            BigDecimal
+                .valueOf(this)
                 .movePointRight(2)
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValueExact()

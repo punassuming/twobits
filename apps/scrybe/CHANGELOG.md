@@ -8,6 +8,12 @@
 
 ### Fixes
 
+* Updated Gradle build tooling and plugin versions (Android Gradle Plugin, Kotlin, Kotlin Compose plugin, ktlint, detekt, Hilt, KSP, Gradle wrapper) via automated dependency updates.
+* Aligned the shared version catalog with those bumps and brought the Shelf Snap/PriceDrop Gradle wrappers up to the same version as Scrybe's, since Android Gradle Plugin 9 requires a newer Gradle than they were still on.
+* Opted out of Android Gradle Plugin 9's built-in Kotlin support and its new build DSL, since built-in Kotlin bundles an older compiler than this repo's on-device model dependency requires.
+* Re-enabled a Gradle source-set option Android Gradle Plugin 9 tightened by default, needed for the in-app changelog asset to keep generating correctly.
+* Reformatted Kotlin source across the app for new default style rules that shipped with the ktlint bump; no behavior changes.
+
 ## 1.53.10 (2026-09-26)
 
 ### Features
