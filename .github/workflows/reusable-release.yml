@@ -386,10 +386,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Built as two separate invocations, not one `assembleRelease bundleRelease` command:
+          # AGP 9 fails buildReleasePreBundle ("Multiple shrunk-resources files found") when an
+          # app configures ABI splits (Scrybe does) and both a split APK and an App Bundle are
+          # resource-shrunk in the same build. Each app's build.gradle.kts disables its splits
+          # config when a bundle task is in gradle.startParameter.taskNames, which only reflects
+          # the task(s) requested in *this* invocation — so the two must run separately.
           if [ "${{ inputs.use_retry_script }}" = "true" ]; then
-            bash ../../scripts/ci-gradle-retry.sh assembleRelease bundleRelease
+            bash ../../scripts/ci-gradle-retry.sh bundleRelease
+            bash ../../scripts/ci-gradle-retry.sh assembleRelease
           else
-            ./gradlew assembleRelease bundleRelease --no-daemon
+            ./gradlew bundleRelease --no-daemon
+            ./gradlew assembleRelease --no-daemon
           fi
 
       - name: Stage release assets
@@ -483,10 +491,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # See the comment on the same step in the main release job: split into two
+          # invocations so a per-app ABI-splits config can disable itself for the bundle build.
           if [ "${{ inputs.use_retry_script }}" = "true" ]; then
-            bash ../../scripts/ci-gradle-retry.sh assembleRelease bundleRelease
+            bash ../../scripts/ci-gradle-retry.sh bundleRelease
+            bash ../../scripts/ci-gradle-retry.sh assembleRelease
           else
-            ./gradlew assembleRelease bundleRelease --no-daemon
+            ./gradlew bundleRelease --no-daemon
+            ./gradlew assembleRelease --no-daemon
           fi
 
       - name: Stage release assets

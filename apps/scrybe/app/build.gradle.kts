@@ -87,7 +87,11 @@ android {
     }
     splits {
         abi {
-            isEnable = true
+            // AGP 9 fails buildReleasePreBundle ("Multiple shrunk-resources files found") when
+            // split APKs and an App Bundle are shrunk in the same build — the bundle already
+            // carries every ABI (see the `bundle { abi { enableSplit = true } }` block above),
+            // so splits only make sense when no bundle task is also being built this invocation.
+            isEnable = gradle.startParameter.taskNames.none { it.contains("bundle", ignoreCase = true) }
             reset()
             // Added x86_64 for emulator support
             include("arm64-v8a", "armeabi-v7a", "x86_64")
