@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* Re-wired CI to build through the shared reusable workflow again, fixing the permissions gap that made the first attempt fail instantly; collapses ~75 duplicated lines back into one shared definition.
+
 ## 0.23.9 (2026-09-27)
 
 ### Features
