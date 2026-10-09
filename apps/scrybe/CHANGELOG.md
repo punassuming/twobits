@@ -10,6 +10,8 @@
 
 * Removed a dead, unused shared `ProviderType` enum from `shared/api-keys` — no behavior change.
 * Documented why Scrybe's own `ProviderType` stays separate from the shared `ExecutionMode` type now used by the other two apps — no behavior change.
+* Added a per-row Import button to the on-device LLM model list, matching Shelf Snap and PriceDrop's Settings screens; reuses the same auto-detecting file picker as the existing top-level import card.
+* The shared on-device model list now has a way to mark a model as import-only (no download URL) — currently unused by any shipping model, but needed before a future model that only supports manual import can be added safely.
 
 ## 1.53.13 (2026-10-09)
 
