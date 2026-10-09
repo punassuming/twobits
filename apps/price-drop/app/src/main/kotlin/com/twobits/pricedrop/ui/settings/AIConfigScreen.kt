@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.core.localmodels.LocalLlmModel
+import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.design.components.AI_LOCAL_COLOR
 import com.twobits.design.components.AiNoKeyWarning
@@ -191,6 +192,7 @@ fun AIConfigScreen(
                                 description = { it.description },
                                 progressLabel = "Downloading",
                                 huggingFaceUrl = { it.huggingFacePageUrl },
+                                isImportOnly = { it.acquisition is LocalModelAcquisition.ImportFile },
                             )
                         }
                         item {

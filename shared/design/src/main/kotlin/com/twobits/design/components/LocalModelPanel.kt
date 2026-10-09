@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.AssistChip
@@ -70,6 +71,14 @@ fun <T : Any> LocalModelPanel(
     sectionSubtitle: String? = null,
     progressLabel: String = "Loading",
     huggingFaceUrl: ((T) -> String)? = null,
+    /**
+     * True for a model that can only be acquired by importing an already-downloaded file (no
+     * URL to fetch) — e.g. one whose [com.twobits.core.localmodels.LocalModelAcquisition] is
+     * `ImportFile`. Such a model has no [onPrimaryAction]/Download to offer at all: [onImport]
+     * (required when this returns true for any model in [models]) becomes the sole, primary
+     * action instead of the usual secondary button alongside Download.
+     */
+    isImportOnly: (T) -> Boolean = { false },
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
@@ -112,6 +121,7 @@ fun <T : Any> LocalModelPanel(
                     onPrimaryAction = { onPrimaryAction(model) },
                     onDelete = { onDelete(model) },
                     onImport = onImport?.let { action -> { action(model) } },
+                    isImportOnly = isImportOnly(model),
                 )
             }
         }
@@ -133,6 +143,7 @@ private fun LocalModelRow(
     onPrimaryAction: () -> Unit,
     onDelete: () -> Unit,
     onImport: (() -> Unit)?,
+    isImportOnly: Boolean,
 ) {
     val isReady = modelStatus is LocalModelStatus.Ready
     val isSelectedAndReady = isSelected && isReady
@@ -250,6 +261,24 @@ private fun LocalModelRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 when {
+                    modelStatus is LocalModelStatus.NotAvailable && isImportOnly -> {
+                        // No URL to download from at all — Import (checked non-null by the
+                        // caller whenever isImportOnly can be true) is the only action, styled
+                        // like the usual primary chip rather than the secondary text button it
+                        // is in the mixed case below.
+                        AssistChip(
+                            onClick = { onImport?.invoke() },
+                            label = { Text("Import", style = MaterialTheme.typography.labelSmall) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.FileUpload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                            },
+                        )
+                    }
+
                     modelStatus is LocalModelStatus.NotAvailable -> {
                         // Import and the primary action chip are stacked rather than placed
                         // side by side: side by side, their combined min width crowded the

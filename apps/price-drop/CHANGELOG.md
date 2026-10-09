@@ -8,6 +8,8 @@
 
 ### Fixes
 
+* The shared on-device model list now has a way to mark a model as import-only (no download URL) — currently unused by any shipping model, but needed before a future model that only supports manual import can be added safely.
+
 ## 0.23.10 (2026-10-09)
 
 ### Features
@@ -17,7 +19,6 @@
 ### Fixes
 
 * Re-wired CI to build through the shared reusable workflow again, fixing the permissions gap that made the first attempt fail instantly; collapses ~75 duplicated lines back into one shared definition.
-
 
 ## 0.23.9 (2026-09-27)
 
