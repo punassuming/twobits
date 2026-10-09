@@ -8,7 +8,10 @@
 
 ### Fixes
 
-* Added a per-row Import button to the on-device LLM model list, matching Shelf Snap and PriceDrop's Settings screens; reuses the same auto-detecting file picker as the existing top-level import card.
+**On-device models** — added a per-row Import button to the Whisper and LLM model lists:
+* Matches Shelf Snap and PriceDrop's Settings screens
+* Reuses the same auto-detecting file picker as the existing top-level import card
+
 * The shared on-device model list now has a way to mark a model as import-only (no download URL) — currently unused by any shipping model, but needed before a future model that only supports manual import can be added safely.
 * Re-wired CI to build through the shared reusable workflow again, fixing the permissions gap that made the first attempt fail instantly; collapses ~80 duplicated lines back into one shared definition.
 

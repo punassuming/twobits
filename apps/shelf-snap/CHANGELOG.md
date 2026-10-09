@@ -9,6 +9,7 @@
 ### Fixes
 
 * The shared on-device model list now has a way to mark a model as import-only (no download URL) — currently unused by any shipping model, but needed before a future model that only supports manual import can be added safely.
+* Fixed the shared on-device model list's Retry button for a failed import-only model, which called the (nonexistent) download path instead of re-opening the file picker — not yet reachable since no shipping model is import-only.
 
 ## 1.32.12 (2026-10-09)
 
