@@ -40,9 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.AppChipRow
 import com.twobits.design.components.InferenceSourceBadge
-import com.twobits.pricedrop.data.provider.ProviderMode
 
 private val SUGGESTIONS =
     listOf(
@@ -176,7 +176,7 @@ private fun ChatBubble(message: ChatMessage) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                 )
-                if (message.executionMode == ProviderMode.LOCAL.name) {
+                if (message.executionMode == ExecutionMode.LOCAL.name) {
                     InferenceSourceBadge()
                 }
             }

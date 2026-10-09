@@ -8,6 +8,9 @@
 
 ### Fixes
 
+* Replaced PriceDrop's own `ProviderMode` enum with the shared `ExecutionMode` type already used by Shelf Snap and (for display) Scrybe — no behavior or on-disk storage format change, since both used the same `"off"/"byok"/"pro"/"local"` strings.
+* Removed a dead, unused shared `ProviderType` enum from `shared/api-keys` — no behavior change.
+
 ## 0.23.10 (2026-10-09)
 
 ### Features
@@ -17,7 +20,6 @@
 ### Fixes
 
 * Re-wired CI to build through the shared reusable workflow again, fixing the permissions gap that made the first attempt fail instantly; collapses ~75 duplicated lines back into one shared definition.
-
 
 ## 0.23.9 (2026-09-27)
 

@@ -8,6 +8,9 @@
 
 ### Fixes
 
+* Removed a dead, unused shared `ProviderType` enum from `shared/api-keys` — no behavior change.
+* Documented why Scrybe's own `ProviderType` stays separate from the shared `ExecutionMode` type now used by the other two apps — no behavior change.
+
 ## 1.53.13 (2026-10-09)
 
 ### Features

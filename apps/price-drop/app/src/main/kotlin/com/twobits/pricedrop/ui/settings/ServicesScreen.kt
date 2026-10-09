@@ -29,10 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.AiSectionCard
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.PriceDropProvider
-import com.twobits.pricedrop.data.provider.ProviderMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +76,7 @@ fun ServicesScreen(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     PriceDropProvider.entries.filterNot { it.isAiModelProvider() }.forEach { provider ->
-                        val state = providerStates[provider] ?: ProviderState(ProviderMode.PRO, "")
+                        val state = providerStates[provider] ?: ProviderState(ExecutionMode.PRO, "")
                         ProviderCredentialItem(
                             provider = provider,
                             state = state,

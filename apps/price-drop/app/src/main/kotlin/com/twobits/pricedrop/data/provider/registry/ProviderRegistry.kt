@@ -1,8 +1,8 @@
 package com.twobits.pricedrop.data.provider.registry
 
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.PriceDropProvider
-import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.provider.contracts.OfferProvider
 import com.twobits.pricedrop.data.provider.contracts.ProductDetailsProvider
@@ -35,7 +35,7 @@ class DefaultProviderRegistry
         private val rainforest: RainforestAmazonProvider,
     ) : ProviderRegistry {
         override suspend fun searchProviders(): List<ProductSearchProvider> {
-            if (settings.getFeatureSource(AiFeature.SEARCH) == ProviderMode.PRO) return listOf(pro)
+            if (settings.getFeatureSource(AiFeature.SEARCH) == ExecutionMode.PRO) return listOf(pro)
             val enabled = settings.getFeatureProviders(AiFeature.SEARCH)
             return buildList {
                 addIfEnabled(PriceDropProvider.SERPER, enabled, serper)
@@ -49,7 +49,7 @@ class DefaultProviderRegistry
         override suspend fun offerProviders(): List<OfferProvider> = rainforestIfEnabled()
 
         private suspend fun <T> rainforestIfEnabled(): List<T> =
-            if (settings.getMode(PriceDropProvider.RAINFOREST) == ProviderMode.OFF) {
+            if (settings.getMode(PriceDropProvider.RAINFOREST) == ExecutionMode.OFF) {
                 emptyList()
             } else {
                 @Suppress("UNCHECKED_CAST")
@@ -61,6 +61,6 @@ class DefaultProviderRegistry
             enabled: Set<String>,
             adapter: ProductSearchProvider,
         ) {
-            if (provider.key in enabled && settings.getMode(provider) == ProviderMode.BYOK) add(adapter)
+            if (provider.key in enabled && settings.getMode(provider) == ExecutionMode.BYOK) add(adapter)
         }
     }

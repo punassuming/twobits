@@ -8,6 +8,9 @@
 
 ### Fixes
 
+* Removed a dead, unused shared `ProviderType` enum from `shared/api-keys` — no behavior change.
+* Fixed the on-device badge check on item detail to compare against the `ExecutionMode` enum's own name instead of a hardcoded `"LOCAL"` string literal.
+
 ## 1.32.12 (2026-10-09)
 
 ### Features
@@ -17,7 +20,6 @@
 ### Fixes
 
 * Re-wired CI to build through the shared reusable workflow again, fixing the permissions gap that made the first attempt fail instantly; collapses ~75 duplicated lines back into one shared definition.
-
 
 ## 1.32.11 (2026-09-27)
 

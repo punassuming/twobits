@@ -3,9 +3,9 @@ package com.twobits.pricedrop.data.provider
 import com.twobits.pricedrop.data.provider.contracts.ProviderCapability
 
 /**
- * Providers PriceDrop can talk to. Kept local to the app (rather than extending the shared
- * `com.twobits.apikeys.ProviderType` enum) so that adding shopping/search providers does
- * not ripple into Scrybe/Shelf Snap's exhaustive `when (ProviderType)` sites.
+ * Providers PriceDrop can talk to. Kept local to the app — this app's vendor fan-out
+ * (shopping/search/Rainforest/etc.) is specific to PriceDrop, so adding one doesn't ripple into
+ * Scrybe/Shelf Snap's own exhaustive `when` sites over their own provider-adjacent types.
  */
 enum class PriceDropProvider(
     val key: String,
@@ -126,25 +126,5 @@ enum class PriceDropProvider(
 
     companion object {
         fun fromKey(k: String): PriceDropProvider? = entries.firstOrNull { it.key == k }
-    }
-}
-
-/**
- * Per-provider access mode chosen by the user in Settings. [LOCAL] is only reachable for
- * [AiFeature.ASK] — Rainforest/search providers have no local capability and never offer it
- * in the UI, so their own exhaustive `when`s treat [LOCAL] as unreachable/empty rather than
- * crashing.
- */
-enum class ProviderMode(
-    val value: String,
-) {
-    OFF("off"),
-    BYOK("byok"),
-    PRO("pro"),
-    LOCAL("local"),
-    ;
-
-    companion object {
-        fun fromValue(v: String?): ProviderMode = entries.firstOrNull { it.value == v } ?: OFF
     }
 }

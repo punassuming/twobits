@@ -2,10 +2,8 @@ package com.twobits.pricedrop.data.pro
 
 import com.twobits.core.pro.AppPlan
 import com.twobits.core.pro.BackgroundPollPolicy
-import com.twobits.core.pro.ExecutionMode
 import com.twobits.core.pro.ManagedFeaturePolicy
 import com.twobits.core.pro.UsageCounterPolicy
-import com.twobits.pricedrop.data.provider.ProviderMode
 
 /**
  * Client-side mirror of PriceDrop's managed-Pro limits. Kept in lockstep with `worker.js`
@@ -44,21 +42,3 @@ object PriceDropPlan {
                 ),
         )
 }
-
-/** Maps a per-provider [ProviderMode] to the shared [ExecutionMode]. */
-fun ProviderMode.toExecutionMode(): ExecutionMode =
-    when (this) {
-        ProviderMode.OFF -> ExecutionMode.OFF
-        ProviderMode.BYOK -> ExecutionMode.BYOK
-        ProviderMode.PRO -> ExecutionMode.PRO
-        ProviderMode.LOCAL -> ExecutionMode.LOCAL
-    }
-
-/** Inverse of [toExecutionMode]. */
-fun ExecutionMode.toProviderMode(): ProviderMode =
-    when (this) {
-        ExecutionMode.OFF -> ProviderMode.OFF
-        ExecutionMode.BYOK -> ProviderMode.BYOK
-        ExecutionMode.PRO -> ProviderMode.PRO
-        ExecutionMode.LOCAL -> ProviderMode.LOCAL
-    }

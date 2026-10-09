@@ -2,11 +2,11 @@ package com.twobits.pricedrop.ui.ask
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.pricedrop.data.local.ChatMessageDao
 import com.twobits.pricedrop.data.local.LocalModelManager
 import com.twobits.pricedrop.data.model.ChatMessageEntity
 import com.twobits.pricedrop.data.provider.AiFeature
-import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.remote.PriceDropApiClient
 import com.twobits.pricedrop.data.repository.AskProgressTracker
@@ -66,7 +66,7 @@ class AskViewModel
             input.value = ""
             _uiState.value = _uiState.value.copy(isLoading = true)
             viewModelScope.launch {
-                val isLocal = providerSettings.getFeatureSource(AiFeature.ASK) == ProviderMode.LOCAL
+                val isLocal = providerSettings.getFeatureSource(AiFeature.ASK) == ExecutionMode.LOCAL
                 try {
                     // launchSend(), not calling the chat APIs directly: this coroutine is
                     // cancelled the moment the user backs out of the Ask screen, and awaiting a
@@ -86,7 +86,7 @@ class AskViewModel
                                 ChatMessageEntity(
                                     role = "assistant",
                                     content = reply,
-                                    executionMode = if (isLocal) ProviderMode.LOCAL.name else null,
+                                    executionMode = if (isLocal) ExecutionMode.LOCAL.name else null,
                                 ),
                             )
                         }.await()
