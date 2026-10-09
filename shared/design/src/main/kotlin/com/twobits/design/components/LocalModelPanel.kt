@@ -345,7 +345,11 @@ private fun LocalModelRow(
                     }
 
                     modelStatus is LocalModelStatus.Error -> {
-                        TextButton(onClick = onPrimaryAction) {
+                        // An import-only model has no downloadable URL — route Retry through
+                        // the same picker Import uses instead of onPrimaryAction, which every
+                        // caller wires to its download path.
+                        val onRetry: () -> Unit = if (isImportOnly) ({ onImport?.invoke() }) else onPrimaryAction
+                        TextButton(onClick = onRetry) {
                             Text("Retry", style = MaterialTheme.typography.labelMedium)
                         }
                         // A failed download may have left a resumable partial file behind (by

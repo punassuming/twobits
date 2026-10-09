@@ -11,6 +11,7 @@
 * Replaced PriceDrop's own `ProviderMode` enum with the shared `ExecutionMode` type already used by Shelf Snap and (for display) Scrybe — no behavior or on-disk storage format change, since both used the same `"off"/"byok"/"pro"/"local"` strings.
 * Removed a dead, unused shared `ProviderType` enum from `shared/api-keys` — no behavior change.
 * The shared on-device model list now has a way to mark a model as import-only (no download URL) — currently unused by any shipping model, but needed before a future model that only supports manual import can be added safely.
+* Fixed the shared on-device model list's Retry button for a failed import-only model, which called the (nonexistent) download path instead of re-opening the file picker — not yet reachable since no shipping model is import-only.
 
 ## 0.23.10 (2026-10-09)
 

@@ -197,6 +197,9 @@ fun AIConfigScreen(
                             primaryActionLabel = "Download",
                             primaryActionIcon = Icons.Default.CloudDownload,
                             onDelete = { viewModel.deleteWhisperModel(it) },
+                            // Same auto-detecting launcher the LLM panel below uses — see its
+                            // onImport comment for why one shared launcher covers both panels.
+                            onImport = { importLauncher.launch(arrayOf("*/*")) },
                             name = { it.displayName },
                             sizeLabel = { it.sizeLabel },
                             description = { it.description },
