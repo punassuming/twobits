@@ -17,6 +17,7 @@
 
 * The shared on-device model list now has a way to mark a model as import-only (no download URL) — currently unused by any shipping model, but needed before a future model that only supports manual import can be added safely.
 * Fixed the shared on-device model list's Retry button for a failed import-only model, which called the (nonexistent) download path instead of re-opening the file picker — not yet reachable since no shipping model is import-only.
+* Bumped the Gradle wrapper from 9.7.1 to 9.8.0 (Dependabot).
 
 ## 1.53.13 (2026-10-09)
 
