@@ -4,12 +4,12 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.twobits.billing.SubscriptionRepository
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.debuglog.DebugLogEntry
 import com.twobits.debuglog.DebugLogEntryType
 import com.twobits.debuglog.DebugLogStore
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.PriceDropProvider
-import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.remote.dto.BarcodeResponseDto
 import com.twobits.pricedrop.data.remote.dto.ChatResponseDto
@@ -58,11 +58,11 @@ class PriceDropApiClient
             upc: String? = null,
         ): PriceResponseDto =
             when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
-                ProviderMode.BYOK -> {
+                ExecutionMode.BYOK -> {
                     priceDirect(asin, upc, byokKey(PriceDropProvider.RAINFOREST))
                 }
 
-                ProviderMode.PRO -> {
+                ExecutionMode.PRO -> {
                     val body =
                         JsonObject().apply {
                             asin?.takeIf { it.isNotBlank() }?.let { addProperty("asin", it) }
@@ -72,41 +72,41 @@ class PriceDropApiClient
                 }
 
                 // Rainforest has no local capability and never offers it in the UI.
-                ProviderMode.OFF, ProviderMode.LOCAL -> {
+                ExecutionMode.OFF, ExecutionMode.LOCAL -> {
                     PriceResponseDto(found = false)
                 }
             }
 
         suspend fun history(asin: String): HistoryResponseDto =
             when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
-                ProviderMode.BYOK -> {
+                ExecutionMode.BYOK -> {
                     historyDirect(asin, byokKey(PriceDropProvider.RAINFOREST))
                 }
 
-                ProviderMode.PRO -> {
+                ExecutionMode.PRO -> {
                     val body = JsonObject().apply { addProperty("asin", asin) }
                     workerPost("/v1/pricedrop/history", body, HistoryResponseDto::class.java, op = "history")
                 }
 
                 // Rainforest has no local capability and never offers it in the UI.
-                ProviderMode.OFF, ProviderMode.LOCAL -> {
+                ExecutionMode.OFF, ExecutionMode.LOCAL -> {
                     HistoryResponseDto()
                 }
             }
 
         suspend fun barcode(upc: String): BarcodeResponseDto =
             when (providerSettings.getMode(PriceDropProvider.RAINFOREST)) {
-                ProviderMode.BYOK -> {
+                ExecutionMode.BYOK -> {
                     barcodeDirect(upc, byokKey(PriceDropProvider.RAINFOREST))
                 }
 
-                ProviderMode.PRO -> {
+                ExecutionMode.PRO -> {
                     val body = JsonObject().apply { addProperty("upc", upc) }
                     workerPost("/v1/pricedrop/barcode", body, BarcodeResponseDto::class.java, op = "barcode")
                 }
 
                 // Rainforest has no local capability and never offers it in the UI.
-                ProviderMode.OFF, ProviderMode.LOCAL -> {
+                ExecutionMode.OFF, ExecutionMode.LOCAL -> {
                     BarcodeResponseDto(found = false)
                 }
             }
@@ -128,15 +128,15 @@ class PriceDropApiClient
             history: List<com.twobits.pricedrop.ui.ask.ChatMessage>,
         ): String {
             val askSource = providerSettings.getFeatureSource(AiFeature.ASK)
-            if (askSource == ProviderMode.OFF) {
+            if (askSource == ExecutionMode.OFF) {
                 throw IOException("Ask assistant is turned off. Enable it with a BYOK key or Pro in Settings.")
             }
             // LOCAL routes through AskViewModel's own LocalAskSession before reaching here —
             // this function is the cloud (BYOK/Pro) path only.
-            if (askSource == ProviderMode.LOCAL) {
-                throw IllegalStateException("chat() does not handle ProviderMode.LOCAL — route through LocalAskSession instead.")
+            if (askSource == ExecutionMode.LOCAL) {
+                throw IllegalStateException("chat() does not handle ExecutionMode.LOCAL — route through LocalAskSession instead.")
             }
-            val isProMode = askSource == ProviderMode.PRO
+            val isProMode = askSource == ExecutionMode.PRO
             val baseUrl =
                 if (isProMode) {
                     PRO_BASE_URL
@@ -567,7 +567,7 @@ class PriceDropApiClient
          * Reads a product page via the active reader provider ([ProviderSettingsStore.getPageReaderProvider]).
          *
          * Firecrawl and Jina are gated differently: Firecrawl is never added to any [AiFeature],
-         * so it has no feature-picker UI that ever sets its [ProviderMode] to BYOK — a saved key is
+         * so it has no feature-picker UI that ever sets its [ExecutionMode] to BYOK — a saved key is
          * its only on/off signal (it has no Worker/Pro route to gate against anyway). Jina keeps the
          * existing [PriceDropProvider.WEB_SEARCH] BYOK-mode gate, so Pro-mode users still get "" here
          * (the Worker handles page reading server-side for them) exactly as before.
@@ -786,7 +786,7 @@ class PriceDropApiClient
         // Helpers
         // ---------------------------------------------------------------------------
 
-        private suspend fun isByok(provider: PriceDropProvider): Boolean = providerSettings.getMode(provider) == ProviderMode.BYOK
+        private suspend fun isByok(provider: PriceDropProvider): Boolean = providerSettings.getMode(provider) == ExecutionMode.BYOK
 
         /**
          * The stored key for [provider], required to be non-blank. Call only after [isByok] is

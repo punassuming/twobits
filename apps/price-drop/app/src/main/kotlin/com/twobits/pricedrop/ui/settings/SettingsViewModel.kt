@@ -15,6 +15,7 @@ import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.localai.work.SharedModelDownloadWorker
 import com.twobits.pricedrop.R
 import com.twobits.pricedrop.data.local.LocalModelManager
@@ -22,7 +23,6 @@ import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.CredentialCheck
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 import com.twobits.pricedrop.data.provider.ProviderKeyValidator
-import com.twobits.pricedrop.data.provider.ProviderMode
 import com.twobits.pricedrop.data.provider.ProviderSettingsStore
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import com.twobits.pricedrop.data.settings.SettingsPrefs
@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ProviderState(
-    val mode: ProviderMode,
+    val mode: ExecutionMode,
     val key: String,
     val isValidating: Boolean = false,
     val validationMessage: String? = null,
@@ -62,7 +62,7 @@ private data class ProviderValidation(
 
 /** Feature-level config presented in the AI Configuration screen. */
 data class FeatureState(
-    val source: ProviderMode,
+    val source: ExecutionMode,
     val modelId: String,
     val enabledProviders: Set<String>,
 )
@@ -299,7 +299,7 @@ class SettingsViewModel
 
         fun setFeatureSource(
             f: AiFeature,
-            mode: ProviderMode,
+            mode: ExecutionMode,
         ) {
             viewModelScope.launch { providerStore.setFeatureSource(f, mode) }
         }
@@ -329,9 +329,9 @@ class SettingsViewModel
             }
         }
 
-        fun setProviderMode(
+        fun setExecutionMode(
             p: PriceDropProvider,
-            mode: ProviderMode,
+            mode: ExecutionMode,
         ) {
             viewModelScope.launch { providerStore.setMode(p, mode) }
         }

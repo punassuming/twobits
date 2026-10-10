@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
+import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.AiCredentialsDock
@@ -196,10 +197,14 @@ fun AIConfigScreen(
                             primaryActionLabel = "Download",
                             primaryActionIcon = Icons.Default.CloudDownload,
                             onDelete = { viewModel.deleteWhisperModel(it) },
+                            // Same auto-detecting launcher the LLM panel below uses — see its
+                            // onImport comment for why one shared launcher covers both panels.
+                            onImport = { importLauncher.launch(arrayOf("*/*")) },
                             name = { it.displayName },
                             sizeLabel = { it.sizeLabel },
                             description = { it.description },
                             progressLabel = "Downloading",
+                            isImportOnly = { it.acquisition is LocalModelAcquisition.ImportFile },
                         )
                         LocalModelPanel(
                             sectionLabel = "On-device LLM",
@@ -211,11 +216,20 @@ fun AIConfigScreen(
                             primaryActionLabel = "Download",
                             primaryActionIcon = Icons.Default.CloudDownload,
                             onDelete = { viewModel.deleteLlmModel(it) },
+                            // Reuses the same auto-detecting launcher as the top-level ImportModelCard
+                            // above rather than a model-targeted one: ModelFileDetector identifies the
+                            // right model from the picked file's own name regardless of which row
+                            // triggered the picker, and falls back to ManualModelImportDialog on a
+                            // miss — more robust than trusting the row to match the file, and it means
+                            // this row-level affordance (added for parity with Shelf Snap/PriceDrop's
+                            // per-row Import button) needs no separate launcher/state of its own.
+                            onImport = { importLauncher.launch(arrayOf("*/*")) },
                             name = { it.displayName },
                             sizeLabel = { it.sizeLabel },
                             description = { it.description },
                             progressLabel = "Downloading",
                             huggingFaceUrl = { it.huggingFacePageUrl },
+                            isImportOnly = { it.acquisition is LocalModelAcquisition.ImportFile },
                         )
                     }
                     return@Box

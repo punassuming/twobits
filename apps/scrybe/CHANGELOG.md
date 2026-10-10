@@ -8,6 +8,18 @@
 
 ### Fixes
 
+* Removed a dead, unused shared `ProviderType` enum from `shared/api-keys` — no behavior change.
+* Documented why Scrybe's own `ProviderType` stays separate from the shared `ExecutionMode` type now used by the other two apps — no behavior change.
+
+**On-device models** — added a per-row Import button to the Whisper and LLM model lists:
+* Matches Shelf Snap and PriceDrop's Settings screens
+* Reuses the same auto-detecting file picker as the existing top-level import card
+
+* The shared on-device model list now has a way to mark a model as import-only (no download URL) — currently unused by any shipping model, but needed before a future model that only supports manual import can be added safely.
+* Fixed the shared on-device model list's Retry button for a failed import-only model, which called the (nonexistent) download path instead of re-opening the file picker — not yet reachable since no shipping model is import-only.
+* Bumped the Gradle wrapper from 9.7.1 to 9.8.0 (Dependabot).
+* Bumped `androidx.test.uiautomator:uiautomator` from 2.3.0 to 2.4.0 (Dependabot).
+
 ## 1.53.13 (2026-10-09)
 
 ### Features

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.securestore.CredentialCrypto
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -61,15 +62,15 @@ class ProviderSettingsStore
         // credential row shows "Connected" on launch without re-testing.
         private fun validatedKey(p: PriceDropProvider) = booleanPreferencesKey("valid_${p.key}")
 
-        fun observeMode(p: PriceDropProvider): Flow<ProviderMode> = context.providerStore.data.map { ProviderMode.fromValue(it[modeKey(p)]) }
+        fun observeMode(p: PriceDropProvider): Flow<ExecutionMode> = context.providerStore.data.map { ExecutionMode.fromStorageKey(it[modeKey(p)]) }
 
-        suspend fun getMode(p: PriceDropProvider): ProviderMode = ProviderMode.fromValue(context.providerStore.data.first()[modeKey(p)])
+        suspend fun getMode(p: PriceDropProvider): ExecutionMode = ExecutionMode.fromStorageKey(context.providerStore.data.first()[modeKey(p)])
 
         suspend fun setMode(
             p: PriceDropProvider,
-            mode: ProviderMode,
+            mode: ExecutionMode,
         ) {
-            context.providerStore.edit { it[modeKey(p)] = mode.value }
+            context.providerStore.edit { it[modeKey(p)] = mode.storageKey }
         }
 
         suspend fun getKey(p: PriceDropProvider): String {
@@ -113,8 +114,8 @@ class ProviderSettingsStore
                 if (prefs[couponProviderSchemaKey] == COUPON_PROVIDER_SCHEMA) return@edit
                 prefs.remove(stringPreferencesKey("key_coupon"))
                 prefs.remove(booleanPreferencesKey("valid_coupon"))
-                prefs[stringPreferencesKey("mode_coupon")] = ProviderMode.OFF.value
-                prefs[stringPreferencesKey("feature_source_coupon")] = ProviderMode.OFF.value
+                prefs[stringPreferencesKey("mode_coupon")] = ExecutionMode.OFF.storageKey
+                prefs[stringPreferencesKey("feature_source_coupon")] = ExecutionMode.OFF.storageKey
                 prefs[couponProviderSchemaKey] = COUPON_PROVIDER_SCHEMA
                 migrated = true
             }
@@ -152,27 +153,33 @@ class ProviderSettingsStore
                 else -> null
             }
 
-        fun observeFeatureSource(f: AiFeature): Flow<ProviderMode> =
+        fun observeFeatureSource(f: AiFeature): Flow<ExecutionMode> =
             primaryGatingProvider(f)?.let { observeMode(it) }
                 ?: context.providerStore.data.map { prefs ->
-                    prefs[featureSourceKey(f)]?.let { ProviderMode.fromValue(it) } ?: ProviderMode.BYOK
+                    prefs[featureSourceKey(f)]?.let { ExecutionMode.fromStorageKey(it) } ?: ExecutionMode.BYOK
                 }
 
-        suspend fun getFeatureSource(f: AiFeature): ProviderMode =
+        suspend fun getFeatureSource(f: AiFeature): ExecutionMode =
             primaryGatingProvider(f)?.let { getMode(it) }
                 ?: context.providerStore.data
                     .first()[featureSourceKey(f)]
-                    ?.let { ProviderMode.fromValue(it) } ?: ProviderMode.BYOK
+                    ?.let { ExecutionMode.fromStorageKey(it) } ?: ExecutionMode.BYOK
 
+        /**
+         * [ExecutionMode.LOCAL] is only reachable here for [AiFeature.ASK] — Rainforest/search
+         * providers have no local capability and never offer it in the UI, so their own
+         * exhaustive `when`s over the mode this returns treat `LOCAL` as unreachable/empty
+         * rather than crashing.
+         */
         suspend fun setFeatureSource(
             f: AiFeature,
-            mode: ProviderMode,
+            mode: ExecutionMode,
         ) {
             val primary = primaryGatingProvider(f)
             if (primary != null) {
                 setMode(primary, mode)
             } else {
-                context.providerStore.edit { it[featureSourceKey(f)] = mode.value }
+                context.providerStore.edit { it[featureSourceKey(f)] = mode.storageKey }
             }
         }
 

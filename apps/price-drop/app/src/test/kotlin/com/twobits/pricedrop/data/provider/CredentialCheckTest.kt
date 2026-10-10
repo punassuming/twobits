@@ -1,5 +1,6 @@
 package com.twobits.pricedrop.data.provider
 
+import com.twobits.core.pro.ExecutionMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -46,7 +47,7 @@ class CredentialCheckTest {
 
     @Test
     fun `unknown mode value defaults to OFF`() {
-        assertEquals(ProviderMode.OFF, ProviderMode.fromValue("bogus"))
-        assertEquals(ProviderMode.OFF, ProviderMode.fromValue(null))
+        assertEquals(ExecutionMode.OFF, ExecutionMode.fromStorageKey("bogus"))
+        assertEquals(ExecutionMode.OFF, ExecutionMode.fromStorageKey(null))
     }
 }

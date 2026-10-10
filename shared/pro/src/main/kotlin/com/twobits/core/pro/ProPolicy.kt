@@ -60,4 +60,22 @@ data class RateLimitPolicy(
  * and are NOT migrated — each app adapts at its store boundary. [LOCAL] is only valid for apps that
  * ship a real on-device implementation; PriceDrop's adapter never emits it.
  */
-enum class ExecutionMode { LOCAL, BYOK, PRO, OFF }
+enum class ExecutionMode {
+    LOCAL,
+    BYOK,
+    PRO,
+    OFF,
+    ;
+
+    /**
+     * Lowercase on-disk form (`"local"`/`"byok"`/`"pro"`/`"off"`). Exists so an app's persisted
+     * storage format can match [ExecutionMode] exactly instead of keeping its own duplicate enum
+     * just to get a lowercase string — see [fromStorageKey].
+     */
+    val storageKey: String get() = name.lowercase()
+
+    companion object {
+        /** Inverse of [storageKey]; unrecognized/null values fall back to [OFF]. */
+        fun fromStorageKey(key: String?): ExecutionMode = entries.firstOrNull { it.storageKey == key } ?: OFF
+    }
+}

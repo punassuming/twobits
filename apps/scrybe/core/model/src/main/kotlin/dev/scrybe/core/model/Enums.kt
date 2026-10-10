@@ -27,6 +27,15 @@ enum class TransformStatus {
     FAILED,
 }
 
+/**
+ * Which backend produced/should produce a transcript or AI feature result. Intentionally
+ * narrower than and NOT unified with the shared `com.twobits.core.pro.ExecutionMode`
+ * (LOCAL/BYOK/PRO/OFF): Scrybe never persists a BYOK-vs-Pro distinction here — that's derived
+ * from entitlement state at call time, not stored — so there is no real 4-case value to map
+ * this onto without synthesizing one from unrelated state. The Settings UI does present a
+ * Local/BYOK/Pro picker using the shared [com.twobits.core.pro.ExecutionMode] for display, but
+ * collapses BYOK/Pro back down to [OPENAI] before persisting (see `AIConfigScreen.kt`).
+ */
 enum class ProviderType {
     OPENAI,
     LOCAL,

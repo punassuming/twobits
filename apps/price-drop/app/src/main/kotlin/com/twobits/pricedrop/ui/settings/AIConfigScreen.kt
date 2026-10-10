@@ -63,7 +63,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.core.localmodels.LocalLlmModel
+import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.AI_LOCAL_COLOR
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
@@ -80,7 +82,6 @@ import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.AiModelOption
 import com.twobits.pricedrop.data.provider.PriceDropProvider
-import com.twobits.pricedrop.data.provider.ProviderMode
 
 // PriceDrop accent colors (mirror the design tokens; Pro amber + BYOK coral).
 private val PD_PRO_COLOR = Color(0xFFFFD580)
@@ -191,6 +192,7 @@ fun AIConfigScreen(
                                 description = { it.description },
                                 progressLabel = "Downloading",
                                 huggingFaceUrl = { it.huggingFacePageUrl },
+                                isImportOnly = { it.acquisition is LocalModelAcquisition.ImportFile },
                             )
                         }
                         item {
@@ -286,7 +288,7 @@ private fun FeatureListContent(
                     )
                 }
                 PriceDropProvider.entries.filter { it.isAiModelProvider() }.forEach { provider ->
-                    val state = providerStates[provider] ?: ProviderState(ProviderMode.PRO, "")
+                    val state = providerStates[provider] ?: ProviderState(ExecutionMode.PRO, "")
                     ProviderCredentialItem(
                         provider = provider,
                         state = state,
@@ -316,7 +318,7 @@ private fun FeatureListContent(
                 Column {
                     AiFeature.entries.forEach { feature ->
                         val fState = featureStates[feature]
-                        val source = fState?.source ?: ProviderMode.BYOK
+                        val source = fState?.source ?: ExecutionMode.BYOK
                         val modelName =
                             feature.models
                                 .firstOrNull { it.id == fState?.modelId }
@@ -341,7 +343,7 @@ private fun FeatureListContent(
 @Composable
 private fun FeatureRow(
     feature: AiFeature,
-    source: ProviderMode,
+    source: ExecutionMode,
     modelName: String?,
     onClick: () -> Unit,
 ) {
@@ -391,13 +393,13 @@ private fun FeatureRow(
 }
 
 @Composable
-private fun SourceBadge(source: ProviderMode) {
+private fun SourceBadge(source: ExecutionMode) {
     val (label, color) =
         when (source) {
-            ProviderMode.PRO -> "Pro" to PD_PRO_COLOR
-            ProviderMode.BYOK -> "BYOK" to PD_BYOK_COLOR
-            ProviderMode.LOCAL -> "Local" to AI_LOCAL_COLOR
-            ProviderMode.OFF -> "Off" to Color.Gray
+            ExecutionMode.PRO -> "Pro" to PD_PRO_COLOR
+            ExecutionMode.BYOK -> "BYOK" to PD_BYOK_COLOR
+            ExecutionMode.LOCAL -> "Local" to AI_LOCAL_COLOR
+            ExecutionMode.OFF -> "Off" to Color.Gray
         }
     Surface(
         shape = RoundedCornerShape(6.dp),
@@ -473,7 +475,7 @@ private fun FeatureDetailContent(
     viewModel: SettingsViewModel,
     onManageModels: () -> Unit,
 ) {
-    val source = featureState?.source ?: ProviderMode.BYOK
+    val source = featureState?.source ?: ExecutionMode.BYOK
     val enabledProviders = featureState?.enabledProviders ?: feature.providers.map { it.key }.toSet()
     val selectedModelId =
         featureState?.modelId?.takeIf { id -> feature.models.any { it.id == id } }
@@ -523,13 +525,13 @@ private fun FeatureDetailContent(
             }
 
             when (source) {
-                ProviderMode.PRO -> {
+                ExecutionMode.PRO -> {
                     item {
                         AiProManagedCard(description = managedProDescription(feature))
                     }
                 }
 
-                ProviderMode.LOCAL -> {
+                ExecutionMode.LOCAL -> {
                     item {
                         val llmStates by viewModel.llmStates.collectAsState()
                         val selectedLlm by viewModel.selectedLlm.collectAsState()
@@ -545,7 +547,7 @@ private fun FeatureDetailContent(
                     }
                 }
 
-                ProviderMode.OFF -> {
+                ExecutionMode.OFF -> {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -564,7 +566,7 @@ private fun FeatureDetailContent(
                     }
                 }
 
-                ProviderMode.BYOK -> {
+                ExecutionMode.BYOK -> {
                     item {
                         AppSectionLabel("Providers")
                     }
@@ -638,17 +640,17 @@ private fun FeatureDetailContent(
 
 @Composable
 private fun SourceSegment(
-    selected: ProviderMode,
+    selected: ExecutionMode,
     hasPro: Boolean,
     hasLocal: Boolean = false,
-    onChange: (ProviderMode) -> Unit,
+    onChange: (ExecutionMode) -> Unit,
 ) {
     val options =
         buildList {
-            add(Triple(ProviderMode.OFF, "Off", Color.Gray))
-            add(Triple(ProviderMode.BYOK, "BYOK", PD_BYOK_COLOR))
-            add(Triple(ProviderMode.PRO, "Pro", PD_PRO_COLOR))
-            if (hasLocal) add(Triple(ProviderMode.LOCAL, "Local", AI_LOCAL_COLOR))
+            add(Triple(ExecutionMode.OFF, "Off", Color.Gray))
+            add(Triple(ExecutionMode.BYOK, "BYOK", PD_BYOK_COLOR))
+            add(Triple(ExecutionMode.PRO, "Pro", PD_PRO_COLOR))
+            if (hasLocal) add(Triple(ExecutionMode.LOCAL, "Local", AI_LOCAL_COLOR))
         }
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -656,7 +658,7 @@ private fun SourceSegment(
     ) {
         options.forEach { (mode, label, color) ->
             val isSelected = selected == mode
-            val locked = mode == ProviderMode.PRO && !hasPro
+            val locked = mode == ExecutionMode.PRO && !hasPro
             Surface(
                 onClick = { if (!locked) onChange(mode) },
                 shape = RoundedCornerShape(10.dp),

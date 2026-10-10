@@ -87,6 +87,7 @@ import com.shelfsnap.app.data.model.Condition
 import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.ui.inventory.conditionColor
 import com.shelfsnap.app.ui.theme.LocalEstimateLabel
+import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.InferenceSourceBadge
 import java.io.File
 
@@ -436,7 +437,7 @@ private fun DetailsTab(
             }
         }
 
-        if (item.executionMode == "LOCAL") {
+        if (item.executionMode == ExecutionMode.LOCAL.name) {
             InferenceSourceBadge()
         }
 

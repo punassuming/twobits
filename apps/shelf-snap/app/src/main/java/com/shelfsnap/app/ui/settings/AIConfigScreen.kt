@@ -53,6 +53,7 @@ import com.shelfsnap.app.data.model.ReasoningModel
 import com.shelfsnap.app.data.model.VisionModel
 import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
+import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
@@ -153,6 +154,7 @@ fun AIConfigScreen(
                         description = { it.description },
                         progressLabel = "Downloading",
                         huggingFaceUrl = { it.huggingFacePageUrl },
+                        isImportOnly = { it.acquisition is LocalModelAcquisition.ImportFile },
                     )
                     Spacer(Modifier.height(12.dp))
                     ModelStorageSection(

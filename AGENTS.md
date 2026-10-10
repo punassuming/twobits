@@ -493,7 +493,7 @@ Each triggers on its respective CI passing on `main` and via `workflow_dispatch`
 
 ### Shared reusable workflows
 - **`reusable-validate.yml`** — changelog structure + update enforcement, manifest validation. Called by all three CI workflows.
-- **`reusable-build.yml`** — Gradle build + test + lint + ktlint + detekt. Inputs: `app_root`, `app_name`, `gradle_tasks`, `use_retry_script`.
+- **`reusable-build.yml`** — Gradle build + test + lint + ktlint + detekt. Inputs: `app_root`, `app_name`, `gradle_tasks`, `use_retry_script`, `extra_test_report_globs`. Callers must keep their `build:` job's own `permissions: {contents: read, statuses: write}` block alongside the `uses:`/`with:` call — the callee requests `statuses: write`, which GitHub validates against the caller's grant at run-creation time, and a caller job with no `permissions:` key at all fails every run with `startup_failure` before any step executes.
 - **`reusable-release.yml`** — full release pipeline: stale-SHA check, changelog gate, semver tagging, signing, APK build, GitHub Release. Inputs: `app_name`, `app_root`, `tag_prefix`, `default_bump`, `keystore_alias`, `keystore_storepass`, `use_retry_script`, `head_sha`, `rebuild_for_tag`.
 - **`pages.yml`** — deploys the `docs/` folder to GitHub Pages on push to `main`.
 
