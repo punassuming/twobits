@@ -12,6 +12,8 @@
 * Flattened the remaining elevated cards (AI credentials dock, AI section cards, recording-type rows) to the flat design-system look; added a "No key" chip to the Transcription/Transforms AI config sections when BYOK is selected with no key saved.
 * Debug log's empty state now shows an icon and a separate title/subtitle instead of one paragraph; the crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
 * Shared `CollapsibleProviderRow` (used by AI configuration's provider rows) gained an optional slot for content below the key fields — no change for Scrybe, which doesn't use it yet.
+* Debug log's Share/Clear buttons now respect the active filter chip (scoped sharing, Clear disabled while filtered) instead of always acting on every entry.
+* The shared progress-footer component gained a multi-task mode for apps with more than one kind of background task — no visible change for Scrybe, which only ever shows one.
 
 ### Fixes
 

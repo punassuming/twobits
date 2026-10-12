@@ -2,6 +2,7 @@ package com.twobits.design.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,6 +10,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +22,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -225,6 +231,182 @@ fun ProgressFooter(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One [MultiTaskProgressFooter] entry — the same per-task fields [ProgressFooter] takes, minus
+ * [ProgressFooter.visible] (being in the list already means visible) plus a stable [id] to key
+ * each row's own elapsed-time ticker across recompositions.
+ */
+data class ProgressFooterTask(
+    val id: String,
+    val primaryText: String,
+    val secondaryText: String? = null,
+    val tertiaryText: String? = null,
+    val progressFraction: Float? = null,
+    val startedAtMs: Long? = null,
+    val onCancel: (() -> Unit)? = null,
+    val isCancelling: Boolean = false,
+    val onViewDetails: (() -> Unit)? = null,
+)
+
+/**
+ * Root `bottomBar` slot replacement for stacking two or more independent [ProgressFooter]-style
+ * tasks (e.g. Shelf Snap's local analysis + market research, PriceDrop's Ask + price check) —
+ * they're unrelated features that can genuinely run at once, so merging them into one task's
+ * state would mean one starting mid-run wipes out whatever the other was showing. With exactly
+ * one task active this renders identically to a single [ProgressFooter] (same card, same single
+ * row); with two or more, it collapses to one "N tasks running" card that expands to each task's
+ * own row (own cancel + tap-through). [tasks] should only contain currently-active tasks — pass
+ * an empty list rather than filtering visibility internally.
+ */
+@Composable
+fun MultiTaskProgressFooter(
+    tasks: List<ProgressFooterTask>,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    // Collapse back whenever a run finishes down to ≤1 task — nothing left to expand into.
+    LaunchedEffect(tasks.size) { if (tasks.size <= 1) expanded = false }
+
+    AnimatedVisibility(
+        visible = tasks.isNotEmpty(),
+        enter = slideInVertically(animationSpec = tween(220)) { fullHeight -> fullHeight } + fadeIn(tween(220)),
+        exit = slideOutVertically(animationSpec = tween(180)) { fullHeight -> fullHeight } + fadeOut(tween(180)),
+        modifier = modifier,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            shadowElevation = 6.dp,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp).fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.navigationBarsPadding().animateContentSize()) {
+                val single = tasks.singleOrNull()
+                when {
+                    single != null -> {
+                        MultiTaskProgressFooterRow(
+                            task = single,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        )
+                    }
+
+                    tasks.size > 1 -> {
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { expanded = !expanded }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = "${tasks.size} tasks running",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = if (expanded) "Collapse" else "Expand",
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        if (expanded) {
+                            Column {
+                                tasks.forEach { task ->
+                                    HorizontalDivider()
+                                    MultiTaskProgressFooterRow(
+                                        task = task,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MultiTaskProgressFooterRow(
+    task: ProgressFooterTask,
+    modifier: Modifier = Modifier,
+) {
+    var elapsedMs by remember(task.id) { mutableLongStateOf(0L) }
+    LaunchedEffect(task.id, task.startedAtMs) {
+        val startedAtMs = task.startedAtMs ?: return@LaunchedEffect
+        while (true) {
+            elapsedMs = System.currentTimeMillis() - startedAtMs
+            delay(1_000)
+        }
+    }
+
+    Row(
+        modifier = modifier.fillMaxWidth().let { if (task.onViewDetails != null) it.clickable(onClick = task.onViewDetails) else it },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (task.progressFraction != null) {
+            CircularProgressIndicator(
+                progress = { task.progressFraction.coerceIn(0f, 1f) },
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        } else {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(text = task.primaryText, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            if (!task.secondaryText.isNullOrBlank()) {
+                Text(
+                    text = task.secondaryText,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (!task.tertiaryText.isNullOrBlank()) {
+                Text(
+                    text = task.tertiaryText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (task.startedAtMs != null) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = formatProgressFooterElapsed(elapsedMs),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (task.onCancel != null) {
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = task.onCancel, enabled = !task.isCancelling, modifier = Modifier.size(32.dp)) {
+                if (task.isCancelling) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Icon(Icons.Default.Close, contentDescription = "Cancel", modifier = Modifier.size(18.dp))
                 }
             }
         }

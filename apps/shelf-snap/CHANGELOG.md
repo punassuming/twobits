@@ -12,6 +12,8 @@
 * The crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
 * Services screen: each provider's "enabled for market research" switch now lives inside its own expandable row instead of a separate list at the bottom; the page-reader picker now only appears once Firecrawl's key is actually validated (matching PriceDrop), not merely saved.
 * Settings' storage bar now draws the database's own share as a second segment instead of showing only the photos share.
+* Debug log's Share/Clear buttons now respect the active filter chip (scoped sharing, Clear disabled while filtered) instead of always acting on every entry.
+* When local analysis and market research are both running, the bottom-bar footer now collapses into one "2 tasks running" card (expandable to each task's own row) instead of stacking two full-size cards.
 
 ### Fixes
 

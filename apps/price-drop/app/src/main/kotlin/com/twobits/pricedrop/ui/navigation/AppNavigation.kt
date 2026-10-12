@@ -1,7 +1,6 @@
 package com.twobits.pricedrop.ui.navigation
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -29,7 +28,8 @@ import com.twobits.debuglogui.CrashWarningViewModel
 import com.twobits.debuglogui.DebugLogScreen
 import com.twobits.design.TwoBitsMotion
 import com.twobits.design.components.AppWhatsNewDialog
-import com.twobits.design.components.ProgressFooter
+import com.twobits.design.components.MultiTaskProgressFooter
+import com.twobits.design.components.ProgressFooterTask
 import com.twobits.pricedrop.ui.ask.AskProgressViewModel
 import com.twobits.pricedrop.ui.ask.AskScreen
 import com.twobits.pricedrop.ui.barcode.BarcodeScanScreen
@@ -108,33 +108,44 @@ fun AppNavigation(
             // grows to whichever's measured height while one is visible — this is what actually
             // reduces the content area and makes a footer come up from the real bottom edge,
             // matching Scrybe's and Shelf Snap's own nav-root footers. No navigationBarsPadding()
-            // here — ProgressFooter applies gesture-nav clearance to its own inner content
-            // instead, so its card can reach the true bottom edge unconditionally. See its own
-            // doc comment for why.
+            // here — MultiTaskProgressFooter applies gesture-nav clearance to its own inner
+            // content instead, so its card can reach the true bottom edge unconditionally. See
+            // its own doc comment for why.
             //
-            // Two independent footers, not one merged state, for the same reason Shelf Snap's
-            // nav root keeps its two separate: Ask and a price-check refresh are unrelated
-            // features that can genuinely run at once.
-            Column {
-                ProgressFooter(
-                    visible = askProgressState != null,
-                    primaryText = askProgressState?.label ?: "",
-                    startedAtMs = askProgressState?.startedAtMs,
-                    onCancel = askProgressViewModel::cancel,
-                    onViewDetails = { navController.navigate(Screen.Ask.route) },
-                )
-                ProgressFooter(
-                    visible = priceCheckProgressState != null,
-                    primaryText = priceCheckProgressState?.step ?: "",
-                    startedAtMs = priceCheckProgressState?.startedAtMs,
-                    onCancel = priceCheckProgressViewModel::cancel,
-                    onViewDetails = {
-                        priceCheckProgressState?.productId?.let {
-                            navController.navigate(Screen.ProductDetail.createRoute(it))
+            // Ask and a price-check refresh are unrelated features that can genuinely run at
+            // once — MultiTaskProgressFooter collapses both into one "N tasks running" card when
+            // that happens, for the same reason Shelf Snap's nav root does the same for its two.
+            MultiTaskProgressFooter(
+                tasks =
+                    buildList {
+                        if (askProgressState != null) {
+                            add(
+                                ProgressFooterTask(
+                                    id = "ask",
+                                    primaryText = askProgressState?.label ?: "",
+                                    startedAtMs = askProgressState?.startedAtMs,
+                                    onCancel = askProgressViewModel::cancel,
+                                    onViewDetails = { navController.navigate(Screen.Ask.route) },
+                                ),
+                            )
+                        }
+                        if (priceCheckProgressState != null) {
+                            add(
+                                ProgressFooterTask(
+                                    id = "price-check",
+                                    primaryText = priceCheckProgressState?.step ?: "",
+                                    startedAtMs = priceCheckProgressState?.startedAtMs,
+                                    onCancel = priceCheckProgressViewModel::cancel,
+                                    onViewDetails = {
+                                        priceCheckProgressState?.productId?.let {
+                                            navController.navigate(Screen.ProductDetail.createRoute(it))
+                                        }
+                                    },
+                                ),
+                            )
                         }
                     },
-                )
-            }
+            )
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {

@@ -13,6 +13,8 @@
 * Services screen: per-feature "enabled for..." switches now show an inline warning when on without a saved key, and live inside each provider's own expandable row.
 * Settings: tightened spacing to match the other two apps; "Clear search history" now asks for confirmation first; "Export data" shares a real JSON file instead of pasting it into the share sheet as text.
 * The notification permission prompt no longer fires on every app launch — it's requested once, while leaving onboarding's "Never overpay" page, with that page's own text as the rationale.
+* Debug log's Share/Clear buttons now respect the active filter chip (scoped sharing, Clear disabled while filtered) instead of always acting on every entry.
+* When Ask and a price-check refresh are both running, the bottom-bar footer now collapses into one "2 tasks running" card (expandable to each task's own row) instead of stacking two full-size cards.
 
 ### Fixes
 

@@ -81,22 +81,31 @@ fun DebugLogScreen(
                     }
                 },
                 actions = {
+                    val isFiltered = uiState.filter != null
                     if (uiState.visibleEntries.isNotEmpty()) {
                         IconButton(onClick = {
+                            // Scoped to the filtered set when a filter chip is active, instead of
+                            // always sharing every entry regardless of what's on screen.
+                            val shareEntries = if (isFiltered) uiState.visibleEntries else uiState.entries
                             val intent =
                                 Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
                                     putExtra(
                                         Intent.EXTRA_TEXT,
-                                        shareText(uiState.entries, uiState.breadcrumbs),
+                                        shareText(shareEntries, uiState.breadcrumbs),
                                     )
                                 }
-                            context.startActivity(Intent.createChooser(intent, "Share debug log"))
+                            context.startActivity(
+                                Intent.createChooser(intent, if (isFiltered) "Share filtered debug log" else "Share debug log"),
+                            )
                         }) {
-                            Icon(Icons.Filled.Share, contentDescription = "Share")
+                            Icon(Icons.Filled.Share, contentDescription = if (isFiltered) "Share filtered" else "Share")
                         }
                     }
-                    IconButton(onClick = { showClearConfirm = true }) {
+                    // Clearing always deletes the whole store (DebugLogStore has no filtered
+                    // delete) — disabled while filtered instead of implying a scoped clear that
+                    // doesn't actually happen.
+                    IconButton(onClick = { showClearConfirm = true }, enabled = !isFiltered) {
                         Icon(Icons.Filled.Delete, contentDescription = "Clear log")
                     }
                 },
@@ -319,12 +328,10 @@ private fun CallEntryCard(entry: DebugLogEntry) {
 }
 
 /**
- * The whole log as plain text, for pasting into a bug report.
- *
- * Deliberately built from **every** entry rather than the filtered view, and carrying every field
- * the on-screen cards render. An earlier version shared `visibleEntries` and dropped `success`,
- * `startMarker`, `httpStatus` and call-entry stack traces — so a shared log could not distinguish a
- * successful call from a failed one, which is the first thing anyone reading it needs to know.
+ * The log (or the active filter chip's subset of it) as plain text, for pasting into a bug
+ * report. Carries every field the on-screen cards render — `success`, `startMarker`,
+ * `httpStatus`, call-entry stack traces — so a shared log can still distinguish a successful call
+ * from a failed one, which is the first thing anyone reading it needs to know.
  *
  * The device fingerprint and the previous run's exit reason are lifted to a header because they are
  * the two facts a reader needs before any individual entry makes sense, and hunting for them in a
