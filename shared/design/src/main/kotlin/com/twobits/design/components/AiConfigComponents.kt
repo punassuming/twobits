@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.twobits.design.TwoBitsSpacing
 
 val AI_PRO_COLOR = Color(0xFF88D7A8)
 val AI_BYOK_COLOR = Color(0xFF7DD4DC)
@@ -75,7 +76,7 @@ fun AiCredentialsDock(
 
     val maskedKey = if (apiKey.length > 8) "sk-…${apiKey.takeLast(4)}" else null
 
-    ElevatedCard(shape = RoundedCornerShape(20.dp), modifier = modifier) {
+    ElevatedCard(shape = MaterialTheme.shapes.large, modifier = modifier) {
         Column {
             AiCredentialRow(
                 icon = Icons.Default.WorkspacePremium,
@@ -357,7 +358,7 @@ fun AiProManagedCard(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(AI_PRO_COLOR.copy(alpha = 0.12f))
                 .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -386,7 +387,7 @@ fun AiNoKeyWarning(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f))
                 .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -453,12 +454,12 @@ fun AiSectionCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.item)) {
         AiSectionHeader(title = title, icon = icon)
-        ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        ElevatedCard(shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
             Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(TwoBitsSpacing.section),
+                verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.item),
             ) {
                 content()
             }

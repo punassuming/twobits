@@ -6,6 +6,8 @@
 
 ### Improvements
 
+* Switched hard-coded 12/16/20dp corner radii to the shared shape scale, matching the design-system mockups.
+
 ### Fixes
 
 ## 0.23.11 (2026-10-10)

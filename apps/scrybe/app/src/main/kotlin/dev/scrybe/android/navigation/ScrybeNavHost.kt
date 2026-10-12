@@ -1,9 +1,5 @@
 package dev.scrybe.android.navigation
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -15,6 +11,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.twobits.debuglogui.DebugLogScreen
+import com.twobits.design.TwoBitsMotion
 import dev.scrybe.android.ui.ScrybeWhatsNewScreen
 import dev.scrybe.feature.capture.CaptureScreen
 import dev.scrybe.feature.filemanager.FileManagerScreen
@@ -86,29 +83,16 @@ fun ScrybeNavHost(
         }
     }
 
-    val fadeEnter = fadeIn()
-    val fadeExit = fadeOut()
-    val slideEnter = slideInHorizontally { it } + fadeIn()
-    val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
-    val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
-    val popSlideExit = slideOutHorizontally { it } + fadeOut()
-
     NavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = Modifier.fillMaxSize(),
-        enterTransition = { slideEnter },
-        exitTransition = { slideExit },
-        popEnterTransition = { popSlideEnter },
-        popExitTransition = { popSlideExit },
+        enterTransition = { TwoBitsMotion.pushEnter },
+        exitTransition = { TwoBitsMotion.pushExit },
+        popEnterTransition = { TwoBitsMotion.popEnter },
+        popExitTransition = { TwoBitsMotion.popExit },
     ) {
-        composable(
-            Screen.Capture.route,
-            enterTransition = { fadeEnter },
-            exitTransition = { fadeExit },
-            popEnterTransition = { fadeEnter },
-            popExitTransition = { fadeExit },
-        ) { backStackEntry ->
+        composable(Screen.Capture.route) { backStackEntry ->
             val unminimizeRequested by backStackEntry.savedStateHandle
                 .getStateFlow("unminimize", false)
                 .collectAsState()
@@ -127,13 +111,7 @@ fun ScrybeNavHost(
             val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
             SessionDetailScreen(sessionId = sessionId, onNavigateBack = { navController.popBackStack() })
         }
-        composable(
-            Screen.Profiles.route,
-            enterTransition = { fadeEnter },
-            exitTransition = { fadeExit },
-            popEnterTransition = { fadeEnter },
-            popExitTransition = { fadeExit },
-        ) {
+        composable(Screen.Profiles.route) {
             ProfilesScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(Screen.FileManager.route) {
@@ -147,13 +125,7 @@ fun ScrybeNavHost(
                 },
             )
         }
-        composable(
-            Screen.Settings.route,
-            enterTransition = { fadeEnter },
-            exitTransition = { fadeExit },
-            popEnterTransition = { fadeEnter },
-            popExitTransition = { fadeExit },
-        ) {
+        composable(Screen.Settings.route) {
             SettingsScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToFileManager = { navController.navigate(Screen.FileManager.route) },

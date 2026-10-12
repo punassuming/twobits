@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.twobits.design.TwoBitsSpacing
 
 /**
  * A tappable card that jumps to a sub-settings screen (AI configuration, Services, Profiles,
@@ -43,15 +44,15 @@ fun SettingsEntryCard(
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
+        shape = MaterialTheme.shapes.large,
         color = containerColor,
         border = BorderStroke(1.dp, accentColor.copy(alpha = 0.27f)),
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(TwoBitsSpacing.card),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(TwoBitsSpacing.card),
         ) {
             Box(
                 modifier =

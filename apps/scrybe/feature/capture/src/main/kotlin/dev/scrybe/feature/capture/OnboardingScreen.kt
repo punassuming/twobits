@@ -277,7 +277,7 @@ private fun OnboardingPickModeStep(
             }
         }
         Spacer(Modifier.height(12.dp))
-        Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.06f), shape = RoundedCornerShape(12.dp)) {
+        Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.06f), shape = MaterialTheme.shapes.extraSmall) {
             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Filled.AutoAwesome,

@@ -175,7 +175,7 @@ private fun CompactTierColumn(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         color =
             if (isHighlighted) {
                 accentColor.copy(alpha = 0.12f)

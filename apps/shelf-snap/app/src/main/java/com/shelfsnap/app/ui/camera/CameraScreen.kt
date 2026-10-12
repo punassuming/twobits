@@ -190,7 +190,7 @@ private fun CameraContent(
                     Modifier
                         .fillMaxWidth()
                         .wrapContentHeight()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(Color.Black),
             ) {
                 AsyncImage(

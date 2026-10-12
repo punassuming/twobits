@@ -249,7 +249,7 @@ fun ListTab(
 
             // Tip
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
             ) {
                 Row(
@@ -419,7 +419,7 @@ private fun PlatformToggleRow(
 ) {
     val color = platform.brandColor()
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         color = if (selected) color.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
         onClick = onToggle,
     ) {
@@ -483,7 +483,7 @@ private fun ListingPreviewCard(
     onCopyText: (String) -> Unit,
     onShareText: (Platform, String) -> Unit,
 ) {
-    ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+    ElevatedCard(shape = MaterialTheme.shapes.medium) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.listing_preview),

@@ -1,9 +1,5 @@
 package com.twobits.pricedrop.ui.navigation
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -31,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.twobits.debuglogui.CrashWarningViewModel
 import com.twobits.debuglogui.DebugLogScreen
+import com.twobits.design.TwoBitsMotion
 import com.twobits.design.components.AppWhatsNewDialog
 import com.twobits.design.components.ProgressFooter
 import com.twobits.pricedrop.ui.ask.AskProgressViewModel
@@ -97,10 +94,6 @@ fun AppNavigation(
     val startDestination =
         uiTestStartDestination
             ?: if (onboardingComplete == true) Screen.Watch.route else Screen.Onboarding.route
-    val slideEnter = slideInHorizontally { it } + fadeIn()
-    val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
-    val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
-    val popSlideExit = slideOutHorizontally { it } + fadeOut()
     // contentWindowInsets is zeroed out deliberately: individual screens under NavHost already
     // manage their own top/side system-bar insets (there's no topBar here for Scaffold to reserve
     // space for), so this Scaffold's only job is reserving bottom space for the footer — letting
@@ -149,10 +142,10 @@ fun AppNavigation(
                 navController = navController,
                 startDestination = startDestination,
                 modifier = Modifier.fillMaxSize(),
-                enterTransition = { slideEnter },
-                exitTransition = { slideExit },
-                popEnterTransition = { popSlideEnter },
-                popExitTransition = { popSlideExit },
+                enterTransition = { TwoBitsMotion.pushEnter },
+                exitTransition = { TwoBitsMotion.pushExit },
+                popEnterTransition = { TwoBitsMotion.popEnter },
+                popExitTransition = { TwoBitsMotion.popExit },
             ) {
                 composable(Screen.Watch.route) {
                     WatchScreen(

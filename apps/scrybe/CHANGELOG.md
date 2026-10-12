@@ -6,6 +6,9 @@
 
 ### Improvements
 
+* Tightened section/card spacing and switched hard-coded 12/16/20dp corner radii to the shared shape scale, matching the design-system mockups.
+* Removed Capture/Profiles/Settings' one-off fade transitions — all screens now share the same push/pop slide motion.
+
 ### Fixes
 
 ## 1.53.14 (2026-10-10)

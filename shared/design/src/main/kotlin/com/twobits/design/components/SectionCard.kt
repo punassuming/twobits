@@ -21,14 +21,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.twobits.design.TwoBitsSpacing
 
 @Composable
 fun AppSectionCard(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    contentPadding: PaddingValues = PaddingValues(TwoBitsSpacing.section),
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(10.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(TwoBitsSpacing.item),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
@@ -56,13 +57,13 @@ fun AppLabeledSectionCard(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(12.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(TwoBitsSpacing.item),
     // Zero this out for content that's already full-bleed and self-padded, e.g. a Column of
-    // Material3 ListItems — the default 16dp otherwise double-insets them.
-    contentPadding: PaddingValues = PaddingValues(16.dp),
+    // Material3 ListItems — the default section padding otherwise double-insets them.
+    contentPadding: PaddingValues = PaddingValues(TwoBitsSpacing.section),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.half)) {
         AppSectionLabel(title, icon, Modifier.padding(start = 4.dp))
         AppSectionCard(
             contentPadding = contentPadding,

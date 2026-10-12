@@ -241,7 +241,7 @@ fun ProviderCredentialCard(
 ) {
     var showKey by rememberSaveable(title) { mutableStateOf(false) }
 
-    ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = modifier.fillMaxWidth()) {
+    ElevatedCard(shape = MaterialTheme.shapes.medium, modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
