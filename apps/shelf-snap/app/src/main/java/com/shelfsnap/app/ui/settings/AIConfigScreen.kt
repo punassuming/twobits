@@ -55,6 +55,7 @@ import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AiNoKeyChip
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
@@ -134,7 +135,7 @@ fun AIConfigScreen(
                     modifier =
                         Modifier
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 12.dp, vertical = 16.dp),
+                            .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
                 ) {
                     LocalModelPanel(
                         sectionLabel = "On-device models",
@@ -171,7 +172,7 @@ fun AIConfigScreen(
                 modifier =
                     Modifier
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 16.dp),
+                        .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 CredentialsSection(

@@ -64,6 +64,7 @@ import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.core.pro.ExecutionMode
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AI_LOCAL_COLOR
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
@@ -169,7 +170,7 @@ fun AIConfigScreen(
                     LaunchedEffect(Unit) { viewModel.refreshModelStorage() }
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+                        contentPadding = PaddingValues(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
                     ) {
                         item {
                             LocalModelPanel(
@@ -245,8 +246,8 @@ private fun FeatureListContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
+        verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.screenV),
     ) {
         item {
             AiSectionCard(icon = Icons.Filled.VpnKey, title = "Credentials") {
@@ -482,7 +483,7 @@ private fun FeatureDetailContent(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+        contentPadding = PaddingValues(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

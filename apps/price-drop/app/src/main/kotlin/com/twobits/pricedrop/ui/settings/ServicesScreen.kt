@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.core.pro.ExecutionMode
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.ProviderToggleRow
 import com.twobits.pricedrop.data.provider.AiFeature
@@ -59,8 +60,8 @@ fun ServicesScreen(
                 Modifier
                     .padding(padding)
                     .fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
+            verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.screenV),
         ) {
             item {
                 AiSectionCard(icon = Icons.Default.Public, title = "Search, shopping & page reading") {

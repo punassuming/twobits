@@ -15,6 +15,7 @@
 * The notification permission prompt no longer fires on every app launch — it's requested once, while leaving onboarding's "Never overpay" page, with that page's own text as the rationale.
 * Debug log's Share/Clear buttons now respect the active filter chip (scoped sharing, Clear disabled while filtered) instead of always acting on every entry.
 * When Ask and a price-check refresh are both running, the bottom-bar footer now collapses into one "2 tasks running" card (expandable to each task's own row) instead of stacking two full-size cards.
+* Services and AI configuration screens: tightened the remaining 16dp section spacing to 12/14dp to match the rest of the spacing cleanup.
 
 ### Fixes
 

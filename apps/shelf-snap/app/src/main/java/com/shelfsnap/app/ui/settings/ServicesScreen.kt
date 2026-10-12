@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.data.remote.search.ReaderProvider
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.CollapsibleProviderRow
 import com.twobits.design.components.CredentialRequirement
@@ -66,7 +67,7 @@ fun ServicesScreen(
                 Modifier
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                    .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
         ) {
             AiSectionCard(icon = Icons.Default.Public, title = "Web search") {
                 Text(
