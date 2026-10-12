@@ -20,8 +20,9 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -76,7 +77,12 @@ fun AiCredentialsDock(
 
     val maskedKey = if (apiKey.length > 8) "sk-…${apiKey.takeLast(4)}" else null
 
-    ElevatedCard(shape = MaterialTheme.shapes.large, modifier = modifier) {
+    Card(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = modifier,
+    ) {
         Column {
             AiCredentialRow(
                 icon = Icons.Default.WorkspacePremium,
@@ -412,6 +418,7 @@ fun AiSectionHeader(
     title: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    chip: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
@@ -438,6 +445,38 @@ fun AiSectionHeader(
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
+        chip?.invoke()
+    }
+}
+
+/**
+ * Compact "No key" pill for an [AiSectionHeader] or [AiSectionCard]'s `chip` slot — shown when a
+ * feature's source is BYOK but no key is saved for it, so the list-level hint is visible without
+ * expanding the section.
+ */
+@Composable
+fun AiNoKeyChip(modifier: Modifier = Modifier) {
+    Row(
+        modifier =
+            modifier
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.18f))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error),
+        )
+        Text(
+            text = "No key",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error,
+        )
     }
 }
 
@@ -452,11 +491,17 @@ fun AiSectionCard(
     icon: ImageVector,
     title: String,
     modifier: Modifier = Modifier,
+    chip: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.item)) {
-        AiSectionHeader(title = title, icon = icon)
-        ElevatedCard(shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
+        AiSectionHeader(title = title, icon = icon, chip = chip)
+        Card(
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Column(
                 modifier = Modifier.padding(TwoBitsSpacing.section),
                 verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.item),

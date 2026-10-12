@@ -8,6 +8,8 @@
 
 * Switched hard-coded 12/16/20dp corner radii to the shared shape scale, matching the design-system mockups.
 * Reconciled the color palette against the design-system mockups — primary/secondary/tertiary containers are now accent tints instead of solid colors, and the light-mode outline shades changed. The BYOK plan card and the Price check call-budget entry moved off the green secondary, and the barcode scanner's in-progress indicator moved to the amber tertiary.
+* Replaced the AI config screen's own provider-toggle row with the new shared one (same look, now reused across all three apps).
+* The crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
 
 ### Fixes
 

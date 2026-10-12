@@ -273,10 +273,10 @@ private fun CrashWarningDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onViewDebugLog) { Text("View Debug Log") }
+            TextButton(onClick = onViewDebugLog) { Text("View debug log") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Dismiss") }
+            TextButton(onClick = onDismiss) { Text("Close") }
         },
     )
 }
