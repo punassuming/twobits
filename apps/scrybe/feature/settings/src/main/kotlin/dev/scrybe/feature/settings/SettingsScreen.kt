@@ -188,8 +188,8 @@ fun SettingsScreen(
                     title = "People",
                     subtitle = "Rename, merge, or delete speaker profiles",
                     onClick = onNavigateToPeople,
-                    accentColor = MaterialTheme.colorScheme.secondary,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 )
 
                 SettingsEntryCard(

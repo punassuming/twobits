@@ -269,8 +269,8 @@ fun AIConfigScreen(
                         buildList {
                             add(CallBudgetEntry("Transcription", 1, scheme.primary))
                             if (uiState.enableSpeakerIdentification) add(CallBudgetEntry("Speakers", 2, scheme.tertiary))
-                            if (uiState.enableInsightAnalysis) add(CallBudgetEntry("Insights", 2, scheme.secondary))
-                            add(CallBudgetEntry("Transforms", 2, scheme.onSurfaceVariant))
+                            if (uiState.enableInsightAnalysis) add(CallBudgetEntry("Insights", 2, scheme.onSurfaceVariant))
+                            add(CallBudgetEntry("Transforms", 2, scheme.outline))
                         }
                     CallBudgetCard(
                         entries = callBudgetEntries,

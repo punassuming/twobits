@@ -5,17 +5,19 @@ import androidx.compose.ui.graphics.Color
 // ── Light palette — PriceDrop DS: primary=Coral Red, secondary=Green, tertiary=Amber ──
 val Primary = Color(0xFFC0382A) // Coral red light
 val OnPrimary = Color(0xFFFFFFFF)
-val PrimaryContainer = Color(0xFFFFDAD6)
+
+// Container roles are accent tints (9% alpha), not solid colors — matches the mockups (CC-23).
+val PrimaryContainer = Primary.copy(alpha = 0.09f)
 val OnPrimaryContainer = Color(0xFF410000)
 
 val Secondary = Color(0xFF1E8E5A) // Green light
 val OnSecondary = Color(0xFFFFFFFF)
-val SecondaryContainer = Color(0xFFA4F2C5)
+val SecondaryContainer = Secondary.copy(alpha = 0.09f)
 val OnSecondaryContainer = Color(0xFF003820)
 
 val Tertiary = Color(0xFF9A6A00) // Amber light — Pro accent
 val OnTertiary = Color(0xFFFFFFFF)
-val TertiaryContainer = Color(0xFFFFE98B)
+val TertiaryContainer = Tertiary.copy(alpha = 0.09f)
 val OnTertiaryContainer = Color(0xFF3D2E00)
 
 val Background = Color(0xFFF4F7FB)
@@ -24,8 +26,8 @@ val Surface = Color(0xFFFFFFFF)
 val OnSurface = Color(0xFF17202A)
 val SurfaceVariant = Color(0xFFE8EEF5)
 val OnSurfaceVariant = Color(0xFF4A6080)
-val Outline = Color(0xFF6D7D8B)
-val OutlineVariant = Color(0xFFC8D4E0)
+val Outline = Color(0xFFC8D4E0)
+val OutlineVariant = Color(0xFFDDE5EF)
 
 val SurfaceContainerHigh = Color(0xFFEAECF3)
 val SurfaceContainer = Color(0xFFEEF0F5)
@@ -41,17 +43,19 @@ val OnErrorContainer = Color(0xFF410000)
 // ── Dark palette — PriceDrop DS: primary=Coral Red, secondary=Green, tertiary=Amber ──
 val DarkPrimary = Color(0xFFFF8066) // Coral red dark
 val DarkOnPrimary = Color(0xFF1A0600)
-val DarkPrimaryContainer = Color(0xFF3D1600)
+
+// Container roles are accent tints (13% alpha), not solid colors — matches the mockups (CC-23).
+val DarkPrimaryContainer = DarkPrimary.copy(alpha = 0.13f)
 val DarkOnPrimaryContainer = Color(0xFFFFD9CF)
 
 val DarkSecondary = Color(0xFF88D7A8) // Green dark
 val DarkOnSecondary = Color(0xFF003820)
-val DarkSecondaryContainer = Color(0xFF005231)
+val DarkSecondaryContainer = DarkSecondary.copy(alpha = 0.13f)
 val DarkOnSecondaryContainer = Color(0xFFA4F2C5)
 
 val DarkTertiary = Color(0xFFFFD580) // Amber dark — Pro accent
 val DarkOnTertiary = Color(0xFF3D2E00)
-val DarkTertiaryContainer = Color(0xFF584500)
+val DarkTertiaryContainer = DarkTertiary.copy(alpha = 0.13f)
 val DarkOnTertiaryContainer = Color(0xFFFFE98B)
 
 val DarkBackground = Color(0xFF0F1318)

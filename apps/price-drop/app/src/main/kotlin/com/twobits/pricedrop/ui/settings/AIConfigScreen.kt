@@ -107,7 +107,7 @@ private fun AiFeature.icon(): ImageVector =
 private fun AiFeature.budgetColor(scheme: androidx.compose.material3.ColorScheme): Color =
     when (this) {
         AiFeature.SEARCH -> scheme.primary
-        AiFeature.PRICE_CHECK -> scheme.secondary
+        AiFeature.PRICE_CHECK -> scheme.onSurfaceVariant
         AiFeature.COUPON -> scheme.tertiary
         AiFeature.DROPS -> PD_PRO_COLOR
         AiFeature.ASK -> Color(0xFFC6A0F6)

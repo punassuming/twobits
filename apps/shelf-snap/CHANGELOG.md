@@ -7,6 +7,7 @@
 ### Improvements
 
 * Switched hard-coded 12/16/20dp corner radii to the shared shape scale, matching the design-system mockups.
+* Reconciled the light and dark color palettes against the design-system mockups — teal-tinted surfaces (replacing the shared navy neutrals), secondary moves from blue to green, and the estimate-field label moves from brown to amber. A few category-badge colors that aren't "good outcome" signals (the BYOK plan card, the Listing call-budget entry) moved off the green secondary.
 
 ### Fixes
 

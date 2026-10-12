@@ -100,7 +100,7 @@ private fun ProUsageRow(metric: ProUsageMetric) {
                 text = valueText,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = AI_PRO_COLOR,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         // Live meter only when we have an actual count against a cap.

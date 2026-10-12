@@ -234,7 +234,7 @@ private fun TierComparisonRow(isPro: Boolean) {
             price = "Free forever",
             priceNote = "pay providers directly",
             badge = "Full control",
-            accentColor = MaterialTheme.colorScheme.secondary,
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             features =
                 listOf(
                     "All Shelf Snap features",

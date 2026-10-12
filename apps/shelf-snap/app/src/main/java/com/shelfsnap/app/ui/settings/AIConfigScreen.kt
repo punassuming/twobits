@@ -192,7 +192,7 @@ fun AIConfigScreen(
                     entries =
                         listOf(
                             CallBudgetEntry("Vision", 1, scheme.primary),
-                            CallBudgetEntry("Listing", 1, scheme.secondary),
+                            CallBudgetEntry("Listing", 1, scheme.onSurfaceVariant),
                         ),
                     footnote =
                         "Estimate per analyzed item for vision and listing generation. Market " +
