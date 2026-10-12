@@ -10,6 +10,8 @@
 * Reconciled the light and dark color palettes against the design-system mockups — teal-tinted surfaces (replacing the shared navy neutrals), secondary moves from blue to green, and the estimate-field label moves from brown to amber. A few category-badge colors that aren't "good outcome" signals (the BYOK plan card, the Listing call-budget entry) moved off the green secondary.
 * Flattened the remaining elevated cards (market research insight card, listing summary platform card) to the flat design-system look; added a "No key" chip to the Vision/Listing generation/Market research AI config sections when BYOK is selected with no key saved.
 * The crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
+* Services screen: each provider's "enabled for market research" switch now lives inside its own expandable row instead of a separate list at the bottom; the page-reader picker now only appears once Firecrawl's key is actually validated (matching PriceDrop), not merely saved.
+* Settings' storage bar now draws the database's own share as a second segment instead of showing only the photos share.
 
 ### Fixes
 

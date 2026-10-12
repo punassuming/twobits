@@ -387,6 +387,9 @@ fun CollapsibleProviderRow(
     costEstimate: String = "",
     requirement: CredentialRequirement? = null,
     summary: String? = null,
+    // Rendered inside the expanded section, below the key fields — e.g. a per-provider enable
+    // Switch (ProviderToggleRow-shaped) for a provider whose key AND on/off state both live here.
+    belowFields: (@Composable () -> Unit)? = null,
 ) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     var showInfo by rememberSaveable(title) { mutableStateOf(false) }
@@ -521,6 +524,10 @@ fun CollapsibleProviderRow(
                                 null -> MaterialTheme.colorScheme.onSurfaceVariant
                             },
                     )
+                }
+                belowFields?.let {
+                    HorizontalDivider()
+                    it()
                 }
             }
         }

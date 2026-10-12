@@ -27,11 +27,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.shelfsnap.app.R
 import com.shelfsnap.app.data.remote.search.ReaderProvider
 import com.twobits.design.components.AiSectionCard
 import com.twobits.design.components.CollapsibleProviderRow
@@ -100,6 +98,13 @@ fun ServicesScreen(
                     onClear = viewModel::clearSearchapiKey,
                     signupUrl = "https://www.searchapi.io",
                     requirement = CredentialRequirement.RECOMMENDED,
+                    belowFields = {
+                        WebSearchToggleRow(
+                            enabled = uiState.searchapiSearchEnabled,
+                            hasKey = uiState.savedSearchapiApiKey.isNotBlank(),
+                            onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
+                        )
+                    },
                 )
 
                 CollapsibleProviderRow(
@@ -121,6 +126,13 @@ fun ServicesScreen(
                     onClear = viewModel::clearSerperKey,
                     signupUrl = "https://serper.dev",
                     requirement = CredentialRequirement.RECOMMENDED,
+                    belowFields = {
+                        WebSearchToggleRow(
+                            enabled = uiState.serperSearchEnabled,
+                            hasKey = uiState.savedSerperApiKey.isNotBlank(),
+                            onEnabledChange = viewModel::onSerperSearchEnabledChange,
+                        )
+                    },
                 )
 
                 CollapsibleProviderRow(
@@ -143,12 +155,19 @@ fun ServicesScreen(
                     onClear = viewModel::clearJinaKey,
                     signupUrl = "https://jina.ai",
                     requirement = CredentialRequirement.RECOMMENDED,
+                    belowFields = {
+                        WebSearchToggleRow(
+                            enabled = uiState.jinaSearchEnabled,
+                            hasKey = uiState.savedJinaApiKey.isNotBlank(),
+                            onEnabledChange = viewModel::onJinaSearchEnabledChange,
+                        )
+                    },
                 )
 
                 CollapsibleProviderRow(
                     icon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
                     title = "Firecrawl",
-                    summary = "Optional — alternative page reader",
+                    summary = "Used as the page reader — pick it under Page reader.",
                     description =
                         "Optional alternative to Jina AI for opening a listing's full page. Renders every " +
                             "page through a real headless browser, which may fare better on JS-heavy or " +
@@ -181,46 +200,25 @@ fun ServicesScreen(
                     onClear = viewModel::clearBraveKey,
                     signupUrl = "https://brave.com/search/api/",
                     requirement = CredentialRequirement.OPTIONAL,
+                    belowFields = {
+                        WebSearchToggleRow(
+                            enabled = uiState.braveSearchEnabled,
+                            hasKey = uiState.savedBraveApiKey.isNotBlank(),
+                            onEnabledChange = viewModel::onBraveSearchEnabledChange,
+                        )
+                    },
                 )
 
-                if (uiState.savedJinaApiKey.isNotBlank() || uiState.savedFirecrawlApiKey.isNotBlank()) {
+                // Firecrawl only becomes a real choice once it has a *validated* key — with just
+                // Jina validated (or neither), Jina is the sole reader anyway, matching PriceDrop's
+                // equivalent gating (ServicesScreen.kt's PageReaderPicker).
+                if (uiState.firecrawlTestResult == true) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     ReaderProviderPicker(
                         selected = uiState.readerProvider,
                         onSelect = viewModel::onReaderProviderChange,
                     )
                 }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                Text(
-                    "Enabled for market research",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                WebSearchToggleRow(
-                    title = "SearchAPI.io",
-                    enabled = uiState.searchapiSearchEnabled,
-                    hasKey = uiState.savedSearchapiApiKey.isNotBlank(),
-                    onEnabledChange = viewModel::onSearchapiSearchEnabledChange,
-                )
-                WebSearchToggleRow(
-                    title = "Serper.dev",
-                    enabled = uiState.serperSearchEnabled,
-                    hasKey = uiState.savedSerperApiKey.isNotBlank(),
-                    onEnabledChange = viewModel::onSerperSearchEnabledChange,
-                )
-                WebSearchToggleRow(
-                    title = stringResource(R.string.jina_api_key_label),
-                    enabled = uiState.jinaSearchEnabled,
-                    hasKey = uiState.savedJinaApiKey.isNotBlank(),
-                    onEnabledChange = viewModel::onJinaSearchEnabledChange,
-                )
-                WebSearchToggleRow(
-                    title = stringResource(R.string.brave_api_key_label),
-                    enabled = uiState.braveSearchEnabled,
-                    hasKey = uiState.savedBraveApiKey.isNotBlank(),
-                    onEnabledChange = viewModel::onBraveSearchEnabledChange,
-                )
             }
         }
     }
@@ -248,9 +246,12 @@ private fun ReaderProviderPicker(
     }
 }
 
+/**
+ * Nested inside the provider's own [CollapsibleProviderRow] (expanded, below the key fields) —
+ * the row's own title above already names the provider, so this only needs the enable label.
+ */
 @Composable
 private fun WebSearchToggleRow(
-    title: String,
     enabled: Boolean,
     hasKey: Boolean,
     onEnabledChange: (Boolean) -> Unit,
@@ -261,7 +262,7 @@ private fun WebSearchToggleRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text("Enabled for market research", style = MaterialTheme.typography.titleSmall)
             Switch(checked = enabled, onCheckedChange = onEnabledChange)
         }
         if (enabled && !hasKey) {

@@ -10,6 +10,9 @@
 * Reconciled the color palette against the design-system mockups — primary/secondary/tertiary containers are now accent tints instead of solid colors, and the light-mode outline shades changed. The BYOK plan card and the Price check call-budget entry moved off the green secondary, and the barcode scanner's in-progress indicator moved to the amber tertiary.
 * Replaced the AI config screen's own provider-toggle row with the new shared one (same look, now reused across all three apps).
 * The crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
+* Services screen: per-feature "enabled for..." switches now show an inline warning when on without a saved key, and live inside each provider's own expandable row.
+* Settings: tightened spacing to match the other two apps; "Clear search history" now asks for confirmation first; "Export data" shares a real JSON file instead of pasting it into the share sheet as text.
+* The notification permission prompt no longer fires on every app launch — it's requested once, while leaving onboarding's "Never overpay" page, with that page's own text as the rationale.
 
 ### Fixes
 

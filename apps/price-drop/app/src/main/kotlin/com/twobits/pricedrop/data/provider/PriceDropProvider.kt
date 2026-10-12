@@ -114,7 +114,8 @@ enum class PriceDropProvider(
         summary = "Optional — Amazon-specific enrichment",
         description =
             "Optional Amazon enrichment for ASIN details, sellers, historical data, coupons, and " +
-                "barcode lookup. Broad product tracking does not require it.",
+                "barcode lookup. Broad product tracking does not require it. Always on while a " +
+                "key is saved — there's no separate enable switch for it.",
         setupHint =
             "Sign up at rainforestapi.com → open the Dashboard → copy your API key. " +
                 "Needed for Amazon ASIN price checks, price history, and barcode lookups.",

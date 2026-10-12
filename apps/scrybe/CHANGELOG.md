@@ -11,6 +11,7 @@
 * Reconciled the light and dark color palettes against the design-system mockups — secondary moves from teal to green (matching Shelf Snap and PriceDrop), several surface/outline/container shades were retuned, and a few category-badge colors that aren't "good outcome" signals (Settings → People, the BYOK plan card, Transforms' call-budget entry) moved off the green secondary.
 * Flattened the remaining elevated cards (AI credentials dock, AI section cards, recording-type rows) to the flat design-system look; added a "No key" chip to the Transcription/Transforms AI config sections when BYOK is selected with no key saved.
 * Debug log's empty state now shows an icon and a separate title/subtitle instead of one paragraph; the crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
+* Shared `CollapsibleProviderRow` (used by AI configuration's provider rows) gained an optional slot for content below the key fields — no change for Scrybe, which doesn't use it yet.
 
 ### Fixes
 
