@@ -8,16 +8,19 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -38,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.debuglog.Breadcrumb
@@ -77,22 +81,31 @@ fun DebugLogScreen(
                     }
                 },
                 actions = {
+                    val isFiltered = uiState.filter != null
                     if (uiState.visibleEntries.isNotEmpty()) {
                         IconButton(onClick = {
+                            // Scoped to the filtered set when a filter chip is active, instead of
+                            // always sharing every entry regardless of what's on screen.
+                            val shareEntries = if (isFiltered) uiState.visibleEntries else uiState.entries
                             val intent =
                                 Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
                                     putExtra(
                                         Intent.EXTRA_TEXT,
-                                        shareText(uiState.entries, uiState.breadcrumbs),
+                                        shareText(shareEntries, uiState.breadcrumbs, allEntries = uiState.entries),
                                     )
                                 }
-                            context.startActivity(Intent.createChooser(intent, "Share debug log"))
+                            context.startActivity(
+                                Intent.createChooser(intent, if (isFiltered) "Share filtered debug log" else "Share debug log"),
+                            )
                         }) {
-                            Icon(Icons.Filled.Share, contentDescription = "Share")
+                            Icon(Icons.Filled.Share, contentDescription = if (isFiltered) "Share filtered" else "Share")
                         }
                     }
-                    IconButton(onClick = { showClearConfirm = true }) {
+                    // Clearing always deletes the whole store (DebugLogStore has no filtered
+                    // delete) — disabled while filtered instead of implying a scoped clear that
+                    // doesn't actually happen.
+                    IconButton(onClick = { showClearConfirm = true }, enabled = !isFiltered) {
                         Icon(Icons.Filled.Delete, contentDescription = "Clear log")
                     }
                 },
@@ -111,13 +124,29 @@ fun DebugLogScreen(
                     }
 
                     uiState.visibleEntries.isEmpty() -> {
-                        Text(
-                            "Nothing recorded yet. Use the app, and crashes, AI calls, and " +
-                                "service calls will show up here as they happen.",
-                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Column(
+                            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.BugReport,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(48.dp),
+                            )
+                            Text(
+                                "Nothing recorded yet",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                "Use the app, and crashes, AI calls, and service calls will show up here as they happen.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
 
                     else -> {
@@ -163,7 +192,7 @@ fun DebugLogScreen(
  */
 @Composable
 private fun BreadcrumbTrailCard(breadcrumbs: List<Breadcrumb>) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("Recent activity (this session)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
             Text(
@@ -221,7 +250,7 @@ private fun DebugLogEntryCard(entry: DebugLogEntry) {
 
 @Composable
 private fun CrashEntryCard(entry: DebugLogEntry) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -255,7 +284,7 @@ private fun CrashEntryCard(entry: DebugLogEntry) {
 private fun CallEntryCard(entry: DebugLogEntry) {
     val isStartMarker = entry.startMarker
     val isService = entry.type == DebugLogEntryType.SERVICE_CALL
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -299,12 +328,10 @@ private fun CallEntryCard(entry: DebugLogEntry) {
 }
 
 /**
- * The whole log as plain text, for pasting into a bug report.
- *
- * Deliberately built from **every** entry rather than the filtered view, and carrying every field
- * the on-screen cards render. An earlier version shared `visibleEntries` and dropped `success`,
- * `startMarker`, `httpStatus` and call-entry stack traces — so a shared log could not distinguish a
- * successful call from a failed one, which is the first thing anyone reading it needs to know.
+ * The log (or the active filter chip's subset of it) as plain text, for pasting into a bug
+ * report. Carries every field the on-screen cards render — `success`, `startMarker`,
+ * `httpStatus`, call-entry stack traces — so a shared log can still distinguish a successful call
+ * from a failed one, which is the first thing anyone reading it needs to know.
  *
  * The device fingerprint and the previous run's exit reason are lifted to a header because they are
  * the two facts a reader needs before any individual entry makes sense, and hunting for them in a
@@ -313,9 +340,15 @@ private fun CallEntryCard(entry: DebugLogEntry) {
 private fun shareText(
     entries: List<DebugLogEntry>,
     breadcrumbs: List<Breadcrumb>,
+    // The device fingerprint and previous-run exit reason are themselves recorded as ordinary
+    // entries (an AI_CALL-typed device-info row; a CRASH-typed process-exit row) — when `entries`
+    // is a type-filtered subset (e.g. "Crashes" or "Services" only), neither necessarily survives
+    // that filter even though both are always-relevant context. Deriving them from the full,
+    // unfiltered set instead keeps them in every export regardless of which filter chip is active.
+    allEntries: List<DebugLogEntry> = entries,
 ): String {
-    val device = entries.firstOrNull { it.endpoint == DEVICE_INFO_ENDPOINT }?.requestSummary
-    val previousRun = entries.firstOrNull { it.exceptionType == PROCESS_EXIT_TYPE }?.message
+    val device = allEntries.firstOrNull { it.endpoint == DEVICE_INFO_ENDPOINT }?.requestSummary
+    val previousRun = allEntries.firstOrNull { it.exceptionType == PROCESS_EXIT_TYPE }?.message
     return buildString {
         appendLine("Debug log · ${entries.size} entries, newest first")
         device?.let { appendLine("Device: $it") }

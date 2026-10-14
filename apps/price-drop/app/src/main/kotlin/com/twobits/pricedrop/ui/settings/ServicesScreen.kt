@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -18,7 +17,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -30,7 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.core.pro.ExecutionMode
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AiSectionCard
+import com.twobits.design.components.ProviderToggleRow
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.PriceDropProvider
 
@@ -60,8 +60,8 @@ fun ServicesScreen(
                 Modifier
                     .padding(padding)
                     .fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
+            verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.screenV),
         ) {
             item {
                 AiSectionCard(icon = Icons.Default.Public, title = "Search, shopping & page reading") {
@@ -77,43 +77,43 @@ fun ServicesScreen(
 
                     PriceDropProvider.entries.filterNot { it.isAiModelProvider() }.forEach { provider ->
                         val state = providerStates[provider] ?: ProviderState(ExecutionMode.PRO, "")
-                        ProviderCredentialItem(
-                            provider = provider,
-                            state = state,
-                            viewModel = viewModel,
-                        )
+                        val hasKey = state.isKeyValid == true
 
                         // Rainforest is deliberately excluded even though it's PRICE_CHECK's sole
                         // provider: PriceDropApiClient.price()/history()/barcode() and
                         // ProviderRegistry.rainforestIfEnabled() both route purely off Rainforest's
                         // provider MODE, never this per-feature enabled-providers set — showing a
                         // toggle here would tell the user it stops billed Rainforest calls when it
-                        // does nothing at all.
+                        // does nothing at all. "Always on while a key is saved" is covered in its
+                        // own description instead (see PriceDropProvider.RAINFOREST).
                         val servedFeatures =
                             AiFeature.entries.filter { provider in it.providers && provider != PriceDropProvider.RAINFOREST }
-                        if (servedFeatures.isNotEmpty()) {
-                            Column(modifier = Modifier.padding(start = 14.dp, bottom = 8.dp)) {
-                                servedFeatures.forEach { feature ->
-                                    val enabled = featureStates[feature]?.enabledProviders?.contains(provider.key) ?: true
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text(
-                                            text = "Enabled for ${feature.label}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        Switch(
-                                            checked = enabled,
-                                            onCheckedChange = { viewModel.toggleFeatureProvider(feature, provider.key) },
-                                        )
+                        ProviderCredentialItem(
+                            provider = provider,
+                            state = state,
+                            viewModel = viewModel,
+                            belowFields =
+                                if (servedFeatures.isEmpty()) {
+                                    null
+                                } else {
+                                    {
+                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            servedFeatures.forEach { feature ->
+                                                val enabled =
+                                                    featureStates[feature]?.enabledProviders?.contains(provider.key) ?: true
+                                                ProviderToggleRow(
+                                                    name = feature.label,
+                                                    icon = provider.icon(),
+                                                    hasKey = hasKey,
+                                                    enabled = enabled,
+                                                    onEnabledChange = { viewModel.toggleFeatureProvider(feature, provider.key) },
+                                                    note = "Enabled for this feature when switched on",
+                                                )
+                                            }
+                                        }
                                     }
-                                }
-                            }
-                        }
+                                },
+                        )
                     }
 
                     // Only worth showing once there's an actual choice — with no validated

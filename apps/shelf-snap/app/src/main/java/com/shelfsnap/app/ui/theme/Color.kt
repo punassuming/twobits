@@ -2,76 +2,90 @@ package com.shelfsnap.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ── Light palette — TwoBits DS: primary=Glow(teal), secondary=Signal(blue), tertiary=Ember ──
-val Primary = Color(0xFF1A7F8A) // Glow teal
+// ── Light palette — TwoBits DS: primary=Glow(teal), secondary=Green, tertiary=Ember ──
+// Surfaces are teal-tinted (CC-08) — this app's own identity, not the shared Mist/Ink neutrals
+// Scrybe/PriceDrop use.
+val Primary = Color(0xFF0C7A87) // Glow teal
 val OnPrimary = Color(0xFFFFFFFF)
-val PrimaryContainer = Color(0xFFBEE8EC)
+val PrimaryContainer = Color(0xFFB8E8ED)
 val OnPrimaryContainer = Color(0xFF002022)
 
-val Secondary = Color(0xFF005B99) // Signal blue
+// Secondary (green — good outcomes only, CC-07). Signal blue moves to ConditionGood below,
+// which already had its own independent literal.
+val Secondary = Color(0xFF1E8E5A)
 val OnSecondary = Color(0xFFFFFFFF)
-val SecondaryContainer = Color(0xFFD0E8FF)
-val OnSecondaryContainer = Color(0xFF001D36)
+val SecondaryContainer = Color(0xFFBEEFD6)
 
-val Tertiary = Color(0xFFB85C38) // Ember orange
+// Not specified by the mockups (which don't define dark/light on-container text) — chosen to
+// match Scrybe's equivalent on-secondary-container pair; report back if the design system wants
+// a different value.
+val OnSecondaryContainer = Color(0xFF00391F)
+
+val Tertiary = Color(0xFFB05020) // Ember orange
 val OnTertiary = Color(0xFFFFFFFF)
-val TertiaryContainer = Color(0xFFFFDBCA)
+val TertiaryContainer = Color(0xFFFFE4D4)
 val OnTertiaryContainer = Color(0xFF321200)
 
-val Background = Color(0xFFF4F7FB) // Mist100 — unified with Scrybe
-val OnBackground = Color(0xFF17202A) // Ink900
-val Surface = Color(0xFFFFFFFF)
-val OnSurface = Color(0xFF17202A) // Ink900
-val SurfaceVariant = Color(0xFFE8EEF5) // Mist200
-val OnSurfaceVariant = Color(0xFF304253) // Ink700
-val Outline = Color(0xFF6D7D8B) // Slate500
-val OutlineVariant = Color(0xFFC9D6E3)
+val Background = Color(0xFFEDF7F8)
+val OnBackground = Color(0xFF061A1C)
+val Surface = Color(0xFFDCF0F2)
+val OnSurface = Color(0xFF061A1C)
+val SurfaceVariant = Color(0xFFC8E8EB)
+val OnSurfaceVariant = Color(0xFF2E6E75)
+val SurfaceContainerHigh = Color(0xFFD4EDF0)
+val Outline = Color(0xFF5FA8B0)
+val OutlineVariant = Color(0xFFC0DEE2)
 
-val Error = Color(0xFFBA1A1A)
+val Error = Color(0xFFB3261E)
 val OnError = Color(0xFFFFFFFF)
 val ErrorContainer = Color(0xFFFFDAD6)
 val OnErrorContainer = Color(0xFF410002)
 
-val EstimateLabel = Color(0xFF795548) // Warm brown — flags estimate fields
+val EstimateLabel = Color(0xFF9B7200) // Amber — flags estimate fields (was brown)
 
-// ── Dark palette — TwoBits DS: primary=Glow(teal), secondary=Signal(blue), tertiary=Ember ──
+// ── Dark palette — TwoBits DS: primary=Glow(teal), secondary=Green, tertiary=Ember ──
 val DarkPrimary = Color(0xFF7DD4DC) // Glow teal dark
-val DarkOnPrimary = Color(0xFF17202A) // Ink900
-val DarkPrimaryContainer = Color(0xFF143335)
+val DarkOnPrimary = Color(0xFF003D42)
+val DarkPrimaryContainer = Color(0xFF004F57)
 val DarkOnPrimaryContainer = Color(0xFFC0F0F4)
 
-val DarkSecondary = Color(0xFF89C7FF) // Signal blue dark
-val DarkOnSecondary = Color(0xFF17202A) // Ink900
-val DarkSecondaryContainer = Color(0xFF003A63)
-val DarkOnSecondaryContainer = Color(0xFFC8E6FF)
+val DarkSecondary = Color(0xFF88D7A8)
+val DarkOnSecondary = Color(0xFF003823)
+val DarkSecondaryContainer = Color(0xFF003823)
+
+// See the light OnSecondaryContainer comment above — same not-specified-by-mockups caveat.
+val DarkOnSecondaryContainer = Color(0xFFBEEFD6)
 
 val DarkTertiary = Color(0xFFFFB695) // Ember dark
 val DarkOnTertiary = Color(0xFF4A2511)
-val DarkTertiaryContainer = Color(0xFF3B2515)
+val DarkTertiaryContainer = Color(0xFF4A1A00)
 val DarkOnTertiaryContainer = Color(0xFFFFD8C0)
 
-val DarkBackground = Color(0xFF0F1720)
-val DarkOnBackground = Color(0xFFE2E8F0)
-val DarkSurface = Color(0xFF172431)
-val DarkOnSurface = Color(0xFFE2E8F0)
-val DarkSurfaceVariant = Color(0xFF243443)
-val DarkOnSurfaceVariant = Color(0xFF8B9BAB)
-val DarkOutline = Color(0xFF4A6278)
-val DarkOutlineVariant = Color(0xFF1E2E3D)
+val DarkBackground = Color(0xFF0B1A1C)
+val DarkOnBackground = Color(0xFFDDF4F5)
+val DarkSurface = Color(0xFF122127)
+val DarkOnSurface = Color(0xFFDDF4F5)
+val DarkSurfaceVariant = Color(0xFF1A3038)
+val DarkOnSurfaceVariant = Color(0xFF7EB9BF)
+val DarkOutline = Color(0xFF2E5059)
+val DarkOutlineVariant = Color(0xFF1A3038)
 
-// Tonal surface containers — layered dark blues (shared with Scrybe DS)
-val DarkSurfaceContainerLowest = Color(0xFF0B121A)
-val DarkSurfaceContainerLow = Color(0xFF141F2B)
-val DarkSurfaceContainer = Color(0xFF172431)
-val DarkSurfaceContainerHigh = Color(0xFF1C2B3B)
-val DarkSurfaceContainerHighest = Color(0xFF243443)
+// Tonal surface containers — teal-tinted (CC-08). Lowest/Low aren't specified by the mockups
+// (only background/surface/surfaceContainerHigh/surfaceContainerHighest are); interpolated here
+// to keep the same relative step pattern the old navy scale had — report back if the design
+// system wants different values.
+val DarkSurfaceContainerLowest = Color(0xFF081416)
+val DarkSurfaceContainerLow = Color(0xFF0E1F21)
+val DarkSurfaceContainer = Color(0xFF122127)
+val DarkSurfaceContainerHigh = Color(0xFF162B31)
+val DarkSurfaceContainerHighest = Color(0xFF1A3038)
 
 val DarkError = Color(0xFFFFB4AB)
 val DarkOnError = Color(0xFF690005)
-val DarkErrorContainer = Color(0xFF4B1413)
+val DarkErrorContainer = Color(0xFF93000A)
 val DarkOnErrorContainer = Color(0xFFFFDAD6)
 
-val DarkEstimateLabel = Color(0xFFFFB695) // Amber — flags AI-generated estimates
+val DarkEstimateLabel = Color(0xFFFFD580) // Amber — flags AI-generated estimates (was #FFB695)
 
 // ── Condition colors — aligned with TwoBits DS accent families ──
 val ConditionExcellent = Color(0xFF7DD4DC) // Glow teal

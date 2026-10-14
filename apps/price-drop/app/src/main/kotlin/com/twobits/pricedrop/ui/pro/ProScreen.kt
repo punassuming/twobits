@@ -237,7 +237,7 @@ private fun TierComparisonRow(isPro: Boolean) {
             price = "Free forever",
             priceNote = "pay providers directly",
             badge = "Full control",
-            accentColor = MaterialTheme.colorScheme.secondary,
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             features =
                 listOf(
                     "All Pro features",
@@ -311,7 +311,7 @@ private fun PlanOption(
     val color = MaterialTheme.colorScheme.primary
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         color =
             if (selected) {
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -357,7 +357,7 @@ private fun ProActiveCard(
 ) {
     val context = LocalContext.current
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
     ) {
@@ -461,7 +461,7 @@ private fun WhyProSection() {
         fontWeight = FontWeight.SemiBold,
     )
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {

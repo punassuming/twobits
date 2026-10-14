@@ -24,8 +24,9 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -241,7 +242,12 @@ fun ProviderCredentialCard(
 ) {
     var showKey by rememberSaveable(title) { mutableStateOf(false) }
 
-    ElevatedCard(shape = RoundedCornerShape(16.dp), modifier = modifier.fillMaxWidth()) {
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = modifier.fillMaxWidth(),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -381,6 +387,9 @@ fun CollapsibleProviderRow(
     costEstimate: String = "",
     requirement: CredentialRequirement? = null,
     summary: String? = null,
+    // Rendered inside the expanded section, below the key fields — e.g. a per-provider enable
+    // Switch (ProviderToggleRow-shaped) for a provider whose key AND on/off state both live here.
+    belowFields: (@Composable () -> Unit)? = null,
 ) {
     var expanded by rememberSaveable(title) { mutableStateOf(false) }
     var showInfo by rememberSaveable(title) { mutableStateOf(false) }
@@ -515,6 +524,10 @@ fun CollapsibleProviderRow(
                                 null -> MaterialTheme.colorScheme.onSurfaceVariant
                             },
                     )
+                }
+                belowFields?.let {
+                    HorizontalDivider()
+                    it()
                 }
             }
         }

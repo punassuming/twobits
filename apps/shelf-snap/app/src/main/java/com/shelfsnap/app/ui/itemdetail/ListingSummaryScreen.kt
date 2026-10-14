@@ -192,7 +192,7 @@ private fun PlatformListingCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
     ) {
         Column(Modifier.padding(12.dp)) {
             // Header row — always visible

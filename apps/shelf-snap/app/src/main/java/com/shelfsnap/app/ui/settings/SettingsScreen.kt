@@ -1,9 +1,12 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,7 +21,6 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -38,6 +40,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.BuildConfig
 import com.shelfsnap.app.R
 import com.twobits.billing.SubscriptionTier
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsEntryCard
@@ -73,9 +76,9 @@ fun SettingsScreen(
                 Modifier
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 16.dp)
+                    .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV)
                     .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.screenV),
         ) {
             SettingsProStatusCard(
                 appName = "Shelf Snap",
@@ -160,21 +163,47 @@ private fun SettingToggle(
 private fun StorageBreakdownCard(storage: StorageInfo) {
     val total = storage.totalBytes.coerceAtLeast(1L)
     val photoFraction = (storage.photosBytes.toFloat() / total).coerceIn(0f, 1f)
+    val dbFraction = (storage.dbBytes.toFloat() / total).coerceIn(0f, 1f - photoFraction)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = stringResource(R.string.storage_usage),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
         )
-        @Suppress("DEPRECATION")
-        LinearProgressIndicator(
-            progress = photoFraction,
+        // Two segments (photos, database) instead of LinearProgressIndicator's single fraction —
+        // the remaining space (neither segment) stays the track color, same as an unfilled
+        // progress bar.
+        Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-        )
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            if (photoFraction > 0f) {
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(photoFraction)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.primary),
+                )
+            }
+            if (dbFraction > 0f) {
+                Box(
+                    modifier =
+                        Modifier
+                            .weight(dbFraction)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.tertiary),
+                )
+            }
+            val remaining = (1f - photoFraction - dbFraction).coerceAtLeast(0f)
+            if (remaining > 0f) {
+                Box(modifier = Modifier.weight(remaining).fillMaxHeight())
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

@@ -6,6 +6,31 @@
 
 ### Improvements
 
+**Spacing & shapes** — matches the design-system mockups:
+* Section and card padding tightened
+* Corner radii now use the shared shape scale everywhere
+
+**Navigation** — one consistent motion everywhere:
+* Removed Capture/Profiles/Settings' one-off fade transitions
+* Every screen now shares the same push/pop slide
+
+**Colors** — palette reconciled with the mockups:
+* Secondary moves from teal to green, matching Shelf Snap and PriceDrop
+* Several surface/outline/container shades retuned
+* A few status badges moved off green to a neutral tint
+
+**AI configuration** — flatter cards, clearer key state:
+* Credentials dock and section cards are now flat, not elevated
+* "No key" chip shown when BYOK has no saved key
+
+**Debug log** — clearer empty state, consistent copy:
+* Empty state shows an icon with a separate title and subtitle
+* Crash dialog buttons read "View debug log" / "Close"
+* Share and Clear now respect the active filter chip instead of always acting on every entry
+
+* Shared `CollapsibleProviderRow` (used by AI configuration's provider rows) gained an optional slot for content below the key fields — no change for Scrybe, which doesn't use it yet.
+* The shared progress-footer component gained a multi-task mode for apps with more than one kind of background task — no visible change for Scrybe, which only ever shows one.
+
 ### Fixes
 
 ## 1.53.14 (2026-10-10)

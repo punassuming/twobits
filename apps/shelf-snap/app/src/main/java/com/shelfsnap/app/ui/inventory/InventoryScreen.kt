@@ -173,7 +173,7 @@ fun InventoryScreen(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors =
                         TextFieldDefaults.colors(
                             focusedIndicatorColor = Color.Transparent,
@@ -344,7 +344,7 @@ private fun InventoryItemCard(
                 .fillMaxWidth()
                 .clickable(onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -556,7 +556,7 @@ private fun SummaryBanner(
                 .padding(horizontal = 12.dp, vertical = 4.dp)
                 .clickable(onClick = onSummaryClick),
         color = MaterialTheme.colorScheme.primaryContainer,
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),

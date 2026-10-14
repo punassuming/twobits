@@ -6,6 +6,37 @@
 
 ### Improvements
 
+**Shapes & spacing** — matches the design-system mockups:
+* Corner radii now use the shared shape scale everywhere
+* Section spacing across Settings, Services, and AI configuration tightened to match the other two apps
+
+**Colors** — palette reconciled with the mockups:
+* Primary/secondary/tertiary containers are now accent tints, not solid colors
+* Light-mode outline shades changed
+* A few status badges moved off green to a neutral tint
+* Barcode scanner's in-progress indicator moved to amber
+
+**AI configuration** — shared provider row:
+* Provider toggle row now matches the one Shelf Snap and Scrybe use
+* Inline warning shown when a feature is on without a saved key
+
+**Services** — clearer provider rows:
+* Per-feature "enabled for…" switches now live inside each provider's own row
+
+**Settings** — safer, clearer actions:
+* "Clear search history" now asks for confirmation first
+* "Export data" shares a real JSON file instead of pasting it into the share sheet as text
+
+**Notifications** — asked once, not every launch:
+* Requested once while leaving onboarding's "Never overpay" page
+* A "Notifications" row in Settings lets you turn it on later if you skipped or denied it there
+
+**Debug log** — respects filters:
+* Share and Clear now respect the active filter chip
+
+**Background tasks** — one footer, not two:
+* Ask and a price-check refresh now collapse into one "2 tasks running" card when both run at once
+
 ### Fixes
 
 ## 0.23.11 (2026-10-10)

@@ -29,8 +29,9 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -89,7 +90,7 @@ fun MarketTab(
             onClick = viewModel::researchPrice,
             modifier = Modifier.fillMaxWidth(),
             enabled = !uiState.isResearching,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.extraSmall,
         ) {
             if (uiState.isResearching) {
                 CircularProgressIndicator(
@@ -148,7 +149,11 @@ fun MarketTab(
                 .size
 
         // Price summary
-        ElevatedCard(shape = RoundedCornerShape(20.dp)) {
+        Card(
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     text = stringResource(R.string.price_analysis),
@@ -398,7 +403,7 @@ private fun SourceAttributionRow(research: MarketResearch) {
 @Composable
 private fun QueriesExpander(queries: List<MarketQuery>) {
     var expanded by remember { mutableStateOf(false) }
-    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)) {
+    Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier =
@@ -826,7 +831,7 @@ private fun SearchStatusBanner(research: MarketResearch) {
                 )
             }
         }
-    Surface(shape = RoundedCornerShape(12.dp), color = container) {
+    Surface(shape = MaterialTheme.shapes.extraSmall, color = container) {
         Row(
             modifier =
                 Modifier

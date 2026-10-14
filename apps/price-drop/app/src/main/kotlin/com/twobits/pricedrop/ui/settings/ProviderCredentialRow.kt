@@ -84,6 +84,7 @@ internal fun ProviderCredentialItem(
     provider: PriceDropProvider,
     state: ProviderState,
     viewModel: SettingsViewModel,
+    belowFields: (@Composable () -> Unit)? = null,
 ) {
     var draft by rememberSaveable(provider) { mutableStateOf(state.key) }
     LaunchedEffect(state.key) { if (draft != state.key) draft = state.key }
@@ -138,5 +139,6 @@ internal fun ProviderCredentialItem(
         signupUrl = provider.signupUrl,
         costEstimate = provider.costEstimate,
         requirement = provider.requirement(),
+        belowFields = belowFields,
     )
 }

@@ -1,5 +1,10 @@
 package com.twobits.pricedrop.ui.onboarding
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,9 +32,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 
 private data class OnboardingPage(
     val icon: ImageVector,
@@ -61,6 +68,21 @@ private val PAGES =
 fun OnboardingScreen(onFinish: () -> Unit) {
     var page by remember { mutableIntStateOf(0) }
     val current = PAGES[page]
+    val context = LocalContext.current
+    val notificationsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    // Requested while leaving the "Never overpay" page — its own body text ("...alerts you the
+    // moment the price falls below your target") already primes the user on why, right before
+    // the system dialog, instead of firing unprompted on every app launch (the previous
+    // behavior in WatchScreen.kt).
+    fun requestNotificationsIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     Scaffold { padding ->
         Column(
@@ -90,8 +112,19 @@ fun OnboardingScreen(onFinish: () -> Unit) {
             )
             Spacer(Modifier.height(48.dp))
             if (page < PAGES.lastIndex) {
-                Button(onClick = { page++ }, modifier = Modifier.fillMaxWidth()) { Text("Next") }
-                TextButton(onClick = onFinish) { Text("Skip") }
+                Button(
+                    onClick = {
+                        if (page == 0) requestNotificationsIfNeeded()
+                        page++
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Next") }
+                TextButton(
+                    onClick = {
+                        if (page == 0) requestNotificationsIfNeeded()
+                        onFinish()
+                    },
+                ) { Text("Skip") }
             } else {
                 Button(onClick = onFinish, modifier = Modifier.fillMaxWidth()) { Text("Get started") }
             }

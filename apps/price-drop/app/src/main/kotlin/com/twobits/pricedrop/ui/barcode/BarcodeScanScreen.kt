@@ -96,17 +96,23 @@ fun BarcodeScanScreen(
                 )
                 when (val state = uiState) {
                     is BarcodeUiState.Scanning -> {
+                        // In-progress scanner state — tertiary (amber), never secondary/green,
+                        // matching the "in-progress uses tertiary" rule applied everywhere else.
                         Box(
                             Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("Point at a barcode", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "Point at a barcode",
+                                color = MaterialTheme.colorScheme.tertiary,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
                         }
                     }
 
                     is BarcodeUiState.Detected -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Color.White)
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.tertiary)
                         }
                     }
 

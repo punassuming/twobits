@@ -1241,7 +1241,7 @@ private fun ModeOutputPreview(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = accent.copy(alpha = 0.12f),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
     ) {
         Text(
             text = "Will produce: ${selectedMode.outputDescription}",
@@ -1318,7 +1318,7 @@ private fun ModeCard(
         }
     Surface(
         modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         color = containerColor,
     ) {
         Column(
@@ -1365,7 +1365,7 @@ private fun CustomTypeCard(
     val accentColor = modeAccentColor(RecordingMode.CUSTOM)
     Surface(
         modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.extraSmall,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(
@@ -1428,7 +1428,7 @@ private fun HomeSessionCard(
                 .fillMaxWidth()
                 .scrybeContentWidth()
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors =
             CardDefaults.cardColors(
                 containerColor =

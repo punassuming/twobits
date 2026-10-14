@@ -1,7 +1,13 @@
 package com.twobits.pricedrop.ui.settings
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +19,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,16 +36,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsEntryCard
 import com.twobits.design.components.SettingsProStatusCard
 import com.twobits.pricedrop.BuildConfig
 import com.twobits.pricedrop.data.settings.SettingsPrefs
+import java.io.File
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,15 +70,36 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val activity = context as? Activity
+    var showClearHistoryConfirm by remember { mutableStateOf(false) }
+    var notificationsGranted by
+        remember {
+            mutableStateOf(
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED,
+            )
+        }
+    val notificationsLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            notificationsGranted = granted
+        }
 
     LaunchedEffect(viewModel) {
         viewModel.exportEvent.collect { json ->
+            // Written to scoped app storage and shared via a FileProvider content URI (matching
+            // Shelf Snap's CSV export) instead of EXTRA_TEXT, which silently truncates long
+            // exports in some share targets.
+            val outputDir = context.getExternalFilesDir(null) ?: context.filesDir
+            val file = File(outputDir, "pricedrop-watchlist-export.json")
+            file.writeText(json)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
             val intent =
                 Intent.createChooser(
                     Intent(Intent.ACTION_SEND).apply {
                         type = "application/json"
                         putExtra(Intent.EXTRA_SUBJECT, "PriceDrop Watchlist Export")
-                        putExtra(Intent.EXTRA_TEXT, json)
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     },
                     "Export watchlist",
                 )
@@ -88,8 +124,8 @@ fun SettingsScreen(
                 Modifier
                     .padding(padding)
                     .fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
+            verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.screenV),
         ) {
             item {
                 SettingsProStatusCard(
@@ -139,7 +175,7 @@ fun SettingsScreen(
                         value = uiState.checkFrequencyHours.toFloat(),
                         onValueChange = { viewModel.setCheckFrequency((it / 4f).roundToInt() * 4) },
                         valueRange = SettingsPrefs.MIN_CHECK_FREQ_HOURS.toFloat()..SettingsPrefs.MAX_CHECK_FREQ_HOURS.toFloat(),
-                        steps = 22,
+                        steps = (SettingsPrefs.MAX_CHECK_FREQ_HOURS - SettingsPrefs.MIN_CHECK_FREQ_HOURS) / 4 - 1,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                     HorizontalDivider()
@@ -171,6 +207,38 @@ fun SettingsScreen(
                             )
                         },
                     )
+                    // Onboarding only asks once, on first run — existing users who denied it
+                    // there (or upgraded from a version with no prompt at all) had no other way
+                    // to grant it, so PriceDropNotifier would silently skip every price-drop
+                    // alert. This row is that other way.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsGranted) {
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text("Notifications") },
+                            supportingContent = { Text("Off — you won't be alerted when a tracked price drops") },
+                            trailingContent = {
+                                TextButton(
+                                    onClick = {
+                                        // Android stops showing the system dialog after one denial
+                                        // (shouldShowRequestPermissionRationale goes false again) —
+                                        // from then on the only way to grant it is the app's own
+                                        // notification settings screen.
+                                        if (activity != null &&
+                                            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS) &&
+                                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            context.startActivity(
+                                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                                            )
+                                        } else {
+                                            notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                    },
+                                ) { Text("Enable") }
+                            },
+                        )
+                    }
                 }
             }
             item {
@@ -188,7 +256,7 @@ fun SettingsScreen(
                     ListItem(
                         headlineContent = { Text("Clear search history") },
                         trailingContent = {
-                            TextButton(onClick = viewModel::clearSearchHistory) { Text("Clear") }
+                            TextButton(onClick = { showClearHistoryConfirm = true }) { Text("Clear") }
                         },
                     )
                     HorizontalDivider()
@@ -210,5 +278,24 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    if (showClearHistoryConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearHistoryConfirm = false },
+            title = { Text("Clear search history?") },
+            text = { Text("This deletes your saved search history. This can't be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.clearSearchHistory()
+                        showClearHistoryConfirm = false
+                    },
+                ) { Text("Clear") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearHistoryConfirm = false }) { Text("Cancel") }
+            },
+        )
     }
 }

@@ -61,6 +61,7 @@ import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.components.AiCredentialsDock
+import com.twobits.design.components.AiNoKeyChip
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
@@ -269,8 +270,8 @@ fun AIConfigScreen(
                         buildList {
                             add(CallBudgetEntry("Transcription", 1, scheme.primary))
                             if (uiState.enableSpeakerIdentification) add(CallBudgetEntry("Speakers", 2, scheme.tertiary))
-                            if (uiState.enableInsightAnalysis) add(CallBudgetEntry("Insights", 2, scheme.secondary))
-                            add(CallBudgetEntry("Transforms", 2, scheme.onSurfaceVariant))
+                            if (uiState.enableInsightAnalysis) add(CallBudgetEntry("Insights", 2, scheme.onSurfaceVariant))
+                            add(CallBudgetEntry("Transforms", 2, scheme.outline))
                         }
                     CallBudgetCard(
                         entries = callBudgetEntries,
@@ -288,7 +289,11 @@ fun AIConfigScreen(
                                 }.joinToString(" · ") + ".",
                     )
 
-                    AiSectionCard(icon = Icons.Default.Mic, title = "Transcription") {
+                    AiSectionCard(
+                        icon = Icons.Default.Mic,
+                        title = "Transcription",
+                        chip = { if (transcriptionMode == ExecutionMode.BYOK && uiState.apiKey.isBlank()) AiNoKeyChip() },
+                    ) {
                         AiSourceSegment(
                             selected = transcriptionMode.toSegment(),
                             hasPro = hasPro,
@@ -353,7 +358,11 @@ fun AIConfigScreen(
                         }
                     }
 
-                    AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Transforms & Profiles") {
+                    AiSectionCard(
+                        icon = Icons.Default.AutoAwesome,
+                        title = "Transforms & Profiles",
+                        chip = { if (featuresMode == ExecutionMode.BYOK && uiState.apiKey.isBlank()) AiNoKeyChip() },
+                    ) {
                         AiSourceSegment(
                             selected = featuresMode.toSegment(),
                             hasPro = hasPro,

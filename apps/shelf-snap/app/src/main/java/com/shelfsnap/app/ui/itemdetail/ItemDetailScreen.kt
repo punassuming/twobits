@@ -273,13 +273,13 @@ private fun ItemDetailScaffold(
                                 onClick = viewModel::saveDraft,
                                 modifier = Modifier.weight(1f),
                                 enabled = !uiState.isAnalysing,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.extraSmall,
                             ) { Text(stringResource(R.string.save_draft)) }
                             Button(
                                 onClick = viewModel::confirm,
                                 modifier = Modifier.weight(1f),
                                 enabled = !uiState.isAnalysing,
-                                shape = RoundedCornerShape(12.dp),
+                                shape = MaterialTheme.shapes.extraSmall,
                             ) {
                                 Icon(Icons.Default.Check, contentDescription = null)
                                 Spacer(Modifier.width(4.dp))
@@ -352,7 +352,7 @@ private fun DetailsTab(
                         modifier =
                             Modifier
                                 .size(80.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(MaterialTheme.shapes.extraSmall)
                                 .clickable { onPhotoClick(index) },
                         contentScale = ContentScale.Crop,
                     )
@@ -448,7 +448,7 @@ private fun DetailsTab(
             label = { Text(stringResource(R.string.item_title)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.extraSmall,
         )
         OutlinedTextField(
             value = uiState.editCategory,
@@ -456,7 +456,7 @@ private fun DetailsTab(
             label = { Text(stringResource(R.string.category)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.extraSmall,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
@@ -465,7 +465,7 @@ private fun DetailsTab(
                 label = { Text(stringResource(R.string.brand)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.extraSmall,
             )
             OutlinedTextField(
                 value = uiState.editModel,
@@ -473,7 +473,7 @@ private fun DetailsTab(
                 label = { Text(stringResource(R.string.model)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.extraSmall,
             )
         }
         OutlinedTextField(
@@ -483,7 +483,7 @@ private fun DetailsTab(
             modifier = Modifier.fillMaxWidth(),
             minLines = 2,
             maxLines = 4,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.extraSmall,
         )
         ConditionSelector(selected = uiState.editCondition, onSelect = viewModel::onConditionChange)
 
@@ -505,7 +505,7 @@ private fun DetailsTab(
                 label = { Text(stringResource(R.string.size)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.extraSmall,
             )
             OutlinedTextField(
                 value = uiState.editColor,
@@ -513,7 +513,7 @@ private fun DetailsTab(
                 label = { Text(stringResource(R.string.color)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.extraSmall,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -524,7 +524,7 @@ private fun DetailsTab(
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.extraSmall,
             )
             OutlinedTextField(
                 value = uiState.editOriginalPrice,
@@ -534,7 +534,7 @@ private fun DetailsTab(
                 singleLine = true,
                 prefix = { Text("$") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.extraSmall,
             )
         }
 
@@ -553,7 +553,7 @@ private fun DetailsTab(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             prefix = { Text("$") },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.extraSmall,
             supportingText = {
                 Text(
                     stringResource(R.string.value_is_estimate),
@@ -575,7 +575,7 @@ private fun DetailsTab(
                 onClick = viewModel::reanalyse,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isAnalysing,
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.extraSmall,
             ) {
                 if (uiState.isAnalysing) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -607,7 +607,7 @@ private fun ReanalyseModelPicker(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier.menuAnchor().fillMaxWidth(),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.extraSmall,
             supportingText = {
                 Text(
                     if (selected == null) "Using Settings default · ${effective.costLabel}" else effective.costLabel,
@@ -647,7 +647,7 @@ private fun AddPhotoSlot(onClick: () -> Unit) {
         modifier =
             Modifier
                 .size(80.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .drawBehind {
                     drawRoundRect(
                         color = outline,
@@ -699,7 +699,7 @@ private fun TagEditor(
             label = { Text(stringResource(R.string.add_tag)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.extraSmall,
             trailingIcon = {
                 IconButton(onClick = {
                     onAdd(input)
@@ -769,7 +769,7 @@ private fun PhotoViewerDialog(
     var currentIndex by remember { mutableIntStateOf(initialIndex) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(shape = MaterialTheme.shapes.medium, modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -781,7 +781,7 @@ private fun PhotoViewerDialog(
                         Modifier
                             .fillMaxWidth()
                             .height(320.dp)
-                            .clip(RoundedCornerShape(12.dp)),
+                            .clip(MaterialTheme.shapes.extraSmall),
                     contentScale = ContentScale.Fit,
                 )
                 if (photos.size > 1) {

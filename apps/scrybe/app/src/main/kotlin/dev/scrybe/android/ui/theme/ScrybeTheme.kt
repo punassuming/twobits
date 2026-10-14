@@ -5,7 +5,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import com.twobits.design.TwoBitsShapes
 import com.twobits.design.TwoBitsTypography
 
@@ -16,8 +15,8 @@ private val DarkColorScheme =
         onPrimary = Ink900,
         primaryContainer = DarkPrimaryContainer,
         onPrimaryContainer = DarkOnPrimaryContainer,
-        // Secondary (glow green)
-        secondary = GlowDark,
+        // Secondary (green — good outcomes only, CC-07)
+        secondary = GreenDark,
         onSecondary = Ink900,
         secondaryContainer = DarkSecondaryContainer,
         onSecondaryContainer = DarkOnSecondaryContainer,
@@ -27,8 +26,8 @@ private val DarkColorScheme =
         tertiaryContainer = DarkTertiaryContainer,
         onTertiaryContainer = DarkOnTertiaryContainer,
         // Error
-        error = Color(0xFFFFB4AB),
-        onError = Color(0xFF690005),
+        error = DarkError,
+        onError = DarkOnError,
         errorContainer = DarkErrorContainer,
         onErrorContainer = DarkOnErrorContainer,
         // Background / canvas
@@ -58,7 +57,7 @@ private val LightColorScheme =
         onPrimary = Mist100,
         primaryContainer = LightPrimaryContainer,
         onPrimaryContainer = LightOnPrimaryContainer,
-        secondary = GlowLight,
+        secondary = GreenLight,
         onSecondary = Mist100,
         secondaryContainer = LightSecondaryContainer,
         onSecondaryContainer = LightOnSecondaryContainer,

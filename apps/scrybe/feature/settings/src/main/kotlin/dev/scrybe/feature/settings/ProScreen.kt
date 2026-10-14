@@ -262,7 +262,7 @@ private fun TierCardsRow(hasPro: Boolean) {
             price = "Free forever",
             priceNote = "pay providers directly",
             badge = "Full control",
-            accentColor = MaterialTheme.colorScheme.secondary,
+            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             features =
                 listOf(
                     "All Scrybe features included",

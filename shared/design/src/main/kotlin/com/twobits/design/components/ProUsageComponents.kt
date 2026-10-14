@@ -51,7 +51,7 @@ fun ProUsageCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -100,7 +100,7 @@ private fun ProUsageRow(metric: ProUsageMetric) {
                 text = valueText,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = AI_PRO_COLOR,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
         // Live meter only when we have an actual count against a cap.
@@ -133,7 +133,7 @@ fun ProSpendCapCard(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(AI_PRO_COLOR.copy(alpha = 0.12f))
                 .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -173,7 +173,7 @@ fun ByokDirectNoteCard(modifier: Modifier = Modifier) {
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(MaterialTheme.shapes.extraSmall)
                 .background(AI_BYOK_COLOR.copy(alpha = 0.12f))
                 .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),

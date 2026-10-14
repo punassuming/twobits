@@ -34,16 +34,19 @@ private val LightColorScheme =
         onSurface = OnSurface,
         surfaceVariant = SurfaceVariant,
         onSurfaceVariant = OnSurfaceVariant,
+        // surfaceContainerHigh is the only tonal-elevation step the mockups actually specify for
+        // light (CC-08); surfaceContainerLow/Lowest/Container stay unset below and fall back to
+        // Material3's stock baseline-purple defaults — unrelated to this app's teal palette,
+        // but no teal-tinted value for them exists to fall back to instead.
+        surfaceContainerHigh = SurfaceContainerHigh,
         outline = Outline,
         outlineVariant = OutlineVariant,
         error = Error,
         onError = OnError,
         errorContainer = ErrorContainer,
         onErrorContainer = OnErrorContainer,
-        // Undefined here, these silently fall back to Material3's stock baseline-purple
-        // defaults — unrelated to this app's teal/blue palette in either theme. A dark chip
-        // against the light theme, borrowing the dark theme's brighter primary as the accent
-        // that reads against it (mirrors ScrybeTheme's inverse-role derivation).
+        // A dark chip against the light theme, borrowing the dark theme's brighter primary as
+        // the accent that reads against it (mirrors ScrybeTheme's inverse-role derivation).
         inverseSurface = OnSurface,
         inverseOnSurface = Background,
         inversePrimary = DarkPrimary,

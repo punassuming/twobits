@@ -55,6 +55,8 @@ import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.design.TwoBitsSpacing
+import com.twobits.design.components.AiNoKeyChip
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
@@ -133,7 +135,7 @@ fun AIConfigScreen(
                     modifier =
                         Modifier
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 12.dp, vertical = 16.dp),
+                            .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
                 ) {
                     LocalModelPanel(
                         sectionLabel = "On-device models",
@@ -170,7 +172,7 @@ fun AIConfigScreen(
                 modifier =
                     Modifier
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 12.dp, vertical = 16.dp),
+                        .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 CredentialsSection(
@@ -192,7 +194,7 @@ fun AIConfigScreen(
                     entries =
                         listOf(
                             CallBudgetEntry("Vision", 1, scheme.primary),
-                            CallBudgetEntry("Listing", 1, scheme.secondary),
+                            CallBudgetEntry("Listing", 1, scheme.onSurfaceVariant),
                         ),
                     footnote =
                         "Estimate per analyzed item for vision and listing generation. Market " +
@@ -201,7 +203,11 @@ fun AIConfigScreen(
                             "providers are enabled in Settings → Services.",
                 )
 
-                AiSectionCard(icon = Icons.Default.ImageSearch, title = "Vision — item identification") {
+                AiSectionCard(
+                    icon = Icons.Default.ImageSearch,
+                    title = "Vision — item identification",
+                    chip = { if (uiState.visionSource == "byok" && uiState.editApiKey.isBlank()) AiNoKeyChip() },
+                ) {
                     AiSourceSegment(
                         selected = uiState.visionSource,
                         hasPro = hasPro,
@@ -254,7 +260,11 @@ fun AIConfigScreen(
                     }
                 }
 
-                AiSectionCard(icon = Icons.Default.AutoAwesome, title = "Listing generation") {
+                AiSectionCard(
+                    icon = Icons.Default.AutoAwesome,
+                    title = "Listing generation",
+                    chip = { if (uiState.listingSource == "byok" && uiState.editApiKey.isBlank()) AiNoKeyChip() },
+                ) {
                     AiSourceSegment(
                         selected = uiState.listingSource,
                         hasPro = hasPro,
@@ -301,7 +311,11 @@ fun AIConfigScreen(
                     }
                 }
 
-                AiSectionCard(icon = Icons.Default.Insights, title = "Market research") {
+                AiSectionCard(
+                    icon = Icons.Default.Insights,
+                    title = "Market research",
+                    chip = { if (uiState.textSource == "byok" && uiState.editApiKey.isBlank()) AiNoKeyChip() },
+                ) {
                     AiSourceSegment(
                         selected = uiState.textSource,
                         hasPro = hasPro,

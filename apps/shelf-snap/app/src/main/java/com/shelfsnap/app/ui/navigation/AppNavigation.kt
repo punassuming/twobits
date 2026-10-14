@@ -1,11 +1,6 @@
 package com.shelfsnap.app.ui.navigation
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -45,8 +40,10 @@ import com.shelfsnap.app.ui.whatsnew.WhatsNewScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewViewModel
 import com.twobits.debuglogui.CrashWarningViewModel
 import com.twobits.debuglogui.DebugLogScreen
+import com.twobits.design.TwoBitsMotion
 import com.twobits.design.components.AppWhatsNewDialog
-import com.twobits.design.components.ProgressFooter
+import com.twobits.design.components.MultiTaskProgressFooter
+import com.twobits.design.components.ProgressFooterTask
 
 @Composable
 fun AppNavigation(
@@ -81,11 +78,6 @@ fun AppNavigation(
         navController.addOnDestinationChangedListener(listener)
         onDispose { navController.removeOnDestinationChangedListener(listener) }
     }
-    val slideEnter = slideInHorizontally { it } + fadeIn()
-    val slideExit = slideOutHorizontally { -it / 3 } + fadeOut()
-    val popSlideEnter = slideInHorizontally { -it / 3 } + fadeIn()
-    val popSlideExit = slideOutHorizontally { it } + fadeOut()
-
     // contentWindowInsets is zeroed out deliberately: individual screens under NavHost already
     // manage their own top/side system-bar insets (there's no topBar here for Scaffold to reserve
     // space for), so this Scaffold's only job is reserving bottom space for the toast — letting it
@@ -101,41 +93,51 @@ fun AppNavigation(
             // reduces the content area and makes a footer come up from the real bottom edge,
             // instead of floating over content that has no idea it exists (the previous
             // Box+align(BottomCenter) overlay).
-            // No navigationBarsPadding() here — ProgressFooter applies gesture-nav clearance to
-            // its own inner content instead, so its card can reach the true bottom edge
-            // unconditionally. See its own doc comment for why.
+            // No navigationBarsPadding() here — MultiTaskProgressFooter applies gesture-nav
+            // clearance to its own inner content instead, so its card can reach the true bottom
+            // edge unconditionally. See its own doc comment for why.
             //
-            // Two independent footers, not one merged state: local analysis and market research
-            // are unrelated features that can genuinely run at once (e.g. background photo
-            // analysis while researching a different item's price), and merging them into a
-            // single three-line footer would mean one starting mid-run wipes out whatever the
-            // other was showing. Stacking both is the same trade Scrybe's own footer doesn't have
-            // to make, since it only ever has one kind of task running.
-            Column {
-                ProgressFooter(
-                    visible = localAnalysisProgressState.label != null,
-                    primaryText = localAnalysisProgressState.label ?: "",
-                    tertiaryText =
-                        localAnalysisProgressState.otherActiveCount
-                            .takeIf { it > 0 }
-                            ?.let { "and $it more also running" },
-                    startedAtMs = localAnalysisProgressState.startedAtMs,
-                    onCancel = localAnalysisProgressViewModel::cancel,
-                )
-                ProgressFooter(
-                    visible = marketResearchProgressState.itemId != null,
-                    primaryText = marketResearchProgressState.progress.phaseLabel(),
-                    secondaryText = marketResearchProgressState.progress?.detail?.takeIf { it.isNotBlank() },
-                    tertiaryText = marketResearchProgressState.progress?.countsLabel()?.takeIf { it.isNotBlank() },
-                    startedAtMs = marketResearchProgressState.startedAtMs,
-                    onCancel = marketResearchProgressViewModel::cancel,
-                    onViewDetails = {
-                        marketResearchProgressState.itemId?.let {
-                            navController.navigate(Screen.MarketResearch.createRoute(it))
+            // Local analysis and market research are unrelated features that can genuinely run
+            // at once (e.g. background photo analysis while researching a different item's
+            // price) — MultiTaskProgressFooter collapses both into one "N tasks running" card
+            // when that happens, rather than either merging their state (one starting mid-run
+            // would wipe out whatever the other was showing) or stacking two full-size cards.
+            MultiTaskProgressFooter(
+                tasks =
+                    buildList {
+                        if (localAnalysisProgressState.label != null) {
+                            add(
+                                ProgressFooterTask(
+                                    id = "local-analysis",
+                                    primaryText = localAnalysisProgressState.label ?: "",
+                                    tertiaryText =
+                                        localAnalysisProgressState.otherActiveCount
+                                            .takeIf { it > 0 }
+                                            ?.let { "and $it more also running" },
+                                    startedAtMs = localAnalysisProgressState.startedAtMs,
+                                    onCancel = localAnalysisProgressViewModel::cancel,
+                                ),
+                            )
+                        }
+                        if (marketResearchProgressState.itemId != null) {
+                            add(
+                                ProgressFooterTask(
+                                    id = "market-research",
+                                    primaryText = marketResearchProgressState.progress.phaseLabel(),
+                                    secondaryText = marketResearchProgressState.progress?.detail?.takeIf { it.isNotBlank() },
+                                    tertiaryText = marketResearchProgressState.progress?.countsLabel()?.takeIf { it.isNotBlank() },
+                                    startedAtMs = marketResearchProgressState.startedAtMs,
+                                    onCancel = marketResearchProgressViewModel::cancel,
+                                    onViewDetails = {
+                                        marketResearchProgressState.itemId?.let {
+                                            navController.navigate(Screen.MarketResearch.createRoute(it))
+                                        }
+                                    },
+                                ),
+                            )
                         }
                     },
-                )
-            }
+            )
         },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -143,10 +145,10 @@ fun AppNavigation(
                 navController = navController,
                 startDestination = startDestination,
                 modifier = Modifier.fillMaxSize(),
-                enterTransition = { slideEnter },
-                exitTransition = { slideExit },
-                popEnterTransition = { popSlideEnter },
-                popExitTransition = { popSlideExit },
+                enterTransition = { TwoBitsMotion.pushEnter },
+                exitTransition = { TwoBitsMotion.pushExit },
+                popEnterTransition = { TwoBitsMotion.popEnter },
+                popExitTransition = { TwoBitsMotion.popExit },
             ) {
                 composable(Screen.Onboarding.route) {
                     OnboardingScreen(
@@ -339,15 +341,15 @@ private fun CrashWarningDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = onViewDebugLog) { Text("View Debug Log") }
+            TextButton(onClick = onViewDebugLog) { Text("View debug log") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Dismiss") }
+            TextButton(onClick = onDismiss) { Text("Close") }
         },
     )
 }
 
-/** [ProgressFooter]'s primary line while market research is running. */
+/** [ProgressFooterTask.primaryText] while market research is running. */
 private fun ResearchProgress?.phaseLabel(): String =
     when (this?.phase) {
         ResearchProgress.Phase.SEARCHING -> "Searching marketplaces…"
@@ -356,7 +358,7 @@ private fun ResearchProgress?.phaseLabel(): String =
         null -> "Starting research…"
     }
 
-/** [ProgressFooter]'s tertiary line while market research is running. */
+/** [ProgressFooterTask.tertiaryText] while market research is running. */
 private fun ResearchProgress.countsLabel(): String =
     buildList {
         if (queriesRun > 0) add("$queriesRun ${if (queriesRun == 1) "query" else "queries"}")
