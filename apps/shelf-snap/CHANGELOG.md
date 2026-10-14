@@ -6,6 +6,14 @@
 
 ### Improvements
 
+### Fixes
+
+## 1.32.14 (2026-10-14)
+
+### Features
+
+### Improvements
+
 **Shapes & spacing** — matches the design-system mockups:
 * Corner radii now use the shared shape scale everywhere
 * Section spacing across Services and AI configuration tightened to match
@@ -36,6 +44,7 @@
 
 ### Fixes
 
+
 ## 1.32.13 (2026-10-10)
 
 ### Features
@@ -51,6 +60,7 @@
 * Bumped the Gradle wrapper from 9.7.1 to 9.8.0 (Dependabot).
 
 
+
 ## 1.32.12 (2026-10-09)
 
 ### Features
@@ -60,6 +70,7 @@
 ### Fixes
 
 * Re-wired CI to build through the shared reusable workflow again, fixing the permissions gap that made the first attempt fail instantly; collapses ~75 duplicated lines back into one shared definition.
+
 
 
 ## 1.32.11 (2026-09-27)
@@ -76,6 +87,7 @@
 * Re-enabled a Gradle source-set option Android Gradle Plugin 9 tightened by default, needed for the in-app changelog asset to keep generating correctly.
 * Reformatted Kotlin source across the app for new default style rules that shipped with the ktlint bump; no behavior changes.
 * Raised the CI build's Metaspace limit, which Android Gradle Plugin 9's newer code-shrinking tool needed more of than the old cap allowed.
+
 
 
 
@@ -105,6 +117,7 @@
 
 
 
+
 ## 1.32.9 (2026-09-26)
 
 ### Features
@@ -117,6 +130,7 @@
 
 * Authorization headers are redacted from debug HTTP logs instead of appearing in plaintext.
 * Removed an unused, unencrypted API-key storage class in `shared/api-keys` that had no live callers in any app.
+
 
 
 
@@ -147,6 +161,7 @@
 
 
 
+
 ## 1.32.7 (2026-09-21)
 
 ### Features
@@ -160,6 +175,7 @@
 **On-device AI** — fixed a crash that hit every local model on first use:
 * app-store builds stripped code the on-device engine needed to start
 * debug builds never showed this, only what you actually installed
+
 
 
 
@@ -249,6 +265,7 @@
 
 
 
+
 ## 1.32.5 (2026-09-16)
 
 ### Features
@@ -263,6 +280,7 @@
 
 **Debug Log** — a search provider timing out now reads as a plain timeout, not a cryptic crash-looking stack trace:
 * affects the "web-search" entries recorded during market research
+
 
 
 
@@ -306,6 +324,7 @@
 
 
 
+
 ## 1.32.3 (2026-09-04)
 
 ### Features
@@ -326,6 +345,7 @@
 * no user-visible change: fixed two bugs in this PR's own new local-ai streaming/cancellation code (shared by all three apps) — multi-chunk responses were truncated to their last streamed fragment, and cancelling generation mid-flight left native generation running — caught by review before merge, so neither ever shipped
 
 * no user-visible change: fixed the new Import button crowding the model details column on narrow phones in the shared Local Models panel — caught by review before merge, so this never shipped
+
 
 
 
@@ -366,6 +386,7 @@
 
 
 
+
 ## 1.32.1 (2026-08-27)
 
 ### Features
@@ -393,6 +414,7 @@
 
 
 
+
 ## 1.32.0 (2026-08-25)
 
 ### Features
@@ -406,6 +428,7 @@
 **Models tab** — Import button temporarily removed while it's redesigned:
 * download remains the way to install a model in-app for now
 * per-model Import returns as one top-level action, matching Scrybe
+
 
 
 
@@ -451,6 +474,7 @@
 
 
 
+
 ## 1.30.0 (2026-08-16)
 
 ### Features
@@ -464,6 +488,7 @@
 ### Fixes
 
 * fixed a crash on local photo analysis when a non-vision-capable model (Gemma 3 1B/270M, Qwen 3) was selected for Listing generation or Market research while Vision was also set to Local — the two features shared one "selected local model" preference, so picking a text-only model for one silently pointed Vision's native `generateWithImage()` call at a model it can't use, aborting the app with no catchable error. Vision now resolves its own model independently and only ever picks a vision-capable one (Gemma 4 E2B/E4B), showing a clear in-app error instead of crashing if none is downloaded.
+
 
 
 
@@ -523,6 +548,7 @@
 
 
 
+
 ## 1.28.1 (2026-08-10)
 
 ### Features
@@ -536,6 +562,7 @@
 ### Fixes
 
 * fixed the Gemma 3n on-device model download added in 1.28.0 — it pointed at the wrong file name and always failed instead of installing
+
 
 
 
@@ -574,6 +601,7 @@
 * bumped the on-device LLM runtime (litertlm-android) to 0.15.0 — its changelog includes a fix for re-entrancy issues on concurrent engine initializations, relevant since some local-AI paths construct more than one engine at once
 
 ### Fixes
+
 
 
 
@@ -634,6 +662,7 @@
 
 
 
+
 ## 1.26.0 (2026-08-06)
 
 ### Features
@@ -659,6 +688,7 @@
 **Market research** — local preflight now checks for a saved key, not just a toggle:
 * the enabled toggle alone could pass with no key ever saved
 * previously fell back to a silent model-only estimate instead of erroring
+
 
 
 
@@ -728,6 +758,7 @@
 
 
 
+
 ## 1.25.4 (2026-08-04)
 
 ### Features
@@ -743,6 +774,7 @@
 **On-device models** — starting a Gemma download no longer crashes the app:
 * a required manifest declaration for the download's background service was missing
 * affected every attempt, from the very first tap
+
 
 
 
@@ -810,6 +842,7 @@
 
 
 
+
 ## 1.25.2 (2026-08-01)
 
 ### Features
@@ -849,6 +882,7 @@
 
 
 
+
 ## 1.25.1 (2026-07-30)
 
 ### Features
@@ -863,6 +897,7 @@
 ### Fixes
 
 * Mercari matches were silently including listings from Mercari's Japanese site (jp.mercari.com / mercari.jp) — URL-to-platform matching now requires the actual mercari.com domain
+
 
 
 
@@ -961,6 +996,7 @@
 
 
 
+
 ## 1.24.2 (2026-07-28)
 
 ### Features
@@ -974,6 +1010,7 @@
 * SearchAPI and/or Serper now search every marketplace directly
 * Jina now verifies listings independently of its own search toggle
 * Brave only searches as a fallback, skipping dead or blocked reads
+
 
 
 
@@ -1061,6 +1098,7 @@
 
 
 
+
 ## 1.24.0 (2026-07-23)
 
 ### Features
@@ -1071,6 +1109,7 @@
 * the outer margin tightened from 16dp to 12dp across every screen for more usable width
 
 ### Fixes
+
 
 
 
@@ -1146,6 +1185,7 @@
 
 
 
+
 ## 1.23.2 (2026-07-22)
 
 ### Features
@@ -1156,6 +1196,7 @@
 
 **Inventory list** — items now show again below the filter chips:
 * the chip row was expanding to fill the screen and pushing the list off-screen
+
 
 
 
@@ -1202,6 +1243,7 @@
 
 **Inventory filters** — selecting a filter with no matches no longer hides everything:
 * filter chips and search stay visible; a "Show all items" action appears instead
+
 
 
 
@@ -1319,6 +1361,7 @@
 
 
 
+
 ## 1.22.1 (2026-07-15)
 
 ### Features
@@ -1332,6 +1375,7 @@
 * provider failures appear beside the exact query that failed
 * unverified AI listings no longer appear as comparable evidence
 * empty evidence no longer displays a misleading zero-price card
+
 
 
 
@@ -1414,6 +1458,7 @@
 
 
 
+
 ## 1.21.4 (2026-07-13)
 
 ### Features
@@ -1425,6 +1470,7 @@
 **Screen transitions** — fixed a white flash on the edges during navigation:
 * backgrounds now stay themed throughout the slide animation
 * most noticeable previously in dark mode
+
 
 
 
@@ -1515,6 +1561,7 @@
 
 
 
+
 ## 1.21.2 (2026-07-12)
 
 ### Features
@@ -1528,6 +1575,7 @@
 * credential rows show a compact colored dot instead of a text tag
 * full descriptions, setup steps, and signup links moved to an info sheet (tap ⓘ)
 * a search provider toggled on with no saved key now shows an inline warning
+
 
 
 
@@ -1634,6 +1682,7 @@
 
 
 
+
 ## 1.21.0 (2026-07-03)
 
 ### Features
@@ -1654,6 +1703,7 @@
 **API keys** — (OpenAI, Jina, Brave, SearchAPI.io) now correctly show as "Connected" immediately after a cold app restart — the "Connected" badge was tied to this session's live validation result, which always starts unset, instead of to whether a key is actually saved; a re-test can still reset the validation feedback, but the saved key now always shows as configured
 **Internal: Market Research preflight** — now refreshes the subscription status before rejecting a request — otherwise a cold-started Pro user could hit the "needs an active Pro subscription" error until they'd separately opened Settings once
 **Internal: item title field** — editing an item's category, brand, or any other field no longer silently writes the title-field's fallback text (brand+model or category) into the persisted title — the fallback stays a display-only fallback until the title field is actually edited
+
 
 
 
@@ -1753,6 +1803,7 @@
 
 
 
+
 ## 1.19.0 (2026-06-28)
 
 ### Features
@@ -1775,6 +1826,7 @@
 ### Fixes
 
 * List tab: a sold listing can now be marked unsold (reverted to active) — previously a listing marked sold had no way to undo it
+
 
 
 
@@ -1890,6 +1942,7 @@
 
 
 
+
 ## 1.17.0 (2026-06-25)
 
 ### Features
@@ -1912,6 +1965,7 @@
 * Search queries for items without a brand or model are now shorter and more targeted, producing real sold-listing results from eBay and Mercari instead of generic article pages
 
 ### Fixes
+
 
 
 
@@ -2042,6 +2096,7 @@
 
 
 
+
 ## 1.15.0 (2026-06-23)
 
 ### Features
@@ -2115,6 +2170,7 @@
 
 
 
+
 ## 1.14.0 (2026-06-22)
 
 ### Features
@@ -2131,6 +2187,7 @@
 ### Fixes
 
 * Item Detail: "GPT-4o analysis" label now shows the actual model name used (tracked in UI state)
+
 
 
 
@@ -2246,6 +2303,7 @@
 
 
 
+
 ## 1.12.0 (2026-06-21)
 
 ### Features
@@ -2305,6 +2363,7 @@
 
 
 
+
 ## 1.11.0 (2026-06-19)
 
 ### Features
@@ -2314,6 +2373,7 @@
 * migrated to shared `gradle/libs.versions.toml` version catalog across all three apps; upgraded Compose BOM to 2024.12.01, coreKtx to 1.15.0, lifecycleRuntimeKtx to 2.8.7, and navigationCompose to 2.8.5
 
 ### Fixes
+
 
 
 
@@ -2442,6 +2502,7 @@
 
 
 
+
 ## 1.9.0 (2026-06-17)
 
 ### Features
@@ -2461,6 +2522,7 @@
 
 * model serialization survives R8 minification — added keep rules for app and shared data models to prevent field stripping required by Gson
 * `ProScreen` top bar extracted into private composable — satisfies ktlint function-body-expression rules without changing visible behaviour
+
 
 
 
@@ -2595,6 +2657,7 @@
 
 
 
+
 ## 1.7.0 (2026-06-11)
 
 ### Features
@@ -2608,6 +2671,7 @@
 * LLM synthesis prompt now instructs the model to prefer snippets with a price and "sold", and to lower confidence to ≤ 40 when no actual marketplace listings are present in the evidence
 
 ### Fixes
+
 
 
 
@@ -2717,6 +2781,7 @@
 
 
 
+
 ## 1.5.0 (2026-06-11)
 
 ### Features
@@ -2749,6 +2814,7 @@
 * changelog parser unit tests cover markdown backtick and bold-marker stripping
 
 * missing FilterChip import in MarketTab restored after wildcard-import replacement
+
 
 
 
@@ -2878,6 +2944,7 @@
 
 
 
+
 ## 1.3.1 (2026-06-06)
 
 ### Improvements
@@ -2931,11 +2998,13 @@
 
 
 
+
 ## 1.3.0 (2026-06-06)
 
 ### Improvements
 
 * CI no longer fires duplicate runs — `push` trigger now restricted to `main` only; feature branches trigger CI exclusively via the `pull_request` event
+
 
 
 
@@ -3060,6 +3129,7 @@
 
 
 
+
 ## 1.1.3 (2026-06-05)
 
 ### Improvements
@@ -3113,11 +3183,13 @@
 
 
 
+
 ## 1.1.2 (2026-06-04)
 
 ### Improvements
 
 * add duplicate release prevention — both release workflows now use `has-new-unreleased-since-tag` to skip when all `## Unreleased` bullets are already present at the last tag
+
 
 
 
@@ -3220,12 +3292,14 @@
 
 
 
+
 ## 1.1.0 (2026-06-04)
 
 ### Improvements
 
 * align settings page visual style — wrap each settings section in a card with icon + title header, matching the Scrybe settings design pattern; spacing standardised to 14dp between sections
 * consolidate CI/CD — `shelf-snap-build.yml` renamed to `shelf-snap-ci.yml`; `shelf-snap-release.yml` and `shelf-snap-tag-release.yml` merged into single `shelf-snap-release.yml` with `workflow_run` trigger; version computation upgraded to `mathieudutour/github-tag-action` matching Scrybe; signing secrets standardised to `SIGNING_*` convention
+
 
 
 
@@ -3327,6 +3401,7 @@
 
 
 
+
 ## 1.0.1 (2026-06-03)
 
 ### Features
@@ -3380,9 +3455,11 @@
 
 
 
+
 ## 1.0.0 (2026-06-02)
 
 _Maintenance release._
+
 
 
 
