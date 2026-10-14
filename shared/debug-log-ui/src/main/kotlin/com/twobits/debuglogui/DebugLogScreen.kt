@@ -92,7 +92,7 @@ fun DebugLogScreen(
                                     type = "text/plain"
                                     putExtra(
                                         Intent.EXTRA_TEXT,
-                                        shareText(shareEntries, uiState.breadcrumbs),
+                                        shareText(shareEntries, uiState.breadcrumbs, allEntries = uiState.entries),
                                     )
                                 }
                             context.startActivity(
@@ -340,9 +340,15 @@ private fun CallEntryCard(entry: DebugLogEntry) {
 private fun shareText(
     entries: List<DebugLogEntry>,
     breadcrumbs: List<Breadcrumb>,
+    // The device fingerprint and previous-run exit reason are themselves recorded as ordinary
+    // entries (an AI_CALL-typed device-info row; a CRASH-typed process-exit row) — when `entries`
+    // is a type-filtered subset (e.g. "Crashes" or "Services" only), neither necessarily survives
+    // that filter even though both are always-relevant context. Deriving them from the full,
+    // unfiltered set instead keeps them in every export regardless of which filter chip is active.
+    allEntries: List<DebugLogEntry> = entries,
 ): String {
-    val device = entries.firstOrNull { it.endpoint == DEVICE_INFO_ENDPOINT }?.requestSummary
-    val previousRun = entries.firstOrNull { it.exceptionType == PROCESS_EXIT_TYPE }?.message
+    val device = allEntries.firstOrNull { it.endpoint == DEVICE_INFO_ENDPOINT }?.requestSummary
+    val previousRun = allEntries.firstOrNull { it.exceptionType == PROCESS_EXIT_TYPE }?.message
     return buildString {
         appendLine("Debug log · ${entries.size} entries, newest first")
         device?.let { appendLine("Device: $it") }

@@ -6,13 +6,29 @@
 
 ### Improvements
 
-* Tightened section/card spacing and switched hard-coded 12/16/20dp corner radii to the shared shape scale, matching the design-system mockups.
-* Removed Capture/Profiles/Settings' one-off fade transitions — all screens now share the same push/pop slide motion.
-* Reconciled the light and dark color palettes against the design-system mockups — secondary moves from teal to green (matching Shelf Snap and PriceDrop), several surface/outline/container shades were retuned, and a few category-badge colors that aren't "good outcome" signals (Settings → People, the BYOK plan card, Transforms' call-budget entry) moved off the green secondary.
-* Flattened the remaining elevated cards (AI credentials dock, AI section cards, recording-type rows) to the flat design-system look; added a "No key" chip to the Transcription/Transforms AI config sections when BYOK is selected with no key saved.
-* Debug log's empty state now shows an icon and a separate title/subtitle instead of one paragraph; the crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
+**Spacing & shapes** — matches the design-system mockups:
+* Section and card padding tightened
+* Corner radii now use the shared shape scale everywhere
+
+**Navigation** — one consistent motion everywhere:
+* Removed Capture/Profiles/Settings' one-off fade transitions
+* Every screen now shares the same push/pop slide
+
+**Colors** — palette reconciled with the mockups:
+* Secondary moves from teal to green, matching Shelf Snap and PriceDrop
+* Several surface/outline/container shades retuned
+* A few status badges moved off green to a neutral tint
+
+**AI configuration** — flatter cards, clearer key state:
+* Credentials dock and section cards are now flat, not elevated
+* "No key" chip shown when BYOK has no saved key
+
+**Debug log** — clearer empty state, consistent copy:
+* Empty state shows an icon with a separate title and subtitle
+* Crash dialog buttons read "View debug log" / "Close"
+* Share and Clear now respect the active filter chip instead of always acting on every entry
+
 * Shared `CollapsibleProviderRow` (used by AI configuration's provider rows) gained an optional slot for content below the key fields — no change for Scrybe, which doesn't use it yet.
-* Debug log's Share/Clear buttons now respect the active filter chip (scoped sharing, Clear disabled while filtered) instead of always acting on every entry.
 * The shared progress-footer component gained a multi-task mode for apps with more than one kind of background task — no visible change for Scrybe, which only ever shows one.
 
 ### Fixes

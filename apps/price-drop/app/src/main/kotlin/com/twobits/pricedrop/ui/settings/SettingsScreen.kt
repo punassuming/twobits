@@ -1,7 +1,13 @@
 package com.twobits.pricedrop.ui.settings
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.TwoBitsSpacing
@@ -63,6 +71,18 @@ fun SettingsScreen(
     val context = LocalContext.current
     val activity = context as? Activity
     var showClearHistoryConfirm by remember { mutableStateOf(false) }
+    var notificationsGranted by
+        remember {
+            mutableStateOf(
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED,
+            )
+        }
+    val notificationsLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            notificationsGranted = granted
+        }
 
     LaunchedEffect(viewModel) {
         viewModel.exportEvent.collect { json ->
@@ -187,6 +207,38 @@ fun SettingsScreen(
                             )
                         },
                     )
+                    // Onboarding only asks once, on first run — existing users who denied it
+                    // there (or upgraded from a version with no prompt at all) had no other way
+                    // to grant it, so PriceDropNotifier would silently skip every price-drop
+                    // alert. This row is that other way.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsGranted) {
+                        HorizontalDivider()
+                        ListItem(
+                            headlineContent = { Text("Notifications") },
+                            supportingContent = { Text("Off — you won't be alerted when a tracked price drops") },
+                            trailingContent = {
+                                TextButton(
+                                    onClick = {
+                                        // Android stops showing the system dialog after one denial
+                                        // (shouldShowRequestPermissionRationale goes false again) —
+                                        // from then on the only way to grant it is the app's own
+                                        // notification settings screen.
+                                        if (activity != null &&
+                                            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS) &&
+                                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            context.startActivity(
+                                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                                            )
+                                        } else {
+                                            notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                    },
+                                ) { Text("Enable") }
+                            },
+                        )
+                    }
                 }
             }
             item {

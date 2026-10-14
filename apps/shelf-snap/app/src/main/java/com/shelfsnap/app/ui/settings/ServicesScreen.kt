@@ -210,10 +210,14 @@ fun ServicesScreen(
                     },
                 )
 
-                // Firecrawl only becomes a real choice once it has a *validated* key — with just
-                // Jina validated (or neither), Jina is the sole reader anyway, matching PriceDrop's
-                // equivalent gating (ServicesScreen.kt's PageReaderPicker).
-                if (uiState.firecrawlTestResult == true) {
+                // Unlike PriceDrop's provider state (which persists a "validated" flag per
+                // provider), firecrawlTestResult here is session-only — it resets to null on
+                // every process start. Gating strictly on `== true` would hide this picker for
+                // an existing user with a working saved key the moment they restart the app,
+                // until they re-test it. Showing it whenever a key is saved AND not *actively*
+                // known-bad this session (null = not tested yet, true = known-good) avoids that
+                // regression while still hiding it for a key just proven invalid.
+                if (uiState.savedFirecrawlApiKey.isNotBlank() && uiState.firecrawlTestResult != false) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     ReaderProviderPicker(
                         selected = uiState.readerProvider,

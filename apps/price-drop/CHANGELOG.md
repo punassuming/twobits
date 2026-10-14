@@ -6,16 +6,36 @@
 
 ### Improvements
 
-* Switched hard-coded 12/16/20dp corner radii to the shared shape scale, matching the design-system mockups.
-* Reconciled the color palette against the design-system mockups — primary/secondary/tertiary containers are now accent tints instead of solid colors, and the light-mode outline shades changed. The BYOK plan card and the Price check call-budget entry moved off the green secondary, and the barcode scanner's in-progress indicator moved to the amber tertiary.
-* Replaced the AI config screen's own provider-toggle row with the new shared one (same look, now reused across all three apps).
-* The crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
-* Services screen: per-feature "enabled for..." switches now show an inline warning when on without a saved key, and live inside each provider's own expandable row.
-* Settings: tightened spacing to match the other two apps; "Clear search history" now asks for confirmation first; "Export data" shares a real JSON file instead of pasting it into the share sheet as text.
-* The notification permission prompt no longer fires on every app launch — it's requested once, while leaving onboarding's "Never overpay" page, with that page's own text as the rationale.
-* Debug log's Share/Clear buttons now respect the active filter chip (scoped sharing, Clear disabled while filtered) instead of always acting on every entry.
-* When Ask and a price-check refresh are both running, the bottom-bar footer now collapses into one "2 tasks running" card (expandable to each task's own row) instead of stacking two full-size cards.
-* Services and AI configuration screens: tightened the remaining 16dp section spacing to 12/14dp to match the rest of the spacing cleanup.
+**Shapes & spacing** — matches the design-system mockups:
+* Corner radii now use the shared shape scale everywhere
+* Section spacing across Settings, Services, and AI configuration tightened to match the other two apps
+
+**Colors** — palette reconciled with the mockups:
+* Primary/secondary/tertiary containers are now accent tints, not solid colors
+* Light-mode outline shades changed
+* A few status badges moved off green to a neutral tint
+* Barcode scanner's in-progress indicator moved to amber
+
+**AI configuration** — shared provider row:
+* Provider toggle row now matches the one Shelf Snap and Scrybe use
+* Inline warning shown when a feature is on without a saved key
+
+**Services** — clearer provider rows:
+* Per-feature "enabled for…" switches now live inside each provider's own row
+
+**Settings** — safer, clearer actions:
+* "Clear search history" now asks for confirmation first
+* "Export data" shares a real JSON file instead of pasting it into the share sheet as text
+
+**Notifications** — asked once, not every launch:
+* Requested once while leaving onboarding's "Never overpay" page
+* A "Notifications" row in Settings lets you turn it on later if you skipped or denied it there
+
+**Debug log** — respects filters:
+* Share and Clear now respect the active filter chip
+
+**Background tasks** — one footer, not two:
+* Ask and a price-check refresh now collapse into one "2 tasks running" card when both run at once
 
 ### Fixes
 

@@ -6,15 +6,33 @@
 
 ### Improvements
 
-* Switched hard-coded 12/16/20dp corner radii to the shared shape scale, matching the design-system mockups.
-* Reconciled the light and dark color palettes against the design-system mockups — teal-tinted surfaces (replacing the shared navy neutrals), secondary moves from blue to green, and the estimate-field label moves from brown to amber. A few category-badge colors that aren't "good outcome" signals (the BYOK plan card, the Listing call-budget entry) moved off the green secondary.
-* Flattened the remaining elevated cards (market research insight card, listing summary platform card) to the flat design-system look; added a "No key" chip to the Vision/Listing generation/Market research AI config sections when BYOK is selected with no key saved.
-* The crash dialog's buttons read "View debug log"/"Close" instead of "View Debug Log"/"Dismiss".
-* Services screen: each provider's "enabled for market research" switch now lives inside its own expandable row instead of a separate list at the bottom; the page-reader picker now only appears once Firecrawl's key is actually validated (matching PriceDrop), not merely saved.
-* Settings' storage bar now draws the database's own share as a second segment instead of showing only the photos share.
-* Debug log's Share/Clear buttons now respect the active filter chip (scoped sharing, Clear disabled while filtered) instead of always acting on every entry.
-* When local analysis and market research are both running, the bottom-bar footer now collapses into one "2 tasks running" card (expandable to each task's own row) instead of stacking two full-size cards.
-* Services and AI configuration screens: tightened the remaining 16dp section spacing to 12/14dp to match the rest of the spacing cleanup.
+**Shapes & spacing** — matches the design-system mockups:
+* Corner radii now use the shared shape scale everywhere
+* Section spacing across Services and AI configuration tightened to match
+
+**Colors** — palette reconciled with the mockups:
+* Teal-tinted surfaces replace the shared navy neutrals
+* Secondary moves from blue to green
+* Estimate label moves from brown to amber
+* A few status badges moved off green to a neutral tint
+
+**AI configuration** — flatter cards, clearer key state:
+* Market research and listing summary cards are now flat, not elevated
+* "No key" chip shown when BYOK has no saved key
+
+**Services** — provider rows do more:
+* Each provider's "enabled for market research" switch now lives inside its own row
+* Page reader picker appears once Firecrawl has a saved key, not just once it's freshly tested
+
+**Settings** — clearer storage view:
+* Storage bar now shows the database's own share as a second segment
+
+**Debug log** — consistent copy, respects filters:
+* Crash dialog buttons read "View debug log" / "Close"
+* Share and Clear now respect the active filter chip
+
+**Background tasks** — one footer, not two:
+* Local analysis and market research now collapse into one "2 tasks running" card when both run at once
 
 ### Fixes
 
