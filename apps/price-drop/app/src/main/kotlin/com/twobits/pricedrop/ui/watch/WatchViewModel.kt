@@ -102,8 +102,8 @@ class WatchViewModel
         }
 
         /**
-         * Removal only deactivates the row (price history, coupons and the id survive), so the
-         * snapshot taken here can be written back verbatim by [undoRemove].
+         * Removal only deactivates the row (price history, coupons and the id survive), so
+         * [undoRemove] just reactivates it — any price recorded in between is kept.
          */
         fun removeItem(id: Long) {
             viewModelScope.launch {
@@ -114,7 +114,7 @@ class WatchViewModel
         }
 
         fun undoRemove(product: WatchedProduct) {
-            viewModelScope.launch { watchlistRepo.update(product) }
+            viewModelScope.launch { watchlistRepo.restore(product.id) }
         }
 
         fun pauseItem(id: Long) {
@@ -152,7 +152,7 @@ class WatchViewModel
 
 /** One-shot events the watchlist screen surfaces in a snackbar. */
 sealed interface WatchMessage {
-    /** [product] was removed; holds the pre-removal snapshot so it can be restored. */
+    /** [product] was removed; Undo reactivates it by id. */
     data class Removed(
         val product: WatchedProduct,
     ) : WatchMessage

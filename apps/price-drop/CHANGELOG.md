@@ -17,7 +17,7 @@
 ### Fixes
 
 **Watchlist** — no more silent failures:
-* Removing a product can be undone from a snackbar
+* Removing a product can be undone from a snackbar, keeping any newer price
 * A failed price check now tells you, with a Retry
 * Clearing the Ask chat asks first
 
