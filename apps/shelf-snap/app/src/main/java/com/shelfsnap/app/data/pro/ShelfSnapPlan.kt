@@ -3,6 +3,7 @@ package com.shelfsnap.app.data.pro
 import com.twobits.core.pro.AppPlan
 import com.twobits.core.pro.ExecutionMode
 import com.twobits.core.pro.ManagedFeaturePolicy
+import com.twobits.core.pro.ProPricing
 import com.twobits.core.pro.UsageCounterPolicy
 
 /**
@@ -20,6 +21,13 @@ object ShelfSnapPlan {
             proEntitlementId = "shelfsnap_pro",
             // Shares the managed OpenAI budget (MONTHLY_BUDGET_USD).
             monthlySpendCapUsd = 2.00,
+            pricing =
+                ProPricing(
+                    monthlyPrice = "\$3.99",
+                    annualPerMonthPrice = "\$2.99",
+                    annualTotalPrice = "\$35.88",
+                    annualSavingsPercent = 25,
+                ),
             features =
                 listOf(
                     ManagedFeaturePolicy(

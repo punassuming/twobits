@@ -16,7 +16,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,6 +44,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -108,6 +112,25 @@ fun CameraScreen(
     }
 
     val appendMode = uiState.appendToItemId != null
+    val scope = rememberCoroutineScope()
+    val photoRemovedMessage = stringResource(R.string.photo_removed)
+    val undoLabel = stringResource(R.string.undo)
+    val onRemovePhoto: (String) -> Unit = { path ->
+        val index = uiState.capturedPaths.indexOf(path)
+        viewModel.removePhoto(path)
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = photoRemovedMessage,
+                    actionLabel = undoLabel,
+                    duration = SnackbarDuration.Short,
+                )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.restorePhoto(path, index)
+            }
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -127,7 +150,7 @@ fun CameraScreen(
                 onBack = onBack,
                 onToggleFlash = viewModel::toggleFlash,
                 onPhotoCaptured = viewModel::onPhotoCaptured,
-                onRemovePhoto = viewModel::removePhoto,
+                onRemovePhoto = onRemovePhoto,
                 onAnalyseAndSave = viewModel::onAnalyseClicked,
                 onCommitAppend = viewModel::commitAppend,
                 onCaptureError = viewModel::showError,
@@ -286,15 +309,22 @@ private fun CameraContent(
                                 Brush.verticalGradient(
                                     listOf(Color.Black.copy(alpha = 0.60f), Color.Transparent),
                                 ),
-                            ).padding(horizontal = 8.dp, vertical = 8.dp),
+                            ).windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                            ).padding(horizontal = 4.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CamIconBtn(icon = Icons.Default.Close, onClick = onBack)
+                    CamIconBtn(
+                        icon = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.close),
+                        onClick = onBack,
+                    )
                     Spacer(modifier = Modifier.weight(1f))
                     CamIconBtn(
                         icon = if (flashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                        contentDescription = stringResource(R.string.flash),
                         onClick = onToggleFlash,
-                        active = flashOn,
+                        checked = flashOn,
                     )
                 }
 
@@ -335,7 +365,9 @@ private fun CameraContent(
                     Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF0A0A0A))
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+                        ).padding(horizontal = 12.dp, vertical = 12.dp),
             ) {
                 // Photo strip
                 if (capturedPaths.isNotEmpty()) {
@@ -346,13 +378,17 @@ private fun CameraContent(
                                 .padding(bottom = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        items(capturedPaths) { path ->
-                            val index = capturedPaths.indexOf(path)
+                        itemsIndexed(capturedPaths, key = { _, path -> path }) { index, path ->
                             val isLatest = index == capturedPaths.size - 1
                             Box(modifier = Modifier.size(96.dp)) {
                                 AsyncImage(
                                     model = File(path),
-                                    contentDescription = null,
+                                    contentDescription =
+                                        stringResource(
+                                            R.string.photo_x_of_y,
+                                            index + 1,
+                                            capturedPaths.size,
+                                        ),
                                     modifier =
                                         Modifier
                                             .fillMaxSize()
@@ -370,23 +406,29 @@ private fun CameraContent(
                                             ).clickable { previewPath = path },
                                     contentScale = ContentScale.Crop,
                                 )
+                                // 48dp touch target (IconButton enforces the minimum interactive
+                                // size) around a small 22dp visual badge.
                                 IconButton(
                                     onClick = { onRemovePhoto(path) },
-                                    modifier =
-                                        Modifier
-                                            .align(Alignment.TopEnd)
-                                            .size(22.dp)
-                                            .background(
-                                                MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
-                                                CircleShape,
-                                            ),
+                                    modifier = Modifier.align(Alignment.TopEnd),
                                 ) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = stringResource(R.string.delete),
-                                        tint = Color.White,
-                                        modifier = Modifier.size(14.dp),
-                                    )
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .size(22.dp)
+                                                .background(
+                                                    MaterialTheme.colorScheme.error.copy(alpha = 0.85f),
+                                                    CircleShape,
+                                                ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = stringResource(R.string.remove_photo_n, index + 1),
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                    }
                                 }
                                 Box(
                                     modifier =
@@ -664,23 +706,49 @@ private fun AnalysingView(
     }
 }
 
+/**
+ * Overlay icon button for the camera chrome: 48dp touch target around a 40dp visual circle.
+ * When [checked] is non-null the button is exposed as an on/off switch (e.g. flash) so
+ * accessibility services announce its state; otherwise it is a plain button.
+ */
 @Composable
 private fun CamIconBtn(
     icon: ImageVector,
+    contentDescription: String,
     onClick: () -> Unit,
-    active: Boolean = false,
+    checked: Boolean? = null,
 ) {
+    val active = checked == true
     val tint = if (active) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.85f)
+    val interaction =
+        if (checked != null) {
+            Modifier.toggleable(
+                value = checked,
+                role = Role.Switch,
+                onValueChange = { onClick() },
+            )
+        } else {
+            Modifier.clickable(role = Role.Button, onClick = onClick)
+        }
     Box(
         modifier =
             Modifier
-                .size(40.dp)
+                .size(48.dp)
                 .clip(CircleShape)
-                .background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent)
-                .clickable(onClick = onClick),
+                .then(interaction)
+                .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Box(
+            modifier =
+                Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        }
     }
 }
 

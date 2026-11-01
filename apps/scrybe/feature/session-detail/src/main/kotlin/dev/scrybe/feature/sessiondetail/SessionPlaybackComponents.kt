@@ -48,8 +48,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.twobits.design.components.AppSectionCard
 import dev.scrybe.core.common.buildWaveformEnvelopePath
@@ -342,7 +349,12 @@ private fun WaveformTimeline(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(durationMs, waveformWidthPx) {
+                    .playbackSeekSemantics(
+                        description = "Playback position",
+                        positionMs = playbackPositionMs,
+                        durationMs = durationMs,
+                        onSeek = onSeek,
+                    ).pointerInput(durationMs, waveformWidthPx) {
                         detectTapGestures { offset ->
                             if (durationMs > 0L) {
                                 seekToOffset(offset.x)
@@ -437,6 +449,32 @@ internal val speakerColorPalette =
 
 internal fun speakerColorForIndex(index: Int): Color = speakerColorPalette[index.mod(speakerColorPalette.size)]
 
+/** Readable text color for an avatar/dot filled with [background] (dark on the pastel speaker palette). */
+internal fun avatarContentColor(background: Color): Color = if (background.luminance() > 0.5f) Color.Black.copy(alpha = 0.87f) else Color.White
+
+/**
+ * Exposes a tap/drag seek surface to accessibility services as an adjustable slider so
+ * TalkBack users can scrub with swipe up/down (or set the position directly).
+ */
+private fun Modifier.playbackSeekSemantics(
+    description: String,
+    positionMs: Long,
+    durationMs: Long,
+    onSeek: (Long) -> Unit,
+): Modifier =
+    semantics {
+        contentDescription = description
+        if (durationMs > 0L) {
+            val fraction = (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+            progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f)
+            stateDescription = "${formatPlaybackTime(positionMs)} of ${formatPlaybackTime(durationMs)}"
+            setProgress { target ->
+                onSeek((durationMs * target.coerceIn(0f, 1f)).roundToLong().coerceIn(0L, durationMs))
+                true
+            }
+        }
+    }
+
 @Composable
 internal fun SpeakerSegmentBar(
     segments: List<SpeakerSegment>,
@@ -454,7 +492,12 @@ internal fun SpeakerSegmentBar(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(durationMs, widthPx) {
+                    .playbackSeekSemantics(
+                        description = "Speaker timeline",
+                        positionMs = playbackPositionMs,
+                        durationMs = durationMs,
+                        onSeek = onSeek,
+                    ).pointerInput(durationMs, widthPx) {
                         detectTapGestures { offset ->
                             onSeek(((offset.x / widthPx) * durationMs).toLong().coerceIn(0L, durationMs))
                         }

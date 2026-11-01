@@ -93,6 +93,9 @@ class WatchlistRepository
 
         suspend fun remove(id: Long) = watchedProductDao.deactivate(id)
 
+        /** Undoes [remove]: reactivates the row in place, keeping any price written since. */
+        suspend fun restore(id: Long) = watchedProductDao.reactivate(id)
+
         fun observePriceHistory(productId: Long): Flow<List<PriceEvent>> = priceEventDao.observeForProduct(productId)
 
         fun observeCoupons(productId: Long): Flow<List<Coupon>> = couponDao.observeForProduct(productId)

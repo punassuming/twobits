@@ -8,9 +8,11 @@ import com.twobits.pricedrop.data.repository.DropsRepository
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import com.twobits.pricedrop.notifications.PriceDropNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -90,8 +92,29 @@ class WatchViewModel
             activeFilter.value = filter
         }
 
+        private val _userMessage = MutableStateFlow<WatchMessage?>(null)
+
+        /** One-shot message for the screen's snackbar; acknowledge with [messageShown]. */
+        val userMessage: StateFlow<WatchMessage?> = _userMessage.asStateFlow()
+
+        fun messageShown(message: WatchMessage) {
+            _userMessage.compareAndSet(message, null)
+        }
+
+        /**
+         * Removal only deactivates the row (price history, coupons and the id survive), so
+         * [undoRemove] just reactivates it — any price recorded in between is kept.
+         */
         fun removeItem(id: Long) {
-            viewModelScope.launch { watchlistRepo.remove(id) }
+            viewModelScope.launch {
+                val product = watchlistRepo.getById(id) ?: return@launch
+                watchlistRepo.remove(id)
+                _userMessage.value = WatchMessage.Removed(product)
+            }
+        }
+
+        fun undoRemove(product: WatchedProduct) {
+            viewModelScope.launch { watchlistRepo.restore(product.id) }
         }
 
         fun pauseItem(id: Long) {
@@ -108,11 +131,34 @@ class WatchViewModel
             }
         }
 
-        fun refreshItem(id: Long) {
+        fun refreshItem(
+            id: Long,
+            force: Boolean = false,
+        ) {
             viewModelScope.launch {
                 refreshingId.value = id
-                runCatching { watchlistRepo.refreshPrice(id) }
-                refreshingId.value = null
+                try {
+                    watchlistRepo.refreshPrice(id, force = force)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _userMessage.value = WatchMessage.RefreshFailed(id)
+                } finally {
+                    refreshingId.value = null
+                }
             }
         }
     }
+
+/** One-shot events the watchlist screen surfaces in a snackbar. */
+sealed interface WatchMessage {
+    /** [product] was removed; Undo reactivates it by id. */
+    data class Removed(
+        val product: WatchedProduct,
+    ) : WatchMessage
+
+    /** A manual price check for [productId] failed. */
+    data class RefreshFailed(
+        val productId: Long,
+    ) : WatchMessage
+}

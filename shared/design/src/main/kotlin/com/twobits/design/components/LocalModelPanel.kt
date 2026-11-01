@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -27,6 +28,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -147,6 +152,31 @@ private fun LocalModelRow(
 ) {
     val isReady = modelStatus is LocalModelStatus.Ready
     val isSelectedAndReady = isSelected && isReady
+    // Deleting a downloaded model throws away a multi-GB file the user may have waited minutes
+    // to fetch, so it goes through a confirmation instead of firing on a single tap.
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete $modelName?") },
+            text = {
+                Text("This frees $modelSize on your device. You'll need to download it again to use it.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        onDelete()
+                    },
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text("Cancel") }
+            },
+        )
+    }
 
     Box(
         modifier =
@@ -323,10 +353,10 @@ private fun LocalModelRow(
                         ) {
                             Text("Use", style = MaterialTheme.typography.labelMedium)
                         }
-                        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = { confirmDelete = true }) {
                             Icon(
                                 Icons.Filled.Delete,
-                                contentDescription = "Delete",
+                                contentDescription = "Delete $modelName",
                                 modifier = Modifier.size(18.dp),
                                 tint = MaterialTheme.colorScheme.error,
                             )
@@ -334,10 +364,10 @@ private fun LocalModelRow(
                     }
 
                     isReady && isSelected -> {
-                        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = { confirmDelete = true }) {
                             Icon(
                                 Icons.Filled.Delete,
-                                contentDescription = "Delete",
+                                contentDescription = "Delete $modelName",
                                 modifier = Modifier.size(18.dp),
                                 tint = MaterialTheme.colorScheme.error,
                             )
@@ -355,10 +385,10 @@ private fun LocalModelRow(
                         // A failed download may have left a resumable partial file behind (by
                         // design — Retry picks it back up) — Discard is how to abandon it and
                         // reclaim that space instead of waiting on it to age out on its own.
-                        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = onDelete) {
                             Icon(
                                 Icons.Filled.Delete,
-                                contentDescription = "Discard",
+                                contentDescription = "Discard partial download of $modelName",
                                 modifier = Modifier.size(18.dp),
                                 tint = MaterialTheme.colorScheme.error,
                             )

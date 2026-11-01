@@ -34,11 +34,13 @@ private val LightColorScheme =
         onSurface = OnSurface,
         surfaceVariant = SurfaceVariant,
         onSurfaceVariant = OnSurfaceVariant,
-        // surfaceContainerHigh is the only tonal-elevation step the mockups actually specify for
-        // light (CC-08); surfaceContainerLow/Lowest/Container stay unset below and fall back to
-        // Material3's stock baseline-purple defaults — unrelated to this app's teal palette,
-        // but no teal-tinted value for them exists to fall back to instead.
+        // Full teal-tinted tonal ramp (see Color.kt) — leaving any step unset would fall back to
+        // Material3's stock baseline-purple defaults.
+        surfaceContainerLowest = SurfaceContainerLowest,
+        surfaceContainerLow = SurfaceContainerLow,
+        surfaceContainer = SurfaceContainer,
         surfaceContainerHigh = SurfaceContainerHigh,
+        surfaceContainerHighest = SurfaceContainerHighest,
         outline = Outline,
         outlineVariant = OutlineVariant,
         error = Error,

@@ -576,10 +576,14 @@ private fun CouponCard(coupon: Coupon) {
     val state = CouponState.fromValue(coupon.state)
     val (stateLabel, stateColor) =
         when (state) {
-            CouponState.TESTED_VALID -> "Valid" to MaterialTheme.colorScheme.primary
-            CouponState.UNVERIFIED -> "Untested" to MaterialTheme.colorScheme.secondary
+            // Green (secondary) only for a verified-good code; untested stays neutral.
+            CouponState.TESTED_VALID -> "Valid" to MaterialTheme.colorScheme.secondary
+
+            CouponState.UNVERIFIED -> "Untested" to MaterialTheme.colorScheme.onSurfaceVariant
+
             CouponState.RESTRICTED -> "Restricted" to MaterialTheme.colorScheme.error
-            CouponState.EXPIRED -> "Expired" to MaterialTheme.colorScheme.onSurfaceVariant
+
+            CouponState.EXPIRED -> "Expired" to MaterialTheme.colorScheme.error
         }
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

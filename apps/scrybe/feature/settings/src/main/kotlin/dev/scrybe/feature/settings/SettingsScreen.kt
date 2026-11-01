@@ -156,7 +156,7 @@ fun SettingsScreen(
                 SettingsProStatusCard(
                     appName = "Scrybe",
                     isPro = uiState.subscriptionTier is SubscriptionTier.Pro,
-                    upgradeLabel = "Upgrade to Pro — \$1.99 / month",
+                    upgradeLabel = ScrybePlan.plan.pricing.upgradeLabel,
                     upgradeDescription = "Skip the API key — Pro includes managed OpenAI access for transcription and transforms.",
                     activeDescription = "Managed API keys are active — no personal key required for transcription or AI features.",
                     isPurchasing = uiState.isPurchasing,

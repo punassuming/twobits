@@ -247,7 +247,7 @@ fun AIConfigScreen(
                 ) {
                     AiCredentialsDock(
                         proLabel = "Scrybe Pro",
-                        proPrice = "\$1.99/mo",
+                        proPrice = ScrybePlan.plan.pricing.annualPerMonthLabel,
                         hasPro = hasPro,
                         apiKey = uiState.apiKey,
                         isValidating = uiState.apiKeyValidationStatus == ApiKeyValidationStatus.Validating,

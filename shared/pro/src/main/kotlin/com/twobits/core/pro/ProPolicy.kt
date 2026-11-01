@@ -17,9 +17,43 @@ data class AppPlan(
     val proEntitlementId: String,
     /** Human-readable monthly managed-spend cap, for display (mirrors the worker budget). */
     val monthlySpendCapUsd: Double,
+    /** Display prices for the Pro subscription — the one place each app's Pro price is defined. */
+    val pricing: ProPricing,
     val features: List<ManagedFeaturePolicy>,
 ) {
     fun feature(opKey: String): ManagedFeaturePolicy? = features.firstOrNull { it.opKey == opKey }
+}
+
+/**
+ * Display prices for an app's Pro subscription. These are the fallback/default labels shown on the
+ * Settings upgrade card and the Pro screen; they must match the prices configured for the
+ * subscription products in Google Play Console (via RevenueCat), which remain the source of truth
+ * for what the user is actually charged.
+ *
+ * Sizing rule: the annual per-month price, net of Google Play's 15% fee, must exceed the app's
+ * [AppPlan.monthlySpendCapUsd] with margin, so a Pro user maxing out managed usage is never a loss.
+ */
+data class ProPricing(
+    /** Formatted monthly-plan price, e.g. "$3.99". */
+    val monthlyPrice: String,
+    /** Formatted annual-plan price expressed per month, e.g. "$2.99". */
+    val annualPerMonthPrice: String,
+    /** Formatted annual-plan total billed once a year, e.g. "$35.88". */
+    val annualTotalPrice: String,
+    /** Saving of the annual plan versus twelve monthly payments, as a whole percentage. */
+    val annualSavingsPercent: Int,
+) {
+    /** "$3.99/mo" */
+    val monthlyLabel: String get() = "$monthlyPrice/mo"
+
+    /** "$2.99/mo" */
+    val annualPerMonthLabel: String get() = "$annualPerMonthPrice/mo"
+
+    /** "$35.88/yr — save 25%" */
+    val annualNote: String get() = "$annualTotalPrice/yr — save $annualSavingsPercent%"
+
+    /** Settings upgrade card label, e.g. "Upgrade to Pro — from $2.99/mo". */
+    val upgradeLabel: String get() = "Upgrade to Pro — from $annualPerMonthLabel"
 }
 
 /**
