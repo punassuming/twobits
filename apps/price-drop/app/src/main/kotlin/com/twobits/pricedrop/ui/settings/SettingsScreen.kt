@@ -52,6 +52,7 @@ import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsEntryCard
 import com.twobits.design.components.SettingsProStatusCard
 import com.twobits.pricedrop.BuildConfig
+import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.settings.SettingsPrefs
 import java.io.File
 import kotlin.math.roundToInt
@@ -131,7 +132,7 @@ fun SettingsScreen(
                 SettingsProStatusCard(
                     appName = "PriceDrop",
                     isPro = uiState.hasPro,
-                    upgradeLabel = "Upgrade — \$2.99/mo",
+                    upgradeLabel = PriceDropPlan.plan.pricing.upgradeLabel,
                     upgradeDescription = "Shopping search · coupons · AI — no keys needed.",
                     activeDescription = "Managed connectors are active — no key setup needed.",
                     isPurchasing = uiState.isPurchasing,

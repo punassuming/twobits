@@ -6,7 +6,19 @@
 
 ### Improvements
 
+**Pro pricing** — one consistent price everywhere:
+* Shelf Snap Pro now costs $3.99/mo, or $2.99/mo billed annually
+* Settings and the Pro screen now always show the same price
+
+**Local model delete** — no more accidental multi-GB deletes:
+* Deleting a downloaded model now asks first and shows the space it frees
+* Delete buttons are larger and easier to tap
+
 ### Fixes
+
+**Pro screen** — removed a placeholder renewal date:
+* No longer shows "renews Jul 15, 2026"
+* Points you to Google Play to manage billing and renewal
 
 ## 1.32.14 (2026-10-14)
 

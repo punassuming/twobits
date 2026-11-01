@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.BuildConfig
 import com.shelfsnap.app.R
+import com.shelfsnap.app.data.pro.ShelfSnapPlan
 import com.twobits.billing.SubscriptionTier
 import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppLabeledSectionCard
@@ -83,7 +84,7 @@ fun SettingsScreen(
             SettingsProStatusCard(
                 appName = "Shelf Snap",
                 isPro = uiState.subscriptionTier is SubscriptionTier.Pro,
-                upgradeLabel = "Upgrade to Pro — \$1.99 / month",
+                upgradeLabel = ShelfSnapPlan.plan.pricing.upgradeLabel,
                 upgradeDescription = "Skip the API key — Pro includes managed OpenAI access so vision analysis and price research work out of the box.",
                 activeDescription = "You have Pro. Managed API keys are active — no personal key required.",
                 isPurchasing = uiState.isPurchasing,

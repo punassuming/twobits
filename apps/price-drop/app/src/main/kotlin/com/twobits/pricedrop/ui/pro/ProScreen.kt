@@ -129,7 +129,7 @@ private fun ProTopBar(
             Column {
                 Text("PriceDrop Pro", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = if (isPro) "Active · renews Jul 15, 2026" else "Choose how you want to use AI",
+                    text = if (isPro) "Active · manage billing in Google Play" else "Choose how you want to use AI",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -137,7 +137,7 @@ private fun ProTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
         },
         actions = {
@@ -216,7 +216,7 @@ private fun TierComparisonRow(isPro: Boolean) {
             modifier = Modifier.weight(1f),
             compact = true,
             title = "Pro",
-            price = "\$4.99",
+            price = PriceDropPlan.plan.pricing.annualPerMonthPrice,
             priceNote = "/mo · billed annually",
             badge = "Zero setup",
             accentColor = MaterialTheme.colorScheme.primary,
@@ -265,8 +265,8 @@ private fun BillingSection(
         PlanOption(
             modifier = Modifier.weight(1f),
             label = "Annual",
-            price = "\$4.99/mo",
-            note = "\$59.88/yr — save 17%",
+            price = PriceDropPlan.plan.pricing.annualPerMonthLabel,
+            note = PriceDropPlan.plan.pricing.annualNote,
             badge = "Best value",
             selected = selectedPlan == "annual",
             onClick = { selectedPlan = "annual" },
@@ -274,7 +274,7 @@ private fun BillingSection(
         PlanOption(
             modifier = Modifier.weight(1f),
             label = "Monthly",
-            price = "\$5.99/mo",
+            price = PriceDropPlan.plan.pricing.monthlyLabel,
             note = "Billed each month",
             badge = null,
             selected = selectedPlan == "monthly",
@@ -375,7 +375,7 @@ private fun ProActiveCard(
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        "Annual · \$4.99/mo · renews Jul 15, 2026",
+                        "Billing and renewal are managed in Google Play",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                     )

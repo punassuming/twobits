@@ -6,7 +6,19 @@
 
 ### Improvements
 
+**Pro pricing** — one consistent price everywhere:
+* PriceDrop Pro now costs $5.99/mo, or $4.99/mo billed annually
+* Settings and the Pro screen now always show the same price
+
+**Local model delete** — no more accidental multi-GB deletes:
+* Deleting a downloaded model now asks first and shows the space it frees
+* Delete buttons are larger and easier to tap
+
 ### Fixes
+
+**Pro screen** — removed a placeholder renewal date:
+* No longer shows "renews Jul 15, 2026"
+* Points you to Google Play to manage billing and renewal
 
 ## 0.23.12 (2026-10-14)
 
