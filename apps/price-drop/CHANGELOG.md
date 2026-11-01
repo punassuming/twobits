@@ -16,6 +16,17 @@
 
 ### Fixes
 
+**Watchlist** — no more silent failures:
+* Removing a product can be undone from a snackbar
+* A failed price check now tells you, with a Retry
+* Clearing the Ask chat asks first
+
+**Search** — clearer when something goes wrong:
+* A link that can't be read shows an error instead of an empty product
+* Searches and barcode lookups can be cancelled
+* Coupon status colors: only valid coupons are green
+* The Pro screen back button is labelled for screen readers
+
 **Pro screen** — removed a placeholder renewal date:
 * No longer shows "renews Jul 15, 2026"
 * Points you to Google Play to manage billing and renewal

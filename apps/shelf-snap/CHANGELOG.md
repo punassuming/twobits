@@ -20,6 +20,7 @@
 * Close, Flash and the shutter tray stay clear of the status and navigation bars
 * Removing a captured photo can be undone from a snackbar
 * Close, Flash and remove buttons are larger and labelled for screen readers
+* API key fields turn off autocorrect
 
 **Accessibility** — clearer labels and colors:
 * Clear-search, photo arrows and photo tiles are now announced by TalkBack

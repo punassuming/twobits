@@ -47,10 +47,15 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,10 +63,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppChipRow
 import com.twobits.design.components.AppEmptyState
 import com.twobits.pricedrop.data.model.WatchedProduct
@@ -85,9 +93,38 @@ fun WatchScreen(
     val dropCount by viewModel.activeDropCount.collectAsState()
     val filter by viewModel.activeFilter.collectAsState()
     val refreshingId by viewModel.refreshingId.collectAsState()
+    val userMessage by viewModel.userMessage.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(userMessage) {
+        val message = userMessage ?: return@LaunchedEffect
+        when (message) {
+            is WatchMessage.Removed -> {
+                val result =
+                    snackbarHostState.showSnackbar(
+                        message = "Removed “${message.product.title.ellipsize(MAX_SNACKBAR_TITLE_CHARS)}”",
+                        actionLabel = "Undo",
+                        duration = SnackbarDuration.Long,
+                    )
+                if (result == SnackbarResult.ActionPerformed) viewModel.undoRemove(message.product)
+            }
+
+            is WatchMessage.RefreshFailed -> {
+                val result =
+                    snackbarHostState.showSnackbar(
+                        message = "Couldn't check prices. Check your connection and try again.",
+                        actionLabel = "Retry",
+                        duration = SnackbarDuration.Long,
+                    )
+                if (result == SnackbarResult.ActionPerformed) viewModel.refreshItem(message.productId, force = true)
+            }
+        }
+        viewModel.messageShown(message)
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("PriceDrop", fontWeight = FontWeight.SemiBold) },
@@ -231,22 +268,17 @@ private fun WatchCard(
                     }
                     if (isBelowTarget) {
                         val savings = product.targetPrice!! - product.currentPrice
-                        SuggestionChip(
-                            onClick = {},
-                            label = {
-                                Text(
-                                    "Below target · save ${fmt.format(savings)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            },
+                        StatusBadge(
+                            text = "Below target · save ${fmt.format(savings)}",
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                     } else if (pctChange < 0) {
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("$pctChange% vs high") },
-                            icon = {
-                                Icon(Icons.Filled.TrendingDown, contentDescription = null, modifier = Modifier.size(16.dp))
-                            },
+                        StatusBadge(
+                            text = "$pctChange% vs high",
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            icon = Icons.Filled.TrendingDown,
                         )
                     }
                     if (!product.isActive) {
@@ -321,6 +353,32 @@ private fun WatchCard(
         }
     }
 }
+
+/** Non-interactive status label (a chip with a no-op click misleads TalkBack and touch users). */
+@Composable
+private fun StatusBadge(
+    text: String,
+    containerColor: Color,
+    contentColor: Color,
+    icon: ImageVector? = null,
+) {
+    Surface(shape = MaterialTheme.shapes.small, color = containerColor, contentColor = contentColor) {
+        Row(
+            modifier = Modifier.padding(horizontal = TwoBitsSpacing.item, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
+            Text(text, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
+private const val MAX_SNACKBAR_TITLE_CHARS = 40
+
+private fun String.ellipsize(maxChars: Int): String = if (length <= maxChars) this else take(maxChars - 1).trimEnd() + "…"
 
 @Composable
 private fun LastCheckedRow(

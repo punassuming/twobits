@@ -27,7 +27,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -48,6 +50,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import com.twobits.design.TwoBitsSpacing
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -112,7 +115,19 @@ fun BarcodeScanScreen(
 
                     is BarcodeUiState.Detected -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = MaterialTheme.colorScheme.tertiary)
+                            Surface(
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.surface,
+                            ) {
+                                Column(
+                                    Modifier.padding(TwoBitsSpacing.card),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.item),
+                                ) {
+                                    CircularProgressIndicator(color = MaterialTheme.colorScheme.tertiary)
+                                    TextButton(onClick = viewModel::cancelLookup) { Text("Cancel") }
+                                }
+                            }
                         }
                     }
 

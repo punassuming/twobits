@@ -6,6 +6,8 @@ import com.twobits.pricedrop.data.model.WatchedProduct
 import com.twobits.pricedrop.data.repository.AddResult
 import com.twobits.pricedrop.data.repository.WatchlistRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -40,36 +42,50 @@ class BarcodeScanViewModel
     ) : ViewModel() {
         val uiState: MutableStateFlow<BarcodeUiState> = MutableStateFlow(BarcodeUiState.Scanning)
 
+        private var lookupJob: Job? = null
+
         fun onBarcodeDetected(barcode: String) {
             if (uiState.value is BarcodeUiState.Detected || uiState.value is BarcodeUiState.Found) return
             uiState.value = BarcodeUiState.Detected(barcode)
-            viewModelScope.launch {
-                runCatching { watchlistRepo.resolveBarcode(barcode) }
-                    .onSuccess { match ->
-                        uiState.value =
-                            if (match.found) {
-                                BarcodeUiState.Found(
-                                    title = match.title.ifBlank { "Product (UPC: $barcode)" },
-                                    price = match.price,
-                                    barcode = barcode,
-                                    asin = match.asin,
-                                    url = match.url,
-                                    imageUrl = match.imageUrl,
-                                    matched = true,
-                                )
-                            } else {
-                                // No catalog match — fall back to a manual entry keyed on the UPC.
-                                BarcodeUiState.Found(
-                                    title = "Product (UPC: $barcode)",
-                                    price = null,
-                                    barcode = barcode,
-                                    matched = false,
-                                )
-                            }
-                    }.onFailure { e ->
-                        uiState.value = BarcodeUiState.Error(e.message ?: "Could not look up this barcode.")
-                    }
-            }
+            lookupJob?.cancel()
+            lookupJob =
+                viewModelScope.launch {
+                    val outcome = runCatching { watchlistRepo.resolveBarcode(barcode) }
+                    // runCatching swallows cancellation; don't overwrite the state cancelLookup() set.
+                    ensureActive()
+                    outcome
+                        .onSuccess { match ->
+                            uiState.value =
+                                if (match.found) {
+                                    BarcodeUiState.Found(
+                                        title = match.title.ifBlank { "Product (UPC: $barcode)" },
+                                        price = match.price,
+                                        barcode = barcode,
+                                        asin = match.asin,
+                                        url = match.url,
+                                        imageUrl = match.imageUrl,
+                                        matched = true,
+                                    )
+                                } else {
+                                    // No catalog match — fall back to a manual entry keyed on the UPC.
+                                    BarcodeUiState.Found(
+                                        title = "Product (UPC: $barcode)",
+                                        price = null,
+                                        barcode = barcode,
+                                        matched = false,
+                                    )
+                                }
+                        }.onFailure { e ->
+                            uiState.value = BarcodeUiState.Error(e.message ?: "Could not look up this barcode.")
+                        }
+                }
+        }
+
+        /** Abandons an in-flight lookup and returns to scanning. */
+        fun cancelLookup() {
+            lookupJob?.cancel()
+            lookupJob = null
+            uiState.value = BarcodeUiState.Scanning
         }
 
         fun reportCameraError(message: String) {

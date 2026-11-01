@@ -16,6 +16,17 @@
 
 ### Fixes
 
+**Safer actions** — fewer accidental losses:
+* Deleting a profile now asks first
+* Built-in profiles can no longer be deleted
+* The onboarding API key field is masked, with a show/hide toggle
+
+**Accessibility** — easier with TalkBack and better contrast:
+* The waveform and speaker timeline can be adjusted as sliders
+* The speaker badge is labelled and easier to tap
+* Avatar initials are dark on light colors for readable contrast
+* Session status colors: green means done, in-progress is blue, partial uses the warning tone
+
 **Pro screen** — removed a placeholder renewal date:
 * No longer shows "renews Jul 15, 2026"
 * Points you to Google Play to manage billing and renewal

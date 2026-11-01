@@ -713,13 +713,13 @@ class PriceDropApiClient
 
         /**
          * Uses OpenAI to extract product title and price from Jina-read page content.
-         * Falls back to ("Product from URL", null) on any parsing or network error.
+         * Falls back to ([URL_FALLBACK_TITLE], null) on any parsing or network error.
          */
         suspend fun extractProductFromPage(
             pageContent: String,
             @Suppress("UNUSED_PARAMETER") url: String,
         ): Pair<String, Double?> {
-            if (pageContent.isBlank()) return "Product from URL" to null
+            if (pageContent.isBlank()) return URL_FALLBACK_TITLE to null
             val isProMode = !isByok(PriceDropProvider.OPENAI)
             val baseUrl =
                 if (isProMode) PRO_BASE_URL else PriceDropProvider.OPENAI.byokBaseUrl.trimEnd('/')
@@ -776,10 +776,10 @@ class PriceDropApiClient
                             .orEmpty(),
                         JsonObject::class.java,
                     )
-                val title = json["title"]?.asString?.takeIf { it.isNotBlank() } ?: "Product from URL"
+                val title = json["title"]?.asString?.takeIf { it.isNotBlank() } ?: URL_FALLBACK_TITLE
                 val price = json["price"]?.let { runCatching { it.asDouble }.getOrNull() }
                 title to price
-            }.getOrDefault("Product from URL" to null)
+            }.getOrDefault(URL_FALLBACK_TITLE to null)
         }
 
         // ---------------------------------------------------------------------------
@@ -894,6 +894,9 @@ class PriceDropApiClient
 
         companion object {
             const val PRO_BASE_URL = "https://api.twobits.app"
+
+            /** Title returned by [extractProductFromPage] when the page couldn't be read. */
+            const val URL_FALLBACK_TITLE = "Product from URL"
             private const val PRO_CHAT_MODEL = "gpt-5-mini"
             private const val BYOK_CHAT_MODEL = "gpt-4o-mini"
         }
