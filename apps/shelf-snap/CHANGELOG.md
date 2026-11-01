@@ -16,6 +16,17 @@
 
 ### Fixes
 
+**Camera** — controls no longer hide under the system bars:
+* Close, Flash and the shutter tray stay clear of the status and navigation bars
+* Removing a captured photo can be undone from a snackbar
+* Close, Flash and remove buttons are larger and labelled for screen readers
+
+**Accessibility** — clearer labels and colors:
+* Clear-search, photo arrows and photo tiles are now announced by TalkBack
+* Listing status is a plain badge instead of a button that does nothing
+* Green is reserved for good outcomes on the Market tab
+* Light theme cards and sheets use teal surfaces instead of stray purple
+
 **Pro screen** — removed a placeholder renewal date:
 * No longer shows "renews Jul 15, 2026"
 * Points you to Google Play to manage billing and renewal

@@ -98,6 +98,22 @@ class CameraViewModel
             _uiState.update { it.copy(capturedPaths = it.capturedPaths - path) }
         }
 
+        /** Re-inserts a photo removed via [removePhoto] at its original position (undo). */
+        fun restorePhoto(
+            path: String,
+            index: Int,
+        ) {
+            _uiState.update { state ->
+                if (path in state.capturedPaths) {
+                    state
+                } else {
+                    val paths = state.capturedPaths.toMutableList()
+                    paths.add(index.coerceIn(0, paths.size), path)
+                    state.copy(capturedPaths = paths)
+                }
+            }
+        }
+
         fun clearError() {
             _uiState.update { it.copy(error = null) }
         }

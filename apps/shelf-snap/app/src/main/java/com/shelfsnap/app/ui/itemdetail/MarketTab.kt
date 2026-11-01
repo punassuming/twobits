@@ -228,7 +228,7 @@ fun MarketTab(
                     Text(
                         text = stringResource(R.string.confidence_short, research.confidencePercent),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -418,7 +418,7 @@ private fun QueriesExpander(queries: List<MarketQuery>) {
                     Icons.Default.Search,
                     contentDescription = null,
                     modifier = Modifier.size(15.dp),
-                    tint = MaterialTheme.colorScheme.secondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = "${queries.size} search " + if (queries.size == 1) "query" else "queries",
@@ -734,7 +734,7 @@ private fun TimingRow(
             fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal,
             color =
                 when {
-                    ms < 800 -> MaterialTheme.colorScheme.secondary
+                    ms < 800 -> MaterialTheme.colorScheme.primary
                     ms > 1500 -> MaterialTheme.colorScheme.tertiary
                     else -> MaterialTheme.colorScheme.onSurface
                 },
@@ -817,8 +817,8 @@ private fun SearchStatusBanner(research: MarketResearch) {
                     text =
                         "Prices estimated from AI training data. Enable Brave Search or Jina AI " +
                             "in Settings → Services for live market prices.",
-                    container = MaterialTheme.colorScheme.secondaryContainer,
-                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                    container = MaterialTheme.colorScheme.surfaceVariant,
+                    content = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
@@ -826,8 +826,8 @@ private fun SearchStatusBanner(research: MarketResearch) {
                 SearchStatusStyle(
                     icon = Icons.Default.Info,
                     text = stringResource(R.string.search_no_results_ai_only, providerLabel),
-                    container = MaterialTheme.colorScheme.secondaryContainer,
-                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                    container = MaterialTheme.colorScheme.surfaceVariant,
+                    content = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -1119,7 +1119,7 @@ private fun CompListingRow(comp: MarketComp) {
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (platform != null) PlatformBadge(platform = platform)
-                val statusColor = if (comp.sold) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                val statusColor = if (comp.sold) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
                 Surface(shape = RoundedCornerShape(50), color = statusColor.copy(alpha = 0.14f)) {
                     Text(
                         text = if (comp.sold) stringResource(R.string.status_sold) else stringResource(R.string.status_listed),

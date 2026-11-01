@@ -39,8 +39,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -61,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.data.model.ListingStatus
 import com.shelfsnap.app.data.model.Platform
 import com.shelfsnap.app.data.model.PlatformListing
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppEmptyState
 import com.twobits.design.components.AppSectionLabel
 
@@ -455,14 +455,17 @@ private fun ListingStatusChip(
             ListingStatus.EXPIRED -> MaterialTheme.colorScheme.onErrorContainer
             ListingStatus.UNLISTED -> MaterialTheme.colorScheme.onSurfaceVariant
         }
-    SuggestionChip(
-        onClick = {},
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+    // Non-interactive status badge — not a chip, so it isn't announced as a button.
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = containerColor,
         modifier = modifier,
-        colors =
-            SuggestionChipDefaults.suggestionChipColors(
-                containerColor = containerColor,
-                labelColor = labelColor,
-            ),
-    )
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = labelColor,
+            modifier = Modifier.padding(horizontal = TwoBitsSpacing.item, vertical = 4.dp),
+        )
+    }
 }
