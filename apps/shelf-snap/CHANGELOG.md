@@ -6,6 +6,11 @@
 
 ### Improvements
 
+**Shared building blocks** — one look and behavior across TwoBits apps:
+* Confirmation dialogs, undo snackbars and loading states now come from one shared design
+* Settings switches respond to taps anywhere on the row and read as one control in TalkBack
+* Error cards can offer a Retry action
+
 **Pro pricing** — one consistent price everywhere:
 * Shelf Snap Pro now costs $3.99/mo, or $2.99/mo billed annually
 * Settings and the Pro screen now always show the same price
