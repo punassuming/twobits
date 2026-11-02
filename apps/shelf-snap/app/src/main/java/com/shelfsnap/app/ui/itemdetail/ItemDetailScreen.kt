@@ -17,13 +17,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -56,7 +55,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -88,7 +86,11 @@ import com.shelfsnap.app.data.model.VisionModel
 import com.shelfsnap.app.ui.inventory.conditionColor
 import com.shelfsnap.app.ui.theme.LocalEstimateLabel
 import com.twobits.core.pro.ExecutionMode
+import com.twobits.design.components.AppLoadingState
+import com.twobits.design.components.ConfirmDialog
 import com.twobits.design.components.InferenceSourceBadge
+import com.twobits.design.components.TwoBitsTopAppBar
+import com.twobits.design.twoBitsContentWidth
 import java.io.File
 
 @Composable
@@ -132,23 +134,16 @@ fun ItemDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.delete_confirm_title)) },
-            text = { Text(stringResource(R.string.delete_confirm_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    viewModel.delete()
-                }) {
-                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
-                }
+        ConfirmDialog(
+            title = stringResource(R.string.delete_confirm_title),
+            text = stringResource(R.string.delete_confirm_message),
+            confirmLabel = stringResource(R.string.delete),
+            dismissLabel = stringResource(R.string.cancel),
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.delete()
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+            onDismiss = { showDeleteDialog = false },
         )
     }
 
@@ -187,32 +182,22 @@ private fun ItemDetailScaffold(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            if (uiState.item?.isDraft == true) {
-                                stringResource(R.string.draft_label)
-                            } else {
-                                uiState.item?.category ?: ""
-                            },
-                        )
-                        val brand = uiState.item?.brand.orEmpty()
-                        if (brand.isNotBlank()) {
-                            val model = uiState.item?.model.orEmpty()
-                            Text(
-                                text = if (model.isNotBlank()) "$brand · $model" else brand,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            val brand = uiState.item?.brand.orEmpty()
+            val model = uiState.item?.model.orEmpty()
+            TwoBitsTopAppBar(
+                title =
+                    if (uiState.item?.isDraft == true) {
+                        stringResource(R.string.draft_label)
+                    } else {
+                        uiState.item?.category ?: ""
+                    },
+                subtitle =
+                    when {
+                        brand.isBlank() -> null
+                        model.isNotBlank() -> "$brand · $model"
+                        else -> brand
+                    },
+                onNavigateBack = onBack,
                 actions = {
                     IconButton(onClick = onDeleteRequested) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
@@ -223,12 +208,7 @@ private fun ItemDetailScaffold(
     ) { padding ->
         when {
             uiState.isLoading -> {
-                Box(
-                    Modifier
-                        .padding(padding)
-                        .fillMaxSize(),
-                    Alignment.Center,
-                ) { CircularProgressIndicator() }
+                AppLoadingState(Modifier.padding(padding).fillMaxSize())
             }
 
             uiState.item != null -> {
@@ -330,6 +310,8 @@ private fun DetailsTab(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .twoBitsContentWidth()
                 .padding(horizontal = 12.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

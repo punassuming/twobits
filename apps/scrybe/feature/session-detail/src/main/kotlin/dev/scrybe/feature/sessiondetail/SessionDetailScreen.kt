@@ -1,7 +1,6 @@
 package dev.scrybe.feature.sessiondetail
 
 import android.content.Intent
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -86,6 +85,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,8 +110,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppLoadingState
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
+import com.twobits.design.components.ConfirmDialog
 import com.twobits.design.components.InferenceSourceBadge
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.common.SessionStatusPresentation
@@ -131,6 +133,7 @@ import dev.scrybe.core.model.Transcript
 import dev.scrybe.core.model.TranscriptType
 import dev.scrybe.core.model.TransformProfile
 import dev.scrybe.core.transcription.DiarizationDebugInfo
+import kotlinx.coroutines.launch
 import java.io.File
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -146,6 +149,10 @@ fun SessionDetailScreen(
     val folders by viewModel.folders.collectAsState()
     val analysisSuggestion by viewModel.analysisSuggestion.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
+    val showCopiedSnackbar: () -> Unit = {
+        snackbarScope.launch { snackbarHostState.showSnackbar("Copied to clipboard") }
+    }
     val context = LocalContext.current
     var showMoreSheet by remember { mutableStateOf(false) }
     var showEcosystemSheet by remember { mutableStateOf(false) }
@@ -324,15 +331,7 @@ fun SessionDetailScreen(
     ) { paddingValues ->
         when (val state = uiState) {
             is SessionDetailUiState.Loading -> {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
+                AppLoadingState(modifier = Modifier.fillMaxSize().padding(paddingValues))
             }
 
             is SessionDetailUiState.Error -> {
@@ -456,6 +455,7 @@ fun SessionDetailScreen(
                                     onResumeTranscription = viewModel::transcribe,
                                     onSeek = viewModel::seekPlayback,
                                     onSpeakerRowClick = { showSpeakerManageSheet = true },
+                                    onCopied = showCopiedSnackbar,
                                 )
                             }
                         }
@@ -583,25 +583,14 @@ fun SessionDetailScreen(
     }
 
     if (showDeleteConfirm && successState != null) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Recording") },
-            text = { Text("Delete \"${successState.session.title}\"? This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteSession()
-                        showDeleteConfirm = false
-                    },
-                ) {
-                    Text("Delete")
-                }
+        ConfirmDialog(
+            title = "Delete recording?",
+            text = "Delete \"${successState.session.title}\"? This cannot be undone.",
+            onConfirm = {
+                viewModel.deleteSession()
+                showDeleteConfirm = false
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("Cancel")
-                }
-            },
+            onDismiss = { showDeleteConfirm = false },
         )
     }
 
@@ -638,41 +627,24 @@ fun SessionDetailScreen(
     }
 
     deleteTranscriptTarget?.let { transcript ->
-        AlertDialog(
-            onDismissRequest = { deleteTranscriptTarget = null },
-            title = {
-                Text(
-                    when (transcript.type) {
-                        TranscriptType.TRANSFORMED -> "Delete Transformation"
-                        TranscriptType.EDITED -> "Delete Edited Transcript"
-                        TranscriptType.RAW -> "Delete Transcript"
-                    },
-                )
+        ConfirmDialog(
+            title =
+                when (transcript.type) {
+                    TranscriptType.TRANSFORMED -> "Delete transformation?"
+                    TranscriptType.EDITED -> "Delete edited transcript?"
+                    TranscriptType.RAW -> "Delete transcript?"
+                },
+            text =
+                when (transcript.type) {
+                    TranscriptType.TRANSFORMED -> "Delete this generated transformation output?"
+                    TranscriptType.EDITED -> "Delete this edited transcript and fall back to the machine transcript?"
+                    TranscriptType.RAW -> "Delete the transcription for this recording?"
+                },
+            onConfirm = {
+                viewModel.deleteTranscript(transcript.id)
+                deleteTranscriptTarget = null
             },
-            text = {
-                Text(
-                    when (transcript.type) {
-                        TranscriptType.TRANSFORMED -> "Delete this generated transformation output?"
-                        TranscriptType.EDITED -> "Delete this edited transcript and fall back to the machine transcript?"
-                        TranscriptType.RAW -> "Delete the transcription for this recording?"
-                    },
-                )
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(
-                    onClick = {
-                        viewModel.deleteTranscript(transcript.id)
-                        deleteTranscriptTarget = null
-                    },
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { deleteTranscriptTarget = null }) {
-                    Text("Cancel")
-                }
-            },
+            onDismiss = { deleteTranscriptTarget = null },
         )
     }
 
@@ -689,6 +661,7 @@ fun SessionDetailScreen(
                 viewModel.saveTranscriptEdit(result.text)
                 transformResult = null
             },
+            onCopied = showCopiedSnackbar,
         )
     }
     val successForSpeaker = uiState as? SessionDetailUiState.Success
@@ -1237,6 +1210,7 @@ private fun TranscriptTabContent(
     onResumeTranscription: () -> Unit,
     onSeek: (Long) -> Unit,
     onSpeakerRowClick: () -> Unit,
+    onCopied: () -> Unit,
 ) {
     TranscriptSection(
         state = state,
@@ -1245,6 +1219,7 @@ private fun TranscriptTabContent(
         onResumeTranscription = onResumeTranscription,
         onSeek = onSeek,
         onSpeakerRowClick = onSpeakerRowClick,
+        onCopied = onCopied,
     )
 }
 
@@ -1397,9 +1372,9 @@ private fun TransformResultDialog(
     onDismiss: () -> Unit,
     onShare: () -> Unit,
     onSave: () -> Unit,
+    onCopied: () -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
-    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("$profileName result") },
@@ -1427,7 +1402,7 @@ private fun TransformResultDialog(
                 TextButton(
                     onClick = {
                         clipboardManager.setText(AnnotatedString(text))
-                        Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                        onCopied()
                     },
                 ) {
                     Icon(
@@ -1851,6 +1826,7 @@ private fun TranscriptSection(
     onResumeTranscription: () -> Unit = {},
     onSeek: (Long) -> Unit = {},
     onSpeakerRowClick: () -> Unit = {},
+    onCopied: () -> Unit = {},
 ) {
     val transcripts = state.transcripts
     if (state.currentTranscript == null && transcripts.isEmpty()) {
@@ -1947,6 +1923,7 @@ private fun TranscriptSection(
                     onEdit = onEditTranscript,
                     onSeek = onSeek,
                     onSpeakerRowClick = onSpeakerRowClick,
+                    onCopied = onCopied,
                 )
             }
             state.originalTranscript
@@ -1959,6 +1936,7 @@ private fun TranscriptSection(
                         durationMs = state.session.durationMs,
                         onDelete = { onDeleteTranscript(original) },
                         onEdit = onEditTranscript,
+                        onCopied = onCopied,
                     )
                 }
         }
@@ -1972,6 +1950,7 @@ private fun TranscriptSection(
                     durationMs = state.session.durationMs,
                     onDelete = { onDeleteTranscript(transcript) },
                     onEdit = onEditTranscript,
+                    onCopied = onCopied,
                 )
             }
         }
@@ -2049,10 +2028,10 @@ private fun TranscriptCard(
     onDelete: (() -> Unit)?,
     onSeek: (Long) -> Unit = {},
     onSpeakerRowClick: () -> Unit = {},
+    onCopied: () -> Unit = {},
 ) {
     var expanded by remember(transcript.id) { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
-    val context = LocalContext.current
 
     val utterances =
         remember(transcript.content, speakerSegments.size, durationMs) {
@@ -2108,7 +2087,7 @@ private fun TranscriptCard(
                         // Copy what the user sees: paragraph breaks and speaker labels included.
                         val plainText = formatTranscriptPlainText(transcript.content, speakerSegments, durationMs)
                         clipboardManager.setText(AnnotatedString(plainText))
-                        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                        onCopied()
                     },
                     onToggleExpand = { expanded = !expanded },
                     onEdit = onEdit,

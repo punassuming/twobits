@@ -3,7 +3,6 @@ package com.shelfsnap.app.ui.summary
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,11 +16,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,7 +30,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,9 +48,12 @@ import com.shelfsnap.app.data.model.Item
 import com.shelfsnap.app.ui.components.ItemThumb
 import com.shelfsnap.app.ui.inventory.ConditionBadge
 import com.shelfsnap.app.ui.theme.LocalEstimateLabel
+import com.twobits.design.components.AppEmptyState
+import com.twobits.design.components.AppLoadingState
+import com.twobits.design.components.TwoBitsTopAppBar
+import com.twobits.design.twoBitsContentWidth
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SummaryScreen(
     onBack: () -> Unit,
@@ -93,13 +92,9 @@ fun SummaryScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.donation_summary)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = stringResource(R.string.donation_summary),
+                onNavigateBack = onBack,
                 actions = {
                     IconButton(onClick = { viewModel.exportCsv(context) }) {
                         Icon(
@@ -112,7 +107,7 @@ fun SummaryScreen(
         },
     ) { padding ->
         if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
+            AppLoadingState(Modifier.padding(padding).fillMaxSize())
             return@Scaffold
         }
 
@@ -121,12 +116,13 @@ fun SummaryScreen(
                 Modifier
                     .padding(padding)
                     .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Total banner – Story 5: total estimated donation value
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.twoBitsContentWidth(),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 20.dp),
@@ -168,6 +164,7 @@ fun SummaryScreen(
 
             // Per-item list with subtotals
             LazyColumn(
+                modifier = Modifier.twoBitsContentWidth(),
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {
                 items(uiState.items, key = { it.id }) { item ->
@@ -177,15 +174,11 @@ fun SummaryScreen(
 
                 if (uiState.items.isEmpty()) {
                     item {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(stringResource(R.string.no_items))
-                        }
+                        AppEmptyState(
+                            icon = Icons.Default.Inventory2,
+                            title = stringResource(R.string.no_items),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        )
                     }
                 }
             }

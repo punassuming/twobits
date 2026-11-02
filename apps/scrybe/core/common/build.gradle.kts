@@ -31,6 +31,7 @@ kotlin {
 
 dependencies {
     implementation(project(":core:model"))
+    implementation("com.twobits.core:design")
     implementation(libs.androidx.core.ktx)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

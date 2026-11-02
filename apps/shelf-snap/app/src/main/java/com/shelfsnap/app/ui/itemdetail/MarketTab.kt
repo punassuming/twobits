@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,6 +67,7 @@ import com.shelfsnap.app.data.remote.search.SearchProvider
 import com.shelfsnap.app.ui.components.PlatformBadge
 import com.shelfsnap.app.ui.components.brandColor
 import com.twobits.design.components.ErrorCard
+import com.twobits.design.twoBitsContentWidth
 import java.text.DateFormat
 import java.util.Date
 
@@ -82,6 +84,8 @@ fun MarketTab(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .twoBitsContentWidth()
                 .padding(horizontal = 12.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

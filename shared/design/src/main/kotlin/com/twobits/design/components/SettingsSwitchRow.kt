@@ -2,6 +2,7 @@ package com.twobits.design.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -37,12 +38,15 @@ fun SettingsSwitchRow(
     subtitle: String? = null,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    // Zero the horizontal part when the row already sits inside a padded card.
+    contentPadding: PaddingValues = SettingsRowDefaults.contentPadding,
 ) {
     SettingsControlRow(
         title = title,
         subtitle = subtitle,
         icon = icon,
         enabled = enabled,
+        contentPadding = contentPadding,
         modifier =
             modifier.toggleable(
                 value = checked,
@@ -70,12 +74,15 @@ fun SettingsOptionRow(
     subtitle: String? = null,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    // Zero the horizontal part when the row already sits inside a padded card.
+    contentPadding: PaddingValues = SettingsRowDefaults.contentPadding,
 ) {
     SettingsControlRow(
         title = title,
         subtitle = subtitle,
         icon = icon,
         enabled = enabled,
+        contentPadding = contentPadding,
         modifier =
             modifier.selectable(
                 selected = selected,
@@ -88,12 +95,20 @@ fun SettingsOptionRow(
     }
 }
 
+object SettingsRowDefaults {
+    val contentPadding = PaddingValues(horizontal = TwoBitsSpacing.card, vertical = TwoBitsSpacing.item)
+
+    /** For rows placed inside an already-padded card. */
+    val insetContentPadding = PaddingValues(vertical = TwoBitsSpacing.item)
+}
+
 @Composable
 private fun SettingsControlRow(
     title: String,
     subtitle: String?,
     icon: ImageVector?,
     enabled: Boolean,
+    contentPadding: PaddingValues,
     modifier: Modifier,
     trailing: @Composable () -> Unit,
 ) {
@@ -102,7 +117,7 @@ private fun SettingsControlRow(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
-                .padding(horizontal = TwoBitsSpacing.card, vertical = TwoBitsSpacing.item)
+                .padding(contentPadding)
                 .alpha(if (enabled) 1f else 0.38f),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(TwoBitsSpacing.screenH),

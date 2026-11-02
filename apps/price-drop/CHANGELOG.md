@@ -20,6 +20,7 @@
 * Search shows a "No results" message when nothing matches, and errors offer Retry
 * Barcode lookup errors offer "Scan again"
 * AI source pills use the same colors as Scrybe and Shelf Snap
+* Settings switch rows line up with the rest of their card
 * Links in What's New now open the screen they mention
 
 **Pro pricing** — one consistent price everywhere:

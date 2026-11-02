@@ -31,6 +31,7 @@ import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.pro.ExecutionMode
+import com.twobits.design.ThemeMode
 import com.twobits.securestore.CredentialCrypto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -81,6 +82,7 @@ class ItemRepository
             private val KEY_AI_CONDITION_DETECTION = booleanPreferencesKey("ai_condition_detection")
             private val KEY_AUTO_PRICE_ESTIMATE = booleanPreferencesKey("auto_price_estimate")
             private val KEY_MULTI_PHOTO_ANALYSIS = booleanPreferencesKey("multi_photo_analysis")
+            private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         }
 
         // ── Inventory ─────────────────────────────────────────────────────────────
@@ -589,5 +591,17 @@ class ItemRepository
 
         suspend fun saveMultiPhotoAnalysis(enabled: Boolean) {
             dataStore.edit { it[KEY_MULTI_PHOTO_ANALYSIS] = enabled }
+        }
+
+        // ── Settings: appearance ─────────────────────────────────────────────────
+
+        /** Stored as the [ThemeMode] enum name; unknown or missing values fall back to SYSTEM. */
+        fun observeThemeMode(): Flow<ThemeMode> =
+            dataStore.data.map { prefs ->
+                prefs[KEY_THEME_MODE]?.let { name -> ThemeMode.entries.firstOrNull { it.name == name } } ?: ThemeMode.SYSTEM
+            }
+
+        suspend fun saveThemeMode(mode: ThemeMode) {
+            dataStore.edit { it[KEY_THEME_MODE] = mode.name }
         }
     }

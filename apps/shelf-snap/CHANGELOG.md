@@ -4,6 +4,10 @@
 
 ### Features
 
+**Appearance** — pick your theme:
+* Choose System, Light or Dark in Settings
+* Content stays a comfortable width on tablets and foldables
+
 ### Improvements
 
 **Shared building blocks** — one look and behavior across TwoBits apps:
@@ -12,6 +16,11 @@
 * Error cards can offer a Retry action
 * The Pro screen is now one shared screen across all three apps
 * The shared AI source selector can now offer an Off choice
+
+**Consistency** — Shelf Snap now uses the shared TwoBits screens:
+* Inventory search, loading and empty states match the other apps
+* Deleting an item uses the standard confirmation
+* "Total summary" and other titles use sentence case
 
 **Pro pricing** — one consistent price everywhere:
 * Shelf Snap Pro now costs $3.99/mo, or $2.99/mo billed annually

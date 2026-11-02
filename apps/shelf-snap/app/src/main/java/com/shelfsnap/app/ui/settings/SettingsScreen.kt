@@ -5,27 +5,25 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +44,10 @@ import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsEntryCard
 import com.twobits.design.components.SettingsProStatusCard
+import com.twobits.design.components.SettingsSwitchRow
+import com.twobits.design.components.ThemeModePicker
+import com.twobits.design.components.TwoBitsTopAppBar
+import com.twobits.design.twoBitsContentWidth
 
 @Composable
 fun SettingsScreen(
@@ -58,17 +60,14 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
     val activity = LocalContext.current as? Activity
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = stringResource(R.string.settings),
+                onNavigateBack = onBack,
             )
         },
     ) { padding ->
@@ -76,9 +75,11 @@ fun SettingsScreen(
             modifier =
                 Modifier
                     .padding(padding)
+                    .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV)
-                    .fillMaxWidth(),
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .twoBitsContentWidth()
+                    .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
             verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.screenV),
         ) {
             SettingsProStatusCard(
@@ -115,14 +116,34 @@ fun SettingsScreen(
             AppLabeledSectionCard(
                 icon = Icons.Default.PhotoCamera,
                 title = stringResource(R.string.capture_storage_section),
+                // SettingsSwitchRow pads itself horizontally; the storage card below matches it.
+                contentPadding = PaddingValues(vertical = TwoBitsSpacing.half),
             ) {
-                SettingToggle(
+                SettingsSwitchRow(
                     title = stringResource(R.string.auto_analyze_title),
                     subtitle = stringResource(R.string.auto_analyze_subtitle),
                     checked = uiState.autoAnalyze,
                     onCheckedChange = viewModel::onAutoAnalyzeChange,
                 )
-                StorageBreakdownCard(storage = uiState.storage)
+                StorageBreakdownCard(
+                    storage = uiState.storage,
+                    modifier = Modifier.padding(start = TwoBitsSpacing.card, end = TwoBitsSpacing.card, bottom = TwoBitsSpacing.item),
+                )
+            }
+
+            // ── Appearance ─────────────────────────────────────────────────
+            AppLabeledSectionCard(
+                icon = Icons.Default.Palette,
+                title = stringResource(R.string.appearance_section),
+            ) {
+                Text(
+                    text = stringResource(R.string.theme_title),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                ThemeModePicker(
+                    selected = themeMode,
+                    onSelect = viewModel::onThemeModeChange,
+                )
             }
 
             // ── About ──────────────────────────────────────────────────────
@@ -137,35 +158,14 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingToggle(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
+private fun StorageBreakdownCard(
+    storage: StorageInfo,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@Composable
-private fun StorageBreakdownCard(storage: StorageInfo) {
     val total = storage.totalBytes.coerceAtLeast(1L)
     val photoFraction = (storage.photosBytes.toFloat() / total).coerceIn(0f, 1f)
     val dbFraction = (storage.dbBytes.toFloat() / total).coerceIn(0f, 1f - photoFraction)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = stringResource(R.string.storage_usage),
             style = MaterialTheme.typography.titleSmall,

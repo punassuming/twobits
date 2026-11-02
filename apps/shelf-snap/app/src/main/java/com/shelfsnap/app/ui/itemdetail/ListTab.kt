@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -70,6 +71,7 @@ import com.shelfsnap.app.data.model.formatListingText
 import com.shelfsnap.app.ui.components.PlatformBadge
 import com.shelfsnap.app.ui.components.brandColor
 import com.shelfsnap.app.ui.components.icon
+import com.twobits.design.twoBitsContentWidth
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -150,6 +152,8 @@ fun ListTab(
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .twoBitsContentWidth()
                     .padding(horizontal = 12.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
