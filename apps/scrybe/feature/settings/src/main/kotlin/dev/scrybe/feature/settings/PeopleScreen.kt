@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -271,7 +272,8 @@ private fun PersonCard(
                     Text(
                         text = initial,
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
+                        // Pastel avatar fills need dark text for contrast.
+                        color = if (avatarColor.luminance() > 0.5f) Color.Black.copy(alpha = 0.87f) else Color.White,
                         fontWeight = FontWeight.Bold,
                     )
                 }

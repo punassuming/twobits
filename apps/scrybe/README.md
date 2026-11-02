@@ -47,7 +47,7 @@ Custom types are stored locally (Room `custom_recording_types` table) and surviv
 | Option | How it works |
 |--------|-------------|
 | **BYOK** | Paste your OpenAI API key in Settings. Audio goes directly from your phone to OpenAI. You pay provider rates — typically pennies per recording. |
-| **Scrybe Pro ($1.99/mo)** | Requests route through the TwoBits managed proxy (`api.twobits.app`). Your OpenAI key never touches your device. $2.00/month per-user spend cap enforced server-side. |
+| **Scrybe Pro ($3.99/mo, or $2.99/mo billed annually)** | Requests route through the TwoBits managed proxy (`api.twobits.app`). Your OpenAI key never touches your device. $2.00/month per-user spend cap enforced server-side. |
 | **Fully local** | Whisper tiny/base/small via Sherpa-ONNX for transcription; Gemma 4 via LiteRT-LM for transforms. Zero network calls. Download models once (150 MB – 3.7 GB), then everything runs on-device. |
 
 Swap providers anytime in Settings → API Configuration.
@@ -220,7 +220,7 @@ After first launch, open **Settings → API Configuration** and choose a provide
 | Mode | What you need |
 |------|---------------|
 | **BYOK** | An OpenAI API key — get one at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Paste it in Settings → API Configuration → Save. Transcription uses `whisper-1`; transforms use `gpt-4o-mini` (or your selected model). You pay OpenAI directly at standard rates. |
-| **Scrybe Pro** | Subscribe in Settings → Pro ($1.99/mo). No key required — requests route through `api.twobits.app`. A $2/month per-user spend cap is enforced server-side. |
+| **Scrybe Pro** | Subscribe in Settings → Pro ($3.99/mo, or $2.99/mo billed annually). No key required — requests route through `api.twobits.app`. A $2/month per-user spend cap is enforced server-side. |
 | **Fully local** | No key or subscription needed. Tap **Download models** in Settings → API Configuration to download Whisper (tiny/base/small, 150 MB – 1.5 GB) and Gemma 4 (~2.2–3.7 GB). Everything runs on-device. |
 
 ### Containerized development

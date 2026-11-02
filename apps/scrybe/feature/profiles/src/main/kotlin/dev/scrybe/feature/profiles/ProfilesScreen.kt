@@ -220,6 +220,7 @@ fun ProfilesScreen(
     val hasOpenAiKey by viewModel.hasOpenAiKey.collectAsState()
     var detailProfile by remember { mutableStateOf<TransformProfile?>(null) }
     var showNewProfileSheet by rememberSaveable { mutableStateOf(false) }
+    var pendingDeleteProfileId by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(draftingNewProfile) {
         if (draftingNewProfile) showNewProfileSheet = false
@@ -305,11 +306,22 @@ fun ProfilesScreen(
                                         viewModel.clearSuggestionState()
                                         viewModel.openEditor(profile)
                                     },
-                                    onDelete = { viewModel.deleteProfile(profile.id) },
+                                    onDelete = { pendingDeleteProfileId = profile.id },
                                     onSetDefault = { viewModel.setDefaultProfile(profile.id) },
                                 )
                             }
                         }
+                    }
+                    val pendingDelete = state.profiles.firstOrNull { it.id == pendingDeleteProfileId }
+                    if (pendingDelete != null && !pendingDelete.isBuiltIn) {
+                        DeleteProfileDialog(
+                            profileName = pendingDelete.name,
+                            onConfirm = {
+                                viewModel.deleteProfile(pendingDelete.id)
+                                pendingDeleteProfileId = null
+                            },
+                            onDismiss = { pendingDeleteProfileId = null },
+                        )
                     }
                 }
             }
@@ -560,11 +572,40 @@ private fun ProfileRowHeader(
                 )
             }
             IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = "Edit") }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+            if (!profile.isBuiltIn) {
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
+}
+
+/** Built-in profiles are seeded with a `default-` id prefix (see DefaultProfiles) and cannot be deleted. */
+private val TransformProfile.isBuiltIn: Boolean
+    get() = id.startsWith(BUILT_IN_PROFILE_ID_PREFIX)
+
+private const val BUILT_IN_PROFILE_ID_PREFIX = "default-"
+
+@Composable
+private fun DeleteProfileDialog(
+    profileName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete “$profileName”?") },
+        text = { Text("This profile will be removed. Sessions already transformed keep their results.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Delete", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable

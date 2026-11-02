@@ -348,7 +348,7 @@ private fun DetailsTab(
                 Box(modifier = Modifier.size(80.dp)) {
                     AsyncImage(
                         model = File(path),
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.photo_x_of_y, index + 1, item.photoPaths.size),
                         modifier =
                             Modifier
                                 .size(80.dp)
@@ -776,7 +776,7 @@ private fun PhotoViewerDialog(
             ) {
                 AsyncImage(
                     model = File(photos[currentIndex]),
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.photo_x_of_y, currentIndex + 1, photos.size),
                     modifier =
                         Modifier
                             .fillMaxWidth()
@@ -794,12 +794,12 @@ private fun PhotoViewerDialog(
                         IconButton(
                             onClick = { if (currentIndex > 0) currentIndex-- },
                             enabled = currentIndex > 0,
-                        ) { Icon(Icons.Default.ChevronLeft, contentDescription = null) }
+                        ) { Icon(Icons.Default.ChevronLeft, contentDescription = stringResource(R.string.previous_photo)) }
                         Text("${currentIndex + 1} / ${photos.size}", style = MaterialTheme.typography.labelLarge)
                         IconButton(
                             onClick = { if (currentIndex < photos.size - 1) currentIndex++ },
                             enabled = currentIndex < photos.size - 1,
-                        ) { Icon(Icons.Default.ChevronRight, contentDescription = null) }
+                        ) { Icon(Icons.Default.ChevronRight, contentDescription = stringResource(R.string.next_photo)) }
                     }
                 }
                 Spacer(Modifier.height(4.dp))

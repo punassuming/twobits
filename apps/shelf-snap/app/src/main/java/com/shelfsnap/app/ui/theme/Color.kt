@@ -32,7 +32,16 @@ val Surface = Color(0xFFDCF0F2)
 val OnSurface = Color(0xFF061A1C)
 val SurfaceVariant = Color(0xFFC8E8EB)
 val OnSurfaceVariant = Color(0xFF2E6E75)
+
+// Tonal surface containers — teal-tinted ramp around Background/Surface, mirroring how the dark
+// scheme below is built (Container == Surface, Highest sits just under SurfaceVariant). Only
+// SurfaceContainerHigh is specified by the mockups (CC-08); the rest are interpolated so no
+// stock Material baseline-purple defaults leak into the light theme.
+val SurfaceContainerLowest = Color(0xFFFFFFFF)
+val SurfaceContainerLow = Color(0xFFE5F3F5)
+val SurfaceContainer = Color(0xFFDCF0F2)
 val SurfaceContainerHigh = Color(0xFFD4EDF0)
+val SurfaceContainerHighest = Color(0xFFCDEAED)
 val Outline = Color(0xFF5FA8B0)
 val OutlineVariant = Color(0xFFC0DEE2)
 

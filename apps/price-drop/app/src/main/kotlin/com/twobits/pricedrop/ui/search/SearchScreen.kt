@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -41,8 +42,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.TwoBitsSpacing
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -105,7 +108,13 @@ fun SearchScreen(
 
                 is SearchUiState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.item),
+                        ) {
+                            CircularProgressIndicator()
+                            TextButton(onClick = viewModel::cancelSearch) { Text("Cancel") }
+                        }
                     }
                 }
 
@@ -166,8 +175,15 @@ fun SearchScreen(
                 }
 
                 is SearchUiState.Error -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(state.message, color = MaterialTheme.colorScheme.error)
+                    Box(
+                        Modifier.fillMaxSize().padding(horizontal = TwoBitsSpacing.screenH),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            state.message,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                        )
                     }
                 }
             }
@@ -242,7 +258,7 @@ private fun TargetPriceDialog(
             ) { Text("Watch") }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
 }

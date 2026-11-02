@@ -40,7 +40,6 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,12 +56,12 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.twobits.design.components.ApiKeyField
 import dev.scrybe.core.model.RecordingMode
 
 @Composable
@@ -448,13 +447,11 @@ private fun ApiKeyCard(
                 Text("OpenAI API key", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
             }
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
+            ApiKeyField(
                 value = apiKey,
                 onValueChange = onChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("sk-…", style = MaterialTheme.typography.bodySmall) },
-                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
-                singleLine = true,
+                placeholder = "sk-…",
             )
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {

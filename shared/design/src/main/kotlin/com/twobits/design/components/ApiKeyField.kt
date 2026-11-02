@@ -11,9 +11,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -26,7 +27,7 @@ fun ApiKeyField(
     label: String = "OpenAI API Key",
     placeholder: String = "sk-...",
 ) {
-    var showKey by remember { mutableStateOf(false) }
+    var showKey by rememberSaveable { mutableStateOf(false) }
 
     OutlinedTextField(
         value = value,
@@ -36,7 +37,12 @@ fun ApiKeyField(
         placeholder = { Text(placeholder) },
         singleLine = true,
         visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        keyboardOptions =
+            KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                autoCorrectEnabled = false,
+                imeAction = ImeAction.Done,
+            ),
         trailingIcon = {
             IconButton(onClick = { showKey = !showKey }) {
                 Icon(

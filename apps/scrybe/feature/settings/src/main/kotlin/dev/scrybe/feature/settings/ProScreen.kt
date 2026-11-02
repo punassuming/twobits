@@ -143,7 +143,7 @@ private fun ProTopBar(
             Column {
                 Text("Scrybe Pro", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    text = if (hasPro) "Active · renews Jul 15, 2026" else "Choose how you want to use AI",
+                    text = if (hasPro) "Active · manage billing in Google Play" else "Choose how you want to use AI",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -241,7 +241,7 @@ private fun TierCardsRow(hasPro: Boolean) {
             modifier = Modifier.weight(1f),
             compact = true,
             title = "Pro",
-            price = "\$1.99",
+            price = ScrybePlan.plan.pricing.annualPerMonthPrice,
             priceNote = "/mo · billed annually",
             badge = "Zero setup",
             accentColor = MaterialTheme.colorScheme.primary,
@@ -309,15 +309,15 @@ private fun PlanPickerRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         PlanOption(
-            price = "\$1.99/mo",
-            note = "\$23.88/yr — save 20%",
+            price = ScrybePlan.plan.pricing.annualPerMonthLabel,
+            note = ScrybePlan.plan.pricing.annualNote,
             badge = "Best value",
             isSelected = selectedPlan == "annual",
             onSelect = { onSelectPlan("annual") },
             modifier = Modifier.weight(1f),
         )
         PlanOption(
-            price = "\$2.49/mo",
+            price = ScrybePlan.plan.pricing.monthlyLabel,
             note = "Billed each month",
             badge = null,
             isSelected = selectedPlan == "monthly",
@@ -399,7 +399,7 @@ private fun ProActivePlanCard(onRestore: () -> Unit) {
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        "Annual · \$1.99/mo · renews Jul 15, 2026",
+                        "Billing and renewal are managed in Google Play",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                     )

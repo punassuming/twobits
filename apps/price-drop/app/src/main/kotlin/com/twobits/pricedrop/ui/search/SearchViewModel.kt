@@ -9,6 +9,9 @@ import com.twobits.pricedrop.data.repository.WatchlistRepository
 import com.twobits.pricedrop.domain.product.ProductIdentity
 import com.twobits.pricedrop.domain.product.ProductOffer
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -59,48 +62,71 @@ class SearchViewModel
             query.value = q
         }
 
+        private var searchJob: Job? = null
+
         fun search() {
             val q = query.value.trim()
             if (q.isBlank()) return
-            if (q.startsWith("http://") || q.startsWith("https://")) {
-                uiState.value = SearchUiState.Loading
-                viewModelScope.launch {
-                    val pageContent = runCatching { api.readPage(q) }.getOrDefault("")
-                    val (title, price) =
-                        if (pageContent.isNotBlank()) {
-                            runCatching { api.extractProductFromPage(pageContent, q) }
-                                .getOrDefault("Product from URL" to null)
-                        } else {
-                            "Product from URL" to null
-                        }
-                    uiState.value = SearchUiState.UrlConfirm(url = q, title = title, price = price)
-                }
-                return
-            }
+            searchJob?.cancel()
             uiState.value = SearchUiState.Loading
-            viewModelScope.launch {
-                runCatching { watchlistRepo.searchProducts(q) }
-                    .onSuccess { hits ->
-                        uiState.value =
-                            SearchUiState.Results(
-                                hits.map {
-                                    SearchResult(
-                                        title = it.title,
-                                        price = it.price,
-                                        source = it.source,
-                                        url = it.url,
-                                        canonicalProductId = it.canonicalProductId,
-                                        identity = it.identity,
-                                        imageUrl = it.imageUrl,
-                                        confidence = it.confidence,
-                                        offers = it.offers,
-                                    )
-                                },
-                            )
-                    }.onFailure { e ->
-                        uiState.value = SearchUiState.Error(e.message ?: "Search failed. Please try again.")
-                    }
-            }
+            searchJob =
+                if (q.startsWith("http://") || q.startsWith("https://")) {
+                    viewModelScope.launch { readUrl(q) }
+                } else {
+                    viewModelScope.launch { searchByName(q) }
+                }
+        }
+
+        /** Cancels an in-flight search or URL read and returns to the idle state. */
+        fun cancelSearch() {
+            searchJob?.cancel()
+            searchJob = null
+            uiState.value = SearchUiState.Idle
+        }
+
+        private suspend fun readUrl(url: String) {
+            val pageContent = runCatching { api.readPage(url) }.getOrDefault("")
+            currentCoroutineContext().ensureActive()
+            val extracted =
+                if (pageContent.isNotBlank()) {
+                    runCatching { api.extractProductFromPage(pageContent, url) }.getOrNull()
+                } else {
+                    null
+                }
+            currentCoroutineContext().ensureActive()
+            uiState.value =
+                if (extracted == null || extracted.first == PriceDropApiClient.URL_FALLBACK_TITLE) {
+                    // Don't offer to track a nameless, priceless placeholder.
+                    SearchUiState.Error(URL_READ_FAILED_MESSAGE)
+                } else {
+                    SearchUiState.UrlConfirm(url = url, title = extracted.first, price = extracted.second)
+                }
+        }
+
+        private suspend fun searchByName(q: String) {
+            val outcome = runCatching { watchlistRepo.searchProducts(q) }
+            currentCoroutineContext().ensureActive()
+            outcome
+                .onSuccess { hits ->
+                    uiState.value =
+                        SearchUiState.Results(
+                            hits.map {
+                                SearchResult(
+                                    title = it.title,
+                                    price = it.price,
+                                    source = it.source,
+                                    url = it.url,
+                                    canonicalProductId = it.canonicalProductId,
+                                    identity = it.identity,
+                                    imageUrl = it.imageUrl,
+                                    confidence = it.confidence,
+                                    offers = it.offers,
+                                )
+                            },
+                        )
+                }.onFailure { e ->
+                    uiState.value = SearchUiState.Error(e.message ?: "Search failed. Please try again.")
+                }
         }
 
         fun addToWatchlist(
@@ -181,6 +207,9 @@ class SearchViewModel
         }
 
         companion object {
+            const val URL_READ_FAILED_MESSAGE =
+                "Couldn't read that page. Try a different link, or search by product name."
+
             const val LIMIT_MESSAGE =
                 "Free plan tracks up to 3 active products. Remove one or upgrade to " +
                     "PriceDrop Pro for unlimited tracking."

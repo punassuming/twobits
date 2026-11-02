@@ -50,6 +50,7 @@ object SessionStatusPresentation {
             else -> Icons.Filled.Mic
         }
 
+    // Status roles: primary = in progress, tertiary = needs attention, secondary (green) = success.
     @Composable
     @ReadOnlyComposable
     fun color(
@@ -58,9 +59,9 @@ object SessionStatusPresentation {
     ): Color =
         when {
             isArchived -> MaterialTheme.colorScheme.tertiary
-            status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.secondary
-            status == SessionStatus.PARTIAL_TRANSCRIPTION -> MaterialTheme.colorScheme.secondary
-            status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> MaterialTheme.colorScheme.primary
+            status == SessionStatus.TRANSCRIBING -> MaterialTheme.colorScheme.primary
+            status == SessionStatus.PARTIAL_TRANSCRIPTION -> MaterialTheme.colorScheme.tertiary
+            status == SessionStatus.TRANSCRIBED || status == SessionStatus.EDITED -> MaterialTheme.colorScheme.secondary
             status == SessionStatus.FAILED -> MaterialTheme.colorScheme.error
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }

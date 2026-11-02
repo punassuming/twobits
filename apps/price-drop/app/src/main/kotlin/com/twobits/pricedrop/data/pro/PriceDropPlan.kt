@@ -3,6 +3,7 @@ package com.twobits.pricedrop.data.pro
 import com.twobits.core.pro.AppPlan
 import com.twobits.core.pro.BackgroundPollPolicy
 import com.twobits.core.pro.ManagedFeaturePolicy
+import com.twobits.core.pro.ProPricing
 import com.twobits.core.pro.UsageCounterPolicy
 
 /**
@@ -19,6 +20,13 @@ object PriceDropPlan {
             proEntitlementId = "pricedrop_pro",
             // PRICEDROP_BUDGET tracking ($1.50) + lookup ($1.50).
             monthlySpendCapUsd = 3.00,
+            pricing =
+                ProPricing(
+                    monthlyPrice = "\$5.99",
+                    annualPerMonthPrice = "\$4.99",
+                    annualTotalPrice = "\$59.88",
+                    annualSavingsPercent = 17,
+                ),
             features =
                 listOf(
                     ManagedFeaturePolicy(

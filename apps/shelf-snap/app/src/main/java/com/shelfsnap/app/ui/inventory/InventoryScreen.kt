@@ -166,7 +166,7 @@ fun InventoryScreen(
                             IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
                                 Icon(
                                     Icons.Default.Clear,
-                                    contentDescription = null,
+                                    contentDescription = stringResource(R.string.clear_search),
                                     modifier = Modifier.size(16.dp),
                                 )
                             }

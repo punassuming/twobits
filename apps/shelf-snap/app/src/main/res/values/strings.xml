@@ -151,6 +151,14 @@
     <string name="add_to_item">Add %1$d photo(s)</string>
     <string name="hint_center_item">Centre the item · good lighting helps AI</string>
     <string name="hint_photos_captured">%1$d photo(s) · tap to analyse</string>
+    <string name="flash">Flash</string>
+    <string name="photo_removed">Photo removed</string>
+    <string name="undo">Undo</string>
+    <string name="remove_photo_n">Remove photo %1$d</string>
+    <string name="photo_x_of_y">Photo %1$d of %2$d</string>
+    <string name="previous_photo">Previous photo</string>
+    <string name="next_photo">Next photo</string>
+    <string name="clear_search">Clear search</string>
 
     <!-- v2: settings — capture, storage, about -->
     <string name="capture_storage_section">Capture &amp; storage</string>

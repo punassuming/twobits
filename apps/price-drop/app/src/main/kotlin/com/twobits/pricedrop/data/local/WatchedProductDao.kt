@@ -32,6 +32,9 @@ interface WatchedProductDao {
     @Query("UPDATE watched_products SET isActive = 0 WHERE id = :id")
     suspend fun deactivate(id: Long)
 
+    @Query("UPDATE watched_products SET isActive = 1 WHERE id = :id")
+    suspend fun reactivate(id: Long)
+
     @Query("UPDATE watched_products SET currentPrice = :price, lastCheckedAt = :checkedAt WHERE id = :id")
     suspend fun updatePrice(
         id: Long,

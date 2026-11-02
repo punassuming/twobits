@@ -78,6 +78,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -98,6 +99,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -1864,7 +1868,8 @@ private fun TranscriptSection(
             modifier = Modifier.fillMaxWidth(),
             colors =
                 CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 ),
         ) {
             Row(
@@ -1875,13 +1880,13 @@ private fun TranscriptSection(
                 Icon(
                     imageVector = Icons.Filled.HourglassEmpty,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
                     text = "Partial transcript — some audio segments failed. Tap to resume.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = onResumeTranscription) {
@@ -2141,18 +2146,27 @@ private fun TranscriptUtteranceRow(
     ) {
         if (utterance.speakerLabel != null) {
             val color = speakerColorForIndex(utterance.speakerIndex.coerceAtLeast(0))
+            val speakerLabel = utterance.speakerLabel
+            val speakerDescription =
+                if (speakerLabel.startsWith("Speaker", ignoreCase = true)) speakerLabel else "Speaker $speakerLabel"
             Box(
                 modifier =
                     Modifier
+                        .minimumInteractiveComponentSize()
+                        .clickable(
+                            onClickLabel = "Manage speakers",
+                            role = Role.Button,
+                            onClick = onSpeakerClick,
+                        ).semantics { contentDescription = speakerDescription }
                         .size(24.dp)
-                        .background(color, CircleShape)
-                        .clickable(onClick = onSpeakerClick),
+                        .background(color, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = utterance.speakerLabel.filter { it.isDigit() }.ifBlank { "1" },
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
+                    color = avatarContentColor(color),
+                    modifier = Modifier.clearAndSetSemantics {},
                 )
             }
         }
