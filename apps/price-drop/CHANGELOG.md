@@ -10,6 +10,7 @@
 * Confirmation dialogs, undo snackbars and loading states now come from one shared design
 * Settings switches respond to taps anywhere on the row and read as one control in TalkBack
 * Error cards can offer a Retry action
+* The Pro screen is now one shared screen across all three apps
 
 **Pro pricing** — one consistent price everywhere:
 * PriceDrop Pro now costs $5.99/mo, or $4.99/mo billed annually
