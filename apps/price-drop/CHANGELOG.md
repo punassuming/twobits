@@ -4,6 +4,10 @@
 
 ### Features
 
+**Appearance** — pick your theme:
+* Choose System, Light or Dark in Settings
+* Content stays a comfortable width on tablets and foldables
+
 ### Improvements
 
 **Shared building blocks** — one look and behavior across TwoBits apps:
@@ -11,6 +15,12 @@
 * Settings switches respond to taps anywhere on the row and read as one control in TalkBack
 * Error cards can offer a Retry action
 * The Pro screen is now one shared screen across all three apps
+
+**Search & Ask** — clearer states:
+* Search shows a "No results" message when nothing matches, and errors offer Retry
+* Barcode lookup errors offer "Scan again"
+* AI source pills use the same colors as Scrybe and Shelf Snap
+* Links in What's New now open the screen they mention
 
 **Pro pricing** — one consistent price everywhere:
 * PriceDrop Pro now costs $5.99/mo, or $4.99/mo billed annually

@@ -11,6 +11,7 @@
 * Settings switches respond to taps anywhere on the row and read as one control in TalkBack
 * Error cards can offer a Retry action
 * The Pro screen is now one shared screen across all three apps
+* The shared AI source selector can now offer an Off choice
 
 **Pro pricing** — one consistent price everywhere:
 * Scrybe Pro now costs $3.99/mo, or $2.99/mo billed annually
