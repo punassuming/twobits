@@ -16,4 +16,4 @@ object TwoBitsLayout {
 }
 
 /** Fills the available width up to [TwoBitsLayout.contentMaxWidth]. */
-fun Modifier.twoBitsContentWidth(maxWidth: Dp = TwoBitsLayout.contentMaxWidth): Modifier = fillMaxWidth().widthIn(max = maxWidth)
+fun Modifier.twoBitsContentWidth(maxWidth: Dp = TwoBitsLayout.contentMaxWidth): Modifier = widthIn(max = maxWidth).fillMaxWidth()

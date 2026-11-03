@@ -14,6 +14,7 @@
 * Confirmation dialogs, undo snackbars and loading states now come from one shared design
 * Settings switches respond to taps anywhere on the row and read as one control in TalkBack
 * Error cards can offer a Retry action
+* The tablet content-width cap now actually limits wide screens
 * Removed unused shared loading overlay, Pro gate and subscription banner components
 * The Pro screen is now one shared screen across all three apps
 * The shared AI source selector can now offer an Off choice
