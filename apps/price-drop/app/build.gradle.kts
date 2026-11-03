@@ -17,8 +17,8 @@ android {
         applicationId = "com.twobits.pricedrop"
         minSdk = 26
         targetSdk = 35
-        versionCode = 23012
-        versionName = "0.23.12"
+        versionCode = 23013
+        versionName = "0.23.13"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
