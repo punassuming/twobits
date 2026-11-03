@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -72,6 +73,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppChipRow
 import com.twobits.design.components.AppEmptyState
+import com.twobits.design.components.showUndoSnackbar
+import com.twobits.design.twoBitsContentWidth
 import com.twobits.pricedrop.data.model.WatchedProduct
 import java.text.NumberFormat
 import java.util.Locale
@@ -101,13 +104,11 @@ fun WatchScreen(
         val message = userMessage ?: return@LaunchedEffect
         when (message) {
             is WatchMessage.Removed -> {
-                val result =
-                    snackbarHostState.showSnackbar(
+                val undo =
+                    snackbarHostState.showUndoSnackbar(
                         message = "Removed “${message.product.title.ellipsize(MAX_SNACKBAR_TITLE_CHARS)}”",
-                        actionLabel = "Undo",
-                        duration = SnackbarDuration.Long,
                     )
-                if (result == SnackbarResult.ActionPerformed) viewModel.undoRemove(message.product)
+                if (undo) viewModel.undoRemove(message.product)
             }
 
             is WatchMessage.RefreshFailed -> {
@@ -148,7 +149,13 @@ fun WatchScreen(
             )
         },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
+        Column(
+            Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .twoBitsContentWidth(),
+        ) {
             if (totalCount > 0) {
                 val filters = listOf("All", "Below target", "Coupons", "Needs check", "Paused")
                 AppChipRow(verticalPadding = 8.dp) {

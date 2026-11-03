@@ -18,7 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FileUpload
@@ -29,18 +28,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -73,6 +69,9 @@ import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import com.twobits.design.components.ModelStorageSection
+import com.twobits.design.components.SettingsRowDefaults
+import com.twobits.design.components.SettingsSwitchRow
+import com.twobits.design.components.TwoBitsTopAppBar
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.localai.ModelFileDetector
 import dev.scrybe.core.model.LocalWhisperModel
@@ -147,14 +146,7 @@ fun AIConfigScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("AI configuration") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+            TwoBitsTopAppBar(title = "AI configuration", onNavigateBack = onBack)
         },
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
@@ -402,21 +394,24 @@ fun AIConfigScreen(
                     }
 
                     AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
-                        AiToggleRow(
+                        SettingsSwitchRow(
+                            contentPadding = SettingsRowDefaults.insetContentPadding,
                             title = "Speaker identification",
                             subtitle = "Color-code multiple voices in transcript",
                             checked = uiState.enableSpeakerIdentification,
                             onCheckedChange = viewModel::setEnableSpeakerIdentification,
                         )
                         HorizontalDivider()
-                        AiToggleRow(
+                        SettingsSwitchRow(
+                            contentPadding = SettingsRowDefaults.insetContentPadding,
                             title = "Insight extraction",
                             subtitle = "Pull tasks and action items from transcripts with AI",
                             checked = uiState.enableInsightAnalysis,
                             onCheckedChange = viewModel::setEnableInsightAnalysis,
                         )
                         HorizontalDivider()
-                        AiToggleRow(
+                        SettingsSwitchRow(
+                            contentPadding = SettingsRowDefaults.insetContentPadding,
                             title = "AI call debug",
                             subtitle = "Log every AI request/response (transcription, diarization, insights) to Settings → Debug log",
                             checked = uiState.debugDiarization,
@@ -430,7 +425,7 @@ fun AIConfigScreen(
 
     if (showTransformModelPicker) {
         ModelPickerDialog(
-            title = "Transform Model",
+            title = "Transform model",
             models = OpenAiTransformModel.entries.toList(),
             selected = selectedTransformModel,
             name = { it.title },
@@ -600,27 +595,4 @@ private fun <T> ModelPickerDialog(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
-}
-
-@Composable
-private fun AiToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
 }

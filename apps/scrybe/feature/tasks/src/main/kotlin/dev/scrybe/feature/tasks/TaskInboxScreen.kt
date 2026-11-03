@@ -1,7 +1,6 @@
 package dev.scrybe.feature.tasks
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -21,7 +19,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -32,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -41,7 +37,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextDecoration
@@ -50,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.components.AppChipRow
 import com.twobits.design.components.AppEmptyState
+import com.twobits.design.components.AppLoadingState
+import com.twobits.design.components.TwoBitsTopAppBar
 import dev.scrybe.core.common.ModeBadge
 
 private val TODAY_LABELS = setOf("today", "Today")
@@ -87,38 +84,17 @@ fun TaskInboxScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             val openCount = (uiState as? TaskInboxUiState.Success)?.counts?.open ?: 0
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Tasks")
-                        if (openCount > 0) {
-                            Text(
-                                "$openCount open across sessions",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Filled.ChevronRight,
-                            contentDescription = "Back",
-                            modifier = Modifier.clip(CircleShape).size(24.dp),
-                        )
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = "Tasks",
+                subtitle = if (openCount > 0) "$openCount open across sessions" else null,
+                onNavigateBack = onNavigateBack,
                 scrollBehavior = scrollBehavior,
             )
         },
     ) { paddingValues ->
         when (val state = uiState) {
             is TaskInboxUiState.Loading -> {
-                Box(
-                    Modifier.fillMaxSize().padding(paddingValues),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator() }
+                AppLoadingState(modifier = Modifier.fillMaxSize().padding(paddingValues))
             }
 
             is TaskInboxUiState.Success -> {

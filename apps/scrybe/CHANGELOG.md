@@ -4,7 +4,27 @@
 
 ### Features
 
+**Library** — clearer empty and filtered states:
+* When a filter hides every session, a "Show all sessions" button clears it
+
 ### Improvements
+
+**Shared building blocks** — one look and behavior across TwoBits apps:
+* Confirmation dialogs, undo snackbars and loading states now come from one shared design
+* Settings switches respond to taps anywhere on the row and read as one control in TalkBack
+* Error cards can offer a Retry action
+* The tablet content-width cap now actually limits wide screens
+* Removed unused shared loading overlay, Pro gate and subscription banner components
+* The Pro screen is now one shared screen across all three apps
+* The shared AI source selector can now offer an Off choice
+
+**Consistency** — Scrybe now uses the shared TwoBits screens:
+* Every delete asks with the same confirmation dialog
+* Settings and profile switches toggle when you tap anywhere on the row
+* "Copied" messages appear as snackbars instead of toasts
+* File manager and Tasks use the standard top bar and back arrow
+* Format and other pickers show a radio button for the current choice
+* The Capture search field has a labelled clear button and a keyboard Search key
 
 ### Fixes
 

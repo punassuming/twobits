@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.twobits.design.components.SettingsOptionRow
 import dev.scrybe.core.model.ProviderType
 
 internal fun shouldShowOpenAiApiKey(provider: String): Boolean = provider == ProviderType.OPENAI.name
@@ -215,18 +216,15 @@ internal fun <T> OptionPickerDialog(
                     Modifier
                         .fillMaxWidth()
                         .heightIn(max = 360.dp)
-                        .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .verticalScroll(rememberScrollState())
+                        .selectableGroup(),
             ) {
-                options.forEachIndexed { index, option ->
-                    SettingOptionRow(
+                options.forEach { option ->
+                    SettingsOptionRow(
                         title = label(option),
-                        value = if (option == selected) "Selected" else "Tap to choose",
-                        onClick = { onSelect(option) },
+                        selected = option == selected,
+                        onSelect = { onSelect(option) },
                     )
-                    if (index < options.lastIndex) {
-                        HorizontalDivider()
-                    }
                 }
             }
         },

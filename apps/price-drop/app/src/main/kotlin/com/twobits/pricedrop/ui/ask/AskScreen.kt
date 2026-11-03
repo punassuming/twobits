@@ -10,16 +10,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,8 +31,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,8 +44,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.core.pro.ExecutionMode
+import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppChipRow
+import com.twobits.design.components.AppEmptyState
+import com.twobits.design.components.ConfirmDialog
 import com.twobits.design.components.InferenceSourceBadge
+import com.twobits.design.components.TwoBitsTopAppBar
+import com.twobits.design.twoBitsContentWidth
 
 private val SUGGESTIONS =
     listOf(
@@ -76,13 +79,9 @@ fun AskScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Ask AI") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = "Ask AI",
+                onNavigateBack = onNavigateBack,
                 actions = {
                     if (uiState.messages.isNotEmpty()) {
                         IconButton(onClick = { showClearConfirm = true }) {
@@ -94,7 +93,12 @@ fun AskScreen(
         },
     ) { padding ->
         Column(
-            Modifier.padding(padding).fillMaxSize().imePadding(),
+            Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .imePadding()
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .twoBitsContentWidth(),
         ) {
             LazyColumn(
                 state = listState,
@@ -104,11 +108,11 @@ fun AskScreen(
             ) {
                 if (uiState.messages.isEmpty()) {
                     item {
-                        Text(
-                            "Ask me to track a product, find deals, or look up price history.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 8.dp),
+                        AppEmptyState(
+                            icon = Icons.Outlined.AutoAwesome,
+                            title = "Ask about any product",
+                            subtitle = "Ask me to track a product, find deals, or look up price history.",
+                            modifier = Modifier.fillMaxWidth().padding(vertical = TwoBitsSpacing.section),
                         )
                         AppChipRow(horizontalPadding = 0.dp) {
                             SUGGESTIONS.forEach { suggestion ->
@@ -162,21 +166,15 @@ fun AskScreen(
     }
 
     if (showClearConfirm) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirm = false },
-            title = { Text("Clear chat history?") },
-            text = { Text("This deletes the whole conversation. It can't be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showClearConfirm = false
-                        viewModel.clearHistory()
-                    },
-                ) { Text("Clear", color = MaterialTheme.colorScheme.error) }
+        ConfirmDialog(
+            title = "Clear chat history?",
+            text = "This deletes the whole conversation. It can't be undone.",
+            confirmLabel = "Clear",
+            onConfirm = {
+                showClearConfirm = false
+                viewModel.clearHistory()
             },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) { Text("Cancel") }
-            },
+            onDismiss = { showClearConfirm = false },
         )
     }
 }

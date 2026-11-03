@@ -16,6 +16,7 @@ import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.core.pro.ExecutionMode
+import com.twobits.design.ThemeMode
 import com.twobits.localai.work.SharedModelDownloadWorker
 import com.twobits.pricedrop.R
 import com.twobits.pricedrop.data.local.LocalModelManager
@@ -73,6 +74,7 @@ data class SettingsUiState(
     val wifiOnly: Boolean = false,
     val onlyWhileCharging: Boolean = false,
     val quietHoursEnabled: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val isPurchasing: Boolean = false,
     val purchaseError: String? = null,
 ) {
@@ -186,6 +188,7 @@ class SettingsViewModel
                     wifiOnly = prefs[SettingsPrefs.WIFI_ONLY] ?: false,
                     onlyWhileCharging = prefs[SettingsPrefs.CHARGING_ONLY] ?: false,
                     quietHoursEnabled = prefs[SettingsPrefs.QUIET_HOURS] ?: false,
+                    themeMode = SettingsPrefs.themeMode(prefs),
                     isPurchasing = purchasing,
                     purchaseError = error,
                 )
@@ -234,6 +237,10 @@ class SettingsViewModel
 
         fun setQuietHours(enabled: Boolean) {
             viewModelScope.launch { dataStore.edit { it[SettingsPrefs.QUIET_HOURS] = enabled } }
+        }
+
+        fun setThemeMode(mode: ThemeMode) {
+            viewModelScope.launch { dataStore.edit { it[SettingsPrefs.THEME_MODE] = mode.name } }
         }
 
         // Transient, non-persisted save/test feedback keyed by provider.

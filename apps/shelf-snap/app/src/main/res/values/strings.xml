@@ -6,7 +6,7 @@
     <string name="my_inventory">My Inventory</string>
     <string name="no_items">No items yet. Tap + to add your first donation item.</string>
     <string name="search_items">Search items…</string>
-    <string name="donation_summary">Total Summary</string>
+    <string name="donation_summary">Total summary</string>
     <string name="export_csv">Export CSV</string>
     <string name="settings">Settings</string>
     <string name="api_key_label">OpenAI API Key</string>
@@ -30,7 +30,7 @@
     <string name="items_count">%1$d item(s)</string>
     <string name="exported_successfully">Exported successfully to %1$s</string>
     <string name="export_failed">Export failed: %1$s</string>
-    <string name="delete_confirm_title">Delete Item?</string>
+    <string name="delete_confirm_title">Delete item?</string>
     <string name="delete_confirm_message">This will permanently delete the item and its photos.</string>
     <string name="take_photo">Take Photo</string>
     <string name="retake">Retake</string>
@@ -164,6 +164,8 @@
     <string name="capture_storage_section">Capture &amp; storage</string>
     <string name="auto_analyze_title">Auto-analyze on capture</string>
     <string name="auto_analyze_subtitle">Analyze photos immediately after capture</string>
+    <string name="appearance_section">Appearance</string>
+    <string name="theme_title">Theme</string>
     <string name="storage_usage">Storage usage</string>
     <string name="storage_photos">Photos</string>
     <string name="storage_database">Database</string>

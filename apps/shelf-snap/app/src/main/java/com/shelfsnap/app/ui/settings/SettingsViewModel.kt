@@ -24,6 +24,7 @@ import com.twobits.billing.SubscriptionRepository
 import com.twobits.billing.SubscriptionTier
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.design.ThemeMode
 import com.twobits.localai.work.SharedModelDownloadWorker
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
@@ -742,6 +743,17 @@ class SettingsViewModel
 
         fun onListingSourceChange(source: String) {
             viewModelScope.launch { repository.saveListingSource(source) }
+        }
+
+        val themeMode: StateFlow<ThemeMode> =
+            repository.observeThemeMode().stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = ThemeMode.SYSTEM,
+            )
+
+        fun onThemeModeChange(mode: ThemeMode) {
+            viewModelScope.launch { repository.saveThemeMode(mode) }
         }
 
         fun onAiConditionDetectionChange(enabled: Boolean) {

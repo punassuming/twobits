@@ -14,18 +14,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.Hub
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageSearch
 import androidx.compose.material.icons.filled.PriceCheck
 import androidx.compose.material.icons.filled.TrendingDown
@@ -36,14 +35,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,10 +62,13 @@ import com.twobits.core.localmodels.LocalModelAcquisition
 import com.twobits.core.localmodels.LocalModelState
 import com.twobits.core.pro.ExecutionMode
 import com.twobits.design.TwoBitsSpacing
+import com.twobits.design.components.AI_BYOK_COLOR
 import com.twobits.design.components.AI_LOCAL_COLOR
+import com.twobits.design.components.AI_PRO_COLOR
 import com.twobits.design.components.AiNoKeyWarning
 import com.twobits.design.components.AiProManagedCard
 import com.twobits.design.components.AiSectionCard
+import com.twobits.design.components.AiSourceSegment
 import com.twobits.design.components.AppSectionLabel
 import com.twobits.design.components.CallBudgetCard
 import com.twobits.design.components.CallBudgetEntry
@@ -78,14 +78,12 @@ import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import com.twobits.design.components.ModelStorageSection
 import com.twobits.design.components.ProviderToggleRow
+import com.twobits.design.components.TwoBitsTopAppBar
+import com.twobits.design.twoBitsContentWidth
 import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.provider.AiFeature
 import com.twobits.pricedrop.data.provider.AiModelOption
 import com.twobits.pricedrop.data.provider.PriceDropProvider
-
-// PriceDrop accent colors (mirror the design tokens; Pro amber + BYOK coral).
-private val PD_PRO_COLOR = Color(0xFFFFD580)
-private val PD_BYOK_COLOR = Color(0xFFFF8066)
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
     when (this) {
@@ -109,7 +107,7 @@ private fun AiFeature.budgetColor(scheme: androidx.compose.material3.ColorScheme
         AiFeature.SEARCH -> scheme.primary
         AiFeature.PRICE_CHECK -> scheme.onSurfaceVariant
         AiFeature.COUPON -> scheme.tertiary
-        AiFeature.DROPS -> PD_PRO_COLOR
+        AiFeature.DROPS -> AI_PRO_COLOR
         AiFeature.ASK -> Color(0xFFC6A0F6)
     }
 
@@ -137,19 +135,13 @@ fun AIConfigScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(selectedFeature?.label ?: "AI configuration") },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            if (selectedFeature != null) {
-                                selectedFeature = null
-                            } else {
-                                onNavigateBack()
-                            }
-                        },
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            TwoBitsTopAppBar(
+                title = selectedFeature?.label ?: "AI configuration",
+                onNavigateBack = {
+                    if (selectedFeature != null) {
+                        selectedFeature = null
+                    } else {
+                        onNavigateBack()
                     }
                 },
             )
@@ -169,7 +161,11 @@ fun AIConfigScreen(
                     val installedFileDetails by viewModel.installedFileDetails.collectAsState()
                     LaunchedEffect(Unit) { viewModel.refreshModelStorage() }
                     LazyColumn(
-                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .align(Alignment.CenterHorizontally)
+                                .twoBitsContentWidth(),
                         contentPadding = PaddingValues(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
                     ) {
                         item {
@@ -207,7 +203,11 @@ fun AIConfigScreen(
                     }
                 } else {
                     FeatureListContent(
-                        modifier = Modifier.weight(1f).fillMaxSize(),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .align(Alignment.CenterHorizontally)
+                                .twoBitsContentWidth(),
                         hasPro = hasPro,
                         providerStates = providerStates,
                         featureStates = featureStates,
@@ -219,7 +219,12 @@ fun AIConfigScreen(
             }
         } else {
             FeatureDetailContent(
-                modifier = Modifier.padding(padding),
+                modifier =
+                    Modifier
+                        .padding(padding)
+                        .fillMaxSize()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                        .twoBitsContentWidth(),
                 feature = feature,
                 hasPro = hasPro,
                 featureState = featureStates[feature],
@@ -396,10 +401,10 @@ private fun FeatureRow(
 private fun SourceBadge(source: ExecutionMode) {
     val (label, color) =
         when (source) {
-            ExecutionMode.PRO -> "Pro" to PD_PRO_COLOR
-            ExecutionMode.BYOK -> "BYOK" to PD_BYOK_COLOR
+            ExecutionMode.PRO -> "Pro" to AI_PRO_COLOR
+            ExecutionMode.BYOK -> "BYOK" to AI_BYOK_COLOR
             ExecutionMode.LOCAL -> "Local" to AI_LOCAL_COLOR
-            ExecutionMode.OFF -> "Off" to Color.Gray
+            ExecutionMode.OFF -> "Off" to MaterialTheme.colorScheme.outline
         }
     Surface(
         shape = RoundedCornerShape(6.dp),
@@ -516,11 +521,12 @@ private fun FeatureDetailContent(
                 AppSectionLabel("Source")
             }
             item {
-                SourceSegment(
-                    selected = source,
+                AiSourceSegment(
+                    selected = source.storageKey,
                     hasPro = hasPro,
                     hasLocal = feature == AiFeature.ASK,
-                    onChange = { viewModel.setFeatureSource(feature, it) },
+                    hasOff = true,
+                    onChange = { viewModel.setFeatureSource(feature, ExecutionMode.fromStorageKey(it)) },
                 )
             }
 
@@ -636,66 +642,6 @@ private fun FeatureDetailContent(
 
         item {
             CallEstimateCard(feature)
-        }
-    }
-}
-
-@Composable
-private fun SourceSegment(
-    selected: ExecutionMode,
-    hasPro: Boolean,
-    hasLocal: Boolean = false,
-    onChange: (ExecutionMode) -> Unit,
-) {
-    val options =
-        buildList {
-            add(Triple(ExecutionMode.OFF, "Off", Color.Gray))
-            add(Triple(ExecutionMode.BYOK, "BYOK", PD_BYOK_COLOR))
-            add(Triple(ExecutionMode.PRO, "Pro", PD_PRO_COLOR))
-            if (hasLocal) add(Triple(ExecutionMode.LOCAL, "Local", AI_LOCAL_COLOR))
-        }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        options.forEach { (mode, label, color) ->
-            val isSelected = selected == mode
-            val locked = mode == ExecutionMode.PRO && !hasPro
-            Surface(
-                onClick = { if (!locked) onChange(mode) },
-                shape = RoundedCornerShape(10.dp),
-                color =
-                    if (isSelected) {
-                        color.copy(alpha = 0.22f)
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-                modifier = Modifier.weight(1f),
-            ) {
-                Row(
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (locked) {
-                        Icon(
-                            Icons.Filled.Lock,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier =
-                                Modifier
-                                    .size(12.dp)
-                                    .padding(end = 3.dp),
-                        )
-                    }
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) color else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
         }
     }
 }

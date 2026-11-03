@@ -4,7 +4,27 @@
 
 ### Features
 
+**Appearance** — pick your theme:
+* Choose System, Light or Dark in Settings
+* Content stays a comfortable width on tablets and foldables
+
 ### Improvements
+
+**Shared building blocks** — one look and behavior across TwoBits apps:
+* Confirmation dialogs, undo snackbars and loading states now come from one shared design
+* Settings switches respond to taps anywhere on the row and read as one control in TalkBack
+* Error cards can offer a Retry action
+* The tablet content-width cap now actually limits wide screens
+* Removed unused shared loading overlay, Pro gate and subscription banner components
+* The Pro screen is now one shared screen across all three apps
+* The shared AI source selector can now offer an Off choice
+
+**Consistency** — Shelf Snap now uses the shared TwoBits screens:
+* Inventory search, loading and empty states match the other apps
+* Deleting an item uses the standard confirmation
+* Item detail and Summary use the standard loading indicator
+* The Inventory search field has a labelled clear button and a keyboard Search key
+* "Total summary" and other titles use sentence case
 
 ### Fixes
 

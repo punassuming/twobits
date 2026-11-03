@@ -14,11 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ExpandLess
@@ -42,7 +42,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,6 +62,8 @@ import com.shelfsnap.app.data.model.PlatformListing
 import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppEmptyState
 import com.twobits.design.components.AppSectionLabel
+import com.twobits.design.components.TwoBitsTopAppBar
+import com.twobits.design.twoBitsContentWidth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,27 +97,15 @@ fun ListingSummaryScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = item?.brand?.ifBlank { item.category } ?: "Listing copy",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        if (listings.isNotEmpty()) {
-                            Text(
-                                text = "${listings.size} platform${if (listings.size != 1) "s" else ""} · ready to list",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = item?.brand?.ifBlank { item.category } ?: "Listing copy",
+                subtitle =
+                    if (listings.isNotEmpty()) {
+                        "${listings.size} platform${if (listings.size != 1) "s" else ""} · ready to list"
+                    } else {
+                        null
+                    },
+                onNavigateBack = onBack,
                 actions = {
                     TextButton(
                         onClick = { viewModel.refineAllListings() },
@@ -150,7 +139,12 @@ fun ListingSummaryScreen(
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .twoBitsContentWidth(),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
