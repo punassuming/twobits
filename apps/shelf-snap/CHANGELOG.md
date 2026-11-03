@@ -22,6 +22,7 @@
 **Consistency** — Shelf Snap now uses the shared TwoBits screens:
 * Inventory search, loading and empty states match the other apps
 * Deleting an item uses the standard confirmation
+* Item detail and Summary use the standard loading indicator
 * The Inventory search field has a labelled clear button and a keyboard Search key
 * "Total summary" and other titles use sentence case
 
