@@ -1,21 +1,72 @@
 version: 2
+
+# The apps and /shared all resolve the same shared/*/build.gradle.kts plugin
+# versions, so Dependabot opens near-identical PRs per directory. Grouping keeps
+# related toolchain bumps (Kotlin plugins, KSP, AGP, Gradle wrapper) in a single
+# PR per directory so they never land half-applied. Bumps must also update
+# gradle/libs.versions.toml and the app CHANGELOG.md files by hand.
 updates:
   - package-ecosystem: "gradle"
     directory: "/apps/scrybe"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      kotlin-toolchain:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp"
+      android-gradle-plugin:
+        patterns:
+          - "com.android.*"
+      gradle-wrapper:
+        patterns:
+          - "gradle-wrapper"
 
   - package-ecosystem: "gradle"
     directory: "/apps/shelf-snap"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      kotlin-toolchain:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp"
+      android-gradle-plugin:
+        patterns:
+          - "com.android.*"
+      gradle-wrapper:
+        patterns:
+          - "gradle-wrapper"
 
   - package-ecosystem: "gradle"
     directory: "/apps/price-drop"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      kotlin-toolchain:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp"
+      android-gradle-plugin:
+        patterns:
+          - "com.android.*"
+      gradle-wrapper:
+        patterns:
+          - "gradle-wrapper"
 
   - package-ecosystem: "gradle"
     directory: "/shared"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      kotlin-toolchain:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp"
+      android-gradle-plugin:
+        patterns:
+          - "com.android.*"

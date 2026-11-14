@@ -1,11 +1,11 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("com.android.library") version "9.4.1"
-    id("org.jetbrains.kotlin.android") version "2.4.20"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.20"
+    id("com.android.library") version "9.5.1"
+    id("org.jetbrains.kotlin.android") version "2.4.21"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.4.21"
     id("com.google.dagger.hilt.android") version "2.60.1"
-    id("com.google.devtools.ksp") version "2.3.12"
+    id("com.google.devtools.ksp") version "2.3.13"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0"
 }
