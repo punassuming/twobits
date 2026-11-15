@@ -12,26 +12,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -48,9 +45,14 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.twobits.design.TwoBitsSpacing
 import com.twobits.design.components.AppLabeledSectionCard
+import com.twobits.design.components.ConfirmDialog
 import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsEntryCard
 import com.twobits.design.components.SettingsProStatusCard
+import com.twobits.design.components.SettingsSwitchRow
+import com.twobits.design.components.ThemeModePicker
+import com.twobits.design.components.TwoBitsTopAppBar
+import com.twobits.design.twoBitsContentWidth
 import com.twobits.pricedrop.BuildConfig
 import com.twobits.pricedrop.data.pro.PriceDropPlan
 import com.twobits.pricedrop.data.settings.SettingsPrefs
@@ -110,21 +112,16 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+            TwoBitsTopAppBar(title = "Settings", onNavigateBack = onNavigateBack)
         },
     ) { padding ->
         LazyColumn(
             modifier =
                 Modifier
                     .padding(padding)
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .wrapContentWidth(Alignment.CenterHorizontally)
+                    .twoBitsContentWidth(),
             contentPadding = PaddingValues(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
             verticalArrangement = Arrangement.spacedBy(TwoBitsSpacing.screenV),
         ) {
@@ -180,33 +177,24 @@ fun SettingsScreen(
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                     HorizontalDivider()
-                    ListItem(
-                        headlineContent = { Text("Wi-Fi only") },
-                        supportingContent = { Text("Only check prices on Wi-Fi") },
-                        trailingContent = {
-                            Switch(checked = uiState.wifiOnly, onCheckedChange = viewModel::setWifiOnly)
-                        },
+                    SettingsSwitchRow(
+                        title = "Wi-Fi only",
+                        subtitle = "Only check prices on Wi-Fi",
+                        checked = uiState.wifiOnly,
+                        onCheckedChange = viewModel::setWifiOnly,
                     )
                     HorizontalDivider()
-                    ListItem(
-                        headlineContent = { Text("Only while charging") },
-                        trailingContent = {
-                            Switch(
-                                checked = uiState.onlyWhileCharging,
-                                onCheckedChange = viewModel::setChargingOnly,
-                            )
-                        },
+                    SettingsSwitchRow(
+                        title = "Only while charging",
+                        checked = uiState.onlyWhileCharging,
+                        onCheckedChange = viewModel::setChargingOnly,
                     )
                     HorizontalDivider()
-                    ListItem(
-                        headlineContent = { Text("Quiet hours") },
-                        supportingContent = { Text("No notifications 10 PM – 8 AM") },
-                        trailingContent = {
-                            Switch(
-                                checked = uiState.quietHoursEnabled,
-                                onCheckedChange = viewModel::setQuietHours,
-                            )
-                        },
+                    SettingsSwitchRow(
+                        title = "Quiet hours",
+                        subtitle = "No notifications 10 PM – 8 AM",
+                        checked = uiState.quietHoursEnabled,
+                        onCheckedChange = viewModel::setQuietHours,
                     )
                     // Onboarding only asks once, on first run — existing users who denied it
                     // there (or upgraded from a version with no prompt at all) had no other way
@@ -240,6 +228,11 @@ fun SettingsScreen(
                             },
                         )
                     }
+                }
+            }
+            item {
+                AppLabeledSectionCard(title = "Appearance", icon = Icons.Filled.Palette) {
+                    ThemeModePicker(selected = uiState.themeMode, onSelect = viewModel::setThemeMode)
                 }
             }
             item {
@@ -282,21 +275,15 @@ fun SettingsScreen(
     }
 
     if (showClearHistoryConfirm) {
-        AlertDialog(
-            onDismissRequest = { showClearHistoryConfirm = false },
-            title = { Text("Clear search history?") },
-            text = { Text("This deletes your saved search history. This can't be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.clearSearchHistory()
-                        showClearHistoryConfirm = false
-                    },
-                ) { Text("Clear") }
+        ConfirmDialog(
+            title = "Clear search history?",
+            text = "This deletes your saved search history. This can't be undone.",
+            confirmLabel = "Clear",
+            onConfirm = {
+                viewModel.clearSearchHistory()
+                showClearHistoryConfirm = false
             },
-            dismissButton = {
-                TextButton(onClick = { showClearHistoryConfirm = false }) { Text("Cancel") }
-            },
+            onDismiss = { showClearHistoryConfirm = false },
         )
     }
 }

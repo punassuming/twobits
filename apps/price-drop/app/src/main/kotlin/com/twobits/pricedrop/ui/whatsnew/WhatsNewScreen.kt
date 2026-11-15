@@ -8,7 +8,10 @@ import com.twobits.design.components.WhatsNewScreenLayout
 import com.twobits.design.components.toWhatsNewRelease
 
 @Composable
-fun WhatsNewScreen(onNavigateBack: () -> Unit) {
+fun WhatsNewScreen(
+    onNavigateBack: () -> Unit,
+    onNavigate: ((target: String) -> Unit)? = null,
+) {
     val context = LocalContext.current
     val releases =
         remember {
@@ -26,5 +29,10 @@ fun WhatsNewScreen(onNavigateBack: () -> Unit) {
                 .mapIndexed { i, notes -> notes.toWhatsNewRelease(isLatest = i == 0) }
                 .filter { it.categories.isNotEmpty() }
         }
-    WhatsNewScreenLayout(title = "What's New", releases = releases, onBack = onNavigateBack)
+    WhatsNewScreenLayout(
+        title = "What's New",
+        releases = releases,
+        onBack = onNavigateBack,
+        onNavigate = onNavigate,
+    )
 }

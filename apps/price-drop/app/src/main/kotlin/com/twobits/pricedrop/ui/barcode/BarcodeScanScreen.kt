@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -24,13 +23,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,6 +48,8 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 import com.twobits.design.TwoBitsSpacing
+import com.twobits.design.components.ErrorCard
+import com.twobits.design.components.TwoBitsTopAppBar
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -69,14 +68,7 @@ fun BarcodeScanScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Scan Barcode") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+            TwoBitsTopAppBar(title = "Scan barcode", onNavigateBack = onNavigateBack)
         },
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
@@ -172,11 +164,12 @@ fun BarcodeScanScreen(
                     }
 
                     is BarcodeUiState.Error -> {
-                        Box(Modifier.align(Alignment.BottomCenter).padding(12.dp)) {
-                            Card {
-                                Text(state.message, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
-                            }
-                        }
+                        ErrorCard(
+                            message = state.message,
+                            modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp),
+                            actionLabel = "Scan again",
+                            onAction = viewModel::reset,
+                        )
                     }
                 }
             }

@@ -15,6 +15,7 @@ import com.twobits.common.ReleaseNotes
 import com.twobits.common.ReleaseNotesParser
 import com.twobits.core.localmodels.LocalLlmModel
 import com.twobits.core.localmodels.LocalModelState
+import com.twobits.design.ThemeMode
 import com.twobits.localai.work.SharedModelDownloadWorker
 import com.twobits.securestore.SharedCredentialId
 import com.twobits.securestore.ipc.SharedCredentialClient
@@ -37,7 +38,6 @@ import dev.scrybe.core.model.OpenAiTranscriptionModel
 import dev.scrybe.core.model.OpenAiTransformModel
 import dev.scrybe.core.model.PostStopDestination
 import dev.scrybe.core.model.ProviderType
-import dev.scrybe.core.model.ThemeMode
 import dev.scrybe.core.transcription.ApiKeyProvider
 import dev.scrybe.core.transcription.OpenAiApiKeyValidator
 import dev.scrybe.core.transcription.SessionTranscriptionCoordinator
@@ -355,7 +355,7 @@ class SettingsViewModel
                 preferencesDataStore.postStopDestination,
             ) { themeMode, keepScreenOn, showRenameAfterRecording, confirmRecordSwipeActions, postStopDestination ->
                 DisplayPreferences(
-                    themeMode = themeMode,
+                    themeMode = themeMode.toDesignThemeMode(),
                     keepScreenOn = keepScreenOn,
                     showRenameAfterRecording = showRenameAfterRecording,
                     confirmRecordSwipeActions = confirmRecordSwipeActions,
@@ -641,7 +641,7 @@ class SettingsViewModel
         }
 
         fun setThemeMode(themeMode: ThemeMode) {
-            viewModelScope.launch { preferencesDataStore.setThemeMode(themeMode) }
+            viewModelScope.launch { preferencesDataStore.setThemeMode(themeMode.toStoredThemeMode()) }
         }
 
         fun setKeepScreenOn(enabled: Boolean) {

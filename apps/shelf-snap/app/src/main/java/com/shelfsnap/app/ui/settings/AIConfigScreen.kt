@@ -7,14 +7,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ImageSearch
@@ -24,16 +24,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,6 +67,10 @@ import com.twobits.design.components.LocalModelPicker
 import com.twobits.design.components.LocalModelStatus
 import com.twobits.design.components.ModelRadioList
 import com.twobits.design.components.ModelStorageSection
+import com.twobits.design.components.SettingsRowDefaults
+import com.twobits.design.components.SettingsSwitchRow
+import com.twobits.design.components.TwoBitsTopAppBar
+import com.twobits.design.twoBitsContentWidth
 
 private fun LocalModelState.toStatus(): LocalModelStatus =
     when (this) {
@@ -115,13 +116,9 @@ fun AIConfigScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("AI configuration") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = "AI configuration",
+                onNavigateBack = onBack,
             )
         },
     ) { padding ->
@@ -134,7 +131,10 @@ fun AIConfigScreen(
                 Column(
                     modifier =
                         Modifier
+                            .fillMaxSize()
                             .verticalScroll(rememberScrollState())
+                            .wrapContentWidth(Alignment.CenterHorizontally)
+                            .twoBitsContentWidth()
                             .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
                 ) {
                     LocalModelPanel(
@@ -171,7 +171,10 @@ fun AIConfigScreen(
             Column(
                 modifier =
                     Modifier
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                        .twoBitsContentWidth()
                         .padding(horizontal = TwoBitsSpacing.screenH, vertical = TwoBitsSpacing.screenV),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
@@ -378,21 +381,24 @@ fun AIConfigScreen(
                 }
 
                 AiSectionCard(icon = Icons.Default.Insights, title = "Analysis") {
-                    AiToggleRow(
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
                         title = "AI condition detection",
                         subtitle = "Automatically assess item condition from photos",
                         checked = uiState.aiConditionDetection,
                         onCheckedChange = viewModel::onAiConditionDetectionChange,
                     )
                     HorizontalDivider()
-                    AiToggleRow(
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
                         title = "Auto price estimate",
                         subtitle = "Generate a resale price estimate when analyzing items",
                         checked = uiState.autoPriceEstimate,
                         onCheckedChange = viewModel::onAutoPriceEstimateChange,
                     )
                     HorizontalDivider()
-                    AiToggleRow(
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
                         title = "Multi-photo analysis",
                         subtitle = "Use all captured photos for richer item identification",
                         checked = uiState.multiPhotoAnalysis,
@@ -488,30 +494,3 @@ private fun maskKey(key: String): String? =
         key.isNotBlank() -> "••••"
         else -> null
     }
-
-@Composable
-private fun AiToggleRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}

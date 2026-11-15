@@ -18,7 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -36,7 +36,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +47,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppEmptyState
+import com.twobits.design.components.ConfirmDialog
+import com.twobits.design.components.TwoBitsTopAppBar
 import dev.scrybe.core.common.CustomTypeIcon
 import dev.scrybe.core.common.customTypeIcon
 import dev.scrybe.core.database.CustomRecordingTypeEntity
@@ -70,14 +72,7 @@ fun RecordingTypesScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Recording types") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+            TwoBitsTopAppBar(title = "Recording types", onNavigateBack = onBack)
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showEditorForNew = true }) {
@@ -87,11 +82,10 @@ fun RecordingTypesScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (types.isEmpty()) {
-                Text(
-                    "No custom types yet. Create one here or from the recording mode picker.",
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                AppEmptyState(
+                    icon = Icons.AutoMirrored.Filled.Label,
+                    title = "No custom types yet",
+                    subtitle = "Create one here or from the recording mode picker.",
                 )
             } else {
                 val profileNames = profiles.associate { it.id to it.name }
@@ -134,24 +128,16 @@ fun RecordingTypesScreen(
     }
 
     deleteTarget?.let { pending ->
-        AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            title = { Text("Delete \"${pending.name}\"?") },
-            text = {
-                Text(
-                    "Recordings made with this type are kept and become Journal recordings. " +
-                        "This can't be undone.",
-                )
+        ConfirmDialog(
+            title = "Delete \"${pending.name}\"?",
+            text =
+                "Recordings made with this type are kept and become Journal recordings. " +
+                    "This can't be undone.",
+            onConfirm = {
+                viewModel.deleteType(pending.id)
+                deleteTarget = null
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteType(pending.id)
-                    deleteTarget = null
-                }) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
-            },
+            onDismiss = { deleteTarget = null },
         )
     }
 }

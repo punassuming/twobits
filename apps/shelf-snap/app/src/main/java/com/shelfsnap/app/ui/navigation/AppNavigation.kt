@@ -4,16 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -38,9 +33,11 @@ import com.shelfsnap.app.ui.settings.SettingsScreen
 import com.shelfsnap.app.ui.summary.SummaryScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewScreen
 import com.shelfsnap.app.ui.whatsnew.WhatsNewViewModel
+import com.twobits.debuglogui.CrashWarningDialog
 import com.twobits.debuglogui.CrashWarningViewModel
 import com.twobits.debuglogui.DebugLogScreen
 import com.twobits.design.TwoBitsMotion
+import com.twobits.design.components.AppLoadingState
 import com.twobits.design.components.AppWhatsNewDialog
 import com.twobits.design.components.MultiTaskProgressFooter
 import com.twobits.design.components.ProgressFooterTask
@@ -54,7 +51,7 @@ fun AppNavigation(
     val onboardingComplete by onboardingViewModel.completed.collectAsState()
     if (onboardingComplete == null && uiTestStartDestination == null) {
         // Hold the start destination until the first-run flag has loaded.
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        AppLoadingState()
         return
     }
 
@@ -307,6 +304,8 @@ fun AppNavigation(
 
             staleStartWarning?.let { entry ->
                 CrashWarningDialog(
+                    appName = "Shelf Snap",
+                    likelyCause = "on-device AI",
                     opLabel = entry.op.orEmpty().removeSuffix("-start"),
                     onViewDebugLog = {
                         crashWarningViewModel.dismiss()
@@ -317,36 +316,6 @@ fun AppNavigation(
             }
         } // Box
     } // Scaffold
-}
-
-/**
- * [DebugLogStore.staleStartWarning][com.twobits.debuglog.DebugLogStore.staleStartWarning]
- * surfaced as a one-time dialog — a native crash (a bad model file, a LiteRT-LM abort) has no
- * catchable Kotlin exception to report through the usual error paths, so without this the app
- * would just silently relaunch with no explanation for what happened last time.
- */
-@Composable
-private fun CrashWarningDialog(
-    opLabel: String,
-    onViewDebugLog: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Shelf Snap closed unexpectedly") },
-        text = {
-            Text(
-                "It looks like the app closed while running \"$opLabel\" last time — likely a crash " +
-                    "in on-device analysis. Check the Debug Log for details.",
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onViewDebugLog) { Text("View debug log") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
-        },
-    )
 }
 
 /** [ProgressFooterTask.primaryText] while market research is running. */

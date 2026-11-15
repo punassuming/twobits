@@ -7,23 +7,20 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Group
@@ -40,20 +37,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -72,11 +62,15 @@ import com.twobits.billing.SubscriptionTier
 import com.twobits.design.components.AppLabeledSectionCard
 import com.twobits.design.components.SettingsAppInfoSection
 import com.twobits.design.components.SettingsEntryCard
+import com.twobits.design.components.SettingsOptionRow
 import com.twobits.design.components.SettingsProStatusCard
+import com.twobits.design.components.SettingsRowDefaults
+import com.twobits.design.components.SettingsSwitchRow
+import com.twobits.design.components.ThemeModePicker
+import com.twobits.design.components.TwoBitsTopAppBar
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.model.AudioFormat
 import dev.scrybe.core.model.PostStopDestination
-import dev.scrybe.core.model.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -125,14 +119,7 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+            TwoBitsTopAppBar(title = "Settings", onNavigateBack = onNavigateBack)
         },
     ) { paddingValues ->
         Box(
@@ -203,37 +190,27 @@ fun SettingsScreen(
                     title = "Capture quality",
                     icon = Icons.Filled.Mic,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Location tagging", style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "Tag recordings with place name automatically",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = uiState.locationRecordingEnabled,
-                            onCheckedChange = { enabled ->
-                                if (!enabled) {
-                                    viewModel.setLocationRecordingEnabled(false)
-                                } else if (ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    viewModel.setLocationRecordingEnabled(true)
-                                } else {
-                                    locationPermissionLauncher.launch(
-                                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    )
-                                }
-                            },
-                        )
-                    }
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Location tagging",
+                        subtitle = "Tag recordings with place name automatically",
+                        checked = uiState.locationRecordingEnabled,
+                        onCheckedChange = { enabled ->
+                            if (!enabled) {
+                                viewModel.setLocationRecordingEnabled(false)
+                            } else if (ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                viewModel.setLocationRecordingEnabled(true)
+                            } else {
+                                locationPermissionLauncher.launch(
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                )
+                            }
+                        },
+                    )
                     if (uiState.locationRecordingEnabled && !hasLocationPermission) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -262,7 +239,7 @@ fun SettingsScreen(
                         onClick = { showFormatPicker = true },
                     )
                     SettingOptionRow(
-                        title = "Sample Rate",
+                        title = "Sample rate",
                         value = "${uiState.sampleRateHz / 1000} kHz",
                         supportingText = "Higher sample rates capture more detail and use more space.",
                         optionsSummary =
@@ -274,7 +251,7 @@ fun SettingsScreen(
                         onClick = { showSampleRatePicker = true },
                     )
                     SettingOptionRow(
-                        title = "Bit Rate",
+                        title = "Bit rate",
                         value = "${uiState.encodingBitRate / 1000} kbps",
                         supportingText = "Higher bit rates improve quality and increase file size.",
                         optionsSummary =
@@ -300,40 +277,32 @@ fun SettingsScreen(
                 }
 
                 AppLabeledSectionCard(
-                    title = "Recording Behavior",
+                    title = "Recording behavior",
                     icon = Icons.Filled.AutoAwesome,
                 ) {
                     Text(
                         text = "Default transform profile: ${uiState.defaultTransformProfileName ?: "None selected"}",
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Auto-transcribe", style = MaterialTheme.typography.bodyLarge)
-                            Text("Begins immediately after stopping", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Switch(checked = uiState.autoTranscribe, onCheckedChange = viewModel::setAutoTranscribe)
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Keep screen on while recording", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = uiState.keepScreenOn,
-                            onCheckedChange = { viewModel.setKeepScreenOn(it) },
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Prompt to rename after saving", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = uiState.showRenameAfterRecording,
-                            onCheckedChange = { viewModel.setShowRenameAfterRecording(it) },
-                        )
-                    }
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Auto-transcribe",
+                        subtitle = "Begins immediately after stopping",
+                        checked = uiState.autoTranscribe,
+                        onCheckedChange = viewModel::setAutoTranscribe,
+                    )
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Keep screen on while recording",
+                        checked = uiState.keepScreenOn,
+                        onCheckedChange = { viewModel.setKeepScreenOn(it) },
+                    )
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Prompt to rename after saving",
+                        checked = uiState.showRenameAfterRecording,
+                        onCheckedChange = { viewModel.setShowRenameAfterRecording(it) },
+                    )
                     SettingOptionRow(
                         title = "After recording stops",
                         value =
@@ -351,65 +320,40 @@ fun SettingsScreen(
                     )
                     HorizontalDivider()
                     SettingsSubsectionHeader(icon = Icons.Filled.Notifications, label = "Feedback")
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Confirm record swipe actions", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = uiState.confirmRecordSwipeActions,
-                            onCheckedChange = { viewModel.setConfirmRecordSwipeActions(it) },
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Show recording information in list", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = uiState.showRecordingInfoInList,
-                            onCheckedChange = { viewModel.setShowRecordingInfoInList(it) },
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Vibrate on record start/stop", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = uiState.recordingVibrateOnStartStop,
-                            onCheckedChange = { viewModel.setRecordingVibrateOnStartStop(it) },
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Sound on record start/stop", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = uiState.recordingSoundOnStartStop,
-                            onCheckedChange = { viewModel.setRecordingSoundOnStartStop(it) },
-                        )
-                    }
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Confirm record swipe actions",
+                        checked = uiState.confirmRecordSwipeActions,
+                        onCheckedChange = { viewModel.setConfirmRecordSwipeActions(it) },
+                    )
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Show recording information in list",
+                        checked = uiState.showRecordingInfoInList,
+                        onCheckedChange = { viewModel.setShowRecordingInfoInList(it) },
+                    )
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Vibrate on record start/stop",
+                        checked = uiState.recordingVibrateOnStartStop,
+                        onCheckedChange = { viewModel.setRecordingVibrateOnStartStop(it) },
+                    )
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Sound on record start/stop",
+                        checked = uiState.recordingSoundOnStartStop,
+                        onCheckedChange = { viewModel.setRecordingSoundOnStartStop(it) },
+                    )
                 }
 
                 AppLabeledSectionCard(
                     title = "Appearance",
                     icon = Icons.Filled.Palette,
                 ) {
-                    val themeOptions =
-                        listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark")
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        themeOptions.forEachIndexed { index, (mode, label) ->
-                            SegmentedButton(
-                                selected = uiState.themeMode == mode,
-                                onClick = { viewModel.setThemeMode(mode) },
-                                shape = SegmentedButtonDefaults.itemShape(index = index, count = themeOptions.size),
-                            ) {
-                                Text(label)
-                            }
-                        }
-                    }
+                    ThemeModePicker(
+                        selected = uiState.themeMode,
+                        onSelect = viewModel::setThemeMode,
+                    )
                 }
 
                 AppLabeledSectionCard(
@@ -456,16 +400,12 @@ fun SettingsScreen(
                         text = "Send transcripts to another app via a configurable intent.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Enable external integration", modifier = Modifier.weight(1f))
-                        Switch(
-                            checked = uiState.taskForgeEnabled,
-                            onCheckedChange = { viewModel.setTaskForgeEnabled(it) },
-                        )
-                    }
+                    SettingsSwitchRow(
+                        contentPadding = SettingsRowDefaults.insetContentPadding,
+                        title = "Enable external integration",
+                        checked = uiState.taskForgeEnabled,
+                        onCheckedChange = { viewModel.setTaskForgeEnabled(it) },
+                    )
                     if (uiState.taskForgeEnabled) {
                         OutlinedTextField(
                             value = uiState.taskForgePackageName,
@@ -625,7 +565,7 @@ fun SettingsScreen(
 
     if (showPostStopPicker) {
         OptionPickerDialog(
-            title = "After Recording Stops",
+            title = "After recording stops",
             options = PostStopDestination.entries.toList(),
             selected = uiState.postStopDestination,
             label = {
@@ -645,7 +585,7 @@ fun SettingsScreen(
     if (showSampleRatePicker) {
         val options = listOf(16_000, 22_050, 44_100, 48_000)
         OptionPickerDialog(
-            title = "Sample Rate",
+            title = "Sample rate",
             options = options,
             selected = uiState.sampleRateHz,
             label = { "${it / 1000} kHz" },
@@ -660,7 +600,7 @@ fun SettingsScreen(
     if (showBitRatePicker) {
         val options = listOf(64_000, 96_000, 128_000, 192_000, 256_000)
         OptionPickerDialog(
-            title = "Bit Rate",
+            title = "Bit rate",
             options = options,
             selected = uiState.encodingBitRate,
             label = { "${it / 1000} kbps" },
@@ -697,39 +637,22 @@ fun SettingsScreen(
                         Modifier
                             .fillMaxWidth()
                             .heightIn(max = 400.dp)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(rememberScrollState())
+                            .selectableGroup(),
                 ) {
                     // Not `entries`: MP3 and WAV are hidden because MediaRecorder cannot
                     // produce either — picking them gave an MPEG-4/AAC file under a name
                     // that other apps then failed to open. See AudioFormat's doc.
                     AudioFormat.selectable.forEach { format ->
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        viewModel.setAudioFormat(format)
-                                        showFormatPicker = false
-                                    }.padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = uiState.audioFormat == format,
-                                onClick = null,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = format.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                                Text(
-                                    text = format.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+                        SettingsOptionRow(
+                            title = format.name,
+                            subtitle = format.description,
+                            selected = uiState.audioFormat == format,
+                            onSelect = {
+                                viewModel.setAudioFormat(format)
+                                showFormatPicker = false
+                            },
+                        )
                     }
                 }
             },

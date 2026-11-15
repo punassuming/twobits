@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FilterAltOff
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.HourglassEmpty
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -113,8 +115,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.twobits.design.components.AppChipRow
+import com.twobits.design.components.AppEmptyState
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
+import com.twobits.design.components.ConfirmDialog
+import com.twobits.design.components.TwoBitsSearchField
 import dev.scrybe.core.common.CustomTypeIcon
 import dev.scrybe.core.common.ModeBadge
 import dev.scrybe.core.common.ScrybeLayoutDefaults
@@ -305,10 +310,10 @@ fun CaptureScreen(
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
                     AnimatedVisibility(visible = searchOpen) {
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text("Search sessions…") },
+                        TwoBitsSearchField(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            placeholder = "Search sessions…",
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
@@ -316,14 +321,6 @@ fun CaptureScreen(
                                         horizontal = ScrybeLayoutDefaults.screenHorizontalPadding,
                                         vertical = 4.dp,
                                     ).padding(top = paddingValues.calculateTopPadding()),
-                            singleLine = true,
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { searchQuery = "" }) {
-                                        Icon(Icons.Filled.Close, contentDescription = "Clear search")
-                                    }
-                                }
-                            },
                         )
                     }
                     LazyColumn(
@@ -378,19 +375,29 @@ fun CaptureScreen(
                         }
                         if (filteredSessions.isEmpty() && searchQuery.isNotBlank()) {
                             item(key = "no-results") {
-                                Box(
+                                AppEmptyState(
+                                    icon = Icons.Filled.SearchOff,
+                                    title = "No sessions match \"$searchQuery\"",
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
                                             .padding(vertical = 32.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        "No sessions match \"$searchQuery\"",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
+                                )
+                            }
+                        }
+                        val activeFilter = filterMode
+                        if (filteredSessions.isEmpty() && searchQuery.isBlank() && activeFilter != null) {
+                            item(key = "filter-empty") {
+                                AppEmptyState(
+                                    icon = Icons.Filled.FilterAltOff,
+                                    title = "No ${activeFilter.label} sessions",
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 32.dp),
+                                    secondaryActionLabel = "Show all sessions",
+                                    onSecondaryAction = { filterMode = null },
+                                )
                             }
                         }
                         if (folderModeEnabled) {
@@ -549,19 +556,14 @@ fun CaptureScreen(
 
     if (showDeleteConfirm) {
         val count = uiState.selectedSessionIds.size
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete $count recording${if (count == 1) "" else "s"}?") },
-            text = { Text("This will permanently delete the selected recordings and their transcripts.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteConfirm = false
-                    viewModel.deleteSelectedSessions()
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
+        ConfirmDialog(
+            title = "Delete $count recording${if (count == 1) "" else "s"}?",
+            text = "This will permanently delete the selected recordings and their transcripts.",
+            onConfirm = {
+                showDeleteConfirm = false
+                viewModel.deleteSelectedSessions()
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+            onDismiss = { showDeleteConfirm = false },
         )
     }
 
@@ -1108,24 +1110,16 @@ private fun ModePickerSheet(
     }
 
     typePendingDelete?.let { pending ->
-        AlertDialog(
-            onDismissRequest = { typePendingDelete = null },
-            title = { Text("Delete \"${pending.name}\"?") },
-            text = {
-                Text(
-                    "Recordings made with this type are kept and become Journal recordings. " +
-                        "This can't be undone.",
-                )
+        ConfirmDialog(
+            title = "Delete \"${pending.name}\"?",
+            text =
+                "Recordings made with this type are kept and become Journal recordings. " +
+                    "This can't be undone.",
+            onConfirm = {
+                onDeleteType(pending.id)
+                typePendingDelete = null
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleteType(pending.id)
-                    typePendingDelete = null
-                }) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { typePendingDelete = null }) { Text("Cancel") }
-            },
+            onDismiss = { typePendingDelete = null },
         )
     }
 }

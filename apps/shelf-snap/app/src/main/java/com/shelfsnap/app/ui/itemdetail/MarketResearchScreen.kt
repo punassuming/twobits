@@ -3,19 +3,14 @@ package com.shelfsnap.app.ui.itemdetail
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.TwoBitsTopAppBar
 
 @Composable
 fun MarketResearchScreen(
@@ -28,13 +23,9 @@ fun MarketResearchScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Market research") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = "Market research",
+                onNavigateBack = onBack,
             )
         },
     ) { padding ->

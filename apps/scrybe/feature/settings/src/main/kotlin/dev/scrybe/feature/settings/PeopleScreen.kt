@@ -20,10 +20,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MergeType
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -38,7 +38,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,6 +57,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppEmptyState
+import com.twobits.design.components.ConfirmDialog
+import com.twobits.design.components.TwoBitsTopAppBar
 import dev.scrybe.core.database.PersonEntity
 import kotlinx.coroutines.launch
 
@@ -88,24 +90,15 @@ fun PeopleScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("People")
-                        if (persons.isNotEmpty()) {
-                            Text(
-                                text = "${persons.size} speaker${if (persons.size != 1) "s" else ""} identified",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = "People",
+                subtitle =
+                    if (persons.isNotEmpty()) {
+                        "${persons.size} speaker${if (persons.size != 1) "s" else ""} identified"
+                    } else {
+                        null
+                    },
+                onNavigateBack = onNavigateBack,
                 actions = {
                     TextButton(onClick = { showReIdentifyDialog = true }) {
                         Icon(
@@ -121,16 +114,12 @@ fun PeopleScreen(
         },
     ) { paddingValues ->
         if (persons.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(paddingValues).padding(24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "No people yet — they're created when you assign a name to a speaker in a session.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            AppEmptyState(
+                icon = Icons.Default.Group,
+                title = "No people yet",
+                subtitle = "People are created when you assign a name to a speaker in a session.",
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(paddingValues),
@@ -184,21 +173,14 @@ fun PeopleScreen(
     }
 
     deleteTarget?.let { person ->
-        AlertDialog(
-            onDismissRequest = { deleteTarget = null },
-            title = { Text("Delete ${person.name}?") },
-            text = { Text("Speaker assignments for this person will be removed from all sessions.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deletePerson(person.id)
-                    deleteTarget = null
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
+        ConfirmDialog(
+            title = "Delete ${person.name}?",
+            text = "Speaker assignments for this person will be removed from all sessions.",
+            onConfirm = {
+                viewModel.deletePerson(person.id)
+                deleteTarget = null
             },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
-            },
+            onDismiss = { deleteTarget = null },
         )
     }
 

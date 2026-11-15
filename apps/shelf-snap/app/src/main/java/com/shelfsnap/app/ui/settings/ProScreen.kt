@@ -1,63 +1,28 @@
 package com.shelfsnap.app.ui.settings
 
 import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Update
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.shelfsnap.app.data.pro.ShelfSnapPlan
 import com.twobits.billing.SubscriptionTier
-import com.twobits.design.components.ByokDirectNoteCard
-import com.twobits.design.components.ProSpendCapCard
-import com.twobits.design.components.ProTierCard
-import com.twobits.design.components.ProUsageCard
+import com.twobits.design.components.ProScreenActions
+import com.twobits.design.components.ProScreenContent
+import com.twobits.design.components.ProScreenPricing
+import com.twobits.design.components.ProScreenScaffold
+import com.twobits.design.components.ProScreenState
 import com.twobits.design.components.ProUsageMetric
-
-private const val PLAY_SUBSCRIPTIONS_URL = "https://play.google.com/store/account/subscriptions"
+import com.twobits.design.components.ProWhyItem
 
 @Composable
 fun ProScreen(
@@ -66,410 +31,106 @@ fun ProScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val activity = LocalContext.current as? Activity
-    val isPro = uiState.subscriptionTier is SubscriptionTier.Pro
-
-    Scaffold(
-        topBar = { ProTopBar(onBack = onBack, isPro = isPro) },
-    ) { padding ->
-        Column(
-            modifier =
-                Modifier
-                    .padding(padding)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            ProInfraNote()
-            TierComparisonRow(isPro = isPro)
-            ProSpendCapCard(
-                capLabel = "Managed spend cap: \$%.2f / month".format(ShelfSnapPlan.plan.monthlySpendCapUsd),
-                note =
-                    "Pro runs on TwoBits managed providers with a monthly usage cap. When the cap " +
-                        "is reached, managed vision and market lookups pause until the next cycle — " +
-                        "Pro is metered, not unlimited.",
-            )
-            if (isPro) {
-                ProActiveCard(
-                    onRestore = viewModel::restorePurchases,
-                    isPurchasing = uiState.isPurchasing,
-                )
-                UsageCard()
-            } else {
-                BillingSection(
-                    isPurchasing = uiState.isPurchasing,
-                    onUpgrade = { plan -> activity?.let { viewModel.startProPurchase(it, plan) } },
-                    onRestore = viewModel::restorePurchases,
-                )
-            }
-            if (uiState.purchaseError != null) {
-                Text(
-                    uiState.purchaseError!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                TextButton(onClick = viewModel::dismissPurchaseError) { Text("Dismiss") }
-            }
-            WhyProSection()
-            ByokNote()
-        }
-    }
-}
-
-@Composable
-private fun ProTopBar(
-    onBack: () -> Unit,
-    isPro: Boolean,
-) {
-    TopAppBar(
-        title = {
-            Column {
-                Text("Shelf Snap Pro", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = if (isPro) "Active · manage billing in Google Play" else "Choose how you want to use AI",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-        },
-        actions = {
-            if (isPro) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                ) {
-                    Text(
-                        "Active",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                Spacer(Modifier.width(8.dp))
-            }
-        },
-    )
-}
-
-@Composable
-private fun ProInfraNote() {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Icon(
-                Icons.Default.Cloud,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text =
-                    "Powered by the TwoBits shared API — Cloudflare Workers + managed OpenAI. " +
-                        "Separate licence from Scrybe Pro and PriceDrop Pro.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun TierComparisonRow(isPro: Boolean) {
-    Text(
-        "Plans",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ProTierCard(
-            modifier = Modifier.weight(1f),
-            compact = true,
-            title = "Try it",
-            price = "—",
-            priceNote = "No account needed",
-            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            isHighlighted = !isPro,
-            features =
-                listOf(
-                    "Snap and identify items right away",
-                    "Try AI-powered descriptions",
-                    "Build your local inventory",
-                ),
-        )
-        ProTierCard(
-            modifier = Modifier.weight(1f),
-            compact = true,
-            title = "Pro",
-            price = ShelfSnapPlan.plan.pricing.annualPerMonthPrice,
-            priceNote = "/mo · billed annually",
-            badge = "Zero setup",
-            accentColor = MaterialTheme.colorScheme.primary,
-            isHighlighted = isPro,
-            features =
-                listOf(
-                    "Works immediately — no key config",
-                    "Managed Vision + search providers",
-                    "Up to ${ShelfSnapPlan.VISION_MONTHLY_LIMIT} photo analyses/mo",
-                    "Automatic model updates",
-                    "Pro support channel",
-                ),
-        )
-        ProTierCard(
-            modifier = Modifier.weight(1f),
-            compact = true,
-            title = "BYOK",
-            price = "Free forever",
-            priceNote = "pay providers directly",
-            badge = "Full control",
-            accentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            features =
-                listOf(
-                    "All Shelf Snap features",
-                    "Connect your own API keys",
-                    "Choose preferred models",
-                    "Pay providers directly",
-                ),
-        )
-    }
-}
-
-@Composable
-private fun BillingSection(
-    isPurchasing: Boolean,
-    onUpgrade: (plan: String) -> Unit,
-    onRestore: () -> Unit,
-) {
-    var selectedPlan by remember { mutableStateOf("annual") }
-    Text(
-        "Billing",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PlanOption(
-            modifier = Modifier.weight(1f),
-            label = "Annual",
-            price = ShelfSnapPlan.plan.pricing.annualPerMonthLabel,
-            note = ShelfSnapPlan.plan.pricing.annualNote,
-            badge = "Best value",
-            selected = selectedPlan == "annual",
-            onClick = { selectedPlan = "annual" },
-        )
-        PlanOption(
-            modifier = Modifier.weight(1f),
-            label = "Monthly",
-            price = ShelfSnapPlan.plan.pricing.monthlyLabel,
-            note = "Billed each month",
-            badge = null,
-            selected = selectedPlan == "monthly",
-            onClick = { selectedPlan = "monthly" },
-        )
-    }
-    Button(
-        onClick = { onUpgrade(selectedPlan) },
-        modifier = Modifier.fillMaxWidth(),
-        enabled = !isPurchasing,
-        shape = RoundedCornerShape(14.dp),
-    ) {
-        if (isPurchasing) {
-            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(if (isPurchasing) "Processing…" else "Upgrade to Pro")
-    }
-    TextButton(onClick = onRestore, modifier = Modifier.fillMaxWidth()) {
-        Text("Restore purchase")
-    }
-}
-
-@Composable
-private fun PlanOption(
-    modifier: Modifier = Modifier,
-    label: String,
-    price: String,
-    note: String,
-    badge: String?,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val color = MaterialTheme.colorScheme.primary
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.extraSmall,
-        color =
-            if (selected) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-            },
-        border =
-            if (selected) {
-                BorderStroke(1.5.dp, color.copy(alpha = 0.5f))
-            } else {
-                null
-            },
-        onClick = onClick,
-    ) {
-        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            if (badge != null) {
-                Surface(shape = RoundedCornerShape(4.dp), color = color.copy(alpha = 0.15f)) {
-                    Text(
-                        badge,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = color,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-            Text(
-                label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (selected) color else MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(price, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            Text(note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun ProActiveCard(
-    isPurchasing: Boolean,
-    onRestore: () -> Unit,
-) {
-    val context = LocalContext.current
-    Surface(
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Pro — Active",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        "Billing and renewal are managed in Google Play",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        runCatching {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PLAY_SUBSCRIPTIONS_URL)))
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                    shape = RoundedCornerShape(10.dp),
-                ) { Text("Manage subscription", style = MaterialTheme.typography.labelMedium) }
-                TextButton(
-                    onClick = onRestore,
-                    modifier = Modifier.weight(1f),
-                    enabled = !isPurchasing,
-                    shape = RoundedCornerShape(10.dp),
-                ) { Text("Restore purchase", style = MaterialTheme.typography.labelMedium) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun UsageCard() {
-    // Monthly managed allowances from ShelfSnapPlan (mirrors worker.js). Live per-feature usage is
-    // not yet read back from the worker, so these are shown as allowances, not fabricated counts.
-    ProUsageCard(
-        metrics =
-            listOf(
-                ProUsageMetric(
-                    label = "Photo analyses",
-                    used = null,
-                    limit = ShelfSnapPlan.VISION_MONTHLY_LIMIT,
-                    unitLabel = "scans",
-                    icon = Icons.Default.PhotoCamera,
-                ),
-                ProUsageMetric(
-                    label = "Market lookups",
-                    used = null,
-                    limit = ShelfSnapPlan.RESEARCH_MONTHLY_LIMIT,
-                    unitLabel = "lookups",
-                    icon = Icons.Default.Speed,
-                ),
-                ProUsageMetric(
-                    label = "Listing generations",
-                    used = null,
-                    limit = ShelfSnapPlan.LISTING_MONTHLY_LIMIT,
-                    unitLabel = "listings",
-                    icon = Icons.Default.AutoAwesome,
-                ),
+    ProScreenScaffold(
+        content = remember { shelfSnapProContent() },
+        state =
+            ProScreenState(
+                hasPro = uiState.subscriptionTier is SubscriptionTier.Pro,
+                isPurchasing = uiState.isPurchasing,
+                purchaseError = uiState.purchaseError,
+            ),
+        actions =
+            ProScreenActions(
+                onNavigateBack = onBack,
+                onUpgrade = { plan -> activity?.let { viewModel.startProPurchase(it, plan) } },
+                onRestore = viewModel::restorePurchases,
+                onDismissError = viewModel::dismissPurchaseError,
             ),
     )
 }
 
-@Composable
-private fun WhyProSection() {
-    data class WhyRow(
-        val icon: androidx.compose.ui.graphics.vector.ImageVector,
-        val text: String,
+private fun shelfSnapProContent(): ProScreenContent {
+    val plan = ShelfSnapPlan.plan
+    return ProScreenContent(
+        appName = "Shelf Snap",
+        pricing =
+            ProScreenPricing(
+                monthlyLabel = plan.pricing.monthlyLabel,
+                annualPerMonthLabel = plan.pricing.annualPerMonthLabel,
+                annualNote = plan.pricing.annualNote,
+                annualPerMonthPrice = plan.pricing.annualPerMonthPrice,
+                monthlySpendCapUsd = plan.monthlySpendCapUsd,
+            ),
+        infraNote =
+            "Powered by the TwoBits shared API — Cloudflare Workers + managed OpenAI. " +
+                "Separate licence from Scrybe Pro and PriceDrop Pro.",
+        spendCapNote =
+            "Pro runs on TwoBits managed providers with a monthly usage cap. When the cap " +
+                "is reached, managed vision and market lookups pause until the next cycle — " +
+                "Pro is metered, not unlimited.",
+        tryItFeatures =
+            listOf(
+                "Snap and identify items right away",
+                "Try AI-powered descriptions",
+                "Build your local inventory",
+            ),
+        proFeatures =
+            listOf(
+                "Works immediately — no key config",
+                "Managed Vision + search providers",
+                "Up to ${ShelfSnapPlan.VISION_MONTHLY_LIMIT} photo analyses/mo",
+                "Automatic model updates",
+                "Pro support channel",
+            ),
+        byokFeatures =
+            listOf(
+                "All Shelf Snap features",
+                "Connect your own API keys",
+                "Choose preferred models",
+                "Pay providers directly",
+            ),
+        usageMetrics = shelfSnapUsageMetrics(),
+        whyPro = shelfSnapWhyPro(),
     )
-    val rows =
-        listOf(
-            WhyRow(Icons.Default.Key, "Works the moment you install — snap a photo and the analysis runs, no accounts or keys required."),
-            WhyRow(Icons.Default.Update, "Vision model updates, search provider changes, rate limits — all handled automatically in the background."),
-            WhyRow(Icons.Default.Speed, "Priority queue — your scans are processed first during peak hours."),
-            WhyRow(Icons.Default.SupportAgent, "Direct support channel — real responses within one business day."),
-        )
-    Text(
-        "Why Pro",
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.SemiBold,
-    )
-    Surface(
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            rows.forEachIndexed { i, row ->
-                if (i > 0) HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Icon(row.icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                    Text(row.text, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-    }
 }
 
-@Composable
-private fun ByokNote() {
-    ByokDirectNoteCard()
-}
+// Monthly managed allowances from ShelfSnapPlan (mirrors worker.js). Live per-feature usage
+// is not yet read back from the worker, so these are shown as allowances, not fabricated counts.
+private fun shelfSnapUsageMetrics(): List<ProUsageMetric> =
+    listOf(
+        ProUsageMetric(
+            label = "Photo analyses",
+            used = null,
+            limit = ShelfSnapPlan.VISION_MONTHLY_LIMIT,
+            unitLabel = "scans",
+            icon = Icons.Default.PhotoCamera,
+        ),
+        ProUsageMetric(
+            label = "Market lookups",
+            used = null,
+            limit = ShelfSnapPlan.RESEARCH_MONTHLY_LIMIT,
+            unitLabel = "lookups",
+            icon = Icons.Default.Speed,
+        ),
+        ProUsageMetric(
+            label = "Listing generations",
+            used = null,
+            limit = ShelfSnapPlan.LISTING_MONTHLY_LIMIT,
+            unitLabel = "listings",
+            icon = Icons.Default.AutoAwesome,
+        ),
+    )
+
+private fun shelfSnapWhyPro(): List<ProWhyItem> =
+    listOf(
+        ProWhyItem(
+            Icons.Default.Key,
+            "Works the moment you install — snap a photo and the analysis runs, no accounts or keys required.",
+        ),
+        ProWhyItem(
+            Icons.Default.Update,
+            "Vision model updates, search provider changes, rate limits — all handled automatically in the background.",
+        ),
+        ProWhyItem(Icons.Default.Speed, "Priority queue — your scans are processed first during peak hours."),
+        ProWhyItem(Icons.Default.SupportAgent, "Direct support channel — real responses within one business day."),
+    )

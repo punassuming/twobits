@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":core:export"))
     implementation(project(":core:local-ai"))
     implementation(project(":core:model"))
+    implementation("com.twobits.core:design")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

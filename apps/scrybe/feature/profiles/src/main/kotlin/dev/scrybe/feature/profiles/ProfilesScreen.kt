@@ -76,10 +76,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -103,8 +101,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppEmptyState
+import com.twobits.design.components.AppLoadingState
 import com.twobits.design.components.AppSectionCard
 import com.twobits.design.components.AppSectionHeader
+import com.twobits.design.components.ConfirmDialog
+import com.twobits.design.components.SettingsRowDefaults
+import com.twobits.design.components.SettingsSwitchRow
+import com.twobits.design.components.TwoBitsTopAppBar
 import dev.scrybe.core.common.ScrybeLayoutDefaults
 import dev.scrybe.core.model.OpenAiProfileSuggestionModel
 import dev.scrybe.core.model.OpenAiTransformModel
@@ -240,26 +244,12 @@ fun ProfilesScreen(
     } else {
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { Text("Profiles") },
-                    navigationIcon = {
-                        if (onNavigateBack != null) {
-                            IconButton(onClick = onNavigateBack) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                            }
-                        }
-                    },
-                )
+                TwoBitsTopAppBar(title = "Profiles", onNavigateBack = onNavigateBack)
             },
         ) { paddingValues ->
             when (val state = uiState) {
                 is ProfilesUiState.Loading -> {
-                    Box(
-                        Modifier.fillMaxSize().padding(paddingValues),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    AppLoadingState(modifier = Modifier.fillMaxSize().padding(paddingValues))
                 }
 
                 is ProfilesUiState.Error -> {
@@ -488,17 +478,13 @@ private fun ProfileCreationCard(onCreateNew: () -> Unit) {
 
 @Composable
 private fun EmptyProfilesCard() {
-    AppSectionCard(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
-        Text(
-            text = "No profiles configured",
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-            text = "Profiles let Scrybe run one to three prompt steps against a transcript after recording.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    // Sits below the creation card inside the LazyColumn, so it fills the width, not the screen.
+    AppEmptyState(
+        icon = Icons.Filled.AutoAwesome,
+        title = "No profiles configured",
+        subtitle = "Profiles let Scrybe run one to three prompt steps against a transcript after recording.",
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+    )
 }
 
 @Composable
@@ -593,18 +579,11 @@ private fun DeleteProfileDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Delete “$profileName”?") },
-        text = { Text("This profile will be removed. Sessions already transformed keep their results.") },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Delete", color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
+    ConfirmDialog(
+        title = "Delete “$profileName”?",
+        text = "This profile will be removed. Sessions already transformed keep their results.",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
     )
 }
 
@@ -849,20 +828,14 @@ private fun OptionRow(
     selected: Boolean,
     onToggle: (Boolean) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyMedium)
-            if (sub.isNotBlank()) {
-                Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Switch(checked = selected, onCheckedChange = onToggle)
-    }
+    SettingsSwitchRow(
+        contentPadding = SettingsRowDefaults.insetContentPadding,
+        title = label,
+        subtitle = sub.ifBlank { null },
+        icon = icon,
+        checked = selected,
+        onCheckedChange = onToggle,
+    )
 }
 
 @Composable
@@ -1017,14 +990,12 @@ private fun ProfileEditorFormBody(
         ProfileAppearanceSection(draft = draft, onUpdate = onUpdate)
         ProfileStepsSection(draft = draft, onUpdate = onUpdate)
         ProfileProviderSection(draft = draft, onUpdate = onUpdate)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Use as default")
-            Switch(checked = draft.isDefault, onCheckedChange = { onUpdate(draft.copy(isDefault = it)) })
-        }
+        SettingsSwitchRow(
+            contentPadding = SettingsRowDefaults.insetContentPadding,
+            title = "Use as default",
+            checked = draft.isDefault,
+            onCheckedChange = { onUpdate(draft.copy(isDefault = it)) },
+        )
     }
 }
 
@@ -1405,17 +1376,12 @@ private fun AiProfileDraftDialog(
                         },
                     )
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Use as default")
-                    Switch(
-                        checked = isDefault,
-                        onCheckedChange = { isDefault = it },
-                    )
-                }
+                SettingsSwitchRow(
+                    contentPadding = SettingsRowDefaults.insetContentPadding,
+                    title = "Use as default",
+                    checked = isDefault,
+                    onCheckedChange = { isDefault = it },
+                )
                 AiDraftActions(
                     suggestionState = suggestionState,
                     latestSuggestion = latestSuggestion,

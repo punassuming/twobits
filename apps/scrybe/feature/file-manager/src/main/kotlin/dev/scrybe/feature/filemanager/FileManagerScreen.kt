@@ -13,14 +13,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,7 +34,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,9 +44,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.twobits.design.components.AppEmptyState
+import com.twobits.design.components.AppLoadingState
+import com.twobits.design.components.ConfirmDialog
+import com.twobits.design.components.TwoBitsTopAppBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -72,13 +76,9 @@ fun FileManagerScreen(onNavigateBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("File Manager") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            TwoBitsTopAppBar(
+                title = "File manager",
+                onNavigateBack = onNavigateBack,
                 actions = {
                     IconButton(onClick = { importLauncher.launch(arrayOf("audio/*")) }) {
                         Icon(Icons.Default.Add, contentDescription = "Import audio file")
@@ -93,10 +93,7 @@ fun FileManagerScreen(onNavigateBack: () -> Unit) {
     ) { padding ->
         when (val state = uiState) {
             FileManagerUiState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator() }
+                AppLoadingState(modifier = Modifier.fillMaxSize().padding(padding))
             }
 
             is FileManagerUiState.Error -> {
@@ -147,7 +144,7 @@ private fun FileManagerContent(
             )
         }
         if (state.recordings.isEmpty()) {
-            item { EmptyState("No recording files found") }
+            item { EmptyState(Icons.Default.AudioFile, "No recording files found") }
         } else {
             items(state.recordings.distinctBy { it.absolutePath }, key = { "rec:${it.absolutePath}" }) { entry ->
                 RecordingFileRow(
@@ -161,12 +158,12 @@ private fun FileManagerContent(
         item {
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(
-                title = "Saved Copies & Exports",
+                title = "Saved copies & exports",
                 subtitle = "${state.outputs.size} files",
             )
         }
         if (state.outputs.isEmpty()) {
-            item { EmptyState("No saved copies or exports found") }
+            item { EmptyState(Icons.Default.FolderOpen, "No saved copies or exports found") }
         } else {
             items(state.outputs.distinctBy { it.absolutePath }, key = { "out:${it.absolutePath}" }) { entry ->
                 OutputFileRow(
@@ -178,12 +175,12 @@ private fun FileManagerContent(
         item {
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SectionHeader(
-                title = "AI Models",
+                title = "AI models",
                 subtitle = "${state.models.size} files on disk — manage from Settings → AI configuration → Models",
             )
         }
         if (state.models.isEmpty()) {
-            item { EmptyState("No on-device model files found") }
+            item { EmptyState(Icons.Default.Memory, "No on-device model files found") }
         } else {
             items(state.models.distinctBy { it.absolutePath }, key = { "model:${it.absolutePath}" }) { entry ->
                 ModelFileRow(entry = entry)
@@ -204,13 +201,16 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun EmptyState(message: String) {
-    Box(
-        modifier = Modifier.fillMaxWidth().padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(message, style = MaterialTheme.typography.bodyMedium)
-    }
+private fun EmptyState(
+    icon: ImageVector,
+    message: String,
+) {
+    // Inline variant: sits inside a LazyColumn section, so it fills the width, not the screen.
+    AppEmptyState(
+        icon = icon,
+        title = message,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+    )
 }
 
 @Composable
@@ -330,12 +330,11 @@ private fun DeleteConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Delete file?") },
-        text = { Text("\"$name\" will be permanently deleted.") },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    ConfirmDialog(
+        title = "Delete file?",
+        text = "\"$name\" will be permanently deleted.",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
     )
 }
 

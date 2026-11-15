@@ -1,20 +1,18 @@
 package dev.scrybe.core.common
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
+import com.twobits.design.TwoBitsLayout
+import com.twobits.design.TwoBitsSpacing
+import com.twobits.design.twoBitsContentWidth
 
-// Values match the shared com.twobits.design.TwoBitsSpacing tokens (screenH/screenV/section/item);
-// duplicated here rather than depending on shared/design, since core/common doesn't otherwise
-// need that module.
+// Scrybe's names for the shared com.twobits.design tokens, kept so existing call sites don't churn.
 object ScrybeLayoutDefaults {
-    val screenHorizontalPadding = 12.dp
-    val screenVerticalSpacing = 12.dp
-    val sectionPadding = 14.dp
-    val sectionSpacing = 8.dp
-    val contentMaxWidth = 760.dp
+    val screenHorizontalPadding = TwoBitsSpacing.screenH
+    val screenVerticalSpacing = TwoBitsSpacing.screenV
+    val sectionPadding = TwoBitsSpacing.section
+    val sectionSpacing = TwoBitsSpacing.item
+    val contentMaxWidth = TwoBitsLayout.contentMaxWidth
 }
 
-fun Modifier.scrybeContentWidth(maxWidth: Dp = ScrybeLayoutDefaults.contentMaxWidth): Modifier = fillMaxWidth().widthIn(max = maxWidth)
+fun Modifier.scrybeContentWidth(maxWidth: Dp = ScrybeLayoutDefaults.contentMaxWidth): Modifier = twoBitsContentWidth(maxWidth)

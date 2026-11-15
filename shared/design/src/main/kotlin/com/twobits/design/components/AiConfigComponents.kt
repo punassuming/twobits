@@ -309,9 +309,14 @@ fun AiSourceSegment(
     byokColor: Color = AI_BYOK_COLOR,
     localColor: Color = AI_LOCAL_COLOR,
     modifier: Modifier = Modifier,
+    // Optional leading "off" option (value "off") for apps where a feature can be disabled outright.
+    hasOff: Boolean = false,
+    offLabel: String = "Off",
+    offColor: Color = MaterialTheme.colorScheme.outline,
 ) {
     val pills =
         buildList {
+            if (hasOff) add(Triple("off", offLabel, offColor))
             add(Triple("pro", "Pro", proColor))
             add(Triple("byok", "BYOK", byokColor))
             if (hasLocal) add(Triple("local", "Local", localColor))

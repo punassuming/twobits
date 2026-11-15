@@ -10,15 +10,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import com.twobits.design.ThemeMode
+import com.twobits.pricedrop.data.settings.SettingsPrefs
 import com.twobits.pricedrop.notifications.PriceDropNotifier
 import com.twobits.pricedrop.ui.navigation.AppNavigation
 import com.twobits.pricedrop.ui.theme.PriceDropTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var dataStore: DataStore<Preferences>
+
     // Holds a product ID delivered via notification tap; cleared after navigation.
     private val pendingProductId = MutableStateFlow<Long?>(null)
 
@@ -36,7 +45,9 @@ class MainActivity : ComponentActivity() {
         val suppressUiTestDialogs = BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_UI_TEST_SUPPRESS_DIALOGS, false)
         setContent {
             val notificationProductId by pendingProductId.collectAsState()
-            PriceDropTheme {
+            val themeMode by remember { dataStore.data.map(SettingsPrefs::themeMode) }
+                .collectAsState(initial = ThemeMode.SYSTEM)
+            PriceDropTheme(themeMode = themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,

@@ -4,7 +4,27 @@
 
 ### Features
 
+**Appearance** — pick your theme:
+* Choose System, Light or Dark in Settings
+* Content stays a comfortable width on tablets and foldables
+
 ### Improvements
+
+**Shared building blocks** — one look and behavior across TwoBits apps:
+* Confirmation dialogs, undo snackbars and loading states now come from one shared design
+* Settings switches respond to taps anywhere on the row and read as one control in TalkBack
+* Error cards can offer a Retry action
+* The tablet content-width cap now actually limits wide screens
+* Removed unused shared loading overlay, Pro gate and subscription banner components
+* The Pro screen is now one shared screen across all three apps
+
+**Search & Ask** — clearer states:
+* Search shows a "No results" message when nothing matches, and errors offer Retry
+* Barcode lookup errors offer "Scan again"
+* Clearing your search history now asks first
+* AI source pills use the same colors as Scrybe and Shelf Snap
+* Settings switch rows line up with the rest of their card
+* Links in What's New now open the screen they mention
 
 ### Fixes
 
