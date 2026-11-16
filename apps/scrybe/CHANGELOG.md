@@ -34,6 +34,8 @@
 * Format and other pickers show a radio button for the current choice
 * The Capture search field has a labelled clear button and a keyboard Search key
 
+* Build tooling updated: Kotlin 2.4.21, Android Gradle Plugin 9.5.1, KSP 2.3.13, Gradle 9.8.2
+
 ### Fixes
 
 

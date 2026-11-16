@@ -11,15 +11,15 @@
 
 [versions]
 # ── Build tooling ─────────────────────────────────────────────────────────────
-agp = "9.4.1"
+agp = "9.5.1"
 # 2.3.0+: litertlm-android (see litertLm below) ships Kotlin metadata that only a
 # compiler this new can read — every module in the repo needs to be on this version or
 # newer, since shared/local-ai's compiled output otherwise becomes unreadable to its
 # consumers in turn. Confirmed via real CI failures with both 2.0.21 and an
 # only-local-ai-bumped setup (each pushed the "compiled with a newer Kotlin" error to a
 # different module instead of fixing it).
-kotlin = "2.4.20"
-ksp = "2.3.12" # KSP's own versioning switched to track the Kotlin version 1:1 starting here.
+kotlin = "2.4.21"
+ksp = "2.3.13" # KSP's own versioning switched to track the Kotlin version 1:1 starting here.
 detekt = "1.23.8"
 ktlint = "14.2.0"
 

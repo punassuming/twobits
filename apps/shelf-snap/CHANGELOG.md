@@ -34,6 +34,8 @@
 * The Inventory search field has a labelled clear button and a keyboard Search key
 * "Total summary" and other titles use sentence case
 
+* Build tooling updated: Kotlin 2.4.21, Android Gradle Plugin 9.5.1, KSP 2.3.13, Gradle 9.8.2
+
 ### Fixes
 
 

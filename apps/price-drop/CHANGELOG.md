@@ -34,6 +34,8 @@
 * Settings switch rows line up with the rest of their card
 * Links in What's New now open the screen they mention
 
+* Build tooling updated: Kotlin 2.4.21, Android Gradle Plugin 9.5.1, KSP 2.3.13, Gradle 9.8.2
+
 ### Fixes
 
 
